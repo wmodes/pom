@@ -11,6 +11,9 @@ samples/
 *.m4a
 *.mp3
 
+# Raw corpus downloads are reproducible from corpus/SOURCES.md; processed text is committed
+corpus/raw/
+
 # Python
 .venv/
 __pycache__/

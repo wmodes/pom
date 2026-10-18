@@ -12,9 +12,9 @@
 # stops and tells you, rather than overwriting it.
 #
 # Usage:
-#   scripts/setup-whisper.sh
-#   WHISPER_MODELS="base.en" scripts/setup-whisper.sh       # one model only
-#   WHISPER_DIR=/opt/whisper.cpp scripts/setup-whisper.sh   # other location
+#   scripts/setup/setup-whisper.sh
+#   WHISPER_MODELS="base.en" scripts/setup/setup-whisper.sh       # one model only
+#   WHISPER_DIR=/opt/whisper.cpp scripts/setup/setup-whisper.sh   # other location
 #
 # Environment overrides:
 #   WHISPER_TAG     upstream release tag to build (default: v1.9.5)

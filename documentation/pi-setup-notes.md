@@ -104,7 +104,7 @@ If the Pi can't join a known network, it raises its own hotspot with a captive p
 
 Third-party, not bespoke: built on the Pi from a pinned upstream tag, not copied into this repo.
 
-**Reproduce it with `scripts/setup-whisper.sh`** (idempotent; pinned to v1.9.5; installs build tools, clones, builds, downloads `base.en` and `small.en`, then smoke-tests on `jfk.wav`). Override with `WHISPER_TAG`, `WHISPER_DIR`, `WHISPER_MODELS`. Tested 2026-10-18 on the Pi: re-run against the existing install (all steps skipped, smoke test passes), a fresh build into a throwaway directory (passes), and refusal when pointed at a checkout on a different tag. The manual steps below are what the script automates.
+**Reproduce it with `scripts/setup/setup-whisper.sh`** (idempotent; pinned to v1.9.5; installs build tools, clones, builds, downloads `base.en` and `small.en`, then smoke-tests on `jfk.wav`). Override with `WHISPER_TAG`, `WHISPER_DIR`, `WHISPER_MODELS`. Tested 2026-10-18 on the Pi: re-run against the existing install (all steps skipped, smoke test passes), a fresh build into a throwaway directory (passes), and refusal when pointed at a checkout on a different tag. The manual steps below are what the script automates.
 
 - Tag: **v1.9.5**, cloned to `~/whisper.cpp` (`git clone --depth 1 --branch v1.9.5 https://github.com/ggml-org/whisper.cpp.git`)
 - Build tools: `git cmake build-essential` (cmake 3.25, gcc 12.2)
@@ -142,6 +142,16 @@ Third-party, not bespoke: built on the Pi from a pinned upstream tag, not copied
 - Typing noise is not a design problem. Only the typewriter's idle noise and the fan matter for the mic test.
 - Open: should the pause also cover LLM generation (lean: yes), and does keyboard-typed input follow the same listen / respond / listen cycle?
 
+## llama.cpp (local LLM runtime)
+
+llama.cpp is the *runtime*, not a model; it runs Llama, Qwen, Gemma, Phi and others. Third-party, built from a pinned tag by `scripts/setup/setup-llama.sh` (idempotent, never deletes an existing checkout).
+
+- Tag **b11721**, in `~/llama.cpp`; plain CPU Release build, about 15 minutes on the Pi 5 with 4 jobs. Binaries in `build/bin/`: `llama-cli`, `llama-server`, `llama-bench`. (`--version` reports "build 1" because the clone is shallow; the commit is `ff5a233`.)
+- Tested: fresh build, then a re-run that skipped every step.
+- Not enabled, a later experiment: `-DGGML_CPU_KLEIDIAI=ON` (Arm kernels).
+- Model not chosen. Candidates verified on Hugging Face from trusted publishers (Q4_K_M): Qwen3-4B (`Qwen/Qwen3-4B-GGUF`, 2.50 GB, Apache-2.0); Llama 3.2 3B Instruct (`bartowski/Llama-3.2-3B-Instruct-GGUF`, 2.02 GB, Llama 3.2 license); Gemma 3 4B (`unsloth/gemma-3-4b-it-GGUF`, 2.49 GB, Gemma terms); LFM2.5 2.6B (`LiquidAI/LFM2.5-2.6B-GGUF`, 1.67 GB, license "other", read before using). No base (non-instruct) GGUF verified yet.
+- Skipped on purpose: popular community "distill" and fine-tune uploads of unknown provenance.
+
 ## Fan check
 
 The Active Cooler is firmware-controlled over the Pi 5's fan header and stays **off at idle**, ramping from roughly 50 C. A still fan is not a fault.
@@ -159,6 +169,6 @@ Fan noise may matter for the hidden mic, so include it in the typewriter idle-no
 
 - [x] **Bootloader EEPROM update.** Done 2026-10-18: 2025-08-28 -> 2026-09-25 via `sudo rpi-eeprom-update -a` (`VERIFY: SUCCESS`), then reboot. `rpi-eeprom-update` now reports up to date.
 - [x] **Wi-Fi fallback AP for venues.** Done 2026-10-18 with Comitup (see the section above). Still untested: whether it rescans for known networks while the hotspot is up, and the real venue Wi-Fi flow.
-- [ ] Verify the fan spins under load.
+- [x] Fan verified 2026-10-18: during the llama.cpp build the Pi reached 52.7 C and `fan1_input` read 2794 RPM (it is off at idle).
 - [ ] Case: stacked acrylic / open-frame case that explicitly supports Pi 5 + official Active Cooler (top window open, power button and fan header accessible).
 - [ ] Mic: Audio-Technica ATR4697-USB ordered. It is wired, not wireless as the project brief assumed. Test it as a USB audio device on the Pi (`arecord -l`), and run the typewriter idle-noise test with it and the fan.

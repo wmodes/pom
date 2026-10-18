@@ -104,6 +104,8 @@ If the Pi can't join a known network, it raises its own hotspot with a captive p
 
 Third-party, not bespoke: built on the Pi from a pinned upstream tag, not copied into this repo.
 
+**Reproduce it with `scripts/setup-whisper.sh`** (idempotent; pinned to v1.9.5; installs build tools, clones, builds, downloads `base.en` and `small.en`, then smoke-tests on `jfk.wav`). Override with `WHISPER_TAG`, `WHISPER_DIR`, `WHISPER_MODELS`. Tested 2026-10-18 on the Pi: re-run against the existing install (all steps skipped, smoke test passes), a fresh build into a throwaway directory (passes), and refusal when pointed at a checkout on a different tag. The manual steps below are what the script automates.
+
 - Tag: **v1.9.5**, cloned to `~/whisper.cpp` (`git clone --depth 1 --branch v1.9.5 https://github.com/ggml-org/whisper.cpp.git`)
 - Build tools: `git cmake build-essential` (cmake 3.25, gcc 12.2)
 - Build: `cmake -B build && cmake --build build -j4 --config Release` (about 2-3 minutes on the Pi 5). Binaries in `build/bin/`: `whisper-cli`, `whisper-server`, `whisper-bench`. CPU features detected: NEON, ARM_FMA, FP16_VA, DOTPROD, OPENMP, REPACK.

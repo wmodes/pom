@@ -1,0 +1,20 @@
+# Agent instructions can hold sensitive details (kept out of the repo by rule)
+CLAUDE.md
+
+# Secrets and local config
+.env
+*.local.conf
+
+# Recordings of real people and generated audio stay out of the repo
+samples/
+*.wav
+*.m4a
+*.mp3
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

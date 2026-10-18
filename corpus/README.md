@@ -20,7 +20,7 @@ corpus/
     └── <form>/     cleaned plain text, one file per source: <id>.txt
 ```
 
-`<form>` values in use: `divination`, `poetry`, `humor`, `horoscope`, `office`, `news`. Add a new form only when a source needs it, and add it here.
+`<form>` values in use: `divination`, `wisdom`, `poetry`, `drama`, `humor`, `horoscope`, `manual`. Add a new form only when a source needs it, and add it here. Forms we expect to need next: `prophecy`, `epitaph`, `aphorism`, `riddle`, `news`.
 
 ## sources.csv columns
 
@@ -32,11 +32,23 @@ corpus/
 | `rights` | `public-domain`, `cc0`, `in-copyright`, or `unknown`. |
 | `rights_basis` | Why we believe that: for example "Project Gutenberg, US public domain". |
 | `url` | Where it came from. |
-| `status` | `candidate` (found, rights not yet confirmed), `approved`, `fetched`, `processed`, or `excluded`. |
+| `status` | A human decision: `candidate` (found, rights not yet confirmed), `approved` (rights confirmed, ok to fetch), or `excluded` (rejected, kept so the decision is on record). |
 | `notes` | Anything a future reader needs. |
 
-Only `rights` of `public-domain` or `cc0` may reach `approved` or later. Rows with other rights stay as `excluded` so the decision is on record.
+Only `rights` of `public-domain` or `cc0` may be `approved`. The pipeline refuses to fetch anything else.
+
+Whether a source has been fetched or cleaned is *not* in the manifest; that is what is on disk. Ask the pipeline:
 
 ## Workflow
 
-`candidate` -> confirm rights -> `approved` -> fetch to `raw/<id>/` (`fetched`) -> clean to `processed/<form>/<id>.txt` (`processed`).
+```
+scripts/dev/corpus/corpus.py status          # what is on disk, per source
+scripts/dev/corpus/corpus.py fetch [--id ID] # approved sources -> raw/<id>/
+scripts/dev/corpus/corpus.py clean [--id ID] # raw/<id>/ -> processed/<form>/<id>.txt
+```
+
+1. Add a row as `candidate`. Confirm the rights, then set it to `approved`.
+2. `fetch`, then `clean`. Both skip work already done; `fetch --force` redownloads.
+3. Look at the processed text before relying on it. Cleaning strips licence boilerplate and normalizes whitespace; it does not fix OCR errors or editorial notes.
+
+Supported hosts so far: Project Gutenberg and Wikisource. A source on another host needs a handler added to the script first.

@@ -1,108 +1,3 @@
-Transcriber's Notes:
-
-  Underscores "_" before and after a word or phrase indicate _italics_
-    in the original text.
-  Equal signs "=" before and after a word or phrase indicate =bold=
-    in the original text.
-  Small capitals have been converted to SOLID capitals.
-  Illustrations have been moved so they do not break up paragraphs.
-  Typographical errors have been silently corrected but other variations
-    in spelling and punctuation remain unaltered.
-
-FORTUNES AND DREAMS
-
-[Illustration: HOROSCOPE]
-
-                          FORTUNES AND DREAMS
-
-                     A PRACTICAL MANUAL OF FORTUNE
-                      TELLING, DIVINATION AND THE
-                       INTERPRETATION OF DREAMS,
-                            SIGNS AND OMENS
-
-                                   BY
-                              ASTRA CIELO
-
-                                NEW YORK
-                        GEORGE SULLY AND COMPANY
-
-                            COPYRIGHT, 1917
-                        BY SULLY AND KLEINTEICH
-
-                          Printed in U. S. A.
-
-                           CONTENTS
-
-                                                      PAGE
- INTRODUCTION                                          vii
-
-  ASTROLOGY                                              1
-            Historical Review—Astrological
-          Readings—The Astrological Guide to
-          Fortune—Horoscope and Tables—Character as
-          Told by Astrology—How to Determine the Lucky
-          and Unlucky Days of Any Month—Derivations
-          of the Names of the Months—Derivations of
-          the German and English Days of the Week.
-
-  THE ANCIENT ORACLES                                   30
-    Napoleon’s Oraculum—Oraculum Table.
-
-  FORTUNE-TELLING BY CARDS                              52
-            The Origin and History of Playing
-          Cards—Suits and Symbols—Mystic
-          Meaning—The Charm and Power of Cards—What
-          the Cards Signify—Meaning of the Various
-          Cards—Telling One’s Fortune with
-          Twenty-one Cards—Italian Method—The
-          French System—English System—The Gypsy
-          Method—Creole Method—Card Oracles.
-
-  FORTUNE-TELLING WITH DICE AND DOMINOES                92
-
-  THE SCIENCE OF PALMISTRY                             119
-            Principal Lines of the Palm and Their
-          Meaning—The Shape and Length of the
-          Phalanges—Form of the Hand—Character
-          from the Shape of a Hand and Fingers—The
-          Mountains—A Reading of the Lines and Other
-          Characteristics.
-
-  THE SCIENCE OF PHRENOLOGY                            136
-
-  THE SCIENCE OF PHYSIOGNOMY                           141
-            What Different Eyes Indicate—Reading
-          Character by the Color of the
-          Eyes—Disposition by the Shape of the
-          Nose—Reading Character by the Form of the
-          Lips—Reading Character by the Shape of the
-          Ear.
-
-  FORTUNE-TELLING BY GROUNDS IN A TEACUP               147
-
-  DREAMS AND THEIR INTERPRETATION                      150
-            Do Dreams Foretell the Future?—How
-          Dreams Should Be Interpreted—A Dictionary
-          of Dreams.
-
-  THE LANGUAGE OF FLOWERS                              191
-
-  POPULAR BELIEFS AMONG THE ANCIENTS AS TO THE
-    INFLUENCE OF PRECIOUS STONES                       205
-      The Language of Precious Stones.
-
-  THE LANGUAGE OF POSTAGE STAMPS                       211
-
-  THE MEANING OF MOLES                                 213
-
-  WEATHER PROPHECIES FROM AN OLD ALMANAC               215
-
-  HOW TO TELL ONE’S AGE                                218
-
-  HOW TO BE BEAUTIFUL                                  220
-
-  MEMORY RHYMES                                        222
-
 INTRODUCTION
 
 There is a Latin saying that “Fortune frustrates, single-handed, the
@@ -901,8 +796,6 @@ January 1, 2, 4, 6, 11, 12, 20; February 1, 17, 18; March 14, 16; April
 10, 17, 18; May 7, 8; June 17; July 17, 21; August 20, 21; September
 10, 18; October 6; November 6, 10; December 6, 11, 15.
 
-[Illustration: ORACULUM TABLE]
-
    1.  Shall I obtain my wish?
    2.  Success in my undertakings?
    3.  Shall I gain or lose my cause?
@@ -922,8 +815,6 @@ January 1, 2, 4, 6, 11, 12, 20; February 1, 17, 18; March 14, 16; April
 
 The Answers
 
-[Illustration]
-
                      A.
   What you desire you will shortly obtain.
   Trouble and sorrow will come to you.
@@ -941,8 +832,6 @@ The Answers
   Do not remove from where you are at present.
   The Lord will help you if your cause is good.
   You will be lucky.
-
-[Illustration]
 
                      B.
   Luck will come to you and will be coveted by others.
@@ -962,8 +851,6 @@ The Answers
   Be prepared for a change.
   Be wise and careful or you will lose.
 
-[Illustration]
-
                      C.
   With the blessing of God you will be lucky.
   Unless you take expert advice you will be unlucky.
@@ -981,8 +868,6 @@ The Answers
   That which you have lost is lost forever.
   Sickness prevents him from seeing you.
   Stay where you now are and you will be content.
-
-[Illustration]
 
                      D.
   You will obtain a fortune in another country.
@@ -1002,8 +887,6 @@ The Answers
   You may gain your property if you are cautious.
   Do not expect to see the stranger again. It is better so.
 
-[Illustration]
-
                      E.
   The stranger will not return to you.
   Pray to God and strive modestly. He will help you.
@@ -1021,8 +904,6 @@ The Answers
   Don’t travel for the present. It is dangerous.
   This person deserves to be respected.
   You will never recover the property you have lost. Be reconciled.
-
-[Illustration]
 
                      F.
   Employ a detective and you will recover your property.
@@ -1042,8 +923,6 @@ The Answers
   You will not have cause to repent it. Travel.
   You can trust this friend and never have cause for sorrow.
 
-[Illustration]
-
                      G.
   This friend will be faithful and true.
   Bear your loss with courage.
@@ -1061,8 +940,6 @@ The Answers
   This marriage may bring sorrow. Decline it.
   Do not yield to this love.
   You may be recalled by an unexpected event.
-
-[Illustration]
 
                      H.
   Go on your travels and see the world.
@@ -1082,8 +959,6 @@ The Answers
   Do not marry this person if you value your happiness.
   This love will continue until death.
 
-[Illustration]
-
                      I.
   Love is true, but will cause great misery.
   It will be foolish for you to travel at present.
@@ -1101,8 +976,6 @@ The Answers
   She will have a daughter who will be a credit to her.
   You will marry a person for whom you will have little love.
   The marriage will come off according to your expectations.
-
-[Illustration]
 
                      K.
   You will be comfortable and happy after many trials.
@@ -1122,8 +995,6 @@ The Answers
   She will have a tall, handsome son.
   It will not be difficult for you to get a good partner.
 
-[Illustration]
-
                      L.
   You will get a successful partner.
   Good luck will attend this marriage.
@@ -1141,8 +1012,6 @@ The Answers
   Speculation spells loss.
   The patient will recover in a month.
   She will have a tall, handsome daughter.
-
-[Illustration]
 
                      M.
   She will have a son who will gain wealth and honor.
@@ -1162,8 +1031,6 @@ The Answers
   Buy stocks, but not on margin.
   The patient’s recovery is slow.
 
-[Illustration]
-
                      N.
   The patient will recover, but will not live long.
   She will have a fair daughter.
@@ -1181,8 +1048,6 @@ The Answers
   Your luck will soon be at hand.
   Be cautious.
   The stranger will return in a year.
-
-[Illustration]
 
                      O.
   Don’t speculate.
@@ -1202,8 +1067,6 @@ The Answers
   You will soon hear agreeable news.
   There are troubles lurking about you.
 
-[Illustration]
-
                      P.
   Every day will bring you increased happiness.
   Beware of gambling.
@@ -1221,8 +1084,6 @@ The Answers
   Work, and don’t depend too much on luck.
   Your wish will be granted to you soon.
   Be very careful lest any accident befall you.
-
-[Illustration]
 
                      Q.
   Joy and happiness between friends is your lot.
@@ -2056,8 +1917,6 @@ the cards and spreads them fanwise before her on the table, with the
 backs up. The inquirer then draws out at random the mystic number of 9
 cards, arranging them as follows, face up:
 
-[Illustration]
-
 The first card is called the “Key Card,” for it decides the
 interpretation to be put on the rest. If it is a Heart, it foretells
 the height of success; if a Diamond, it foretells wealth; if a Spade,
@@ -2089,8 +1948,6 @@ combination that is rarely met with. After reading the mystic nine, the
 remaining cards are again shuffled and the inquirer draws out thirteen
 cards at random from the pack. These are arranged in the form of a
 cross as shown in the diagram.
-
-[Illustration]
 
 Put the first card in the center and the remaining cards to left,
 right, top and bottom as indicated by the numbers. The reading of the
@@ -2842,8 +2699,6 @@ opposite meaning is to be deduced.
 If the Line of Life issues a branch opposite the index finger and
 pointing to it, it presages honor and riches for the possessor.
 
-[Illustration]
-
 2. _The Line of Fate or Fortune_, so called because its peculiar
 formation holds the secret of the possessor’s fortune, which secret may
 be disclosed only by the skillful palmist—runs from the wrist toward
@@ -2943,8 +2798,6 @@ Conical fingers (as in Fig. 2), with a well-formed thumb, indicate
 that the person is quick in action and is ruled by impulse rather than
 by calculation. They are the sign of a clever, nervous, energetic
 character.
-
-[Illustration]
 
 Square fingers (such as are shown in Fig. 3) indicate perseverance,
 regularity and a love of order. They are generally found with a
@@ -3225,8 +3078,6 @@ examined and their cranial bumps studied. It is believed that each
 convolution of the brain is a separate organ and that the great centers
 of motion are in the front part of the brain. Many books have been
 written on the subject.
-
-[Illustration]
 
 To tell the character of a person by Phrenology requires the services
 of a trained expert, and the few indications we can give here can only

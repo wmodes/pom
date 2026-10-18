@@ -3,12 +3,28 @@
 
 The manifest is the single source of truth. This script never edits it; it
 reads it, enforces the rights rule, and writes only under corpus/raw/ (not
-committed) and corpus/processed/<form>/ (committed).
+committed), corpus/draft/<form>/ and corpus/ready/<form>/ (both committed).
+
+Stages, in order. Only ready/ is safe to use as training, few-shot or
+retrieval data; raw/ and draft/ are not.
+    fetch    -> raw/<id>/                 untouched download
+    clean    -> draft/<form>/<id>.txt     machine-cleaned, awaiting human review
+    promote  -> ready/<form>/<id>.txt     only if approved, public-domain/CC0
+                                          and reviewed (manifest column)
 
 Usage:
     scripts/dev/corpus/corpus.py status             # what is on disk, per source
-    scripts/dev/corpus/corpus.py fetch [--id ID]    # download approved sources to raw/
-    scripts/dev/corpus/corpus.py clean [--id ID]    # raw/ -> processed/<form>/<id>.txt
+    scripts/dev/corpus/corpus.py fetch [--id ID]    # download approved sources
+    scripts/dev/corpus/corpus.py inspect --id ID    # landmarks + edges, to pick trim markers
+    scripts/dev/corpus/corpus.py inspect --id ID --trimmed   # edges after the markers
+    scripts/dev/corpus/corpus.py clean [--id ID]    # raw -> draft
+    scripts/dev/corpus/corpus.py promote [--id ID]  # reviewed drafts -> ready
+
+Trim markers (manifest columns start_marker / end_marker): the exact text of a
+whole line, optionally followed by '#N' to pick the Nth occurrence. start_marker
+is where kept text begins (inclusive; default occurrence 1). end_marker is where
+it stops (exclusive; default occurrence is the LAST). Use '#-1' for the last.
+A marker that is not found is an error, never silently ignored.
 
 Supported hosts: Project Gutenberg (plain text) and Wikisource (page subtree).
 Runs on the Mac with the standard library only. Be polite: requests are
@@ -210,11 +226,27 @@ def fetch_wikisource(row, raw_dir):
                                                    encoding="utf-8")
 
 
+def book_order(title):
+    """Reading order for a Wikisource volume: Preface, Introduction, then the rest."""
+    if "/Preface" in title:
+        return (0, natural_key(title))
+    if "/Introduction" in title:
+        return (1, natural_key(title))
+    return (2, natural_key(title))
+
+
 def clean_wikisource(raw_dir):
-    """Joins the numbered subpages, each under a heading, in page order."""
-    parts = []
-    for page in sorted(raw_dir.glob("*.txt")):
+    """Joins the subpages, each under a heading, in reading order.
+
+    The fetch order is alphabetical, which would put the hexagrams before the
+    preface and introduction, so the pages are re-sorted here.
+    """
+    pages = []
+    for page in raw_dir.glob("*.txt"):
         title, _, body = page.read_text(encoding="utf-8").partition("\n\n")
+        pages.append((title, body))
+    parts = []
+    for title, body in sorted(pages, key=lambda tb: book_order(tb[0])):
         heading = title.split("/", 1)[-1] if "/" in title else title
         parts.append(f"=== {heading} ===\n\n{body.strip()}")
     return tidy("\n\n".join(parts))
@@ -242,8 +274,56 @@ def raw_dir_for(row):
     return CORPUS / "raw" / row["id"]
 
 
-def processed_path_for(row):
-    return CORPUS / "processed" / row["form"] / f"{row['id']}.txt"
+def draft_path_for(row):
+    return CORPUS / "draft" / row["form"] / f"{row['id']}.txt"
+
+
+def ready_path_for(row):
+    return CORPUS / "ready" / row["form"] / f"{row['id']}.txt"
+
+
+# Junk that appears in many sources and is never part of the text itself.
+ILLUSTRATION = re.compile(r"\[Illustration[^\]]*\]", re.I)
+
+
+def apply_global_rules(text):
+    """Removes universal non-text junk: [Illustration ...] markers."""
+    return ILLUSTRATION.sub("", text)
+
+
+def find_marker_line(lines, marker, default_occurrence):
+    """Finds the line index for a trim marker, or exits if it is not found.
+
+    Args:
+        lines: The text split into lines.
+        marker: Exact whole-line text, optionally 'text#N' (N may be -1 for last).
+        default_occurrence: Which occurrence to use when no '#N' is given.
+    """
+    occurrence = default_occurrence
+    match = re.fullmatch(r"(.*)#(-?\d+)", marker)
+    if match:
+        marker, occurrence = match.group(1), int(match.group(2))
+    hits = [i for i, line in enumerate(lines) if line.strip() == marker.strip()]
+    if not hits:
+        sys.exit(f"Trim marker not found: {marker!r}")
+    try:
+        return hits[occurrence - 1] if occurrence > 0 else hits[occurrence]
+    except IndexError:
+        sys.exit(f"Trim marker {marker!r} has only {len(hits)} occurrence(s); "
+                 f"asked for #{occurrence}")
+
+
+def apply_trim(text, row):
+    """Cuts front and back matter using the row's start_marker and end_marker."""
+    lines = text.split("\n")
+    start, end = 0, len(lines)
+    if row.get("start_marker"):
+        start = find_marker_line(lines, row["start_marker"], 1)
+    if row.get("end_marker"):
+        end = find_marker_line(lines, row["end_marker"], -1)
+    if end <= start:
+        sys.exit(f"{row['id']}: end_marker comes before start_marker")
+    return "\n".join(lines[start:end])
 
 
 def cmd_fetch(args):
@@ -276,39 +356,141 @@ def cmd_fetch(args):
         sys.exit(f"{len(failures)} failed: {', '.join(failures)}")
 
 
+def build_text(row, trim=True):
+    """Produces a source's cleaned text from raw/, deterministically.
+
+    The one place cleaning happens, shared by `clean` and `inspect` so what you
+    inspect is exactly what gets written. No timestamps or randomness, so
+    re-running on the same raw/ and manifest gives byte-identical output.
+
+    Args:
+        row: The manifest row.
+        trim: Apply start_marker/end_marker. `inspect` passes False to show the
+            untrimmed text that markers are chosen against.
+    """
+    raw_dir = raw_dir_for(row)
+    if not raw_dir.exists():
+        sys.exit(f"{row['id']} is not fetched yet (run fetch).")
+    text = apply_global_rules(handler_for(row)[1](raw_dir))
+    if trim:
+        text = apply_trim(text, row)
+    return tidy(text)
+
+
+# Lines that usually mark the edge of front or back matter. A hint for choosing
+# trim markers, not a rule: the human decides.
+LANDMARK = re.compile(
+    r"^\W*(CONTENTS|TABLE OF CONTENTS|PREFACE|INTRODUCTION|FOREWORD|INDEX|APPENDIX|"
+    r"FINIS|THE END|END OF|CHAPTER (I|1|ONE)\b|PART (I|1|ONE)\b|BOOK (I|1|ONE)\b|"
+    r"SECTION (I|1)\b|TRANSCRIBER|ERRATA|BIBLIOGRAPHY|ADVERTISEMENT|FOOTNOTES?|"
+    r"NOTES?\b|ILLUSTRATIONS|LIST OF)", re.I)
+
+
+def cmd_inspect(args):
+    """Shows what's needed to choose start_marker and end_marker for a source.
+
+    Prints the landmark-looking lines of the untrimmed text with the marker
+    string to paste into sources.csv ('text' if the line is unique, otherwise
+    'text#N' for its Nth exact occurrence), plus the first and last lines. With
+    --trimmed, shows the edges after the current markers are applied instead.
+    """
+    row = next((r for r in load_manifest() if r["id"] == args.id), None)
+    if row is None:
+        sys.exit(f"No source with id '{args.id}'.")
+    lines = build_text(row, trim=args.trimmed).split("\n")
+    print(f"{row['id']}: {len(lines)} lines "
+          f"({'trimmed' if args.trimmed else 'untrimmed'})")
+    if not args.trimmed:
+        counts = {}
+        print("\nlandmarks (line  marker-to-paste  [which occurrence]):")
+        seen = {}
+        for line in lines:
+            counts[line.strip()] = counts.get(line.strip(), 0) + 1
+        for number, line in enumerate(lines, start=1):
+            text = line.strip()
+            # Headings, not prose: skip lines that start in lowercase.
+            if text and not text[0].islower() and LANDMARK.match(line) and len(text) <= 70:
+                seen[text] = seen.get(text, 0) + 1
+                marker = text if counts[text] == 1 else f"{text}#{seen[text]}"
+                print(f"  {number:>6}  {marker}   [{seen[text]} of {counts[text]}]")
+    nonblank = [(n, l) for n, l in enumerate(lines, start=1) if l.strip()]
+    print(f"\nfirst {args.edge} lines:")
+    for n, l in nonblank[:args.edge]:
+        print(f"  {n:>6}: {l.strip()[:90]}")
+    print(f"\nlast {args.edge} lines:")
+    for n, l in nonblank[-args.edge:]:
+        print(f"  {n:>6}: {l.strip()[:90]}")
+
+
 def cmd_clean(args):
     for row in select_rows(load_manifest(), args.id):
-        raw_dir = raw_dir_for(row)
-        if not raw_dir.exists():
+        if not raw_dir_for(row).exists():
             print(f"miss   {row['id']} (not fetched yet)")
             continue
-        cleaned = handler_for(row)[1](raw_dir)
+        cleaned = build_text(row)
         if len(cleaned.strip()) < 200:
             print(f"EMPTY  {row['id']}: cleaning produced almost nothing; not written")
             continue
-        out = processed_path_for(row)
+        out = draft_path_for(row)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(cleaned, encoding="utf-8")
         print(f"clean  {row['id']} -> {out.relative_to(ROOT)} "
-              f"({out.stat().st_size / 1024:.0f} KB)")
+              f"({out.stat().st_size / 1024:.0f} KB, {len(cleaned.split())} words)")
+
+
+def cmd_promote(args):
+    """Copies reviewed drafts into ready/, refusing anything that isn't cleared.
+
+    A source is promoted only if it is approved, openly licensed, marked
+    reviewed in the manifest, and has a draft. Everything else is reported with
+    the reason, so ready/ can be trusted without checking.
+    """
+    for row in load_manifest():
+        if args.id and row["id"] != args.id:
+            continue
+        reasons = []
+        if row["status"] != "approved":
+            reasons.append(f"status is '{row['status']}'")
+        if row["rights"] not in OPEN_RIGHTS:
+            reasons.append(f"rights are '{row['rights']}'")
+        if row["reviewed"].strip().lower() != "yes":
+            reasons.append("not reviewed")
+        if not draft_path_for(row).exists():
+            reasons.append("no draft (run clean)")
+        if reasons:
+            if args.id or row["status"] == "approved":
+                print(f"refuse {row['id']}: {', '.join(reasons)}")
+            continue
+        out = ready_path_for(row)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(draft_path_for(row), out)
+        print(f"ready  {row['id']} -> {out.relative_to(ROOT)}")
 
 
 def cmd_status(_args):
+    print(f"{'id':<42} {'status':<9} {'reviewed':<9} raw draft ready")
     for row in load_manifest():
-        raw = raw_dir_for(row).exists()
-        done = processed_path_for(row).exists()
-        print(f"{row['id']:<42} {row['status']:<9} raw={'y' if raw else '-'} "
-              f"processed={'y' if done else '-'}")
+        flag = lambda path: "y" if path.exists() else "-"
+        print(f"{row['id']:<42} {row['status']:<9} {row['reviewed'] or '-':<9} "
+              f"  {flag(raw_dir_for(row))}    {flag(draft_path_for(row))}     "
+              f"{flag(ready_path_for(row))}")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
-    for name, fn in (("fetch", cmd_fetch), ("clean", cmd_clean)):
+    for name, fn in (("fetch", cmd_fetch), ("clean", cmd_clean), ("promote", cmd_promote)):
         p = sub.add_parser(name)
         p.add_argument("--id", help="restrict to one source id")
-        p.add_argument("--force", action="store_true", help="refetch even if present")
+        if name == "fetch":
+            p.add_argument("--force", action="store_true", help="refetch even if present")
         p.set_defaults(func=fn)
+    p = sub.add_parser("inspect", help="show landmarks and edges to choose trim markers")
+    p.add_argument("--id", required=True, help="source id")
+    p.add_argument("--trimmed", action="store_true",
+                   help="show the edges after the current markers instead")
+    p.add_argument("--edge", type=int, default=6, help="lines to show at each edge")
+    p.set_defaults(func=cmd_inspect)
     sub.add_parser("status").set_defaults(func=cmd_status)
     args = parser.parse_args()
     args.func(args)

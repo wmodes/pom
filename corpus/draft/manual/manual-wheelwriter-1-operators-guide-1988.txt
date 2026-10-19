@@ -1,0 +1,745 @@
+To turn the typewriter on and off, press the switch located on the right side of the typewriter.
+
+If the Line Space lights flash when the typewriter is turned on, the batteries are low.
+
+The Code key is used with other function keys. The Code key and the keys with green lettering can be used to print special characters and turn functions on and off.
+
+When you use two keys at a time, hold down Code while you press the function key or special character key. For example, to turn on Bold Print, hold down Code while you press B (Bold).
+
+To set line spacing, hold down Code while you press Reloc (Line Space) until the desired Line Space light is on. You can choose from four line space settings: 1, 1%, 2, or 3.
+
+Always set the line spacing to the desired setting before you begin to type.
+
+The line space setting returns to 1 when the typewriter Is turned off.
+
+Insert the page end indicator by sliding the indicator into the air vents on top of the typewriter. Make sure you slide the indicator all the way forward.
+
+As you type, the top of the paper comes out of the typewriter and moves up to the lines on the indicator.
+
+The lines on the indicator tell you approximately how much Space remains to the bottom of 27.9 cm (11 in) paper.
+
+The left side of the indicator is marked in inches. The right side is marked in centimeters.
+
+The typewriter has a Paper Bail Load Lever to assist you in loading the paper semiautomatically. The lever has three positions: closed, open, and load.
+
+Make sure the typewriter is turned on and the Paper Release Lever is all the way to the back of the typewriter.
+
+Align the paper in the typewriter using the indicator marks on the paper table.
+
+Pull the Paper Bail Load Lever all the way forward to the load position. When the paper begins to feed, let go of the Paper Bail Load Lever.
+
+The paper feeds to the top margin position.
+
+Push the Paper Bail Load Lever all the way back until the paper bail holds the paper against the platen.
+
+Note: When inserting loose carbon copies (five maximum), pull the Paper Release Lever forward and pull the Paper Bail Load Lever to the open position. Insert the copies, then push both levers all the way back.
+
+The paper and carrier movement keys allow you to move rapidly across the paper. You now Nave the advantage of express movement both right and left as well as top to bottom on a page of text.
+
+Moving the Paper e Press Paper Up or Paper Down once to move the paper up or down one-half line.
+
+Press and hold -- to move forward quickly on the same typing line.
+
+Using Relocate e Press Reloc to move the carrier to the end of the writing line after making corrections on the current line. After you move to another line and type a character, Relocate only causes the printwheel to spin. The correction memory is cleared.
+
+Pull the Paper Bail Load Lever toward you to the open position.
+
+Pull the Paper Release Lever toward you, then lift the paper out of the typewriter.
+
+Push the Paper Release Lever and the Paper Bail Load
+
+Lever all the way back to the closed position.
+
+Your typewriter uses an IBM Cartridge Printwheel Il. Printwheels are available in many different typestyles and pitches. To order supplies,
+
+Automatic Pitch Selection You can choose from three different pitches as shown in the chart below.
+
+Tne correct pitch is automatically selected by the typewriter when you install a printwheel. The pitch determines the number of characters typed per horizontal inch.
+
+The following table summarizes printwheel pitches with print examples of each pitch.
+
+Lines Per Vertical Inch A printwheel for 10 or 12 pitch prints six lines per vertical inch. A printwheel for 15 pitch prints eight lines per vertical inch.
+
+When typing, use the scale line that matches the pitch symbol on your printwheel.
+
+An orange pointer moves along the scale on your typewriter to show the position of the next character to print.
+
+The margin/pitch scale also contains centering marks. When the left edge of the paper lines up with zero on the margin/pitch scale:
+
+There are two impression settings: normal and high impression. To select high impression, hold down Code while you press Q
+
+If you repeat this operation, the impression is set back to normal.
+
+The impression setting returns to normal when you turn the machine off and back on. The difference between normal impression and high impression is most apparent when using several carbons.
+
+The cardholder holds paper, cards, and envelopes against the platen.
+
+The top red portion (A) of the cardholder indicates the base of the printing line. As the typewriter prints, the bottom of each character rests just above the line, as shown below.
+
+You may use the notches (B) to draw vertical lines.
+
+Press Spacebar, Backspace, <--, or -- to move the carrier to the desired position, then press LMar to set the left margin.
+
+The old margin is automatically eliminated when a new margin is set.
+
+Move the carrier to the desired position, then press RMar to set the right margin.
+
+The old margin is automatically eliminated when a new margin is set.
+
+The carrier does not lock at the right margin. This allows you to type or space through the right margin. The typewriter will beep five spaces before you reach the right margin.
+
+Note: Margins are saved when your typewriter is turned off.
+
+Press Backspace or <-- to move to the left of the margin.
+
+Press Spacebar, Backspace, <, or -- to move the carrier to the desired tab position.
+
+Press TSet to set a tab.
+
+Press Tab to move to the tab stop you want to clear.
+
+Press TCir to clear the tab.
+
+Release the keys.
+
+The carrier moves to the left margin and all tabs are cleared.
+
+The carrier can be at any position when you clear all tabs.
+
+Helpful Hints e Permanent tabs exist at the left and right margins and at the right limit. These tabs cannot be cleared.
+
+You can set up to 28 tabs on your typewriter. e Tabs are saved when your typewriter is turned off.
+
+Use the Shift and Lock keys to type uppercase characters. The Lock key allows you to type continuously in uppercase (all capitals) without pressing the Shift key for each capital letter.
+
+Press the Lock key to type in uppercase.
+
+Ihe Lock light comes on.
+
+Press either the left or right Shift key to return to normal typing. e The Lock light goes off.
+
+Note: The Caps function cancels the Lock function when you turn Caps on.
+
+Caps Key If you need to type numbers and capital letters together, use the Caps key.
+
+Hold down Code while you press N (Caps) to turn Caps on or off.
+
+Caps is on when the Caps light is on.
+
+Note: The Lock function cancels Caps when you turn Lock on.
+
+Your machine has a correction memory that allows you to erase and correct automatically on the line you are typing. You can also correct manually on previous lines you have typed.
+
+Clearing Correction Memory The correction memory is cleared if you:
+
+Type any character or tab on another line e Change the printwheel e Type any character after Bksp'/2 on the line you are typing.
+
+To erase the character you have just typed, press the Correction key one time, and the character is automatically erased.
+
+Press and hold down the Correction key to erase characters repeatedly.
+
+Position the carrier over the incorrect character.
+
+Press the Correction key to erase the incorrect character.
+
+Type the correct character.
+
+Press Reloc to return the carrier to the original typing position.
+
+You may want to erase characters that are not on the current writing line. To do this, you must use manual erase.
+
+Move the carrier to the incorrect word. Use the Micro paper movement keys for precise alignment, if necessary.
+
+If the characters were typed in bold print, turn on Bold Print before erasing.
+
+If the characters were underlined, turn on Underline before erasing.
+
+Press the Correction key.
+
+The printwheel spins, but the character is not erased.
+
+Type the character to be erased.
+
+The character is erased.
+
+Type the correct character.
+
+After you make manual corrections and type any character on another line, Relocate only causes the printwheel to spin. The correction buffer has been cleared.
+
+With Automatic Carrier Return on, you do not have to press CRtn when you reach the right margin. When the beep sounds as the carrier moves toward the right margin, continue typing. The carrier returns to the next line automatically when you end a word by typing a space near the right margin. By using Automatic Carrier Return, you can type faster because you do not nave to think about line endings.
+
+For some typing jobs, you will want to turn Automatic Carrier Return off. For example, do not use Automatic Carrier Return when typing tables, columns of numbers, or forms.
+
+Hold down Code while you press R (ARtn) to turn Automatic Carrier Return on.
+
+The ARtn light comes on.
+
+Hold down Code while you press R to turn Automatic Carrier Return off.
+
+The ARtn light goes off.
+
+Note: Automatic Carrier Return is turned off when your typewriter is turned off.
+
+Helpful Hints e You can continue to type while the carrier returns to the left margin. You can type as many as 32 characters during carrier return.
+
+If you need to end a line before the right margin, press CRtn. Some examples of short lines are: date, inside address, salutation, short last line in a paragraph, closing, and short headings.
+
+The carrier will not return automatically if you space across the line with the Spacebar or type characters without Spacing.
+
+Typing required spaces between words keeps them together if Automatic Carrier Return is on. When you type a required space, the carrier does not automatically return. Look at the examples below for typing words with required spaces.
+
+When the beep sounds as you reach the right margin, finish the word you are typing.
+
+Hold down Code while you press Spacebar.
+
+Type the next word.
+
+Continue typing required spaces between words that must be kept together.
+
+After you type the last word on the line, press Spacebar to return the carrier.
+
+Using Bksp'2 moves the carrier one-half space backward.
+
+If you leave a character out of a word, you can:
+
+Move the carrier to the last letter in the incorrect word.
+
+Press the Correction key repeatedly to erase the incorrect word.
+
+Hold down Code while you press Backspace (Bksp'/2) to move the carrier back one-half space.
+
+Type the correct characters. Correction memory is cleared.
+
+Words can be centered automatically between the left and right margins or at any point on a line.
+
+Make sure you have the left and right margins set.
+
+Press CRtn to move the carrier to the left margin.
+
+The carrier moves to the center point between the margins.
+
+Type the words you want to center. e As you type, the carrier backs up without printing.
+
+If you make an error, press the Correction key and type the correct character. ". Hold down Code while you press C.
+
+The words automatically center as they print.
+
+Move the carrier to the desired center point.
+
+Hold down Code while you press C.
+
+Type the words you want to center.
+
+Hold down Code while you press C.
+
+The words print.
+
+You can underline words and spaces as you type using Continuous Underline.
+
+Hold down Code while you press U (Cont) to begin underlining. e The Cont light comes on.
+
+Type the words to be underlined.
+
+The words and spaces are underlined automatically as you type.
+
+Hold down Code while you press U to end underlining.
+
+Your new typewriter is designed to make typing easier and more enjoyable.
+
+For example, centering, underlining, and indenting are done automatically on this new typewriter.
+
+Try using these new functions to help you with your work!
+
+Type until you reach the first line where you want to indent.
+
+Press Spacebar, Tab, <--, or -- to move the carrier to the desired temporary left margin position.
+
+Type the indented lines.
+
+The carrier returns to the temporary left margin.
+
+When you finish typing the indented lines, hold down Code while you press CRtn (Ind Cir) to clear the temporary left margin. e The carrier returns to the original left margin. e The temporary left margin is cleared.
+
+Note: The Indenting function can also be used to set a temporary left margin to the /eft of the left margin setting.
+
+The Right Flush function allows you to type text with an even (flush) right margin. Lines can also be typed right flush with any point on the typing line, such as a tab stop.
+
+Make sure you have a right margin set and that the carrier is at the left margin.
+
+Hold down Code while you press O (RFIsh).
+
+The carrier moves to the right margin.
+
+Type the characters to be aligned.
+
+As you type, the carrier backs up without printing.
+
+Hold down Code while you press O. e The characters print flush with the right margin.
+
+The Right Flush function is turned off when the words print.
+
+Move the carrier point where you want the text to be right aligned.
+
+Hold down Code while you press O (RFish).
+
+Type the words you want to be right flush at that point.
+
+Hold down Code while you press O.
+
+The characters print flush with the point you chose.
+
+The Right Flush function is turned off when the words print.
+
+The last character printed will be one space to the left of the right margin or the point you chose.
+
+The paper moves one-half line below the typing line.
+
+Type the subscript.
+
+The paper moves Dack to the typing line.
+
+The paper moves one-half line above the typing line.
+
+Type the superscript.
+
+The paper moves back to the typing line.
+
+If you do not want your subscript or superscript underlined, make sure Continuous Underline is off before you type the subscript or superscript.
+
+If you need to type several characters as a subscript or Superscript, use Paper Up or Paper Down to position the typing line. Type the characters, then return to the normal typing line. Paper Up and Paper Down cannot be used to type subscripts or superscripts in a function where words are not printed as you type, such as centering, decimal tab, and typing right flush text.
+
+Your typewriter has four special characters that you can print by using the Code key: section, 1, 7, and *. You can print these characters without changing the printwheel.
+
+Hold down Code while you press B (Bold) to turn Bold Print on or Off.
+
+The Bold light comes on to indicate that Bold Print is on. e The characters print in bold as you type.
+
+Note: Bold Print may be used in centering, decimal tab, and right flush text. Bold Print ts turned off when you turn the typewriter off. For recommended readability in Bold Print, see "Printwheel Application Recommendations' on page 4-4.
+
+Use the Decimal Tab function to type numbers in vertical columns. You can align numbers on decimal points or the column's right edge.
+
+Typing Numbers with Decimals Set Tab Here Set Tab Here Set Tab Here Set Tab Here
+
+Turn Automatic Carrier Return off if it is on.
+
+Set a tab for each column.
+
+Move the carrier to the left margin.
+
+5". Type the numbers up to the decimal point.
+
+The carrier moves backward but does not print.
+
+Type the decimal point.
+
+The number and the decimal point print.
+
+Type any characters or numerals after the decimal point.
+
+Hold down Code while you press D to move to the next column.
+
+Press CRtn after the last column at the end of each line.
+
+Set Tab Here Set Tab Here Set Tab Here Set Tab Here
+
+Type the number and any characters which follow it.
+
+The carrier moves backward but does not print.
+
+The number prints. e The carrier moves to the next decimal tab position. e Press CRtn after the last column at the end of each line.
+
+While holding down the Code key, press the key for the special character or function in column 1. Refer to the page listed for more information.
+
+Backspace One-Half Moves the carrier back one-half space so an extra character can be inserted. Page 1-1/7.
+
+Bold Prints characters in bold type. Page 1-23.
+
+Turns Centering on or off. Text can be centered between the margins or ata point on the typing line. Page 1-18.
+
+Decimal Tab Moves carrier to a decimal tab position. Page 1-24.
+
+Impression Sets Impression to normal or heavy. Page 1-9.
+
+Indent (Temporary Left Margin)
+
+1-25 selects alternate keyboard or primary keyboard.
+
+The correct printwheel must be installed. Page 2-1.
+
+Paper Down (Micro)
+
+Moves paper down one micro-index for precise alignment. Page 1-6.
+
+Paper Up (Micro) Moves paper up one micro-index for precise alignment. Page 1-6.
+
+Turns Right Flush on or off. Text can be typed Ss flush with the right margin or at any point on the typing line. Page 1-21.
+
+Paragraph Symbol, Section Symbol, and Special Characters (Exponents)
+
+Prints these special symbols and characters as shown on the keybuttons. Page 1-23.
+
+Subscript Prints the next number or character below the typing line. Page 1-22.
+
+Prints the next number or character above the typing line. Page 1-22.
+
+Underlining (Continuous) Turns Continuous Underline on or off. All text and spaces will be underlined automatically. Page 1-19.
+
+Complete this chapter only if you have a printwheel for other languages, ASCII (PC) or Latin Supplemental ISO.
+
+Your typewriter has primary and alternate keyboards. You have already been using your primary keyboard.
+
+The primary keyboard allows you to type in your own language. Your typewriter automatically sets your primary keyboard to match the keybuttons on your typewriter.
+
+Alternate keyboards, when used with the appropriate printwheels, allow you to type in other languages such as French and Spanish, or ASCII (PC) and Latin Supplemental
+
+Matching Printwheels and Keyboards Each printwheel for alternate keyboards contains characters other than those printed on your typewriter keybuttons. You can access characters of an alternate keyboard by typing a keyboard change called a keyboard identification (ID) number.
+
+The keyboard ID is printed on all printwheels. When more than one set of numbers is shown, the first number is the keyboard ID; for example: 001-008. The keyboard ID for the United States is 001 or 1. Look at the example below.
+
+Select a keyboard and keyboard ID number for a country or special application from the charts on pages 2-5 through 2-10.
+
+Insert the country or special application printwheel.
+
+The ID number on the keyboard list should match the number on your printwheel.
+
+The keyboard is changed to the alternate keyboard.
+
+Find the keyboard chart that matches your keyboard ID and use it to locate the character you want to type.
+
+The keyboard returns to the primary keyboard.
+
+Remove the country or special application printwheel and install the 001 primary printwheel.
+
+Many alternate keyboards contain accent marks which are dead keys that print without advancing the carrier to the next space. To type accent marks over alphabetic characters:
+
+Type the accent mark first.
+
+The carrier will not advance to the next space if the accent mark is a dead key.
+
+Type the alphabetic character.
+
+The alternate keyboard is not saved when you turn the typewriter off.
+
+2 Special application keyboard chart.
+
+Keyboard Alphabetic Cross-Reference (continued)
+
+The following keyboard charts show the keyboard ID numbers and the character locations. The charts are arranged numerically by Keyboard ID numbers.
+
+Keyboard ID 1 -- Australia, Canada (English), New Zealand, United States
+
+How to Use This Section If you have a problem while using your typewriter, use this information to help you solve the problem.
+
+Find your problem in the index on the next page.
+
+Turn to the page referenced.
+
+Complete as many steps as needed to correct the problem.
+
+Try using the typewriter after completing each step.
+
+Beeper and Light Signals, 3-3 Beeper Signals Three Times While You Are Typing 3-3 Beeper Signals Three Times and Line Space Lights Blink. 3-3 Beeper Signals Six Times and One or More Lights Blink .. 3-4 All Lights Stay On.
+
+Beeper Signals Three Times While You Are Typing e Wait until the typewriter stops printing, then continue typing. You were typing faster than the typewriter could accept your typing.
+
+Beeper Signals Three Times and Line Space Lights Blink If the beeper signals three times and the Line Space lights blink alternately when you turn the typewriter on, check the following while the typewriter is on:
+
+Look at the batteries for correct installation.
+
+If the batteries are installed correctly, the batteries may be weak or dead.
+
+Replace all three weak or dead batteries.
+
+Do not turn the typewriter off while replacing the old batteries. If you turn the typewriter off without batteries installed, margins and other settings will be lost.
+
+The Line Space lights blink a/ternately indicating the battery is low but you have not lost your settings.
+
+The Line Space lights blink continuously indicating you have lost your settings.
+
+Beeper Signals Six Times and One or More Lights Blink
+
+Make sure the printwheel is installed correctly.
+
+Make sure the ribbon and correction tape cassettes are installed correctly.
+
+Turn the typewriter off, wait 10 seconds, then turn the typewriter on again. If the same thing happens, install another printwheel.
+
+Turn the typewriter off, wait 10 seconds, then turn the typewriter on again. If the same thing happens, call for service.
+
+Tell your service person which lights are blinking when you place the Call.
+
+Turn the typewriter off, wait 10 seconds, then turn the typewriter on again. If all the lights still stay on, call for service.
+
+Make sure the typewriter cord is plugged into the back of the typewriter.
+
+Turn the typewriter off, wait 10 seconds, then turn the typewriter on again.
+
+Make sure the typewriter is plugged into a wall outlet.
+
+Look to see if any other equipment plugged into the same wall outlet operates.
+
+Make sure the ribbon and correction tape cassettes are fastened together correctly.
+
+Make sure the center latch is latched securely.
+
+Make sure the gray tabs are pressed In.
+
+Make sure the ribbon and correction tape cassettes are installed in the typewriter correctly. Make sure the correction tape matches the ribbon.
+
+Try anew correction tape.
+
+Try plain bond paper.
+
+Look for folds in the paper.
+
+Make sure the typewriter is on a level surface.
+
+Make Sure you are using the same printwheel for both typing and erasing.
+
+Make sure Bold Print is on if you are erasing bold characters.
+
+Make sure the correct printwheel is installed. You may be trying to erase with the wrong pitch printwheel.
+
+Erase manually if the character is not on the current line.
+
+Make sure the ribbon is installed correctly.
+
+Make sure the printwheel is installed correctly.
+
+Try a new ribbon.
+
+Make sure the platen is latched down at both ends. e Pull the paper release lever all the way toward you.
+
+Push down firmly on each end of the platen. Then push the paper release lever all the way back.
+
+Make sure you are using the same pitch or language.
+
+Try a new printwheel.
+
+Make sure the ribbon is installed correctly.
+
+Look for folds in the ribbon.
+
+Change the impression control.. Look for folds in the paper.. Try a new ribbon.. Try plain bond paper.. Try a new printwheel.
+
+If excess ink particles from the ribbon appear on the paper, try a lower impression control setting.
+
+Try anew printwheel.
+
+Try a new ribbon.
+
+Look for objects inside the typewriter.
+
+Look at the number of carbon copies being used (five maximum).
+
+Make sure the paper release lever is pushed all the way back.
+
+Check the number of carbon copies being used (five maximum).
+
+When inserting loose carbon copies, pull the paper release lever forward. Insert the copies, then push the lever all the way back.
+
+Look for labels or paper caught under the platen.
+
+Make sure the paper release lever is pushed all the way Dack.
+
+Make sure the platen is latched down at both ends.
+
+Pull the paper release lever all the way toward you.
+
+Push down firmly on each end of the platen. Then push the paper release lever all the way back.
+
+Turn the typewriter off, wait 10 seconds, then turn the type- writer on again.
+
+Try typing again.
+
+Try a new printwheel.
+
+Look for objects in the path of the carrier.
+
+Make sure the printwheel matches the keyboard selected If there is a language change. See "Matching Printwheels and Keyboards' on page 2-1.
+
+The following instructions apply only if you have the Spell Check option installed.
+
+Spelling Beeper Beeped Three Times When You Turned the Typewriter On
+
+There was an error in the supplemental dictionary, and the dictionary has been erased from memory. If you had selected a spelling beeper tone, it is erased from memory and will have to be selected again.
+
+Typewriter Beeped Five Times and Line Space Lights Are Blinking
+
+There is a problem with the spell check option. Turn the spell check option off and contact your authorized service representative.
+
+Spell Check Functions Do Not Work If a function of the option does not work, it might be caused by one of the following:
+
+The option is turned off.
+
+Another function is active on the typewriter which prevents the spell check option from being used (for example, printer option).
+
+You did not end the word with a word ending (space, punctuation, and so on).
+
+You are trying to add a word that is already in one of the dictionaries.
+
+You are trying to delete a word from the main dictionary.
+
+Order IBM supplies for the typewriter.
+
+Remove and install the ribbon and printwheel in the typewriter.
+
+Change batteries. e Take care of your typewriter.
+
+This chapter also contains recommendations for ribbons and printwheels for various applications.
+
+The IBM Cartridge Printwheel II is designed for use with IBM Wheelwriter Typewriters and IBM Wheelprinters. The protective cartridge makes installation easy and protects the printwheel from damage. The wide variety of typestyles and sizes allows you to select one for readability, emphasis, or space requirements to make your work look the way you want.
+
+The order number listed is for the American Standard Character Set. Personal computer, foreign language, and symbol character sets are also available.
+
+Note: Because of the differences between printed and type- written impressions, the typestyle samples on the following pages should be used only as a guide.
+
+IBM's variety of attractive type IBM's variety of attractive type
+
+IBM's variety of attractive typestyles suit many IBM's variety of attractive typestyles suit many
+
+Large Elite Letter Gothic Light Italic Olde World Prestige Elite Scribe
+
+Ratings: A -- Good; B--Fair; C-- Marginal; NR -- Not Recommended (Based on proper selection of ribbon, carbon paper, and stencils)
+
+Printwheel Application Recommendations (continued)
+
+Ratings: A -- Good; B-- Fair; C-- Marginal (Based on proper selection of ribbon, carbon paper, and stencils)
+
+Note: There are three symbol printwheels: Symbol 10, Symbol 12, and Symbol 15. For best results, use a symbol printwheel that matches the pitch of your regular printwheel. For example, use Symbol 15 with 15-pitch typestyles.
+
+To prevent unwanted carrier motion, make sure the paper bail is against the platen.
+
+Pull the print hammer all the way toward you and hold it.
+
+While you are holding the print hammer, grasp the printwheel tab.
+
+Lift the printwheel straight up and out of the slot. Be careful not to scratch the ribbon.
+
+Release the print hammer.
+
+Important: Remove the yellow shipping seal from the center of a new printwheel before you install it.
+
+Remove this seal.
+
+To prevent unwanted carrier motion, make sure the paper bail is against the platen.
+
+Hold the printwheel so the letters IBM are in the upper left corner. Pull the print hammer all the way toward you and hold it.
+
+While you are holding the print hammer, lower the printwheel into the slot. Be careful not to scratch the ribbon.. After the printwheel touches the bottom of the slot, release the print hammer. >. Press the Code key:
+
+The printwheel spins.
+
+The ribbon and tape cassettes fasten together. Each type of ribbon and tape cassette has a color-coded take-up wheel. In most cases the wheel color helps you match the ribbon to the correction tape. () The color also tells you which type of ribbon you are using.
+
+Space or tab to the center of your typewriter. Raise the typewriter cover.
+
+Make sure the paper bail is against the platen.
+
+Push the release lever until the cassettes release.. Lift the cassettes up and out of the typewriter.
+
+After you remove the cassettes from your typewriter, press on the top of the center latch, slide the cassettes apart, and throw away the used cassette.
+
+Slide the ribbon cassette onto the tape cassette.
+
+Be sure the center latch latches onto the correction tape.
+
+Press the gray tabs (on both ends of the correction tape) to be sure the tape and ribbon cassettes are latched together.
+
+Before installing the ribbon in the typewriter, tighten any slack In the ribbon by turning the take-up wheels to move the color-coded leaders past the center.
+
+Install the cassettes in your typewriter.. Push down on the upper right corner of the ribbon cassette to
+
+Snap it into place.
+
+When in doubt, prepare samples first.
+
+2 Best results with Rhetoric and other large typestyle printwheels are obtained by using the IBM Easystrike Multipurpose Ribbon.
+
+Ribbon Cassette Reorder Numbers Use the table below to find the reorder number for the matching cassettes you need.
+
+IBM Easystrike High Yield Orange IBM Easystrike Lift-Off Orange Correctable Ribbon Cassette3 Tape Cassette Reorder Number: Reorder Number:
+
+IBM Easystrike Correctable IBM Easystrike Lift-Off Ribbon Cassette Tape Cassette
+
+3 Long-life correctable film ribbon; recommended for general correspondence.
+
+Your typewriter uses three size AA alkaline batteries. These batteries are used to save margins, tabs and other settings when the typewriter is turned off. They must be installed cor- rectly and changed at least once every year (before they run down).
+
+4-12 If the beeper signals three times and the Line Space lights blink alternately when you turn the typewriter on, check the following while the typewriter is on:
+
+Look at the batteries for correct installation.
+
+2. \If the batteries are installed correctly, the batteries may be weak or dead.
+
+Replace all three weak or dead batteries.
+
+Do not turn the typewriter off while replacing the old batteries. If you turn the typewriter off without batteries installed, margins and other settings will be lost.
+
+The Line Space lights blink a/ternately indicating the battery is low, but you have not lost your settings.
+
+The Line Space lights blink continuously indicating you have lost your settings.
+
+5S Trademark of Duracell, Inc. 6 Trademark of the Union Carbide Corp.
+
+Removing Old Batteries Warning: Do not turn the typewriter off while replacing the old batteries. If you turn the typewriter off without batteries installed, margins and other settings will be lost.
+
+Make sure the typewriter is turned on.
+
+Raise the typewriter cover.
+
+Locate the black plastic battery holder on the right front side of the typewriter.
+
+Remove the holder by putting your finger under it and pushing up. Then carefully pull the holder out as far as It can go.
+
+Install three (3) new batteries in the holder by placing the flat end of the batteries against the springs.
+
+Place the battery holder back into the typewriter.
+
+Note: The batteries will not save margins and other settings in the correction memory unless the plus sign on each battery matches the plus sign inside the holder.
+
+Cleaning the Typewriter Cover Important: Use only a damp cloth and mild detergent to clean the typewriter cover and keybuttons. Certain cleaning fluids may be harmful. Do not use IBM cleaning fluid.
+
+The Spell Check Option allows you to check the spelling of words as you type. After you type a word, the spelling is checked against a main dictionary and a supplemental dictionary. The main dictionary in both the U.S. and U.K. Spell Check contains approximately 50,000 words. The French and Spanish Spell Check dictionaries contain approximately 150,000 words. The supplemental dictionary can contain up to 300 words.
+
+In the English Spell Check Option (U.S. and U.K.), only words containing 30 characters or fewer are checked. Spell Check will beep to indicate an error when a word with more than 30 characters is typed. In the French and Spanish Spell Check Options, only words containing 64 characters or fewer are checked.
+
+When you type a word that does not match a word in either dictionary, you will hear a beep. This beep has a different tone from the normal typewriter beep and is called the spelling beep. some correctly spelled words may cause a spelling beep because they are not in either dictionary; for example, proper names, abbreviations, and technical terms. You will learn how to create a supplemental dictionary so that these words will not be treated as spelling errors.
+
+You use the 1, 2, 3, and 4 keys with the Code key to activate the various functions of the Spell Check Option. The words labeled above the keys are printed in green to show that these keys are used with the Code key.
+
+You can use your typewriter with the Spell Check Option on or off. The Spell Check setting is retained when you turn the typewriter off as long as the typewriter batteries are good. In other words, if Spell Check is off when you turn the typewriter off, it will be off when you turn the typewriter back on.
+
+To turn Spell Check off, hold down Code while you press 1.
+
+Decide that the word is not misspelled and should be added to the supplemental dictionary. (You will learn about this choice later in "Adding a Word to the Supplemental Dictionary' on page A-4.)
+
+The supplemental dictionary is a dictionary you create for your own needs. It contains special words that you use often which are not found in the main dictionary; for example, proper names or technical terms. The contents of the supplemental dictionary are retained when the typewriter is turned off as long as you have good batteries installed in the typewriter.
+
+Unlike the main dictionary, the supplemental dictionary can only check a word exactly as you entered it. The word is not checked for plurals, prefixes, or suffixes. For example, if you enter the word frog into the supplemental dictionary, frogs will still cause the spelling beeper to beep as if it were a misspelled word.
+
+Each time you add a word to the supplemental dictionary or type a word already in the supplemental dictionary, that word becomes the first word in the dictionary. All other words move back one place. The supplemental dictionary can hold up to 300 words. When you add the 301st word, that word becomes the first word in the dictionary and the last word in the dictionary is deleted.
+
+Adding a Word to the Supplemental Dictionary If the last word you typed caused the spelling beeper to beep, and it is 30 characters or less (64 for French and Spanish), you can add it to your supplemental dictionary. Remember, you must follow the word with a space or other word ending before adding it to the supplemental dictionary.
+
+Hold down Code while you press 2 to add the last word you typed to the supplemental dictionary.
+
+Deleting a Word from the Supplemental Dictionary If you accidentally add a misspelled word to the supplemental dictionary, you can delete it. You cannot delete a word from the main dictionary. You must end the word with a space, punctuation, or other word ending before you can delete It.
+
+Hold down Code while you press 3 to delete the last word you typed from the supplemental dictionary.
+
+Hold down Code while you press 4 until the spelling beeper has the sound you desire. There are twelve choices. The beeper tone you selected is saved when you turn the typewriter off as long as the typewriter batteries are good.
+
+1-3 column, typing numbers in
+
+IBM Personal Wheelwriter Typewriter 6781 Reader's Operator's Guide Order Number $544-4210-0
+
+Did you find the book well organized? Yes LJ No JU
+
+Was the content of the book accurate and complete? Yes LJ No LU
+
+Was the book easy to use? Yes LI No LJ
+
+What can we do to improve the book?
+
+5S. What is your job title?

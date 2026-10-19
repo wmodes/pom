@@ -1,0 +1,2547 @@
+This chapter contains general information about the contents of this maintenance information. The text that follows describes each chapter and, in some cases, explains how io use the information in the chapter.
+
+You will find a list of the tools and test equipment you will need to service this machine at the end of the chapter.
+
+The diagnostic information contains the procedures you will use to diagnose and isolate product failures. Diagnostic information consists of:
+
+Start Maintenance Analysis Procedures (MAPs)
+
+MAINTENANCE ANALYSIS PROCEDURES: When Start sends you to a MAP, go to that page and perform the steps as instructed. If there are any notes or instructions at the top of the page you must read them before you start the procedure.
+
+Carefully read each step of the MAP and perform the appropriate action as instructed. If you do not remember the location of a specific part or test point, or if you do not remember an adjustment or removal procedure, see the chapter that has that information. Always return to the MAP after you do this. In some cases you will be sent to other MAPs to find the failure.
+
+Failing Parts or Assemblies - The MAPs will generally help you diagnose a problem to one part or assembly. The last step of the specific MAP you are using will indicate a part or assembly is failing. You should inspect the part or assembly before you decide to replace it. It may only be loose or dirty or need only a small repair. The MAPs may lead you to 2 or even 3 possible failing parts or assemblies (Figure 1). The parts that may be failing are listed in order of the most probable failure. In the example shown below, the printer board is most probably the cause of the problem.
+
+The Printer Board is failing. The Function Board is failing.
+
+Remember to set your meter on the correct scale and put the meter leads in the correct position for the voltage you are asked to measure.
+
+General Information 1-1 diagnostic will help you locate mechanical failures. In some cases you will be sent from the matrix to an electrical diagnostic if there is no mechanical failure. The left side of the matrix lists the symptoms. The right side of the matrix, lists the FRUs in the order you should check them. The FRU most probably causing the indicated symptom is placed first in the sequence. The letters in the matrix send you to the part or assembly you:need lo check. These parts and assemblies are listed in the FRU CHECK procedure directly below the matrix.
+
+Printwheel does not rotate, is noisy, or its speed changes as it rotates.
+
+Carrier drives against right side frame.
+
+Chapter 4. Parts/Test Point Locations:: This chapter is useful when you are asked to measure voltages. Use this information to help you locate parts such as electronic boards, connectors, pin numbers and test points.
+
+Chapter 5. Preventive Maintenance: This chapter contains the Lubrication Guide for this machine.
+
+Use this information to inspect a machine for safety problems before putting the machine under a Maintenance Agreement.
+
+6" Metal Scale Push-Pull Scale
+
+ESD Wrist Band, Small ESD Wrist Band, Large IC Module Extracting Tool
+
+2 Triplettis a trademark of the Triplett Corporation.
+
+Meter readings in this manual were taken with an IBM meter, P/N 9900167.
+
+1 SUPADRIV is a registered trademark of GNK and Fasteners Limited.
+
+Turn the machine off.
+
+Check the cables for damage, proper alignment and fit. Are the cables good?
+
+Repair as necessary.
+
+Does the machine: still fail?
+
+End the call.
+
+Loose line cord: Paper clips, staples, or other foreign material in the machine.
+
+Repair as necessary.
+
+Turn the typewriter off.
+
+Disconnect the sheetfeed power/signal cable from the typewriter. -- Remove the sheetfeed from the typewriter.
+
+Turn the typewriter on.
+
+Select the option that appears to be failing from the chart below and perform the required action.
+
+Incomplete POR. Machine is dead. LEDs do not turn on.
+
+No motion in printwheel, carrier, index or ribbon when you turn the machine on.
+
+One inoperative key on keyboard. Replace the Keyboard.
+
+POR complete. Correct character does not print when any keybutton or code + keybutton is pressed.
+
+Perform the required action.
+
+The carrier will not move smoothly and quietly to the left side frame.
+
+The machine does not beep one time. The The function board is failing. machine functions normally except for the beep.
+
+Perform the required action.
+
+Loss of vertical or horizontal sync.
+
+The CRT remains all white (raster on all the time).
+
+The machine does not beep one time. The The function board is failing. machine functions normally except for the beep.
+
+The Wheelwriter 50, 5000 will sound spelling beeps before sounding the POR beep.
+
+Perform the required action.
+
+Turn the machine on.; Does the carrier move smoothly and quietly to the left side frame? i
+
+Press each keybutton.
+
+Press each character keybutton. Does the electronics sense each character keybutton?
+
+Turn all the LEDs on and off one at a time.
+
+Do all the LED indicators turn on and off?
+
+No trouble found. Try to recreate the problem.
+
+Does the print hammer push the printwheel petal against the paper?
+
+Does the correct character print when you press a keybutton?
+
+Memory will be lost if you disconnect the batteries from the function board/system board while the machine is turned off.
+
+Measure the voltage between J7-1 (red) and J7-3 (black) on the plug. Other Two board machines:
+
+Measure the voltage between J4-1 (red) and J4-3 (black) on the plug. Two battery machines:
+
+Do not disconnect the battery cable from.the unless the machine is turned on. All single board machines and two-board WW10:
+
+Measure the voltage between J7-1 (red) and J7-2 (black) on the plug. Other two-board machines:
+
+Disconnect J-4 from the function board.
+
+The function board is failing.
+
+Remove the batteries from the battery holder.
+
+Check the battery cable for continuity.
+
+Check the battery holder for damage or corrosion. Are the battery holder and cable good?
+
+The battery pack is failing.
+
+The batteries are failing.
+
+Turn the machine off.
+
+Turn the machine on.
+
+The function board is failing.
+
+Turn the machine off. -- Remove the 22-pin cable between the motor control board and the function board.
+
+Replace the cable.
+
+Install the cable.
+
+Check the cable for correct alignment and fit. -- Turn the machine on.
+
+Do you still have the same symptom?
+
+The motor control board is failing. The function board is failing.
+
+The cable is failing.
+
+Check the following chart for your identical symptom.
+
+Image on screen rolls up or rolls down The CRT control board is failing. (Loss of vertical sync.) or
+
+Image on screen rolls sideways (Loss of The CRT display assembly is failing. horizontal sync).
+
+Loss of both horizontal and vertical sync.
+
+Image on screen all white. Controls on CRT The CRT control board is failing. have no effect. or
+
+The function board is failing.
+
+The CRT display assembly is failing.
+
+Perform the required action.
+
+Turn the CRT display power on.
+
+Adjust the brightness and contrast controls to 3/4 clockwise. -- Turn the machine on.
+
+Does the CRT remain dark during or after POR?
+
+The 22-pin cables from the CRT control board to the function board are failing.
+
+The function board is failing. The CRT control board is failing.
+
+The CRT display assembly is failing.
+
+Check the continuity of the options power supply cable.; Is there continuity?
+
+The power supply assembly is failing. The CRT control board is failing.
+
+Turn the machine off.
+
+Disconnect the cables from J13 and J14 on the function board. -- Turn the machine on.
+
+Do you still have the same symptom?
+
+The 22-pin cables are failing. ee ne The diskette control board is failing. os gp
+
+The function board is failing.
+
+The 22-pin cables from the CRT control board to the function board are failing.
+
+Is the cable properly attached to the diskette control board?
+
+Locate the error code you had in the following chart.
+
+162 Code version level check Verify the diskette code matches the base code.
+
+Perform the required action.
+
+With error code 160 displayed.
+
+Turn the machine off.
+
+Replace the diskette control board. -- Turn the machine on.
+
+Replace the function board and 22-pin cables.
+
+With error code 161 displayed. -- Turn the machine off.
+
+Diskette drive to diskette control board cable.. Diskette control board
+
+Run the prepare function.
+
+Activate the Diskette Service diagnostics by holding down Code and Shift while pressing the = key. -- Select TEST from the Diskette service menu.;
+
+Does the test perform successfully?
+
+The diskette drive-to-diskette control board cable is failing.
+
+The following tests requires the use of a scratch diskette.
+
+4, Diskette control board-to-disk drive cable
+
+Printer option board (if installed).
+
+Select TEST from the Diskette service menu. Does the test perform successfully?
+
+Code Failure Action 001 XY Bad Command Replace the control board or the 22-pin cables,
+
+Defective RAM Replace the control board or the 22-pin cables.
+
+Note: The Xin the error code side, and the Y operation. Locate the error code numbers in the following chart to determine the problem.
+
+Diskette drive to control board cable.
+
+Replace the FRUS in the following order.
+
+Select Write-Protect from the service diagnostics menu. -- Run the test.
+
+No trouble found. Try to recreate the failure.
+
+Check to make sure the diskette Write-Protect window is open. -- Try anew diskette (be sure to prepare the diskette prior to use) -- Select Write-Protect and run the test again.
+
+Diskette control board.
+
+Error code 004XY or 010 XY displayed during test.
+
+Try anew diskette. Be sure fo FORMAT or PREPARE the diskette before using it. Does the machine display the same error code during test?
+
+The original diskette is failing.
+
+Diskette control board 4, Function board.
+
+Function board and cables.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Adjust the contrast contro! to the center of its range. Is the display black (all PELs on)?
+
+The function board is failing.
+
+The display is failing.
+
+The display cable is failing (WW30 only).
+
+The display is failing. The function board is failing.
+
+WW30: Check the continuity of the display cable. is there continuity?
+
+The display cable is failing.
+
+The function board is failing. -- or -: The display is failing.
+
+The display is failing.
+
+The function board is failing.
+
+The display is failing.
+
+The display is failing. --or- The function board is failing.
+
+Remove the ribbon cartridge from the machine. -- Activate the switch and sensor test (CODE + SHIFT +TSel).
+
+Slowly pass a piece of paper between the LED and ribbon sensor in the end of ribbon housing.
+
+The ribbon is failing.
+
+Ask the customer to save the ribbon if the problem happens again and end the call.
+
+Try a new ribbon.
+
+End the call.
+
+Inform the customer that the bright light is causing the machine to malfunction.
+
+Try a new ribbon. Check all sensor adjustments. Replace the sensor assembly.
+
+Check the 16-pin and 22-pin cables between the function board and the motor control board for cracks, breaks, damaged contacts or damaged outer edges.
+
+Are the cables good?
+
+Replace the failing cable.
+
+Check the carrier cable at the system board end for breaks, damaged contacts, or damaged outer edges.
+
+The carrier cable is failing.
+
+Turn the machine on.
+
+Tab to the right side frame.
+
+Remove the ribbon cartridge.
+
+Activate the sensor and switch test (CODE + SHIFT + TSet). Does the BOLD indicator come on solid?
+
+Check the continuity of line 24 and of line 6 in the carrier cable.
+
+The carrier cable is failing.
+
+Check the continuity of the 16-pin cable between the motor control board and the function board. Is there continuity?
+
+The 16-pin cable is failing.
+
+Replace the motor control board.
+
+Slowly pass a piece of paper through the opening in the ribbon sensor. Does the BOLD indicator go on and off?
+
+The function board is failing. Reinstall the original motor contro! board prior to replacing the function board.
+
+The carrier cable board is failing.
+
+The end-of-ribbon sensor is failing.
+
+Check the continuity of line 24 in the carrier cable between the end of the carrier cable and J4-3 on the carrier cable board.
+
+The motor control board is failing.
+
+Check the continuity of line 21 in the carrier cable.
+
+The carrier cable is failing.
+
+The carrier cable board is failing.
+
+Turn the machine off.
+
+Turn the machine on.
+
+The function board is failing.
+
+Turn the machine off. -- Disconnect the sensor assembly cable from J4 on the carrier cable board.
+
+The sensor assembly is failing.
+
+Measure the voltage at line 21 of the carrier cable at the carrier end of the cable.
+
+The carrier cable board is failing.
+
+The carrier cable is failing.
+
+The motor control board is failing.
+
+Function board failure The function board ts failing. ' System board failure The system board is failing.
+
+Spelling RAM/Correction Buffer The function board is failing. failure The system board is failing.
+
+Not an Error See Note. Power the printer Off then On
+
+Note: (WW15, WW1500, and WW3000) LED 1 and 3 will alternate blinking with LED 1.5 and 2. This LED code indicates the batteries are "Good." and the machine has performed a reset of the format and forms storage areas. This code is displayed upon initial battery installation or battery replacement with the power off.
+
+164 Diskette Drive Operator Check Failure
+
+Function board is failing.
+
+Printer option board is failing.
+
+Install correct printwheel. Install printwheel.
+
+Function board is failing.
+
+Cables are failing.
+
+The function board is failing.
+
+The function board is failing.
+
+Printer Option Error Printer option board is failing.
+
+Change Wheel Printwheel Change Install correct printwheel. Missing Wheel Missing Printwheel install printwheel.
+
+Diskette Drive Operator 'Check Failure'
+
+Turn the machine off.
+
+Set your meter to the RX100 scale.
+
+Note: The meter polarity switch must be set to + and the red meter lead (VOM) connected to J9-2 and the black meter lead (COM) connected to J9-8.
+
+Note: The meter polarity switch must be set to + and the red meter lead (VOM) connected to J15-2 and the black meter lead (COM) connected to J15-8.
+
+Note: The meter polarity switch must be set to + and the red meter lead (VOM) connected to J5-2 and the black meter lead (COM) connected to J5-8.
+
+Is the resistance less than 500 ohms?
+
+Single board machines: The function board is failing. Two board machines: The motor control board is failing.
+
+The power supply assembly is failing.
+
+Connect J9 to the system board.
+
+Turn the machine on.
+
+Connect J15 to the function board.
+
+Turn the machine on.
+
+Connect J5 to the motor control! board. -- Turn the machine on.
+
+Single board machines: The function board is failing. Two board machines: The motor control board is failing. --or-
+
+The function board is failing.
+
+Note: Wheelwriter 50 and 5000 will not operate without a printwheel installed.
+
+Turn the machine off. -- Turn the machine on.
+
+Is the homing sensor flag broken?
+
+Replace the homing sensor flag.
+
+Turn the machine off.
+
+Push the carrier to the left side frame.
+
+Turn the machine off.
+
+Observe the POR sequence as you turn the machine on. Does the carrier move at all?
+
+Turn the machine off. -- Move the printwheel 5 to 10 petals away from the home position.
+
+Turn the machine off. -- Push the carrier to the center of the machine.
+
+Turn the machine on. Does the carrier move to the left side frame and then to the home position?
+
+Note: Wheelwriter 50 and 5000 will not operate without a printwheel installed.
+
+The original printwheel is failing.
+
+Check the printwheel.
+
+Ensure the homing, pitch, and impression holes are open, and the printwheel Is free of binds. (To check for binds, push the printwheel toward the rear of the cartridge and rotate it.)
+
+The printwheel is failing.
+
+Turn the machine off.
+
+The carrier cable is failing.
+
+Check the cable for proper alignment and fit.
+
+Check the homing LED cable at the carrier cable board to make sure it is not loose and fits properly.
+
+Repair as necessary.
+
+Remove the printwheel.
+
+Measure the voltage between J1-20 and J1-6 (GND) on the carrier cable board as you slowly push the homing sensor flag in and out.
+
+Turnthe machine off.
+
+Disconnect the carrier cable from the carrier cable board.
+
+Turn the machine on.
+
+Remove the carrier cable. -- Check the continuity of lines 6 and 20 in the carrier cable.
+
+The carrier cable is failing.
+
+The system board is failing.
+
+Turn the machine off.
+
+Set the meter to the'RX1K scale.
+
+Measure the resistance as indicated below.
+
+The LED is failing.
+
+Disconnect the carrier cable at the carrier cable board. -- Measure continuity between the following points on the carrier cable board:
+
+Check the continuity of lines 6 and 22 in the carrier cable.
+
+Is there continuity?
+
+Reinstall the homing LED cable.
+
+Check the position of the sensor.
+
+Repair as necessary.
+
+Install the carrier.
+
+Turn the machine on.
+
+Check the selection motor. Are the selection motor mounting screws tight and is the selection motor bias spring in place?
+
+Repair as necessary.
+
+The homing sensor is failing.
+
+The carrier cable is failing.
+
+Check the continuity of the carrier cable board from the carrier cable board connector, pins 6, 7, and 20 to the homing sensor connector.
+
+Is there continuity?
+
+The carrier cable board is failing.
+
+Reconnect the homing sensor cable.
+
+Be sure the carrier cable is properly connected to the carrier cable board and the system board. ---- Install the carrier.
+
+Turn the machine on.
+
+Does the machine still have the original symptom?
+
+The selection plate assembly is failing.
+
+Note: Wheelwriter 50 will not operate without a printwheel installed.
+
+The original printwheel is failing.
+
+Check the printwheel.
+
+Ensure the homing, pitch, and impression holes open, and the printwheel is free of binds. (To check for binds, push the printwheel toward the rear of the cartridge and rotate it.)
+
+Is the printwheel good?
+
+The printwheel is failing.
+
+Turn the machine off.
+
+Carefully check the 16- and 22-pin cables between the motor control board and the function board for cracks, breaks, wear, and damaged edges.
+
+Is either cable damaged?
+
+Replace the damaged cable.
+
+Turn the machine on.
+
+Turn the machine off.
+
+Carefully check the carrier cable for cracks, wear, and damaged edges. Is the cable damaged?:
+
+Replace the carrier cable.
+
+Carefully install the cables.
+
+Check the cables for proper alignment and fit. -- Turn the machine on.
+
+Does the machine have the same symptom?
+
+Check the homing LED cable at the carrier cable board to make sure it is not loose and fits properly.
+
+Repair as necessary.
+
+WW10- Measure the voltage at J8-5 on the function board as you slowly push the homing sensor flag in
+
+Disconnect the 16-pin cable from J8 on the function board. -- Turn the machine on.
+
+Measure the voltage at J8-5.
+
+Disconnect the 16-pin cable from J10 on the function board, -- Turn the machine on.
+
+Measure the voltage at J10-5.
+
+The function board is failing.
+
+The 22-pin cable between the function board and the motor control board is failing. Op
+
+The function board is failing.
+
+The motor control board is failing.
+
+The motor control board is failing.
+
+Connect the carrier cable.
+
+Turn the machine on.
+
+Measure the voltage at J2-20 on the function board as you slowly push the homing sensor flag in and out.
+
+Turn the machine off.
+
+Turn the machine on.
+
+The 22-pin cable is failing.
+
+The 16-pin cable is failing.
+
+The motor control board is failing.
+
+Turn the machine off.
+
+Set the meter to the RX1K scale.
+
+Set the polarity switch to +.
+
+Measure the resistance as indicated below.
+
+Meter Lead Homing LED Cable Reading COM Pin-1 (red) 40K to 80K Ohms VOM Pin-2 (black) COM Pin-2 (black) 500K Ohms or more VOM Pin-1 (red)
+
+The LED is failing.
+
+The carrier cable board is failing.
+
+Check the continuity of lines 6 and 22 in the carrier cable.
+
+The carrier cable is failing.
+
+Reinstall the carrier cable on the carrier cable board and the motor control board.
+
+Meter Lead End of Carrier Cable Reading VOM Pin-20 Greater than 500K Ohms COM Pin-7 VOM Pin-20 Greater than 500K Ohms COM Pin-6
+
+Remove the carrier.
+
+Check the homing sensor and LED assembly for ribbon particles, paper dust, and obstructions.
+
+Repair as necessary.
+
+Install the carrier.
+
+Turn the machine on.
+
+The function board is failing.
+
+The LED assembly is failing.
+
+The motor control board is failing.
+
+The carrier cable is failing.
+
+The carrier cable board is failing.
+
+Reconnect the homing sensor cable.
+
+Be sure the carrier cable is properly connected to the carrier cable board. -- Install the carrier.
+
+Turn the machine on.
+
+Do you still have the original symptom?
+
+The function board is failing.
+
+Turn the machine on.
+
+Turn the machine off.
+
+Disconnect J5 from the function board.
+
+Turn the machine on.
+
+The function board is failing.
+
+The indicator panel is failing.
+
+Turn the machine off.
+
+Disconnect J4 from the system board.
+
+Turn the machine on.
+
+Turn the machine off.
+
+Disconnect J5 from the function board.
+
+The function board or system board is failing.
+
+The indicator panel is failing.
+
+Does one of the line space indicators come on after POR? The indicator that comes on depends on which one was on the last time the machine was turned on.
+
+System Board machines: The system board is failing. Two-Board machines: The function board is failing.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Carefully observe the POR sequence. You may have to turn the machine off and on several times to verify a specific step. Wait at least 30 seconds between each POR.
+
+Does the machine complete the POR?
+
+Press each character keybutton. The printwheel should turn, the print hammer should energize, or the character should print. Do the electronics sense any keybutton?
+
+The function board is failing.
+
+Try to get the symptom to change by turning the machine off and on several times. you have the same symptom?
+
+The 16-pin cable is failing.
+
+The function board is failing.
+
+Does the ribbon plate move up, then down? Yes ey
+
+Turn the machine off.
+
+Move the carrier to the right side frame.
+
+Turn the machine on.
+
+O56 (continued) Does the carrier continue to drive into the left frame?
+
+The carrier may or may not move.
+
+The Function Board is failing.
+
+Press each character keybutton from a to z. Look for a change in the LEDs, motor movement, solenoid operation, or beeps as an indication that the function board or system board senses the keybutton is being pressed.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Carefully observe the POR sequence. You may have to turn the machine off and on several times to verify a specific step. Wait at least 30 seconds between each POR.
+
+Does the machine complete the POR?
+
+WW50, 5000 -- The CRT screen should be dark with a blinking cursor when the power is first turned on.
+
+The function board is failing.
+
+Turn the machine off.
+
+Does the carrier move to the right?
+
+The 16-pin cable is failing.
+
+The motor control board is failing.
+
+The cursor, linespace symbol and linespace number (Warm start)
+
+If your machine is a WW70 or 7000, continue with this step. Does the machine beep one time?
+
+The cables between the motor control board and the function board must be installed correctly. The cables must be fully seated and the lines of the cables must align correctly with the pins in the board connectors. Ensure the carrier cable is also installed correctly.
+
+Try ta recreate the failure.
+
+Locate the symptom in the following chart.
+
+Pe PS TRTSS APRA APR, OE FOR ee ep OED
+
+Turn the machine off.
+
+Check the nylon tabs for damage (silver paint scraped off, bent or broken tabs, Are the tabs damaged?
+
+Ensure the keyboard, (part number and machine type), is correct for your machine.
+
+Inform the customer an incorrect keyboard is installed.
+
+The keyboard is failing.
+
+The function board is failing.
+
+The keyboard is failing. or The function board is failing.
+
+Does the shift keybutton work correctly?
+
+The keyboard Is failing. The function board is failing.
+
+The keyboard is failing.
+
+Two-board machines: The cables between the motor control board and the function board must be installed correctly. Ensure the lines of the cables align correctly with the pins in the board connectors. The cables must also be fully seated. Ensure the carrier cable is also installed correctly.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Check for a spell check option installed in the machine. WHEELWRITER 10 typewriter:
+
+There will be a module in the U102 socket on the function board or system board and it can be removed. WHEELWRITER 15, 1500, 3000 typewriter:
+
+There will be a module in the U3 socket on the system board.
+
+Single board machines: The system board is failing. Two-board machines:
+
+Check the continuity of the 16-Pin cable between the motor contro! board and the function board.
+
+The 16-Pin cable is failing.
+
+The function board is failing.
+
+The function board or system board is failing.
+
+The function board or system board is failing.
+
+Turn the machine off.
+
+Remove the 16-Pin cable between the function board and motor control board and check for cracks, wear, and broken or damaged outer edges.
+
+Is the cable good?
+
+Replace the cable.
+
+Install the cable.
+
+Remove the 22-Pin cable between the function board and motor contro! board and check for cracks, wear, broken or damaged outer edges.
+
+Replace the cable.
+
+Install the cable.
+
+Turn the machine off.
+
+Disconnect the carrier cable from the system board and check for cracks, wear, broken or damaged outer edges.
+
+Carefully install the cable.
+
+Be sure to check for proper alignment and fit.
+
+Turn the machine on.
+
+Disconnect the carrier cable from the motor control board and check for cracks, wear, broken or damaged outer edges.
+
+Carefully install the cable.
+
+Be sure to check for proper alignment and fit.
+
+Turn the machine on.
+
+Turn the machine off.
+
+Carefully disconnect and connect the carrier cable to the system board or motor control board two or three times.
+
+Turn the machine on..
+
+Does the machine have the same symptom?
+
+Measure the voltage at the +5V dc test point on the system board.
+
+Two-board machines: -- Measure the voltage at the +5V dc test point on the motor control board.
+
+Measure the voltage at the +5V dc test point on the function board.
+
+Turn the machine off.
+
+Disconnect the power supply connector from the motor control board or system board. -- Turn the machine on.
+
+Check the continuity of the 16-Pin cable between the motor control board and the function board.
+
+The 16-Pin cable is failing.
+
+Reinstall the original function board. The motor contro! board is failing.
+
+The function board is failing.
+
+Turn the machine off.
+
+Remove the Spell Check module from the function board or system board. Be sure to observe all ESD precautions.
+
+Turn the machine on.
+
+Does the machine still have the same symptom?
+
+The Spell Check module is failing.
+
+Single board machines: The function board is failing.
+
+Two-board machines: -- Check the continuity of the 16-Pin cable between the motor control board and the function board.
+
+The 16-Pin cable is failing.
+
+Reinstall the original function board. The motor control board is failing.
+
+On two-board machines, the cables between the motor control board and the function board must be installed correctly. Ensure the lines of the cables align correctly with the pins in the board connectors. The cables must also be fully seated. Ensure the carrier cable is also installed correctly.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Is the machine totally inoperative (Display off, no motor movement, no beep, no solenoid operation, and no printwheel movement)?
+
+Single board machines: Measure the voltage on the power supply plug at the function board between J15-4
+
+Is Spel! Check an option on your machine? Answer yes only if modules U700 and U801 or module U200 (two board machines) or module U3 or U800 (single board machines) are socketed to the function board and can be removed.
+
+The 16-pin cable is failing.
+
+The function board is failing.
+
+Turn the machine off.
+
+Replace the cable.
+
+Remove the 22-pin cable between the function board and motor contro! board and check for cracks, wear, broken or damaged outer edges.
+
+Is the cable good?
+
+Replace the cable.
+
+Install the cable. -- Be sure to check for proper alignment and fit.
+
+Carefully disconnect and connect the carrier cable to the motor control or system board two of three times.
+
+Turn the machine on.
+
+Does the machine have the same symptom?
+
+Single board machines: The system board is failing.
+
+The motor control board is failing.
+
+The 16-pin cable is failing. 2 OR: 2 The function board is failing.
+
+The motor control board is failing.
+
+The function board is failing.
+
+Remove the Spell Check module from the function board. Be sure to observe all ESD precautions. -- Turn the machine on.
+
+Note: Newer machines have a single function board rather than a separate motor control board and function board. On two-board machines, the cables between the motor control board and the function board and the cables between the CRT control board and function board must be installed correctly. Ensure the lines of the cables align correctly with the pins in the board connectors. The cables must also be fully seated. Ensure the carrier cable is also installed correctly. If any options are installed, be sure to also check their cables.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Is the machine totally inoperative (CRT remains dark, no motor movement, no beep, no solenoid operation, and no printwheel movement)?
+
+Single board machines: Measure the voltage on the power supply plug at the function board between J15-1
+
+The function board is failing. or The CRT control board is failing.
+
+Random characters appear on screen. Random failures occur.
+
+The function board is failing.
+
+Machine goes system busy, screen shows what was last displayed.
+
+The machine goes system busy after pressing the type/screen keybutton.
+
+The screen goes all white after the type/screen keybutton, is pressed. The machine goes system busy.
+
+The function board is failing.
+
+WW70, 7000 - The copyright screen turns all white and the machine completes the rest of POR. If the type/screen keybutton is pressed, the screen will go all white.
+
+WW70, 7000 -- Screen message is "Insert wheel and press CRTN key." The machine goes system busy when the key is pressed.
+
+Screen mostly dark with snow running through it.
+
+The screen has vertical bars rolling horizontally.
+
+4. 22-pin cables between the CRT board and function board.
+
+Turn the machine off.
+
+Remove the 16-pin cable between the function board and motor control board and check for cracks, wear, broken or damaged outer edges.
+
+Is the cable good?
+
+Replace the cable.
+
+Replace the cable.
+
+Install the cable.
+
+Turn the machine off..
+
+Turn the machine off. -- Carefully disconnect and connect the carrier cable to the motor control board or the function board.
+
+Single board machines: The system board is failing or the power supply is failing. Two-board machines:
+
+Measure the voltage at the +5V dc test point on the motor control board.
+
+The motor control board is failing.
+
+The 16-pin cable is failing.
+
+The function board is failing.
+
+The power supply is failing.
+
+Long pause, then the machine attempts to POR again. This will continue until you turn the machine off.
+
+WW70, 7000 only. Carrier moves to the left frame, Logo screen remains on.
+
+Six long beeps, machine is inoperative except for beeps.
+
+Measure the voltage at the +5V dc test point on the function board.
+
+1. 22-pin cables between the CRT board and function board
+
+4. 22-pin cables between the CRT -board and function board
+
+Printer option board (if installed)
+
+Turn the machine off.
+
+Disconnect the cables from J13 and J14 on the function board. -- Turn the machine on.
+
+Do you still have the same symptom?
+
+The printer option board is failing.
+
+The diskette option board is failing.
+
+Disconnect the diskette contro! board from the printer option board.
+
+The diskette control board is failing.
+
+The printer option board is failing.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Remove the primary fuse from the switch tower.
+
+Check the continuity of the fuse.
+
+Is there continuity?
+
+Install the primary fuse.
+
+Remove the +5V fuse from the power supply board.
+
+Check the continuity of the fuse.
+
+Is there continuity?
+
+Put the fuse back in the power supply.
+
+Disconnect the line cord from the electrical outlet. -- Measure the voltage at the outlet.
+
+Plug the line cord back into the electrical outlet.
+
+Measure the voltage at the typewriter end of the line cord. ts the voltage correct?
+
+The line cord is failing.
+
+The On/Off switch is failing.
+
+Install the power cord.
+
+Measure the voltage on the power supply plug at the system board or motor control board between pin 4 (GND) and pin 2 (+5V dc).:
+
+The system board is failing.
+
+Turn the machine off.
+
+Disconnect the power supply connector (J6) from the printer option board.
+
+Measure the voltage on the power supply connector at the system board or motor control board. Measure between pin 1 (GND) and pin 2 (+5V).
+
+The printer option board is failing.
+
+Disconnect the printer option cable from J2 on the power supply. -- Check the continuity on the plug between J6-1 and J6-3.
+
+Is there continuity?
+
+SS Pa en cee tee a nese)
+
+The printer option cable is failing.
+
+Connect the power supply to J5 on the motor control board.
+
+Turn the machine on.
+
+The motor control board is failing.
+
+The function board ts failing.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Unplug the machine.
+
+Remove the primary fuse from the switch tower.
+
+Check the continuity of the fuse.
+
+Is there continuity?
+
+Check the continuity of the fuse, is there continuity?
+
+Put the fuse back in the power supply if any were removed. -- Disconnect the line cord from the electrical outlet.
+
+Measure the voltage at the outlet.
+
+The line cord is failing.
+
+The On/Off switch is failing.
+
+Install the power cord.
+
+Turn the machine on.
+
+Measure the voltage on the power supply plug at the motor control board between J5-1 (GND) and J5-2
+
+Turn the machine on. -- Measure the voltage on the power supply plug. Measure between Pint os and Pin2 (+5V dc).
+
+The printer option board is failing.
+
+Is there continuity?
+
+The cable is failing.
+
+Turn the machine off.
+
+Disconnect the 16-pin and 22-pin cables between the function board and the motor control board. - -- Connect the power supply to J5 on the motor control board.
+
+Turn the machine on.
+
+The motor control board is failing.
+
+The function board is failing.
+
+Turn the machine off.
+
+Disconnect the power supply cable from the diskette control board.
+
+Disconnect the diskette control board from the function board or printer option board if one is installed. -- Turn the machine on.
+
+Do you still have the same symptom?
+
+Is there continuity?
+
+The cable is failing.
+
+Connect the Diskette control board to the function board or printer option board (if installed). -- Disconnect the disk drive cable from the diskette control board.
+
+Do you still have the same symptom?
+
+The disk drive or cable is failing.
+
+Turn the machine off.
+
+Is the machine totally inoperative (CRT dark, no motor movement, no beep, and no print hammer solenoid operation)?
+
+Install the primary fuse.
+
+Is there continuity?
+
+Put the fuse back in the power supply if any were removed.
+
+Disconnect the line cord from the electrical outlet.,; ' -- Measure the voltage at the outlet.
+
+Is the voltage correct?
+
+The line cord is failing.
+
+The On/Off switch is failing.
+
+Install the power cord. -- Turn the machine on.
+
+Single board machines: Measure the voltage on the power supply plug at the function board between J15-4
+
+Turn the machine on. -- Measure the voltage on the power supply plug. Measure between Pin1 (GND) and Pin2 (+5 VDC).
+
+Turn the machine off.
+
+Disconnect the options power supply cable from the power supply -- Turn the machine on.
+
+The power supply is failing.
+
+Turn the machine off.
+
+Connect the power supply plug.
+
+Disconnect the End of Ribbon/Out of paper assembly from the carrier cable board.
+
+Turn the machine on.
+
+The sensor assembly is failing.
+
+Turn the machine off.
+
+Turn the machine on.
+
+Measure the voltage on the power supply plug between J5-1 and J5-2.
+
+Turn the machine off.
+
+Disconnect the options power supply cable from the CRT control board and any option boards installed. -- Check for continuity between Pin 1 and Pin 3 on the cable.
+
+The cable is failing.
+
+Connect the options power supply cable to the power supply.
+
+Connect the options power supply cable to the CRT control board
+
+Disconnect the CRT control board from the function board.
+
+Turn the machine on.
+
+The CRT control board is failing.
+
+Turn the machine off.
+
+Connect the options power supply cable to the printer options board.
+
+Disconnect the printer options board from the function board.
+
+Turn the machine on.
+
+The printer option is failing.
+
+Turn the machine off.
+
+Connect the options power supply cable to the diskette control board.
+
+Disconnect the diskette control board from the printer control board.
+
+Turn the machine on.
+
+The diskette control board is failing. Spo drive assembly is failing.
+
+The 32k memory expansion module is failing.. On The function board is failing.
+
+Inform the customer you must disconnect the batteries which will destroy all stored memory. -- Turn the machine off.
+
+Observe all ESD precautions.
+
+Disconnect the batteries.
+
+Correctly install the module.
+
+Turn the machine on.
+
+Connect the batteries.
+
+Put a piece of paper in the machine. -- Select MENU
+
+Does the number that prints on the paper indicate the available memory is greater than 32000 but less than
+
+No trouble found.
+
+Inform the customer the out-of-paper sensor is intended to work only with this option.
+
+Remove the ribbon cartridge from the machine.
+
+Remove any paper from the machine.
+
+Turn the machine on.
+
+Activate the switch and sensor test (CODE + SHIFT + TSet). ts the CONT LED off?
+
+Insert a piece of paper into the machine and move the platen up and down so the edge of the paper passes between the sensor and the platen.
+
+Does the CONT LED go on and off?
+
+Clean the platen.
+
+Clean the platen.
+
+Move the carrier to the center of the machine. -- Activate the switch and sensor test.
+
+Is the CONT LED off?
+
+The sensor assembly is failing. Block the light from shining on the end-of-paper sensor.
+
+Correctly install the form feeder.
+
+Correctly connect the cable to the printer option board.
+
+Make sure the switch and sensor test is still activated. Is the IIne space 2 LED on?
+
+Correctly install the sheetfeed.
+
+Remove the ribbon cartridge from the machine.
+
+Remove any paper from the machine.
+
+Turn the machine on.
+
+Activate the switch and sensor test (CODE + SHIFT + TSet). Is the CONT indicator off?
+
+Check the platen for paper dust and excessive ink. Is the platen clean?
+
+Clean the platen.
+
+Is CONT off?
+
+Inform the customer that the bright light is causing the machine to malfunction.
+
+Correctly install the form feeder.
+
+Connect the cable correctly.
+
+CENTER appears on the display when the sensor switch cable is connected to printer option board. PLAY appears on the display when the sensor switch cable is connected to function board.
+
+Correctly install the form feeder.
+
+Is the CONT LED off?
+
+Make sure the switch and sensor test is still activated.
+
+Slowly pass a piece of paper between the out-of-paper sensor and the platen.
+
+The carrier cable is failing.
+
+Single board machines: The function board is failing. Two-board machines: The motor control board is failing.
+
+The out-of-paper sensor assembly is failing.
+
+Single board machines: The function board is failing.
+
+Two-board machines: -- Check the continuity of the 16-Pin cable between the function board and the motor control board.
+
+The 16-Pin cable is failing.
+
+The motor control board is failing.
+
+The carrier cable board is failing.
+
+The carrier cable is failing.
+
+Disconnect J4 at the carrier cable board.
+
+Turn the machine on.
+
+Measure the voltage at J4-2 on the carrier cable board.
+
+The sensor assembly is failing.
+
+Turn the machine off.
+
+Remove any paper from the machine.
+
+Turn the machine on.
+
+Activate the switch and sensor test (CODE + SHIFT + TSet). Is the CONT indicator off?
+
+Make sure the switch and sensor test is still activated.
+
+Slowly pass a piece of paper between the out-of-paper sensor and the platen. Does CONT turn on and off?
+
+Single board machines; With the paper between the sensor and the platen, measure the voltage at the PAPSEN test point on the function board.
+
+Two-board machines: With the paper between the sensor and the platen, measure the voltage at J10-7 on the function board.
+
+Single board machines: Monitor the voltage on the PAPSEN test point on the function board as you slowly pass a piece of paper between the out-of-paper sensor and the platen.
+
+Two-board machines: Monitor the voltage at J10-7 on the function board as you slowly pass a piece of paper between the out-of- paper sensor and the platen.
+
+The function board is failing.
+
+The motor control board is failing.
+
+Single board machines: Check the continuity between the PAPSEN test point on the function board and J4-2 on the carrier cable board.
+
+Two-board machines: Check the continuity between J10-7 on the function board and J4-2 on the carrier cable board.
+
+Is there continuity?
+
+Disconnect the carrier cable from the motor contro! board or the function board.
+
+Check the continuity of line 19 from the end of the carrier cable to J4-2 on the carrier cable board. Is there continuity?
+
+Single board machines: The function board is failing.
+
+The 16-pin cable between the function board and the motor control board is failing. The motor control board is failing.
+
+The sensor assembly is failing.
+
+Check the continuity of the carrier cable board between J1-19 and J4-2.
+
+The carrier cable board is failing.
+
+The carrier cable is failing.
+
+Turn the machine off.
+
+Disconnect J4 at the carrier cable board. -- Turn the machine on.
+
+Single board machines: Measure the voltage at the PAPSEN test point on the function board.
+
+Two-board machines: Measure the voltage at J10-7 on the function board.
+
+The sensor assembly is failing.
+
+The function board is failing.
+
+This chart lists the FRUs in the most probable order of failure.
+
+Rubber. Is it dirty, worn, or cracked? Springs.
+
+Paper Bail arms. Are they worn? Bail Rollers. Do they bind?
+
+Check the rubber. Is it dirty, worn, or cracked?
+
+Rubber. Is it dirty, worn, or cracked? e Latches. e Gear. Is it worn?
+
+Motor Control The motor control board or the function board is failing. Board or; System Board
+
+Turn the machine on.
+
+Set the line space on 3.
+
+Mark the platen. -Operatethecarrier return 9 times.
+
+The paperfeed motor cable is failing.
+
+Turn the machine off.
+
+Disconnect the 16-pin cable at J3 on the motor control board. -- Turn the machine on.
+
+Measure the voltage on pin 15 of the cable.
+
+Turn the machine off.
+
+Disconnect the 22-pin cable at J1 on the motor control board. -- Turn the machine on.
+
+Measure the voltage on pins 20 and 22 of the cable.
+
+The motor control board is failing.
+
+The paperfeed motor is failing.
+
+Single board machines: The system board and the paperfeed motor are failing. Two board machines: The motor control board and the paperfeed motor are failing.
+
+Correct as necessary.
+
+Does the SUSPND indicator come on (pinfeed connected to the function board)?
+
+Does the TADJ indicator come on (pinfeed connected to the printer option board)?
+
+Install the platen and form feeder correctly.
+
+Remove the form feeder assembly.
+
+Ensure the switch and sensor test is activated.
+
+Does the SUSPND indicator come on (pinfeed connected to the function board)?
+
+Does the TADJ indicator come on (pinfeed connected to the printer option board)?
+
+Saari toa eee a s: eee -- Ensure the switch and sensor test is activated.
+
+Does the TADJ indicator come on (pinfeed connected to the printer option board)?
+
+The printer option board is failing.
+
+The 22-pin cable between the function board and the motor control board is failing.
+
+Sy The function board is failing.
+
+Correct the problem.
+
+The form feeder is failing.
+
+Repair as necessary.
+
+The form feeder is failing.
+
+Remove the obstruction.
+
+The form feeder is failing.
+
+Tighten the appropriate gear.
+
+Repair as necessary.
+
+Level one - the primary fuse is located in an external removable fuse holder. Fuse F1 (+5V) is mounted on the regulator board.
+
+Level two - the primary fuse is located inside the switch tower. There is no fuse F1 (+5V).
+
+Turn the machine off.
+
+Remove the primary fuse from the switch tower.
+
+Check the continuity of the fuse.
+
+Is there continuity?
+
+Install the primary fuse.
+
+Remove fuse F1/ from the power supply board. -- Check the continuity of the fuse.
+
+Is there continuity?
+
+Put the fuse back into the power supply.
+
+Inform the customer there is a problem with the outlet. ae
+
+Plug the line cord back into the electrical outlet. -- Measure the voltage at the typewriter end of the line cord.
+
+Turn the machine off.
+
+Set your meter to the RX1 scale.
+
+Note: For all machines: The meter polarity switch must be set to + and the red meter lead (VOM) connected to Pin7 and the black meter lead (COM) connected to Pin8.
+
+Is the resistance less than 15 ohms?
+
+Single board machines: The function board is failing. Two-board machines: The motor contro! board is failing.
+
+Set your meter to the RX100 scale.
+
+Note: For all machines: The meter polarity switch must be set to + and the red meter lead (VOM)
+
+Print Hammer Solenoid.
+
+The motor and the motor control Beard are failing.
+
+The motor control board is failing.
+
+Turn the machine off.
+
+Replace the primary fuse.
+
+Disconnect J5 from the motor control board. -- Turn the machine on.
+
+Does the primary fuse blow again?
+
+Turn the machine off. --- Set your meter to the RX1K scale.
+
+The motor control board is failing.
+
+The power supply assembly is failing.
+
+Disconnect the options power supply cable from the power supply. -- Replace the primary fuse.
+
+Turn the machine on.
+
+Does the primary fuse blow again?
+
+The power supply assembly is failing.
+
+Turn the machine on.
+
+The Printer option board is failing.
+
+The diskette control board is failing.
+
+Check each of the following, in the order shown, for pin-to-housing shorts (check between the pins in he motor connector and the motor or solenoid housing):
+
+The motor control board is failing.
+
+The motor control board is failing.
+
+The motor and the motor control board are failing. eee A A
+
+Turn the machine off.
+
+Unplug the machine.
+
+Replace the primary fuse.
+
+Disconnect J5 from the motor contro! board. -- Plug the machine in.
+
+Does the primary fuse blow?
+
+The motor control board is failing.
+
+Turn the machine off.
+
+Unplug the machine.
+
+Replace the primary fuse.
+
+Disconnect the options power supply cable from the power supply. -- Plug the machine in.
+
+Turn the machine on.
+
+Does the primary fuse blow?
+
+The power supply assembly is failing.
+
+008 (continued): -- Check the options power supply cable for continuity between adjacent pins. Is there continuity?
+
+The options power supply cable is failing.
+
+Does the primary fuse blow?
+
+The CRT control board is failing.
+
+Turn the machine off.
+
+Disconnect the printer option board from the diskette board.
+
+Connect the option power supply cable to the printer option board. -- Turn the machine on.
+
+Turn the machine off.
+
+Connect the option power supply cable to the diskette control board. -- Turn the machine in.
+
+Does the primary fuse blow?
+
+The diskette contro! board or disk drive are failing.
+
+Turn the machine off.
+
+Disconnect the printer option board from the function board.
+
+Connect the options power supply cable to the printer option board. -- Turn the machine on.
+
+Does the primary fuse blow?
+
+The printer option board is failing.
+
+Turn the machine off and disconnect the diskette option from the function board. -- Connect the option power supply cable to the diskette control board.
+
+Turn the machine on.
+
+Does the primary fuse blow?
+
+The diskette control board is failing. so ee Sex The disk drive assembly is failing.
+
+Tutn the machine off.
+
+Set your meter to the RX10K scale.
+
+Measure the resistance between J5-2 (+5V) and J5-8 (+32V) on the motor control board.; The meter polarity switch must be set to + and the red meter lead (VOM) connected to J5-8 and the black meter lead (COM) connected to J5-2.
+
+Check each of the following, in the order shown, for pin-to-housing shorts (check.between the pins in the motor connector and the motor or solenoid housing):
+
+The motor control board is failing.
+
+The motor and the motor control board are failing.
+
+The motor control board is failing.
+
+Disconnect the print hammer solenoid cable from the carrier cable board.
+
+Measure the resistance of the print hammer solenoid on the print hammer cable connector as indicated in the chart below.
+
+Check the continuity of the print hammer solenoid lines at the print hammer connector on the carrier cable board.
+
+The carrier cable board Is failing.
+
+The carrier cable is failing.
+
+The system board is failing.
+
+Single board machines: The system board is failing. Two-board machines: The motor control board is failing.
+
+The selection plate assembly is failing.
+
+Single board machines: The system board and the selection plate assembly are failing. Two-board machines: The motor control board and.the selection plate assembly are failing.
+
+This chart lists the FRUs in the most probable order of failure.
+
+Note: Print can be lightened by adding up to a maximum of two hammer solenoid shims (P/N 1342475), or darkened by removing shims.
+
+Missing character, Character impression is on the paper.
+
+Missing character. No character G impression on the paper.
+
+Bottom cover. Is it bent or cracked? Frame latches. Are they damaged, cracked, or hard?
+
+Feed rollers. Are they worn or loose? Platen and platen latches. Are they worn?
+
+Transport assembly. Does it bind?
+
+Carrier bearings. Are they worn?
+
+Front carrier shoe. Is it worn?
+
+Transport belt. Is it loose or worn?
+
+Transport pulley. Is it loose, worn, or broken?
+
+Printwheel Cartridge. Does it bind?
+
+Petals. Are they defective or damaged?
+
+Plate ree ' Motor. Does it bind? Are the mounting screws loose? Is the connector loose?
+
+Note: The hammer solenoid does not energize when the printwheel is removed or the machine is in the centering or decimal tab modes.
+
+Or EASNs Gears. Do they binds? Are they loose, or broken? Motor. Does it bind? Does it have loose mounting screws or a loose connector? Tape feed clutch, pin, link, and slot. Are they worn? Lift cam and roller. Are they worn? Lift stud. Is it loose?
+
+Turn the machine off.
+
+Check the cables for damage, proper alignment, and fit. Are the cables good?
+
+Repair as Necessary.
+
+Turn the machine off.
+
+Disconfiett the printer option board. -- Turn the machine on.
+
+The 22-pin cables between the system board and the printer option board are failing.
+
+The 22-pin function to printer option board cables are failing. or
+
+Turn the machine off.
+
+Disconnect the printer option board from the function board. -- Turn the machine on.
+
+Does the machine operate correctly?
+
+The function board is failing.
+
+Check the continuity of the cables between the function board and the printer option board.
+
+The printer option board is failing.
+
+Turn the machine off.
+
+Install a printer option board.
+
+Turn the machine on.
+
+Inform the customer the machine is operating correctly.
+
+End the call.
+
+This chart lists the FRUs in the most probable order of failure.
+
+Check the gear. Is it loose, broken, or worn?
+
+Feed gear train. Does it bind? Gears. Are they loose or broken? Motor. Is it loose?; Tape feed slot. Is it worn?
+
+Tape feed link. Is it worn?
+
+Carefully zero the meter.
+
+Measure the resistance of the ribbon feed/lift motor between the points indicated in the chart below if (these are critical measurements). To ensure accurate measurements, the motor should be at room temperature. The resistance may be higher if the motor is hot. 'a
+
+The ribbon lift/feed motor is failing.
+
+The function board and the ribbon lift/feed motor are failing.
+
+Two-board machines: The motor control board and the ribbon lift/feed motor are failing.
+
+Single board machines: The function board is failing.
+
+Two-board machines: The motor control board is failing. The function board is failing.
+
+The carrier cable is failing.
+
+The carrier cable board is failing.
+
+The function board is failing.
+
+Also Inspect the paper deflector and feed rolls. Is the mechanical operation of the switch and paperfeed good? i yer No 4
+
+Do not deactivate the sensor and switch test. -- Do not disconnect the SAPI cables from the SAPI switch. -- Short the SAPI switch contacts.
+
+Be sure the switch and sensor test is activated. -- Disconnect the SAP! connector from the function board. -- Short SAPI pins 1 and 2 together on the system board.
+
+The SAPI switch cable is failing.
+
+This chart lists the FRUs in the most probable order of failure.
+
+Printwheel does not rotate, is noisy, or its speed changes as it rotates
+
+Selection Check:. Plate Assembly degrees Motor, Does it bind? Does it have loose screws or a loose 'connector?
+
+Hub, Is it bent, broken, or loose?
+
+Function The function board or system board is failing board or system board
+
+The original printwheel is failing.
+
+Check the printwheel.
+
+The printwheel is failing.
+
+Check for binds in the selection motor. ts the selection motor good?
+
+The selection plate assembly is failing.
+
+Turn the machine off.
+
+Disconnect the Selection motor cable from the selection motor.
+
+Carefully zero the meter.
+
+Measure the resistance of the selection motor between the pins indicated (these are critical measurements).
+
+Check the continuity between the carrier cable board and the selection motor cable. Is there continuity?
+
+Two-board machines: The 22-pin cable is failing. The motor control board is failing.
+
+The function board is failing.
+
+The selection plate assembly is failing.
+
+Note: Do a visual check of the machine before you continue with this MAP. Look for loose connections, broken wires, and loose or broken wires.
+
+When Code + 7 is pressed the typewriter responds correctly. The sheetfeed does not feed paper, but the sheetfeed drive motor rotates and the bin feed roller shaft rotates.
+
+When Code + 7 is pressed the typewriter responds correctly. The sheetfeed does not feed paper. The sheetfeed drive motor rotates, but the bin feed roller shaft does not rotates.
+
+Loose or broken bin gear.
+
+When Code + 7 is pressed the typewriter responds correctly. The sheetfeed does not feed paper. The sheetfeed drive motor and the bin feed roller shaft do not rotate.
+
+Broken or worn gears in gear train.
+
+When Code + 7 is pressed the typewriter responds correctly. Sheetfeed does not feed from the selected bin but will feed from the other bin.
+
+When Code + 7 is pressed the typewriter responds correctly, but the sheetfeed does not open the typewriter paper bail.
+
+Broken or binding solenoid lever e Broken or worn gears.
+
+Note: To read the resistance of the 'sheetfeed power plug, the red meter lead (VOM) must be connected to the inner contact and the black meter lead (COM) must be connected to the outer contact of the sheetfeed power plug. -- Measure the resistance between the.inner and outer contacts of the sheetfeed power plug.
+
+Turnthe machine off.
+
+Install the sheetfeed onto the machine. --- Turnthe machine on.
+
+Does the primary fuse blow again?
+
+Unscrew the black plastic sleeve on the sheetfeed power plug and slide it up the cable.
+
+Check for a short (touching contacts or leads) between the inner and outer contacts in the plug.
+
+The logic board assembly is failing.
+
+Repair the plug if possible. ae ap es The logic board assembly is failing.
+
+Set the meter to the RX1 scale and carefully zero the meter.
+
+Disconnect the power cable from the sheetfeed drive motor.
+
+Measure the resistance of the motor between pins one and three at the connector on the motor 'board.
+
+The sheetfeed drive motor assembly is failing.
+
+Disconnect the solenoid cable from the power cable.
+
+Measure the resistance of the solenoid between pin 1 and pin 3 on the solenoid cable connector. is the resistance less than 40 ohms?
+
+The logic board is failing. The sheetfeed drive motor is failing. The solenoid assembly is failing.
+
+The solenoid assembly is failing.
+
+Turn the machine off.
+
+Install the sheetfeed onto the typewriter. Be sure the gears between the sheetfeed and platen mesh correctly. Also be sure the sheetfeed correctly activates the sensor assembly on the typewriter.
+
+Turn the machine on.
+
+Hold Code and press 7.
+
+Does the typewriter respond?
+
+Does the sheetfeed respond (drive motor turns, solenoid activates)?
+
+If your machine is a Wheelwriter 10, 15, 1500, or 3000 check the printer option for proper operation. -- Hold Code and press 5. The typewriter should go into the print mode.:
+
+Hold Code and press 5 lo exit.
+
+Does the printer option operate correctly?
+
+Go to the Maintenance Information manual for the machine you are working on.
+
+Install the ROS module.
+
+Install the module correctly.
+
+Note: If the module was installed in the wrong direction, it may be damaged.
+
+The printer option board is failing.
+
+The typewriter function board is failing.
+
+Install the ROS module.
+
+Install the module correctly.
+
+Note: If the module was installed in the wrong direction, it may be damaged.
+
+The typewriter function board is failing.
+
+The printer option board is failing.
+
+Correctly install and adjust the sensor assembly.
+
+Correctly install the sensor assembly.
+
+Remove the sheetfeed from the typewriter.
+
+Po a -- Manually operate the sensor switch until both switches activate.
+
+Does the PLAY indicator display (sensor cable connected to the function board)? Does the CENTER indicator display (sensor cable connected to the printer option board)?
+
+Disconnect the sensor switch cable from the printer option board or the function board. -- Check the continuity of the cable as you activate the sensor switch.
+
+Is there continuity?
+
+The sensor switch assembly is failing.
+
+Do not short the two leads together.
+
+Measure the voltage on the bottom of the options power cable at the sheetfeed power jack.
+
+Do not short the two leads together.
+
+The sheetfeed logic board assembly is failing.
+
+The sheetfeed logic board assembly is failing.
+
+The sheetfeed motor does not turn.
+
+The sheetfeed solenoid activates.
+
+An out-of-paper indicator appears.
+
+The sheetfeed motor turns.
+
+The sheetfeed solenoid does not activate.
+
+The paper bail does not open."
+
+The sheetfeed feeds paper but may try to feed more than one sheet at a time.
+
+The correct bin is selected when Code + 8 is pressed. The feedtrip sensor is failing,
+
+The correct bin is selected when Code + 8 is pressed. The feedtrip sensor is failing, The typewriter responds correctly when Code + 7 is or pressed. the logic board assembly is failing. The sheetfeed operates correctly when bin 2 is selected. When bin 14 is selected: The sheetfeed motor does not turn. The sheetfeed solenoid does not activate. An out-of-paper indicator appears.
+
+The machine will not select the correct bin. The feedtrip sensor is failing, or the logic board assembly is failing.
+
+The correct bin is selected when Code + 8 is pressed. The feedtrip sensor is failing,
+
+The typewriter responds correctly when Code + 7 is or pressed., the logic board assembly is failing. The sheetfeed motor turns on and feeds a sheet of paper.
+
+An out-of-paper indicator appears.
+
+Is the resistance less than 30 ohms?
+
+The sheetfeed solenoid is failing.
+
+J The logic board assembly is failing.
+
+The sheetfeed drive motor is falling.
+
+Disconnect the options power cable from J2 on the power supply and any option boards installed in the machine.
+
+Measure the voltage at J2-1 (+32VDC) on the power supply.
+
+The power supply is failing.
+
+The option power supply cable is failing.
+
+Note: If you disconnect the batteries from the function board, all data stored in the machine will be lost. If you need to remove the Spell Check module from the function board, you must disconnect the batteries. Discuss the problem with the customer before you disconnect the batteries.
+
+The battery holder is failing.
+
+The batteries are failing.
+
+The function board is failing.
+
+Single board machines: The Spell Check module (U3 or U800) is failing.
+
+The system board is failing.
+
+The function board is failing.
+
+Is the module properly installed?
+
+Observe all ESD precautions.
+
+Disconnect the batteries.
+
+Correctly install the spelling module. --- Turn the machine on.
+
+The spelling module is failing. -- or ae Lined - - The function board is failing.
+
+The spelling module is failing. The function board is failing.
+
+Check the machine Spell Check option configuration against the table below.
+
+Enter the Spell Check function.
+
+Does the Supplemental Dictionary lose words?
+
+This chart lists the FRUs in the most probable order of failure.
+
+Frame latches. Are they damaged, cracked, or hard?
+
+Bearings and shaft. Are they dirty, loose, or worn? Are they correctly lubricated?
+
+Carrier. Does it hit the feed rollers?
+
+Mounting screws. Are they loose?
+
+Drive gear train and bearings. Do they bind, or are they worn?
+
+Idler pulley. Does it bind, or is it worn?
+
+Carrier bearings. Do they bind, or are they worn? Belt. Is it broken or worn. Is it correctly adjusted? Belt clamp. Is it loose, worn, or broken?
+
+Load spring. Is it missing or bent? Brackets. Are they loose? Idler stud. Is it loose?
+
+Cardholder. Is it binding against the platen?
+
+Are the cables good?
+
+Disconnect the transport motor cable from the motor.
+
+Carefully zero the meter.
+
+Measure the resistance of the transport motor (on the motor connector) between the points indicated in the chart below (these are critical measurements). To ensure accurate measurements, the motor should be at room temperature. The resistance may be higher if the motor is hot.
+
+Single board machines: The transport motor and the function are failing.; Two-board machines: The transport motor and the motor control board are failing.
+
+The transport cable is failing.
+
+Single board machines: The function board is failing.
+
+The 16-pin cable between the function board and motor control board is failing.
+
+The motor control board is failing.
+
+The function board is failing.
+
+Hungary Italy (Metric index)
+
+Italy (Inch index)
+
+Latin American, Period (English) (Phitippines)
+
+Every keyboard has keyboard ID lines with country punch codes located on the flat cable next to the sense lines,
+
+To change the country code, or to avoid having to replace a keyboard with damaged ID fines, cut off the ID lines and replace them with a metal comb (P/N 1392956).
+
+Disconnect the right-hand flat cable.
+
+Turn the machine around until the back is facing you.
+
+Turn the machine back around to the operator position.
+
+Using a small pair of pliers, remove the tabs on the comb (as shown in the figure below) to match the keyboard identification holes for the country you are changing to (
+
+If a section or the complete keyboard is inoperative, the sense flat cable is not connected properly. As you press each keybutton, make sure that the appropriate character is typed or function performed. i
+
+Power On Reset Sequence Turn the machine on. All LEDs are turned on
+
+Platen moves up and down one line.
+
+Print hammer energizes. (May be difficult to see this.)
+
+Carrier moves to the right.
+
+Printwheel and ribbon, home.
+
+All LED indicators turn off.
+
+Destructive RAM test performed on correction buffer. If test fails, error indicators turn on.
+
+If spell check is installed and activated, the machine will beep two times. The sound will depend on how the operator has set Code + 4.
+
+Machine beeps one time.
+
+Carrier moves to the left margin.
+
+Battery status is determined. Dead or low battery causes error code.
+
+Line space indicator last selected by the operator turns on.
+
+The machine will beep three times if the battery is low.
+
+Cursor, linespace symbol, and linespace number is displayed (warm start). Storage cleared message, linespace symbol, and linespace number is displayed (cold start).:
+
+The diskette will initialize if it is installed.
+
+LO-BATT will be displayed if the batteries are low.
+
+Type the test phrase or words you want to use into the correction buffer.
+
+Press and hold both the Code and Shift keybuttons then press the Tab Ciear keybutton.
+
+The words will play-in-loop until you stop it.
+
+Press any keybutton to stop the play-in-loop test.
+
+Note: The machine will perform a SAPI operation when you exit the test.
+
+The play-in-loop test is run using document storage. To create the play-in-loop test phrase:
+
+Type the test phrase or words you want to use into storage. Any machine function may be used to test the machine, such as; bold, continuous underscore, stop codes, or pitch/wheel changes.
+
+Press PLAY + the storage number of the test phrase.
+
+The words will play-in-loop until you stop it. Press any keybutton to stop the play-in-loop test. To resume the play-in-loop test, press the END keybutton. To cancel the play-in-loop test, press the PLAY keybutton.
+
+To store the play-in-loop document, press the STORE keybutton. 4, To erase the play-in-loop document, press DEL +, nn.
+
+You may also store your play-in-loop document on a diskette if the diskette option is installed.
+
+Note: The machine will perform a SAPI operation when you exit the test. Play-In-Loop Test, Wheelwriter 70, 7000 To run the play-in-loop test:
+
+Go to typewriter mode.
+
+Type the play-in-loop phrase you want. Do not press CRTN at the end of your phrase.
+
+Press the exit key to stop play-in-loop.
+
+Press and hold the Code and Shift keybuttons then press the Tab Set keybutton.
+
+Press any keybutton to stop the sensor and switch test.
+
+To check the homing sensor: (A RTN LED)
+
+When you activate the sensor and switch test, the A RTN LED should come on. Slowly push the homing sensor flag in. The A RTN LED should go off. The A RTN LED should come on as you release the flag.
+
+To check the SAPI switch: (LANG LED)
+
+Activate the sensor and switch test. e Pull the right paper bail all the way forward. The LANG LED should come on- -when the SAPI switch closes and go off as the paper bail is released.
+
+Ifthe LED indicated is on all the time during the sensor and switch test, the Spelling RAM is installed and working. If the Spelling RAM is not installed, or is defective, a system board failure error code will
+
+To check the Ribbon Sensor: (BOLD LED)
+
+Remove the ribbon cartridge from the machine.
+
+Activate the switch and sensor test.
+
+Pass a piece of paper between the ribbon LED and sensor.
+
+The BOLD LED should go on and off as the paper passes between the LED and the sensor.
+
+To check the Out-of-Paper Sensor: (CONT LED)
+
+Remove any paper from the machine.
+
+Activate the switch and sensor test.
+
+Pass a piece of white paper between the platen and out-of-paper sensor.
+
+The CONT LED should go on and off as the paper passes between the platen and the sensor.
+
+Activate the switch and sensor test.
+
+Disconnect the battery from J7 on the function board.
+
+The LED indicated should turn on when you disconnect the battery, and turn off when you connect the battery.
+
+Reconnect the battery.
+
+To check the Pinwheel Form Feeder Present: (Linespace 3 LED)
+
+Activate the switch and sensor test.
+
+Manually depress the pinfeed sensor switch (larger of the two) until you hear it activate. The Line space 3 LED should come on.
+
+To check the Sheetfeed Option Present: (Linespace 2 LED)
+
+Activate the switch and sensor test. Manually depress the sheetfeed sensor switch until both switches activate.
+
+The Line space 2 LED should come on as the switch is activated.
+
+The sensor and switch test cannot be run from the Store mode.
+
+Press and hold the Code and Shift keybuttons then press the Tab Set keybutton.
+
+Press any keybutton to stop the sensor and switch test.
+
+To check the homing sensor: (ARTN)
+
+When you activate the sensor and switch test, ARTN should come on the display. Slowly push the homing sensor flag in. ARTN should go off. ARTN should come on as you release the flag.
+
+To check the SAPI (paper bail) switch: (KYBD) Activate the sensor and switch test.: Pull the right paper bail all the way forward. KYBD should appear on the display as the SAPI switch closes and go off as the paper bail is released.
+
+To check Spelling RAM: (STORE)
+
+To check the End-of-Ribbon Sensor: (BOLD)
+
+Activate the switch and sensor test. e Pass a piece of paper between the ribbon LED and sensor. BOLD should go on and off as the paper passes between the LED and the sensor.
+
+To check the Out-of-Paper Sensor: (CONT)
+
+To check for Low Battery: (CAPS)
+
+Activate the switch and sensor test.
+
+Disconnect the battery from J4 on the function board.
+
+CAPS should appear on the display when you disconnect the battery, and turn off when you connect.the battery.
+
+Reconnect the battery.
+
+When the pinfeed/sheetfeed sensor switch cable Is connected to the printer option board.
+
+Activate the switch and sensor test. Manually depress the pinfeed sensor switch (larger of the two) until you hear it activate,
+
+TADJ should appear on the display as the switch is activated.
+
+When the pinfeed/sheetfeed sensor switch cable is connected to the function board.
+
+Activate the switch and sensor test. Manually depress the pinfeed sensor switch (larger of the two) until you hear it activate. SUSPND should appear on the display as the switch is activated. To check the Sheetfeed Option Present:
+
+When the pinfeed!/sheetfeed sensor switch cable is connected to the printer option board. Activate the switch and sensor test.
+
+Manually depress the pinfeed sensor switch actuators until both switches activate. CENTER should appear on the display as the switch is activated.
+
+When the pinfeed/sheetfeed sensor switch cable is connected to the function board. e Activate the switch and sensor test.
+
+Manually depress the pinfeed sensor switch actuators until both switches activate. PLAY should appear on the display as the switch is activated.
+
+Press and hold the Code and Shift keybuttons then press the Tab Set keybutton.
+
+A switch and sensor test menu will appear on the CRT.
+
+Wheelwriter 50: Press any key to stop the test. Wheelwriter 70: Press EXIT to stop the test.
+
+To check the Homing Sensor: (ARTN)
+
+When you activate the sensor and switch test, ARTN should come on the CRT. Slowly push the homing sensor flag in. ARTN should go off and come on as you release the flag.
+
+To check the SAPI (Paper bail) switch: (KYBD)
+
+To check the End of Ribbon Sensor; (BOLD)
+
+Activate the switch and sensor test.
+
+Remove the ribbon cartridge from the machine.
+
+Pass a piece of paper between the ribbon LED and Sensor. )
+
+BOLD should go on and off as the paper is passed between the LED and sensor.
+
+To check the Out of Paper sensor: (CONT)
+
+Activate the switch and sensor test.
+
+Pass apiece of white paper between the platen and the out of paper sensor. e CONT should go off and on as you pass the paper between the platen and sensor.
+
+To check for Low Battery: (CAPS)
+
+Activate the switch and sensor test.
+
+Disconnect the battery from J4 on the function board.
+
+CAPS should appear on the display when you disconnect the battery, and turn on when you connect the battery.
+
+Reconnect the battery.
+
+When the pinfeed/sheetfeed sensor switch cable is connected to the printer option board. Activate the switch and sensor test.
+
+Manually depress the pinfeed sensor switch (larger of the two) until you hear it activate. TADJ should appear on the display as the switch is activated.
+
+Manually depress the pinfeed sensor switch (larger of the two) until you hear it activate. e SUSPND should appear on the display as the switch is activated.
+
+When the pinfeed/sheetfeed sensor switch cable is connected to the printer option board. Activate the switch and sensor test. Manually depress the pinfeed sensor switch actuators until both switches activate. CENTER should appear on the display as the switch is activated.
+
+When the pinfeed/sheetfeed sensor switch cable is connected to the function board. Activate the switch and sensor test. Manually depress the pinfeed sensor switch actuators until both switches activate. e PLAY should appear on the display as the switch is activated.
+
+You must use a scratch diskette to run these tests. You must prepare or format the diskette before you run the test. This will destroy all data on the diskette. Be sure to use a diskette that does not contain useful data, To prepare or format a diskette:
+
+Hold down the Code and Shift keybuttons then press the = keybutton.
+
+A test menu will appear on the display. The menu has the following choices: TEST -- Test diskette hardware e MEASURE - Measure diskette signals e WRITE PROTECT -- Test write-protect and change line
+
+To select a test, move the cursor to the test and press CRTN.
+
+Press the erase key to stop a test and return to the service menu.
+
+Diskette write/read track 0 and 79 test Diskette random sector/track read/write test an error displays indicating the nature of the problem. If an error code occurs, the following appears on
+
+Select TEST from the service menu.
+
+Insert scratch diskette and press the CRTN key.
+
+Select the Write-Protect function from the service menu.
+
+Insert a prepared scratch diskette. Be sure the write-protect window in the diskette is open before you insert it.
+
+Form the deflector lugs so they are 90 degrees to the bottom of the deflector.
+
+Adjust the selection plate eccentrics for even top and bottom printing,
+
+The ribbon lift adjustment must be correct before making this adjustment. Make this adjustment with the in ribbon plate installed.
+
+Loosen the nut on the bottom of the knock-off stud. You may need to move the carrier position indicator to the side..
+
+Adjust the knock-off to the left or right until the knock-off (black) pawl is clearly disengaged from the gear and there is a clearance of .5 to 1 mm (.020 to .04 in) between the cam follower roller and the end 7 of the cam track. Rotate the cam by hand to check for this clearance.
+
+Turn the machine on and leave it while you make this adjustment.
+
+Remove the correction cartridge and reinstall the ribbon cartridge by itself.
+
+Type a line of underscores.
+
+4, Backspace the carrier until at least 10 mm (0.4 in) of the line of underscores is visible to the right of the cardholder.
+
+Rotate the ribbon lift gear counterclockwise until the lift cam stops turning.
+
+These machines have a beige-colored ribbon cartridge latch with two cartridge latching surfaces:
+
+Make this adjustment whenever you replace the retainer.
+
+Note: Later level machines have a fixed cam follower stud instead of a cam follower roller and do not require this adjustment.
+
+Push the ribbon lift cam follower roller to the right, against the ribbon lift cam.
+
+Install the spring in the bottom gear as shown.
+
+Place the top gear over the bias spring as shown. The vertical lug on the spring must fit into one of the holes inside the top gear.
+
+Rotate the top gear 1/2 turn clockwise and latch it in place. The spring should load the latching surfaces of the two gears against each other. Hold the gears in place until you have installed the ribbon feed motor in the machine. The spring will unwind if you do not hold the gears together.
+
+Note: After you have installed the motor, rotate the top gear 1/4 turn clockwise and let go. The gear should return to the initial position. Top Gear Bias Spring Latching surfaces "Smee Lug
+
+Move the carrier all the way to the right.
+
+Set the keyboard height to its lowest position.
+
+Loosen the idler pulley bracket mounting screws.
+
+Slide the T-Bender on the top transport belt at the center of the belt.
+
+Rest the T-Bender on the carrier shaft.
+
+Remove the center cover.
+
+Roll the transport belt from its pulleys. Do not use tools to do this.
+
+Disconnect the carrier cable from the function board/system board.
+
+Use a 1/4" wrench to rotate the carrier shaft about 1/8 turn top to rear to release it.
+
+Push the shaft to the right far enough so it is away from the left side frame.
+
+Lift and pull the left end of the carrier shaft to the front, then pull the shaft and carrier to the left to clear the right side frame.
+
+Disconnect the carrier cable from the cable board.
+
+Remove the fine cord.
+
+Pivot the carrier pointer to the left.
+
+Push the bottom end of the (4) cover latches in with a tool to release them.
+
+Lift the cover up and to the front to remove it.
+
+Move the carrier to the right side.
+
+Turn the machine off.
+
+Remove the top cover.
+
+Remove the platen and deflector.
+
+Remove the carrier cable clamp A from the top of the electronic board cover.
+
+Disconnect the carrier cable.
+
+Gently squeeze the front and rear of the electronic board cover to release the tabs EI from the slots in the bottom cover. There are nine tabs.,
+
+Pivot the rear of the cover up and remove from the machine.
+
+Remove the: e Center Cover e Platen Deflector; Move the carrier away from the assembly you want to remove. Feed roller assembly retainer on non U.S. machines only. Push down the feed roller assembly until the lower ends of the roller assemblies release from the transport bracket.: Rotate the feed roller assembly forward, then lift it out of the machine.
+
+Remove the: e Center cover Platen Deflector Feed roller assemblies Carrier Semi-automatic paper insertion (SAPI) switch
+
+Disconnect the transport motor cable from the transport motor.
+
+Disconnect the ground straps.
+
+Remove the frame assembly.
+
+Note: When installing the frame, be careful not to trap any of the wires under the frame or in the frame latches.
+
+Note: Leave the battery connected to the function board if you remove the board from a machine,and then put it back into the machine. This will ensure that memory is not lost.
+
+Turn the machine off.. Move the carrier to the right frame.
+
+Disconnect the carrier cable.
+
+The carrier cable may easily be damaged If it is not installed correctly in the electronic board cover.
+
+Remove the carrier.
+
+Disconnect the homing LED connector.
+
+Remove the retainers that hold the LED cable to the carrier frame.. Remove the homing LED mounting screw.
+
+Remove the homing LED.
+
+Remove the center cover.
+
+Move the carrier to the left frame.
+
+Disconnect the indicator panel cable (J5) from the function board.
+
+Pull the bottom of the 2 retainers on the rear of the keyboard cover to the rear to release the keyboard cover.; Lift the rear of the keyboard cover slightly, then slide it toward the front and away from the machine.
+
+Unlatch the LED panel from the keyboard and remove it.
+
+Remove the center cover.:. Unlockthe ZIF connectors (if applicable) and remove-+the keyboard connectors (J4,-J2) from the function board.
+
+Lift the rear of the keyboard cover slightly, then slide the cover toward the front and away from the machine.
+
+Pivot the rear of the keyboard up and lift it out of the machine.
+
+Turn the machine off.
+
+Move the carrier to the right frame.
+
+Disconnect all cables from the motor control board.
+
+The carrier cable may easily be damaged if it is not installed correctly in the electronic board cover.
+
+Disconnect the machine from the AC outlet.
+
+Remove the center cover.
+
+Push switch latches in BJ and lift the switch assembly up from the switch tower.
+
+Disconnect the paperfeed motor cable from the paperfeed motor.
+
+Move the paperfeed motor to the rear.and lift it out of the machine.
+
+Mes nh: Sow ce Mee Si Fy I RE age) oe a tg tae Se al ah a ra ae
+
+Disconnect the machine from the AC outlet.
+
+Remove the center cover.
+
+Disconnect the carrier cable from the motor control board.
+
+Disconnect the power supply connector Esection from the motor control board or function board.
+
+If anything is connected to J2 EJ on the power supply board, disconnect it.
+
+Remove the two on/off switch tower mounting screws."
+
+Insert a screwdriver blade through the slot in the bottom cover. Place the blade between the power supply latch and the latching surface of the bottom cover. Gently pry the bottom cover away from the power supply latch. Lift the power supply out of the machine.
+
+Note: You may need to remove the platen, deflector, and left feed roller assembly in order to pivot the power supply toward the front of the machine.
+
+Before you install the new assembly, remove the grounding strap from the left-rear transformer mounting screw and install it at the right-rear mounting screw.
+
+Remove the ribbon plate from the carrier. Be careful not to lose the cam follower roller.
+
+Place the pawls on the cam. The black pawl goes on the post near the step in the cam. Connect the spring if necessary.
+
+Remove the two motor mounting screws ff.
+
+Remove the ribbon and correcting tape.
+
+Remove the ribbon plate load spring ff.
+
+Slide the ribbon plate to the right until you can lift it off the carrier. 5.
+
+Note the direction of the high point on the C-clip EJ, then remove-it from the pivot shaft.
+
+Disconnect the ribbon feed motor connector.
+
+Remove the center cover.
+
+Disconnect the SAPI cable from the SAPI switch.. Carefully remove the paper bail spring.
+
+Remove the paper release Jever spring Ey.
+
+Disconnect the SAPI switch shunt arm spring fi.. Remove the paper bail arm.
+
+Remove the SAPI switch.
+
+Turn the machine off.
+
+Disconnect the sheetfeed power cable from the typewriter.
+
+Remove the sheetfeed from the typewriter.
+
+Remove the left side cover from the sheetfeed.
+
+Remove the screw B holding the logic board/power cable assembly ground terminal to the right frame.
+
+Disconnect the motor and solenoid connectors.
+
+Remove the cable from the cable clamps on the right side frame.
+
+Remove the logic board/power cable from the sheetfeed.
+
+Install the regulator modules to the left side frame. be careful not fo over-tighten the nuts against the regulator modules.
+
+Connect the motor and solenoid connectors.
+
+Route the cable through the cable clamps on the right side frame.
+
+Install the bottom cover.
+
+Install the left side cover.
+
+Install the sheetfeed onto the typewriter.
+
+Connect the sheetfeed power cable to the typewriter.
+
+Remove the printwheel, ribbon, and the correcting tape.
+
+Remove the carrier.
+
+Disconnect the hammer solenoid and selection motor connectors.. Disconnect the homing sensor cable from the homing sensor.
+
+Remove the 2 selection plate eccentrics.
+
+Remove the selection plate through the bottom of the carrier.
+
+Note: A replacement selection plate assembly contains a print hammer solenoid with 2 shims. You may remove 1 shim to adjust for gray impression. Put the removed shim back on the solenoid if removing it causes partial lift off. Do not remove shims from other than new replacement selection plate assemblies.
+
+Remove the center cover.
+
+Grasp the motor and turn it to release the motor tabs from the bracket.
+
+Transport Bracket Installation a. Down so the bottom lug touches the bottom of the hole in the side frame,
+
+Tighten the two motor bracket mounting screws. a. Down so the bottom tug touches the 'bottom of the hole in the side frame,
+
+Tighten all the transport bracket mounting screws.
+
+Bottom Lug Touches (Right Side View)
+
+Position the right hand end of the transport bracket.in the side frame Eq to meet two conditions: b. Forward so the top and bottom lugs touch the front of the holes in the side frame.
+
+Position the left end of the transport bracket in the side frame EJ to meet two conditions:
+
+Keep the ESD-sensitive part in its original shipping container (a special "ESD bag") until you are ready to install the part into the machine.;
+
+Make the least possible movements with your body to prevent an increase of static electricity from clothing fibers, carpets, and furniture.
+
+Put the ESD wrist strap on your wrist. Ensure the machine is turned off. Connect the wrist band to the keyboard ground wire (level 1) or the printer board bracket (level 2). This discharges any static electricity in your body to the machine.
+
+Do not place the ESD-sensitive part on the machine cover or on a metal table; if you need to put down the ESD-sensitive part for any reason, first put it into its special bag.
+
+Machine covers and metal tables are electrical grounds. They increase the risk of damage because they make a discharge path from your body through the ESD-sensitive part. (Large metal objects can be discharge paths without being grounded.)
+
+Be extra careful in working with ESD-sensitive parts when cold-weather heating is used because low humidity increases static electricity.
+
+System Board, Wheetwriter 10, 15 Typewriter (Single Board Version, DCA)
+
+Note: Depending on the machine type and country, some connectors and components may not be present.
+
+Power Supply (Universal power supply does not have F1 fuse.)
+
+Mounting -studs No. 10 Paperfeed roller shafts (pivot points) No. 23 Paperfeed roller tension-spring
+
+Where it contacts feed roller bracket No.
+
+The purpose of this safety inspection guide is to aid you in identifying possible unsafe conditions on machines that are being inspected for a Maintenance Agreement. Each machine has needed items installed to provide the operators and service personnel with an acceptable level of safety. This guide lists only these items. Good judgment should be used to identify possible safety conditions not covered by this safety inspection guide..
+
+If any unsafe conditions are present, you must find out how serious the hazard could be and if you can continue before you correct the hazard.
+
+A copy of current Service Memorandums (SMs), ECAs (Engineering Change Announcements), and Feature/Model changes, along with the machine history, should be reviewed.
+
+Damaged, missing, or changed parts, especially in the area of the on/off switch and the power supply.
+
+Darrayeds missing, or changed covers, especially in the area of the top cover and the power supply.
+
+Possible safety exposure from any non-IBM attachments.

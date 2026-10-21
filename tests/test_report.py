@@ -1,0 +1,126 @@
+"""Tests for pom.report: recording problems as data, with a strict mode for development."""
+import pytest
+
+from pom.report import Issue, Report, Severity, strict_report
+
+
+class FakeError(Exception):
+    """A module's own error type, raised in strict mode."""
+
+
+def test_new_report_is_ok_and_empty():
+    report = Report()
+    assert report.ok and len(report) == 0 and not report.has_critical
+    assert report.issues == () and report.lines() == []
+
+
+def test_warn_records_a_warning_without_raising():
+    report = Report()
+    report.warn("bad weight, using 1.0")
+    assert not report.ok and not report.has_critical
+    assert report.warnings == ["bad weight, using 1.0"] and report.criticals == []
+
+
+def test_critical_is_recorded_without_raising():
+    report = Report()
+    report.critical("no chunks to draw from")
+    assert report.has_critical and not report.ok
+    assert report.criticals == ["no chunks to draw from"] and report.warnings == []
+
+
+def test_issues_keep_order_and_severity():
+    report = Report()
+    report.warn("a")
+    report.critical("b")
+    report.warn("c")
+    assert [(i.severity, i.message) for i in report] == [
+        (Severity.WARNING, "a"), (Severity.CRITICAL, "b"), (Severity.WARNING, "c")]
+
+
+def test_lines_are_printable_with_the_severity():
+    report = Report()
+    report.warn("careful")
+    report.critical("broken")
+    assert report.lines() == ["warning: careful", "critical: broken"]
+    assert str(Issue(Severity.WARNING, "x")) == "warning: x"
+
+
+def test_strict_raises_the_modules_error_at_once():
+    report = Report(strict=True, error=FakeError)
+    with pytest.raises(FakeError, match="typo in weights"):
+        report.warn("typo in weights")
+    with pytest.raises(FakeError, match="nothing to say"):
+        report.critical("nothing to say")
+    assert report.ok   # nothing was kept; it raised instead
+
+
+def test_strict_defaults_to_value_error():
+    with pytest.raises(ValueError):
+        Report(strict=True).warn("x")
+
+
+def test_lenient_never_raises_whatever_the_volume():
+    report = Report(limit=3)
+    for i in range(1000):
+        report.warn(f"w{i}")
+        report.critical(f"c{i}")
+
+
+def test_limit_keeps_the_first_issues_and_counts_the_rest():
+    report = Report(limit=3)
+    for i in range(10):
+        report.warn(f"w{i}")
+    assert report.warnings == ["w0", "w1", "w2"]
+    assert report.suppressed == 7 and len(report) == 10
+    assert report.lines()[-1] == "... and 7 more"
+    assert not report.ok
+
+
+def test_a_critical_is_kept_even_after_warnings_filled_the_limit():
+    report = Report(limit=2)
+    for i in range(5):
+        report.warn(f"w{i}")
+    report.critical("nothing to say")
+    assert report.has_critical and report.criticals == ["nothing to say"]
+    assert report.warnings == ["w0", "w1"] and report.suppressed == 3
+
+
+def test_suppressed_issues_still_make_the_report_not_ok():
+    report = Report(limit=0)
+    report.warn("only counted")
+    assert report.issues == () and report.suppressed == 1 and not report.ok
+
+
+def test_extend_merges_another_report():
+    parent, child = Report(), Report()
+    child.warn("child warning")
+    child.critical("child critical")
+    parent.warn("parent warning")
+    parent.extend(child)
+    assert parent.warnings == ["parent warning", "child warning"]
+    assert parent.criticals == ["child critical"]
+
+
+def test_extend_carries_over_the_childs_suppressed_count():
+    parent, child = Report(), Report(limit=1)
+    child.warn("kept")
+    child.warn("dropped")
+    parent.extend(child)
+    assert parent.warnings == ["kept"] and parent.suppressed == 1
+
+
+def test_extend_in_strict_mode_raises_on_the_first_issue():
+    parent, child = Report(strict=True, error=FakeError), Report()
+    child.warn("from child")
+    with pytest.raises(FakeError, match="from child"):
+        parent.extend(child)
+
+
+def test_strict_report_helper():
+    assert strict_report(FakeError, strict=False).ok
+    with pytest.raises(FakeError):
+        strict_report(FakeError, strict=True).warn("x")
+    report = strict_report(FakeError, strict=False, limit=1)
+    report.warn("a")
+    report.warn("b")
+    assert report.suppressed == 1

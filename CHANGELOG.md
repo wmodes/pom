@@ -11,6 +11,12 @@ December 18 session. Update this file in the same commit as the change it descri
 ### Added
 
 - **Changelog.** This file, in Keep a Changelog format.
+- **Report** (`src/pom/report.py`), the shared way every module reports problems as data
+  instead of raising: WARNING (recovered) and CRITICAL (cannot do its job, still no crash),
+  a `strict` mode that raises for tests and dev tools, a cap on how many issues are kept,
+  and criticals that are never dropped. 15 tests in `tests/test_report.py`.
+- **Design principle:** the Printer never stops because of a typo or a recoverable fault.
+  Written into the `pom` package docstring.
 - **ChunkStore module** (`src/pom/corpus/chunk_store.py`). Reads the chunk files into immutable
   `Chunk` objects and answers layout and count questions; its `layout()` is what
   `Weights.check` compares against. Loading is strict (a record must match its folder and file

@@ -27,16 +27,17 @@ Design decisions, and why:
     entry point has configured logging.
 """
 import json
-import logging
 import math
 from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
+from pom.logs import get_logger
 from pom.report import Report
 
 DEFAULT_WEIGHT = 1.0
 _REGISTER_KEYS = {"share", "sources"}
-_log = logging.getLogger(__name__)
+DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
+_log = get_logger(__name__, DEBUG)
 
 
 class WeightsError(ValueError):
@@ -112,6 +113,7 @@ class Weights:
         for name, entry in registers.items():
             if name.startswith("_"):
                 continue
+            _log.debug("register %r: %r", name, entry)
             if not isinstance(entry, dict):
                 report.warn(f"register '{name}' must be an object with 'share' and 'sources'; "
                             f"ignoring it")
@@ -133,6 +135,7 @@ class Weights:
                     continue
                 weights[source] = _number(weight, f"source '{source}' weight", report)
                 listed_under[source] = name
+        _log.debug("parsed %d register share(s) and %d source weight(s)", len(shares), len(weights))
         return cls(shares, weights, listed_under, report, strict)
 
     # --- Lookups --------------------------------------------------------------------
@@ -164,7 +167,10 @@ class Weights:
             self.report.warn("no register has a positive share, so nothing can be drawn; "
                              "counting every register 1.0")
             return {name: 1.0 / len(names) for name in names}
-        return {name: self.share(name) / total for name in names}
+        result = {name: self.share(name) / total for name in names}
+        _log.debug("normalized shares over %d register(s): %s", len(names),
+                   ", ".join(f"{n}={v:.3f}" for n, v in sorted(result.items())))
+        return result
 
     # --- Validation -----------------------------------------------------------------
 

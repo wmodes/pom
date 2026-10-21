@@ -27,14 +27,15 @@ Design decisions, and why:
   * The folder may hold other files (weights.json). Only `<register>/<source>.jsonl` are read.
 """
 import json
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
+from pom.logs import get_logger
 from pom.report import Report
 
-_log = logging.getLogger(__name__)
+DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
+_log = get_logger(__name__, DEBUG)
 
 
 class ChunkError(ValueError):
@@ -111,8 +112,13 @@ class ChunkStore:
             for folder in sorted(p for p in root.iterdir()
                                  if p.is_dir() and not p.name.startswith(".")):
                 for path in sorted(folder.glob("*.jsonl")):
-                    chunks.extend(_read_file(path, folder.name, path.stem, report))
-        return cls(chunks, report, strict)
+                    read = _read_file(path, folder.name, path.stem, report)
+                    _log.debug("read %s/%s: %d chunk(s)", folder.name, path.name, len(read))
+                    chunks.extend(read)
+        store = cls(chunks, report, strict)
+        _log.info("loaded %d chunks from %d source(s) in %d register(s)", len(store),
+                  sum(len(store.sources(r)) for r in store.registers()), len(store.registers()))
+        return store
 
     # --- Questions ------------------------------------------------------------------
 

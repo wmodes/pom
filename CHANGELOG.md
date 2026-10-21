@@ -11,12 +11,16 @@ December 18 session. Update this file in the same commit as the change it descri
 ### Added
 
 - **Changelog.** This file, in Keep a Changelog format.
-- **Logging and shared config.** The service's stdout goes to journald, so problems are logged
-  there. `src/pom/logs.py` sets up stdout logging once (no timestamp, since journald adds one,
-  idempotent, never fails). `src/pom/config.py` holds the shared settings `strict` and
-  `log_level` from `config/pom.toml` and the `POM_STRICT` / `POM_LOG_LEVEL` environment
-  variables, with the environment winning, and never raises. A `Report` can now be given a
-  logger, and `Weights` logs its problems through `pom.corpus.weights`. 49 new tests.
+- **Logging, a debug flag, and shared config.** The service's stdout goes to journald, so
+  problems are logged there. `src/pom/logs.py` sets up stdout logging once (no timestamp, since
+  journald adds one, idempotent, never fails). There is one `debug` flag: set it project-wide in
+  `config/pom.toml` (or `POM_DEBUG=1`), or override it in a single module with the
+  `DEBUG = None` line at the top of that file (True forces that module's debug output on, False
+  keeps it quiet). A test refuses to let a module be committed with the override set.
+  `src/pom/config.py` holds the shared settings `strict`, `debug` and `log_level` from the
+  config file and the `POM_STRICT` / `POM_DEBUG` / `POM_LOG_LEVEL` environment variables, with
+  the environment winning, and never raises. A `Report` can be given a logger, and `Weights`
+  and `ChunkStore` log their problems, an INFO summary on load, and DEBUG detail. 63 new tests.
 - **Report** (`src/pom/report.py`), the shared way every module reports problems as data
   instead of raising: WARNING (recovered) and CRITICAL (cannot do its job, still no crash),
   a `strict` mode that raises for tests and dev tools, a cap on how many issues are kept,

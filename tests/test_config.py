@@ -47,6 +47,24 @@ def test_strict_environment_spellings(text, expected):
     assert config.strict is expected and config.report.ok
 
 
+def test_debug_defaults_to_off():
+    assert Config.load(environ={}).debug is False
+
+
+def test_debug_is_read_from_the_file_and_the_environment(tmp_path):
+    assert Config.load(write(tmp_path, "debug = true\n"), environ={}).debug is True
+    assert Config.load(write(tmp_path, "debug = true\n"), environ={"POM_DEBUG": "0"}).debug is False
+    assert Config.load(environ={"POM_DEBUG": "on"}).debug is True
+
+
+def test_bad_debug_values_mean_off_with_a_warning(tmp_path):
+    from_file = Config.load(write(tmp_path, 'debug = "loud"\n'), environ={})
+    from_env = Config.load(environ={"POM_DEBUG": "banana"})
+    assert from_file.debug is False and from_env.debug is False
+    assert any("debug must be true or false" in w for w in from_file.report.warnings)
+    assert any("POM_DEBUG" in w for w in from_env.report.warnings)
+
+
 def test_the_real_environment_is_used_by_default(monkeypatch):
     monkeypatch.setenv("POM_LOG_LEVEL", "WARNING")
     assert Config.load().log_level == "WARNING"
@@ -56,7 +74,8 @@ def test_the_committed_sample_config_is_clean():
     from pathlib import Path
     sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
     config = Config.load(sample, environ={})
-    assert config.report.ok and config.strict is False and config.log_level == "INFO"
+    assert config.report.ok and config.strict is False and config.debug is False
+    assert config.log_level == "INFO"
 
 
 # --- Recovering from bad input ---------------------------------------------------------

@@ -1,10 +1,14 @@
 # Settings shared by the whole project. Every key is optional; an unknown key or a bad value is
 # logged and ignored, never fatal. Environment variables override this file:
-#   POM_STRICT=1        POM_LOG_LEVEL=DEBUG
+#   POM_STRICT=1   POM_DEBUG=1   POM_LOG_LEVEL=DEBUG
 
 # Development and testing only: raise on every problem a module would otherwise recover from, so
 # a typo is loud while you work. Leave false in the gallery.
 strict = false
+
+# Show every module's DEBUG log lines. To debug just one module, leave this false and set the
+# `DEBUG = None` line at the top of that module to True (and back to None afterwards).
+debug = false
 
 # How much to log to stdout (journalctl -u pom): DEBUG, INFO, WARNING, ERROR or CRITICAL.
 log_level = "INFO"

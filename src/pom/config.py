@@ -1,14 +1,17 @@
 """Settings shared by the whole project.
 
 One small object holds the settings every module may need, so a flag is set in one place instead
-of being threaded through by hand. Today there are two:
+of being threaded through by hand. Today there are three:
 
     strict     Development and testing only. Every problem a module would recover from is raised
                instead, so a typo is loud while you work. Never set in the gallery.
+    debug      Show every module's DEBUG log lines. A single module can override this flag with
+               its own `DEBUG = ...` line (see pom/logs.py).
     log_level  How much the service logs to stdout (and so to journald).
 
 Where values come from, highest priority first:
-    1. Environment variables: POM_STRICT (1/true/yes/on or 0/false/no/off) and POM_LOG_LEVEL.
+    1. Environment variables: POM_STRICT and POM_DEBUG (1/true/yes/on or 0/false/no/off) and
+       POM_LOG_LEVEL.
        These suit a systemd unit (`Environment=POM_LOG_LEVEL=DEBUG`).
     2. A TOML file (config/pom.toml by default), optional.
     3. Built-in defaults: strict off, INFO.
@@ -22,20 +25,21 @@ Design decisions, and why:
     any module can still be tested alone with its own `strict` argument.
   * Python 3.11's standard-library `tomllib` reads the file, so there is no dependency to install.
 """
-import logging
 import os
 import tomllib
 from pathlib import Path
 from typing import Mapping, Optional
 
+from pom.logs import get_logger
 from pom.report import Report
 
 DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "log_level"}
-_log = logging.getLogger(__name__)
+_KEYS = {"strict", "debug", "log_level"}
+DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
+_log = get_logger(__name__, DEBUG)
 
 
 class Config:
@@ -43,14 +47,16 @@ class Config:
 
     Attributes:
         strict: Raise on every recoverable problem (development and tests only).
+        debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
-                 report: Optional[Report] = None):
+                 report: Optional[Report] = None, debug: bool = False):
         """Use `Config.load`; this just holds already-validated values."""
         self.strict = strict
+        self.debug = debug
         self.log_level = log_level
         self.report = report if report is not None else Report(logger=_log)
 
@@ -72,13 +78,16 @@ class Config:
             values = _read_file(Path(path), report)
 
         strict = _bool(values.get("strict", False), "strict", report)
+        debug = _bool(values.get("debug", False), "debug", report)
         log_level = _level(values.get("log_level", "INFO"), "log_level", report)
 
         if "POM_STRICT" in environ:
             strict = _bool(environ["POM_STRICT"], "POM_STRICT", report)
+        if "POM_DEBUG" in environ:
+            debug = _bool(environ["POM_DEBUG"], "POM_DEBUG", report)
         if "POM_LOG_LEVEL" in environ:
             log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)
-        return cls(strict, log_level, report)
+        return cls(strict, log_level, report, debug)
 
 
 def _read_file(path: Path, report: Report) -> dict:

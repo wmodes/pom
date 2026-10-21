@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from pom.logs import LOGGER_NAME, configure_logging
+from pom.logs import LOGGER_NAME, configure_logging, get_logger
 
 
 @pytest.fixture(autouse=True)
@@ -82,3 +82,80 @@ def test_defaults_to_stdout(capsys):
     configure_logging("INFO")
     logging.getLogger("pom.x").warning("to stdout")
     assert "to stdout" in capsys.readouterr().out
+
+
+# --- The debug flag: project-wide, with a per-module override ---------------------------
+
+@pytest.fixture
+def module_logger():
+    """A throwaway module logger under pom, reset afterwards."""
+    name = "pom.demo.module"
+    yield name
+    logging.getLogger(name).setLevel(logging.NOTSET)
+
+
+def emit(name):
+    logging.getLogger(name).debug("debug line")
+    logging.getLogger(name).info("info line")
+
+
+def test_debug_is_hidden_by_default(module_logger):
+    stream = io.StringIO()
+    configure_logging("INFO", stream)
+    get_logger(module_logger)
+    emit(module_logger)
+    assert "debug line" not in stream.getvalue() and "info line" in stream.getvalue()
+
+
+def test_the_project_debug_flag_shows_debug_everywhere(module_logger):
+    stream = io.StringIO()
+    configure_logging("INFO", stream, debug=True)
+    get_logger(module_logger)          # follows the project flag
+    emit(module_logger)
+    assert "debug line" in stream.getvalue()
+
+
+def test_a_module_can_turn_debug_on_when_the_project_flag_is_off(module_logger):
+    stream = io.StringIO()
+    configure_logging("INFO", stream, debug=False)
+    get_logger(module_logger, True)
+    emit(module_logger)
+    assert "debug line" in stream.getvalue()
+
+
+def test_only_the_overriding_module_gets_debug(module_logger):
+    stream = io.StringIO()
+    configure_logging("INFO", stream, debug=False)
+    get_logger(module_logger, True)
+    logging.getLogger("pom.other.module").debug("other debug")
+    emit(module_logger)
+    assert "other debug" not in stream.getvalue() and "debug line" in stream.getvalue()
+
+
+def test_a_module_can_stay_quiet_when_the_project_flag_is_on(module_logger):
+    stream = io.StringIO()
+    configure_logging("INFO", stream, debug=True)
+    get_logger(module_logger, False)
+    emit(module_logger)
+    assert "debug line" not in stream.getvalue() and "info line" in stream.getvalue()
+
+
+def test_reconfiguring_keeps_a_modules_override(module_logger):
+    get_logger(module_logger, True)             # the module is imported first...
+    stream = io.StringIO()
+    configure_logging("WARNING", stream, debug=False)   # ...then the entry point configures
+    emit(module_logger)
+    assert "debug line" in stream.getvalue()
+
+
+def test_none_means_follow_the_project_again(module_logger):
+    get_logger(module_logger, True)
+    get_logger(module_logger, None)
+    stream = io.StringIO()
+    configure_logging("INFO", stream, debug=False)
+    emit(module_logger)
+    assert "debug line" not in stream.getvalue()
+
+
+def test_get_logger_returns_the_named_logger():
+    assert get_logger("pom.some.name").name == "pom.some.name"

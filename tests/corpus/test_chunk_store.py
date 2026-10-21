@@ -329,6 +329,32 @@ def test_an_empty_in_memory_store_is_critical():
     assert ChunkStore.from_chunks([]).report.has_critical
 
 
+def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(corpus, caplog):
+    from pom.logs import get_logger
+    get_logger("pom.corpus.chunk_store", True)
+    try:
+        with caplog.at_level(logging.DEBUG, logger="pom.corpus.chunk_store"):
+            ChunkStore.load(corpus)
+    finally:
+        get_logger("pom.corpus.chunk_store", None)
+    info = [r.message for r in caplog.records if r.levelno == logging.INFO]
+    debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert info == ["loaded 6 chunks from 3 source(s) in 2 register(s)"]
+    assert any("news/ads.jsonl: 2 chunk(s)" in m for m in debug)
+
+
+def test_per_file_detail_is_hidden_when_the_module_flag_is_off(corpus, caplog):
+    from pom.logs import get_logger
+    get_logger("pom.corpus.chunk_store", False)
+    try:
+        with caplog.at_level(logging.DEBUG):   # root only: naming the logger would reset its level
+            ChunkStore.load(corpus)
+    finally:
+        get_logger("pom.corpus.chunk_store", None)
+    assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
+    assert any(r.levelno == logging.INFO for r in caplog.records)   # the summary still shows
+
+
 # --- The same problems in strict mode (development and tests) --------------------------
 
 def raw_corpus(tmp_path, body):

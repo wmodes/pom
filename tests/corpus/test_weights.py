@@ -155,10 +155,34 @@ def test_problems_are_logged_so_they_reach_journald(caplog):
                for r in caplog.records)
 
 
-def test_a_clean_file_logs_nothing(caplog):
+def test_a_clean_file_logs_no_warnings(caplog):
     with caplog.at_level(logging.DEBUG, logger="pom.corpus.weights"):
         Weights.from_dict(doc(news={"share": 2}))
-    assert caplog.records == []
+    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+
+
+@pytest.fixture
+def module_debug():
+    """Lets a test force this module's debug flag, and restores 'follow the project' after."""
+    from pom.logs import get_logger
+    yield lambda flag: get_logger("pom.corpus.weights", flag)
+    get_logger("pom.corpus.weights", None)
+
+
+def test_debug_lines_appear_only_when_the_module_flag_is_on(caplog, module_debug):
+    module_debug(True)
+    with caplog.at_level(logging.DEBUG, logger="pom.corpus.weights"):
+        Weights.from_dict(doc(news={"share": 2})).shares_for(["news"])
+    debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    assert any("parsed 1 register share" in m for m in debug)
+    assert any("normalized shares" in m for m in debug)
+
+
+def test_debug_lines_are_hidden_when_the_module_flag_is_off(caplog, module_debug):
+    module_debug(False)
+    with caplog.at_level(logging.DEBUG):   # root only: naming the logger would reset its level
+        Weights.from_dict(doc(news={"share": 2}))
+    assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
 
 
 def test_check_problems_are_logged_too(caplog):

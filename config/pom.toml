@@ -1,6 +1,6 @@
 # Settings shared by the whole project. Every key is optional; an unknown key or a bad value is
 # logged and ignored, never fatal. Environment variables override this file:
-#   POM_STRICT=1   POM_DEBUG=1   POM_LOG_LEVEL=DEBUG
+#   POM_STRICT=1   POM_DEBUG=1   POM_LOCAL_LOGS=1   POM_LOG_LEVEL=DEBUG
 
 # Development and testing only: raise on every problem a module would otherwise recover from, so
 # a typo is loud while you work. Leave false in the gallery.
@@ -12,3 +12,7 @@ debug = false
 
 # How much to log to stdout (journalctl -u pom): DEBUG, INFO, WARNING, ERROR or CRITICAL.
 log_level = "INFO"
+
+# Also write the log to logs/pom.log (gitignored, rotates at 1 MB), for working on the Mac. Leave
+# false on the Pi, where journald (journalctl -u pom) already keeps the log.
+local_logs = false

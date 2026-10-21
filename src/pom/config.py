@@ -1,17 +1,18 @@
 """Settings shared by the whole project.
 
 One small object holds the settings every module may need, so a flag is set in one place instead
-of being threaded through by hand. Today there are three:
+of being threaded through by hand. Today there are four:
 
     strict     Development and testing only. Every problem a module would recover from is raised
                instead, so a typo is loud while you work. Never set in the gallery.
     debug      Show every module's DEBUG log lines. A single module can override this flag with
                its own `DEBUG = ...` line (see pom/logs.py).
     log_level  How much the service logs to stdout (and so to journald).
+    local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
 
 Where values come from, highest priority first:
-    1. Environment variables: POM_STRICT and POM_DEBUG (1/true/yes/on or 0/false/no/off) and
-       POM_LOG_LEVEL.
+    1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
+       0/false/no/off) and POM_LOG_LEVEL.
        These suit a systemd unit (`Environment=POM_LOG_LEVEL=DEBUG`).
     2. A TOML file (config/pom.toml by default), optional.
     3. Built-in defaults: strict off, INFO.
@@ -37,7 +38,7 @@ DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "debug", "log_level"}
+_KEYS = {"strict", "debug", "log_level", "local_logs"}
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -49,14 +50,16 @@ class Config:
         strict: Raise on every recoverable problem (development and tests only).
         debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
+        local_logs: Also write the log to a local file (development only).
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
-                 report: Optional[Report] = None, debug: bool = False):
+                 report: Optional[Report] = None, debug: bool = False, local_logs: bool = False):
         """Use `Config.load`; this just holds already-validated values."""
         self.strict = strict
         self.debug = debug
+        self.local_logs = local_logs
         self.log_level = log_level
         self.report = report if report is not None else Report(logger=_log)
 
@@ -79,15 +82,18 @@ class Config:
 
         strict = _bool(values.get("strict", False), "strict", report)
         debug = _bool(values.get("debug", False), "debug", report)
+        local_logs = _bool(values.get("local_logs", False), "local_logs", report)
         log_level = _level(values.get("log_level", "INFO"), "log_level", report)
 
         if "POM_STRICT" in environ:
             strict = _bool(environ["POM_STRICT"], "POM_STRICT", report)
         if "POM_DEBUG" in environ:
             debug = _bool(environ["POM_DEBUG"], "POM_DEBUG", report)
+        if "POM_LOCAL_LOGS" in environ:
+            local_logs = _bool(environ["POM_LOCAL_LOGS"], "POM_LOCAL_LOGS", report)
         if "POM_LOG_LEVEL" in environ:
             log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)
-        return cls(strict, log_level, report, debug)
+        return cls(strict, log_level, report, debug, local_logs)
 
 
 def _read_file(path: Path, report: Report) -> dict:

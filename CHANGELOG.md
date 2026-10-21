@@ -20,7 +20,12 @@ December 18 session. Update this file in the same commit as the change it descri
   `src/pom/config.py` holds the shared settings `strict`, `debug` and `log_level` from the
   config file and the `POM_STRICT` / `POM_DEBUG` / `POM_LOG_LEVEL` environment variables, with
   the environment winning, and never raises. A `Report` can be given a logger, and `Weights`
-  and `ChunkStore` log their problems, an INFO summary on load, and DEBUG detail. 63 new tests.
+  and `ChunkStore` log their problems, an INFO summary on load, and DEBUG detail.
+- **Local log file.** For working on the Mac, `local_logs = true` (or `POM_LOCAL_LOGS=1`) also
+  writes the log to `logs/pom.log` with timestamps. The folder is gitignored, the file rotates at
+  1 MB with three backups, and if it cannot be opened logging carries on to stdout with one
+  warning. Off by default, since on the Pi journald keeps the log. 77 new tests across the
+  logging, debug-flag and config work.
 - **Report** (`src/pom/report.py`), the shared way every module reports problems as data
   instead of raising: WARNING (recovered) and CRITICAL (cannot do its job, still no crash),
   a `strict` mode that raises for tests and dev tools, a cap on how many issues are kept,

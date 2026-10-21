@@ -22,3 +22,6 @@ __pycache__/
 # macOS
 .DS_Store
 .pytest_cache/
+
+# Local log files written when local_logs is on (the service logs to journald)
+logs/

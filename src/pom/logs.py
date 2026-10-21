@@ -12,9 +12,16 @@ THE DEBUG FLAG. There is one flag, `debug`, with two places to set it:
     off, or to False to keep it quiet even when the project flag is on. Edit that one line while
     chasing a tricky problem in one module, and put it back to None afterwards.
 
+LOCAL LOG FILE. While developing on the Mac there is no journald, so `local_logs=True` (the
+`local_logs` config flag, or POM_LOCAL_LOGS=1) also copies the log into `logs/pom.log`. That
+folder is gitignored. The file has timestamps (journald adds its own, a file does not), and it
+rotates at 1 MB with three backups so a long session cannot fill the disk. If the folder cannot be
+created or the file cannot be opened, logging carries on to stdout and says so in one warning.
+
 Design decisions, and why:
-  * stdout, not a file: journald does the storage, rotation and timestamping.
-  * No timestamp in the line: journald adds one, and a second would be noise.
+  * stdout is the service's log: journald does the storage, rotation and timestamping there, so
+    the stdout line has no timestamp of its own. The file is for local work only and is off by
+    default.
   * Start-up order for the entry point: call `configure_logging()` once with defaults, load the
     Config (so any config problem is logged in the same format), then call `configure_logging`
     again with the Config's values. Calling it twice is safe.
@@ -27,39 +34,70 @@ Design decisions, and why:
 """
 import logging
 import sys
-from typing import Optional, TextIO
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Optional, TextIO, Union
 
 LOGGER_NAME = "pom"
 FORMAT = "%(levelname)s %(name)s: %(message)s"
+FILE_FORMAT = "%(asctime)s " + FORMAT
+LOG_DIR = "logs"
+LOG_FILE = "pom.log"
+MAX_BYTES = 1_000_000
+BACKUPS = 3
 _MARK = "_pom_handler"
 
 
 def configure_logging(level: str = "INFO", stream: Optional[TextIO] = None,
-                      debug: bool = False) -> logging.Logger:
-    """Sends the `pom` logger's output to a stream (stdout by default).
+                      debug: bool = False, local_logs: bool = False,
+                      log_dir: Union[str, Path] = LOG_DIR) -> logging.Logger:
+    """Sends the `pom` logger's output to a stream (stdout by default), and optionally a file.
 
     Args:
         level: A level name such as "INFO" or "debug". Anything unrecognized means INFO.
         stream: Where to write; defaults to the current sys.stdout.
         debug: The project-wide debug flag. True shows DEBUG output from every module (except
             any module that has overridden the flag to False).
+        local_logs: Also write the log to `<log_dir>/pom.log` (development only).
+        log_dir: Where the local log file goes; created if missing.
 
     Returns:
-        The configured `pom` logger.
+        The configured `pom` logger. Never raises: if the log file cannot be opened, a warning
+        is logged and logging continues without it.
     """
     logger = logging.getLogger(LOGGER_NAME)
     for handler in list(logger.handlers):
         if getattr(handler, _MARK, False):
             logger.removeHandler(handler)
-    handler = logging.StreamHandler(stream if stream is not None else sys.stdout)
-    handler.setFormatter(logging.Formatter(FORMAT))
-    setattr(handler, _MARK, True)
-    logger.addHandler(handler)
+            handler.close()
+    _add_handler(logger, logging.StreamHandler(stream if stream is not None else sys.stdout), FORMAT)
     resolved = logging.getLevelName(str(level).upper())
     logger.setLevel(logging.DEBUG if debug
                     else resolved if isinstance(resolved, int) else logging.INFO)
     logger.propagate = False   # the pom handler is the only output; no duplicates via root
+    if local_logs:
+        _add_file_handler(logger, Path(log_dir))
     return logger
+
+
+def _add_handler(logger: logging.Logger, handler: logging.Handler, fmt: str) -> None:
+    """Attaches one of our handlers, marked so a later configure call can find and replace it."""
+    handler.setFormatter(logging.Formatter(fmt))
+    setattr(handler, _MARK, True)
+    logger.addHandler(handler)
+
+
+def _add_file_handler(logger: logging.Logger, directory: Path) -> None:
+    """Adds the rotating local log file; a failure becomes one warning, not a crash."""
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(directory / LOG_FILE, maxBytes=MAX_BYTES,
+                                      backupCount=BACKUPS, encoding="utf-8")
+    except OSError as error:
+        logger.warning("cannot open the local log file in %s: %s; continuing without it",
+                       directory, error)
+        return
+    _add_handler(logger, handler, FILE_FORMAT)
 
 
 def get_logger(name: str, debug: Optional[bool] = None) -> logging.Logger:

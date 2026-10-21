@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from pom.logs import LOGGER_NAME, configure_logging, get_logger
+from pom.logs import BACKUPS, LOG_FILE, LOGGER_NAME, MAX_BYTES, configure_logging, get_logger
 
 
 @pytest.fixture(autouse=True)
@@ -13,6 +13,9 @@ def clean_logger():
     logger = logging.getLogger(LOGGER_NAME)
     saved = (list(logger.handlers), logger.level, logger.propagate)
     yield
+    for handler in list(logger.handlers):
+        if handler not in saved[0]:
+            handler.close()          # release any log file a test opened
     logger.handlers[:] = saved[0]
     logger.setLevel(saved[1])
     logger.propagate = saved[2]
@@ -159,3 +162,125 @@ def test_none_means_follow_the_project_again(module_logger):
 
 def test_get_logger_returns_the_named_logger():
     assert get_logger("pom.some.name").name == "pom.some.name"
+
+
+# --- The local log file ---------------------------------------------------------------
+
+def read_log(directory):
+    return (directory / LOG_FILE).read_text(encoding="utf-8")
+
+
+def test_local_logs_off_writes_no_file_and_makes_no_folder(tmp_path):
+    folder = tmp_path / "logs"
+    configure_logging("INFO", io.StringIO(), local_logs=False, log_dir=folder)
+    logging.getLogger("pom.x").warning("nothing on disk")
+    assert not folder.exists()
+
+
+def test_local_logs_writes_the_log_to_a_file_as_well_as_the_stream(tmp_path):
+    folder, stream = tmp_path / "logs", io.StringIO()
+    configure_logging("INFO", stream, local_logs=True, log_dir=folder)
+    logging.getLogger("pom.corpus.weights").warning("bad weight")
+    assert "WARNING pom.corpus.weights: bad weight" in stream.getvalue()
+    assert "WARNING pom.corpus.weights: bad weight" in read_log(folder)
+
+
+def test_the_file_has_timestamps_but_the_stream_does_not(tmp_path):
+    folder, stream = tmp_path / "logs", io.StringIO()
+    configure_logging("INFO", stream, local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").warning("stamped")
+    assert stream.getvalue() == "WARNING pom.x: stamped\n"
+    import re
+    assert re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3} WARNING pom\.x: stamped\n", read_log(folder))
+
+
+def test_the_folder_is_created_if_missing_including_parents(tmp_path):
+    folder = tmp_path / "deep" / "er" / "logs"
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").warning("made it")
+    assert "made it" in read_log(folder)
+
+
+def test_the_file_obeys_the_level_and_the_debug_flag(tmp_path):
+    folder = tmp_path / "logs"
+    configure_logging("WARNING", io.StringIO(), local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").info("too quiet")
+    logging.getLogger("pom.x").warning("loud enough")
+    text = read_log(folder)
+    assert "too quiet" not in text and "loud enough" in text
+    configure_logging("WARNING", io.StringIO(), debug=True, local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").debug("now visible")
+    assert "now visible" in read_log(folder)
+
+
+def test_a_module_debug_override_reaches_the_file(tmp_path):
+    folder = tmp_path / "logs"
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    get_logger("pom.demo.filed", True)
+    try:
+        logging.getLogger("pom.demo.filed").debug("module debug")
+    finally:
+        get_logger("pom.demo.filed", None)
+    assert "module debug" in read_log(folder)
+
+
+def test_calling_twice_does_not_duplicate_lines_in_the_file(tmp_path):
+    folder = tmp_path / "logs"
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").warning("only once")
+    assert read_log(folder).count("only once") == 1
+
+
+def test_turning_local_logs_off_again_stops_writing_to_the_file(tmp_path):
+    folder = tmp_path / "logs"
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    configure_logging("INFO", io.StringIO(), local_logs=False)
+    logging.getLogger("pom.x").warning("after switching off")
+    assert "after switching off" not in read_log(folder)
+
+
+def test_the_file_keeps_earlier_runs_by_appending(tmp_path):
+    folder = tmp_path / "logs"
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").warning("first run")
+    configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    logging.getLogger("pom.x").warning("second run")
+    text = read_log(folder)
+    assert "first run" in text and "second run" in text
+
+
+def test_the_file_rotates_instead_of_growing_forever(tmp_path):
+    folder = tmp_path / "logs"
+    logger = configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    handler = next(h for h in logger.handlers if getattr(h, "baseFilename", None))
+    assert (handler.maxBytes, handler.backupCount) == (MAX_BYTES, BACKUPS)
+
+
+def test_an_unwritable_location_does_not_crash_and_warns_on_the_stream(tmp_path):
+    blocker = tmp_path / "logs"
+    blocker.write_text("a file where the folder should be", encoding="utf-8")
+    stream = io.StringIO()
+    configure_logging("INFO", stream, local_logs=True, log_dir=blocker)   # must not raise
+    logging.getLogger("pom.x").warning("still logging")
+    assert "cannot open the local log file" in stream.getvalue()
+    assert "continuing without it" in stream.getvalue()
+    assert "still logging" in stream.getvalue()
+
+
+def test_the_default_folder_is_logs_and_is_gitignored():
+    from pathlib import Path
+    from pom.logs import LOG_DIR
+    assert LOG_DIR == "logs"
+    ignored = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "logs/" in ignored
+
+
+def test_reconfiguring_closes_the_old_log_file(tmp_path):
+    """A handler that is only removed, not closed, leaks a file descriptor on every reload."""
+    folder = tmp_path / "logs"
+    logger = configure_logging("INFO", io.StringIO(), local_logs=True, log_dir=folder)
+    old = next(h for h in logger.handlers if getattr(h, "baseFilename", None))
+    assert old.stream is not None
+    configure_logging("INFO", io.StringIO(), local_logs=False)
+    assert old.stream is None   # closed

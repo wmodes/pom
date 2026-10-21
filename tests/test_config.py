@@ -65,6 +65,24 @@ def test_bad_debug_values_mean_off_with_a_warning(tmp_path):
     assert any("POM_DEBUG" in w for w in from_env.report.warnings)
 
 
+def test_local_logs_defaults_to_off():
+    assert Config.load(environ={}).local_logs is False
+
+
+def test_local_logs_is_read_from_the_file_and_the_environment(tmp_path):
+    assert Config.load(write(tmp_path, "local_logs = true\n"), environ={}).local_logs is True
+    assert Config.load(write(tmp_path, "local_logs = true\n"), environ={"POM_LOCAL_LOGS": "0"}).local_logs is False
+    assert Config.load(environ={"POM_LOCAL_LOGS": "yes"}).local_logs is True
+
+
+def test_bad_local_logs_values_mean_off_with_a_warning(tmp_path):
+    from_file = Config.load(write(tmp_path, 'local_logs = "sure"\n'), environ={})
+    from_env = Config.load(environ={"POM_LOCAL_LOGS": "banana"})
+    assert from_file.local_logs is False and from_env.local_logs is False
+    assert any("local_logs must be true or false" in w for w in from_file.report.warnings)
+    assert any("POM_LOCAL_LOGS" in w for w in from_env.report.warnings)
+
+
 def test_the_real_environment_is_used_by_default(monkeypatch):
     monkeypatch.setenv("POM_LOG_LEVEL", "WARNING")
     assert Config.load().log_level == "WARNING"
@@ -75,6 +93,7 @@ def test_the_committed_sample_config_is_clean():
     sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
     config = Config.load(sample, environ={})
     assert config.report.ok and config.strict is False and config.debug is False
+    assert config.local_logs is False
     assert config.log_level == "INFO"
 
 

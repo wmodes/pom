@@ -1,0 +1,6 @@
+# Project-level config. Only test settings so far; packaging comes when we deploy to the Pi.
+[tool.pytest.ini_options]
+# The runtime package lives in src/pom/. Putting src on the path lets tests import `pom`
+# without installing it, which keeps the Mac and the Pi on the same import style.
+pythonpath = ["src"]
+testpaths = ["tests"]

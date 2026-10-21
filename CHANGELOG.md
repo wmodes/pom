@@ -26,6 +26,10 @@ December 18 session. Update this file in the same commit as the change it descri
   1 MB with three backups, and if it cannot be opened logging carries on to stdout with one
   warning. Off by default, since on the Pi journald keeps the log. 77 new tests across the
   logging, debug-flag and config work.
+- **Per-machine config override.** An optional, gitignored `config/pom.local.toml` overrides the
+  committed `config/pom.toml` (the environment still wins over both). The committed file keeps
+  the quiet defaults the Pi runs with; a developer's machine can keep debug logging and
+  `local_logs` on without touching them. 8 new tests.
 - **Report** (`src/pom/report.py`), the shared way every module reports problems as data
   instead of raising: WARNING (recovered) and CRITICAL (cannot do its job, still no crash),
   a `strict` mode that raises for tests and dev tools, a cap on how many issues are kept,

@@ -14,8 +14,11 @@ Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
        0/false/no/off) and POM_LOG_LEVEL.
        These suit a systemd unit (`Environment=POM_LOG_LEVEL=DEBUG`).
-    2. A TOML file (config/pom.toml by default), optional.
-    3. Built-in defaults: strict off, INFO.
+    2. A per-machine override file next to the main one (config/pom.local.toml), optional and
+       gitignored. Use it on the Mac to keep debug logging on without touching what the Pi gets.
+    3. The TOML file (config/pom.toml by default), optional. It is committed, so it holds the safe
+       defaults the Pi runs with.
+    4. Built-in defaults: strict off, INFO.
 
 Design decisions, and why:
   * Config obeys the project principle: it never raises. A missing file is normal (no warning), an
@@ -68,7 +71,8 @@ class Config:
         """Reads the settings from a file and the environment.
 
         Args:
-            path: The TOML file. None means no file; a path that does not exist is fine.
+            path: The TOML file. None means no file; a path that does not exist is fine. A file
+                named like it with `.local` before the extension (pom.local.toml) overrides it.
             environ: The environment to read; defaults to os.environ (tests pass a dict).
 
         Returns:
@@ -78,7 +82,9 @@ class Config:
         report = Report(logger=_log)
         values = {}
         if path is not None:
-            values = _read_file(Path(path), report)
+            path = Path(path)
+            values = _read_file(path, report)
+            values.update(_read_file(path.with_name(f"{path.stem}.local{path.suffix}"), report))
 
         strict = _bool(values.get("strict", False), "strict", report)
         debug = _bool(values.get("debug", False), "debug", report)

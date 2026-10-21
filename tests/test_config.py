@@ -88,13 +88,73 @@ def test_the_real_environment_is_used_by_default(monkeypatch):
     assert Config.load().log_level == "WARNING"
 
 
-def test_the_committed_sample_config_is_clean():
+def test_the_committed_sample_config_is_clean_and_safe_for_the_pi(tmp_path):
+    """Checked on a copy, so a developer's own config/pom.local.toml cannot change the result."""
+    import shutil
     from pathlib import Path
     sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
-    config = Config.load(sample, environ={})
-    assert config.report.ok and config.strict is False and config.debug is False
-    assert config.local_logs is False
+    copy = tmp_path / "pom.toml"
+    shutil.copy(sample, copy)
+    config = Config.load(copy, environ={})
+    assert config.report.ok
+    assert config.strict is False and config.debug is False and config.local_logs is False
     assert config.log_level == "INFO"
+
+
+# --- The per-machine override file ----------------------------------------------------
+
+def write_pair(tmp_path, base, local):
+    main = tmp_path / "pom.toml"
+    main.write_text(base, encoding="utf-8")
+    if local is not None:
+        (tmp_path / "pom.local.toml").write_text(local, encoding="utf-8")
+    return main
+
+
+def test_the_local_file_overrides_the_main_file(tmp_path):
+    main = write_pair(tmp_path, 'log_level = "INFO"\nlocal_logs = false\n',
+                      'log_level = "DEBUG"\nlocal_logs = true\n')
+    config = Config.load(main, environ={})
+    assert config.log_level == "DEBUG" and config.local_logs is True and config.report.ok
+
+
+def test_keys_the_local_file_leaves_out_come_from_the_main_file(tmp_path):
+    main = write_pair(tmp_path, 'strict = true\nlog_level = "WARNING"\n', 'local_logs = true\n')
+    config = Config.load(main, environ={})
+    assert config.strict is True and config.log_level == "WARNING" and config.local_logs is True
+
+
+def test_no_local_file_is_fine_and_silent(tmp_path):
+    config = Config.load(write_pair(tmp_path, "strict = true\n", None), environ={})
+    assert config.strict is True and config.report.ok
+
+
+def test_the_local_file_works_even_if_the_main_file_is_missing(tmp_path):
+    (tmp_path / "pom.local.toml").write_text('log_level = "DEBUG"\n', encoding="utf-8")
+    assert Config.load(tmp_path / "pom.toml", environ={}).log_level == "DEBUG"
+
+
+def test_the_environment_still_beats_the_local_file(tmp_path):
+    main = write_pair(tmp_path, "", 'log_level = "DEBUG"\n')
+    assert Config.load(main, environ={"POM_LOG_LEVEL": "ERROR"}).log_level == "ERROR"
+
+
+def test_a_broken_local_file_warns_and_the_main_file_still_applies(tmp_path):
+    main = write_pair(tmp_path, "strict = true\n", "log_level = = oops")
+    config = Config.load(main, environ={})
+    assert config.strict is True
+    assert any("pom.local.toml" in w and "cannot read config file" in w for w in config.report.warnings)
+
+
+def test_unknown_keys_in_the_local_file_are_warned_about(tmp_path):
+    main = write_pair(tmp_path, "", "debgu = true\n")
+    assert any("pom.local.toml" in w and "debgu" in w for w in Config.load(main, environ={}).report.warnings)
+
+
+def test_local_toml_files_are_gitignored():
+    from pathlib import Path
+    lines = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "*.local.toml" in lines
 
 
 # --- Recovering from bad input ---------------------------------------------------------

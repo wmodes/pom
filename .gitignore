@@ -4,6 +4,7 @@ CLAUDE.md
 # Secrets and local config
 .env
 *.local.conf
+*.local.toml
 
 # Recordings of real people and generated audio stay out of the repo
 samples/

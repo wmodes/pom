@@ -24,9 +24,10 @@ December 18 session. Update this file in the same commit as the change it descri
   in about 0.2 seconds. 40 tests in `tests/corpus/test_chunk_store.py`.
 - **Weights module** (`src/pom/corpus/weights.py`, the first runtime code). Reads
   `corpus/chunks/weights.json`, treats anything unlisted as 1.0, normalizes register shares over
-  the registers that have chunks, and checks the file against the corpus layout. Drift is a
-  warning; a listed register or source with no chunks is an error. 49 tests in
-  `tests/corpus/test_weights.py`.
+  the registers that have chunks, and checks the file against the corpus layout. It never stops
+  the oracle: a bad number counts 1.0, a bad or unknown entry is skipped, a missing or invalid
+  file means all defaults, and every problem is recorded in a `Report`. `strict=True` raises
+  instead, for tests and dev tools. 70 tests in `tests/corpus/test_weights.py`.
 - **Project setup for tests:** `pyproject.toml` (pytest settings), `requirements-dev.txt`, and the
   `pom` virtual environment on Python 3.11 to match the Pi's Bookworm.
 - **Output validation stub** (`scripts/dev/corpus/validate_output.py`). Reports nothing yet; its

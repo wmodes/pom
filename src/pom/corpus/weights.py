@@ -10,123 +10,126 @@ The file is a tree that mirrors the folders in chunks/:
     {"registers": {"news": {"share": 1.0, "sources": {"news-annual-monitor-...": 0.2}}}}
 
 Design decisions, and why:
-  * Anything not listed counts 1.0. The file is edited by hand and the corpus grows, so it will
-    drift out of sync; an unlisted register or source must still work. Drift is reported as a
-    warning, never an error, so a new source never stops the oracle.
-  * A listed register or source with no chunks IS an error. That is almost always a typo or a
-    removed source, and quietly ignoring it would hide a weight that does nothing.
+  * Nothing here may stop the oracle. The file is edited by hand, so typos will happen; per the
+    project principle (see pom/__init__.py) every problem is recovered from and recorded in a
+    Report, never raised. A bad number counts 1.0, a bad or unknown entry is skipped, a missing
+    or unreadable file means all defaults. `strict=True` raises instead, for tests and dev tools.
+  * Anything not listed counts 1.0. The file is hand-edited and the corpus grows, so it will
+    drift out of sync; an unlisted register or source must still work.
+  * A listed register or source with no chunks is reported (it is probably a typo or a removed
+    source and does nothing) but is harmless.
   * Shares are relative and normalized only over the registers that have chunks, so the numbers
     can be written however is convenient (0.8, 1, 1) and a register with no chunks cannot steal
-    probability from the others.
-  * Bad numbers (negative, NaN, strings, booleans) are errors. A typo such as "shares" for
-    "share" is an error too, rather than a silently ignored key.
-  * The module never prints or logs. Problems come back as data (a WeightsReport) or raise
-    WeightsError, and the caller decides what to do with them.
+    probability from the others. If every share is zero the registers count 1.0 each, since
+    drawing nothing is worse than drawing evenly.
+  * The module never prints or logs. The Report carries the problems; the caller decides.
 """
 import json
 import math
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, Optional
+
+from pom.report import Report
 
 DEFAULT_WEIGHT = 1.0
 _REGISTER_KEYS = {"share", "sources"}
 
 
 class WeightsError(ValueError):
-    """The weights file is unreadable, malformed, or contradicts the corpus."""
-
-
-@dataclass
-class WeightsReport:
-    """What `Weights.check` found that is worth knowing but not worth stopping for.
-
-    Attributes:
-        warnings: Human-readable lines, one per problem (for example an unlisted source).
-    """
-    warnings: list[str] = field(default_factory=list)
-
-    @property
-    def ok(self) -> bool:
-        """True when there is nothing to report."""
-        return not self.warnings
+    """Raised for any weights problem, but only in strict mode (development and tests)."""
 
 
 class Weights:
     """Register shares and per-source weights, with defaults and validation.
 
     Build one with `Weights.from_file` or `Weights.from_dict`, then ask it for shares and
-    weights. `check` compares it with the corpus layout.
+    weights. `report` holds whatever was recovered from while reading; `check` compares the
+    weights with the corpus layout and returns its own report.
     """
 
     def __init__(self, shares: Mapping[str, float], source_weights: Mapping[str, float],
-                 listed_under: Mapping[str, str]):
+                 listed_under: Mapping[str, str], report: Optional[Report] = None,
+                 strict: bool = False):
         """Use the `from_*` constructors; this takes already-validated values.
 
         Args:
             shares: Relative share per listed register.
             source_weights: Weight per listed source.
             listed_under: For each listed source, the register it is listed beneath.
+            report: Problems found while reading (a fresh one if not given).
+            strict: Whether later checks raise instead of reporting.
         """
         self._shares = dict(shares)
         self._weights = dict(source_weights)
         self._listed_under = dict(listed_under)
+        self._strict = strict
+        self.report = report if report is not None else _new_report(strict)
 
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_file(cls, path) -> "Weights":
-        """Reads and validates a weights file.
+    def from_file(cls, path, strict: bool = False) -> "Weights":
+        """Reads a weights file.
 
-        Raises:
-            WeightsError: If the file is missing, is not JSON, or has bad contents.
+        A missing, unreadable or invalid file gives all-default weights and a warning, so the
+        oracle still runs. With strict=True it raises WeightsError instead.
         """
+        report = _new_report(strict)
         path = Path(path)
         try:
-            text = path.read_text(encoding="utf-8")
+            document = json.loads(path.read_text(encoding="utf-8"))
         except OSError as error:
-            raise WeightsError(f"cannot read weights file {path}: {error}") from error
-        try:
-            document = json.loads(text)
+            report.warn(f"cannot read weights file {path}: {error}; every weight counts 1.0")
+            document = {}
         except json.JSONDecodeError as error:
-            raise WeightsError(f"weights file {path} is not valid JSON: {error}") from error
-        return cls.from_dict(document)
+            report.warn(f"weights file {path} is not valid JSON: {error}; every weight counts 1.0")
+            document = {}
+        return cls._parse(document, report, strict)
 
     @classmethod
-    def from_dict(cls, document) -> "Weights":
-        """Validates an already-parsed weights document.
+    def from_dict(cls, document, strict: bool = False) -> "Weights":
+        """Reads an already-parsed weights document, recovering from anything wrong in it.
 
         Keys starting with an underscore (such as `_about`) are notes and are ignored.
-
-        Raises:
-            WeightsError: On any structural or numeric problem.
         """
+        return cls._parse(document, _new_report(strict), strict)
+
+    @classmethod
+    def _parse(cls, document, report: Report, strict: bool) -> "Weights":
+        """Walks the document, keeping what is valid and reporting what is not."""
+        shares, weights, listed_under = {}, {}, {}
         if not isinstance(document, dict):
-            raise WeightsError("weights file must be a JSON object")
+            report.warn("weights file must be a JSON object; every weight counts 1.0")
+            return cls(shares, weights, listed_under, report, strict)
         registers = document.get("registers", {})
         if not isinstance(registers, dict):
-            raise WeightsError("'registers' must be an object")
-        shares, weights, listed_under = {}, {}, {}
+            report.warn("'registers' must be an object; every weight counts 1.0")
+            return cls(shares, weights, listed_under, report, strict)
         for name, entry in registers.items():
             if name.startswith("_"):
                 continue
             if not isinstance(entry, dict):
-                raise WeightsError(f"register '{name}' must be an object with 'share' and 'sources'")
-            unknown = set(entry) - _REGISTER_KEYS - {k for k in entry if k.startswith("_")}
+                report.warn(f"register '{name}' must be an object with 'share' and 'sources'; "
+                            f"ignoring it")
+                continue
+            unknown = sorted(k for k in entry if k not in _REGISTER_KEYS and not k.startswith("_"))
             if unknown:
-                raise WeightsError(f"register '{name}' has unknown key(s): {', '.join(sorted(unknown))}")
-            shares[name] = _number(entry.get("share", DEFAULT_WEIGHT), f"register '{name}' share")
+                report.warn(f"register '{name}' has unknown key(s): {', '.join(unknown)}; ignoring them")
+            shares[name] = _number(entry.get("share", DEFAULT_WEIGHT), f"register '{name}' share", report)
             sources = entry.get("sources", {})
             if not isinstance(sources, dict):
-                raise WeightsError(f"register '{name}' 'sources' must be an object")
+                report.warn(f"register '{name}' 'sources' must be an object; ignoring it")
+                continue
             for source, weight in sources.items():
                 if source.startswith("_"):
                     continue
                 if source in weights:
-                    raise WeightsError(f"source '{source}' is listed under more than one register")
-                weights[source] = _number(weight, f"source '{source}' weight")
+                    report.warn(f"source '{source}' is listed under more than one register; "
+                                f"keeping the first")
+                    continue
+                weights[source] = _number(weight, f"source '{source}' weight", report)
                 listed_under[source] = name
-        return cls(shares, weights, listed_under)
+        return cls(shares, weights, listed_under, report, strict)
 
     # --- Lookups --------------------------------------------------------------------
 
@@ -144,60 +147,75 @@ class Weights:
         Args:
             registers: The registers that actually have chunks. Others get no probability.
 
-        Raises:
-            WeightsError: If there are no registers, or every share is zero.
+        Returns:
+            Register -> share. Empty if no registers were given (nothing to draw from; the
+            caller reports that). If every share is zero, each register counts 1.0 and a
+            warning is recorded in `report` (strict mode raises instead).
         """
         names = list(registers)
+        if not names:
+            return {}
         total = sum(self.share(name) for name in names)
-        if not names or total <= 0:
-            raise WeightsError("no register has a positive share, so nothing can be drawn")
+        if total <= 0:
+            self.report.warn("no register has a positive share, so nothing can be drawn; "
+                             "counting every register 1.0")
+            return {name: 1.0 / len(names) for name in names}
         return {name: self.share(name) / total for name in names}
 
     # --- Validation -----------------------------------------------------------------
 
-    def check(self, layout: Mapping[str, Iterable[str]]) -> WeightsReport:
+    def check(self, layout: Mapping[str, Iterable[str]]) -> Report:
         """Compares the weights with the corpus layout.
 
         Args:
             layout: Register name -> the source ids that have chunks in it.
 
         Returns:
-            A report of drift worth a warning: unlisted registers or sources, and sources
-            listed under a different register than the one their chunks live in.
-
-        Raises:
-            WeightsError: If a listed register or source has no chunks.
+            A new Report of everything that has drifted: weights listed for a register or
+            source with no chunks (harmless, but probably a typo), registers and sources the
+            file does not mention (counted 1.0), and sources listed under a different register
+            than the one their chunks live in. Strict mode raises on the first of these.
         """
+        report = _new_report(self._strict)
         actual = {register: set(sources) for register, sources in layout.items()}
         located = {source: register for register, sources in actual.items() for source in sources}
 
         empty_registers = sorted(r for r in self._shares if not actual.get(r))
         if empty_registers:
-            raise WeightsError(f"weights list register(s) with no chunks: {', '.join(empty_registers)}")
+            report.warn(f"weights list register(s) with no chunks: {', '.join(empty_registers)}")
         missing_sources = sorted(s for s in self._weights if s not in located)
         if missing_sources:
-            raise WeightsError(f"weights list source(s) with no chunks: {', '.join(missing_sources)}")
-
-        report = WeightsReport()
+            report.warn(f"weights list source(s) with no chunks: {', '.join(missing_sources)}")
         unlisted_registers = sorted(r for r in actual if r not in self._shares)
         if unlisted_registers:
-            report.warnings.append(f"{len(unlisted_registers)} register(s) not in weights file, "
-                                   f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_registers)}")
+            report.warn(f"{len(unlisted_registers)} register(s) not in weights file, "
+                        f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_registers)}")
         unlisted_sources = sorted(s for s in located if s not in self._weights)
         if unlisted_sources:
-            report.warnings.append(f"{len(unlisted_sources)} source(s) not in weights file, "
-                                   f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_sources)}")
+            report.warn(f"{len(unlisted_sources)} source(s) not in weights file, "
+                        f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_sources)}")
         for source, register in sorted(self._listed_under.items()):
-            if located[source] != register:
-                report.warnings.append(f"source '{source}' is listed under '{register}' but its "
-                                       f"chunks are in '{located[source]}'")
+            if source in located and located[source] != register:
+                report.warn(f"source '{source}' is listed under '{register}' but its "
+                            f"chunks are in '{located[source]}'")
         return report
 
 
-def _number(value, label: str) -> float:
-    """A finite, non-negative number, or WeightsError. Booleans and strings are rejected."""
+def _new_report(strict: bool) -> Report:
+    """A Report that raises WeightsError in strict mode and collects otherwise."""
+    return Report(strict=strict, error=WeightsError)
+
+
+def _number(value, label: str, report: Report) -> float:
+    """A finite, non-negative number; otherwise a warning and the default (1.0).
+
+    Booleans and strings are rejected: `true` is almost certainly a typo, not a weight of 1.
+    """
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise WeightsError(f"{label} must be a number, got {value!r}")
+        report.warn(f"{label} must be a number, got {value!r}; using {DEFAULT_WEIGHT}")
+        return DEFAULT_WEIGHT
     if not math.isfinite(value) or value < 0:
-        raise WeightsError(f"{label} must be a finite number of at least 0, got {value!r}")
+        report.warn(f"{label} must be a finite number of at least 0, got {value!r}; "
+                    f"using {DEFAULT_WEIGHT}")
+        return DEFAULT_WEIGHT
     return float(value)

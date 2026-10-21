@@ -1,7 +1,11 @@
 """Tests for pom.corpus.weights: parsing, defaults, normalization and validation.
 
-Everything runs against tiny in-memory documents or temp files, so nothing depends on the real
-corpus except the last test, which is a smoke check of the committed weights file.
+The module follows the project principle that nothing may stop the oracle: in its default
+(lenient) mode every bad input recovers and is recorded in a Report. In strict mode, used by
+tests and dev tools, the same inputs raise. Most bad-input cases are therefore tested both ways.
+
+Everything runs against tiny in-memory documents or temp files, except the last test, a smoke
+check of the committed weights file.
 """
 import json
 from pathlib import Path
@@ -18,12 +22,13 @@ def doc(**registers):
     return {"registers": registers}
 
 
-# --- Parsing ---------------------------------------------------------------------------
+# --- Parsing valid input ---------------------------------------------------------------
 
 def test_reads_shares_and_source_weights():
     weights = Weights.from_dict(doc(news={"share": 2, "sources": {"ads": 0.5}}))
     assert weights.share("news") == 2.0
     assert weights.source_weight("ads") == 0.5
+    assert weights.report.ok
 
 
 def test_unlisted_register_and_source_count_one():
@@ -34,13 +39,12 @@ def test_unlisted_register_and_source_count_one():
 
 def test_register_without_share_or_sources_defaults():
     weights = Weights.from_dict(doc(news={}))
-    assert weights.share("news") == 1.0
+    assert weights.share("news") == 1.0 and weights.report.ok
 
 
 def test_empty_document_is_valid_and_all_defaults():
     weights = Weights.from_dict({})
-    assert weights.share("x") == 1.0
-    assert weights.source_weight("y") == 1.0
+    assert weights.share("x") == 1.0 and weights.source_weight("y") == 1.0 and weights.report.ok
 
 
 def test_underscore_keys_are_notes_and_ignored():
@@ -51,75 +55,133 @@ def test_underscore_keys_are_notes_and_ignored():
     assert weights.share("news") == 3.0
     assert weights.source_weight("ads") == 2.0
     assert weights.source_weight("_n") == 1.0   # a note, not a weight
+    assert weights.report.ok
 
 
 def test_zero_is_allowed_to_switch_something_off():
     weights = Weights.from_dict(doc(news={"share": 0, "sources": {"ads": 0}}))
-    assert weights.share("news") == 0.0
-    assert weights.source_weight("ads") == 0.0
+    assert weights.share("news") == 0.0 and weights.source_weight("ads") == 0.0
+    assert weights.report.ok
 
 
 def test_from_file_reads_json(tmp_path):
     path = tmp_path / "weights.json"
     path.write_text(json.dumps(doc(news={"share": 4})), encoding="utf-8")
-    assert Weights.from_file(path).share("news") == 4.0
+    weights = Weights.from_file(path)
+    assert weights.share("news") == 4.0 and weights.report.ok
 
 
-# --- Bad input -------------------------------------------------------------------------
+# --- Recovering from bad input (the default) -------------------------------------------
 
-def test_missing_file_is_an_error(tmp_path):
-    with pytest.raises(WeightsError, match="cannot read"):
-        Weights.from_file(tmp_path / "nope.json")
+def test_missing_file_gives_defaults_and_a_warning_not_a_crash(tmp_path):
+    weights = Weights.from_file(tmp_path / "nope.json")
+    assert weights.share("news") == 1.0
+    assert any("cannot read" in w and "1.0" in w for w in weights.report.warnings)
 
 
-def test_invalid_json_is_an_error(tmp_path):
+def test_invalid_json_gives_defaults_and_a_warning(tmp_path):
     path = tmp_path / "weights.json"
     path.write_text("{not json", encoding="utf-8")
-    with pytest.raises(WeightsError, match="not valid JSON"):
-        Weights.from_file(path)
+    weights = Weights.from_file(path)
+    assert weights.source_weight("x") == 1.0
+    assert any("not valid JSON" in w for w in weights.report.warnings)
 
 
 @pytest.mark.parametrize("bad", [[], "text", 5, None])
-def test_top_level_must_be_an_object(bad):
-    with pytest.raises(WeightsError, match="must be a JSON object"):
-        Weights.from_dict(bad)
+def test_top_level_not_an_object_gives_defaults(bad):
+    weights = Weights.from_dict(bad)
+    assert weights.share("news") == 1.0
+    assert any("JSON object" in w for w in weights.report.warnings)
 
 
-def test_registers_must_be_an_object():
-    with pytest.raises(WeightsError, match="'registers' must be an object"):
-        Weights.from_dict({"registers": []})
+def test_registers_not_an_object_gives_defaults():
+    weights = Weights.from_dict({"registers": []})
+    assert weights.share("news") == 1.0
+    assert any("'registers' must be an object" in w for w in weights.report.warnings)
 
 
-def test_register_entry_must_be_an_object():
-    with pytest.raises(WeightsError, match="register 'news' must be an object"):
-        Weights.from_dict({"registers": {"news": 3}})
+def test_register_entry_not_an_object_is_skipped_and_the_rest_survive():
+    weights = Weights.from_dict(doc(news=3, poetry={"share": 4}))
+    assert weights.share("news") == 1.0           # skipped: default
+    assert weights.share("poetry") == 4.0         # the good sibling is untouched
+    assert any("register 'news' must be an object" in w for w in weights.report.warnings)
 
 
-def test_sources_must_be_an_object():
-    with pytest.raises(WeightsError, match="'sources' must be an object"):
-        Weights.from_dict(doc(news={"sources": ["ads"]}))
+def test_sources_not_an_object_is_skipped_but_the_share_survives():
+    weights = Weights.from_dict(doc(news={"share": 3, "sources": ["ads"]}))
+    assert weights.share("news") == 3.0 and weights.source_weight("ads") == 1.0
+    assert any("'sources' must be an object" in w for w in weights.report.warnings)
 
 
-def test_typo_in_a_register_key_is_an_error():
-    with pytest.raises(WeightsError, match="unknown key.*shares"):
-        Weights.from_dict(doc(news={"shares": 2}))
+def test_typo_in_a_register_key_warns_and_the_valid_keys_still_apply():
+    weights = Weights.from_dict(doc(news={"shares": 2, "share": 3, "sources": {"ads": 0.5}}))
+    assert weights.share("news") == 3.0 and weights.source_weight("ads") == 0.5
+    assert any("unknown key" in w and "shares" in w for w in weights.report.warnings)
 
 
 @pytest.mark.parametrize("bad", ["2", None, True, False, [1], -1, -0.5, float("nan"), float("inf")])
-def test_bad_share_values_are_errors(bad):
-    with pytest.raises(WeightsError, match="share"):
-        Weights.from_dict(doc(news={"share": bad}))
+def test_bad_share_falls_back_to_one_with_a_warning(bad):
+    weights = Weights.from_dict(doc(news={"share": bad}))
+    assert weights.share("news") == 1.0
+    assert any("register 'news' share" in w and "using 1.0" in w for w in weights.report.warnings)
 
 
 @pytest.mark.parametrize("bad", ["2", None, True, -1, float("nan"), float("inf")])
-def test_bad_source_weights_are_errors(bad):
-    with pytest.raises(WeightsError, match="source 'ads'"):
-        Weights.from_dict(doc(news={"sources": {"ads": bad}}))
+def test_bad_source_weight_falls_back_to_one_with_a_warning(bad):
+    weights = Weights.from_dict(doc(news={"sources": {"ads": bad, "obits": 0.2}}))
+    assert weights.source_weight("ads") == 1.0
+    assert weights.source_weight("obits") == 0.2   # one bad weight does not spoil the others
+    assert any("source 'ads'" in w for w in weights.report.warnings)
 
 
-def test_a_source_listed_twice_is_an_error():
-    with pytest.raises(WeightsError, match="more than one register"):
-        Weights.from_dict(doc(news={"sources": {"ads": 1}}, poetry={"sources": {"ads": 1}}))
+def test_a_source_listed_twice_keeps_the_first():
+    weights = Weights.from_dict(doc(news={"sources": {"ads": 0.5}}, poetry={"sources": {"ads": 9}}))
+    assert weights.source_weight("ads") == 0.5
+    assert any("more than one register" in w for w in weights.report.warnings)
+
+
+def test_many_problems_at_once_never_raise_and_all_are_reported():
+    weights = Weights.from_dict(doc(news={"share": "x", "sources": {"a": -1, "b": None}},
+                                    poetry=7, cooking={"shares": 1}))
+    assert len(weights.report.warnings) >= 4
+    assert weights.share("news") == 1.0
+
+
+# --- The same problems in strict mode (development and tests) --------------------------
+
+STRICT_CASES = [
+    ("a missing file", None, "cannot read"),
+    ("top level not an object", [], "JSON object"),
+    ("registers not an object", {"registers": []}, "'registers' must be an object"),
+    ("register not an object", doc(news=3), "register 'news' must be an object"),
+    ("sources not an object", doc(news={"sources": ["ads"]}), "'sources' must be an object"),
+    ("a typo in a key", doc(news={"shares": 2}), "unknown key.*shares"),
+    ("a bad share", doc(news={"share": "2"}), "register 'news' share"),
+    ("a negative share", doc(news={"share": -1}), "register 'news' share"),
+    ("a bad source weight", doc(news={"sources": {"ads": None}}), "source 'ads'"),
+    ("a duplicate source", doc(news={"sources": {"ads": 1}}, poetry={"sources": {"ads": 1}}),
+     "more than one register"),
+]
+
+
+@pytest.mark.parametrize("label,document,pattern", STRICT_CASES, ids=[c[0] for c in STRICT_CASES])
+def test_strict_mode_raises_where_lenient_mode_recovers(tmp_path, label, document, pattern):
+    with pytest.raises(WeightsError, match=pattern):
+        if document is None:
+            Weights.from_file(tmp_path / "nope.json", strict=True)
+        else:
+            Weights.from_dict(document, strict=True)
+
+
+def test_strict_invalid_json_raises(tmp_path):
+    path = tmp_path / "weights.json"
+    path.write_text("{not json", encoding="utf-8")
+    with pytest.raises(WeightsError, match="not valid JSON"):
+        Weights.from_file(path, strict=True)
+
+
+def test_strict_mode_accepts_a_clean_document():
+    assert Weights.from_dict(doc(news={"share": 2, "sources": {"ads": 1}}), strict=True).share("news") == 2.0
 
 
 # --- Normalized shares -----------------------------------------------------------------
@@ -149,8 +211,7 @@ def test_unlisted_register_gets_one_in_the_normalization():
 def test_shares_are_normalized_only_over_registers_given():
     """A listed register that has no chunks must not take probability from the others."""
     weights = Weights.from_dict(doc(red={"share": 5}, blue={"share": 1}))
-    shares = weights.shares_for(["blue"])
-    assert shares == {"blue": 1.0}
+    assert weights.shares_for(["blue"]) == {"blue": 1.0}
 
 
 def test_zero_share_register_gets_zero_probability():
@@ -158,14 +219,20 @@ def test_zero_share_register_gets_zero_probability():
     assert weights.shares_for(["red", "blue"]) == pytest.approx({"red": 0.0, "blue": 1.0})
 
 
-def test_no_registers_is_an_error():
-    with pytest.raises(WeightsError, match="nothing can be drawn"):
-        Weights.from_dict({}).shares_for([])
+def test_no_registers_gives_an_empty_result_not_an_error():
+    assert Weights.from_dict({}).shares_for([]) == {}
 
 
-def test_all_zero_shares_is_an_error():
+def test_all_zero_shares_fall_back_to_equal_with_a_warning():
     weights = Weights.from_dict(doc(red={"share": 0}, blue={"share": 0}))
-    with pytest.raises(WeightsError, match="nothing can be drawn"):
+    shares = weights.shares_for(["red", "blue"])
+    assert shares == pytest.approx({"red": 0.5, "blue": 0.5})
+    assert any("no register has a positive share" in w for w in weights.report.warnings)
+
+
+def test_all_zero_shares_raise_in_strict_mode():
+    weights = Weights.from_dict(doc(red={"share": 0}, blue={"share": 0}), strict=True)
+    with pytest.raises(WeightsError, match="no register has a positive share"):
         weights.shares_for(["red", "blue"])
 
 
@@ -174,52 +241,55 @@ def test_all_zero_shares_is_an_error():
 LAYOUT = {"news": ["ads", "obits"], "poetry": ["dickinson"]}
 
 
+def matching():
+    return Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 0.2}},
+                                 poetry={"sources": {"dickinson": 1}}))
+
+
 def test_matching_layout_has_nothing_to_report():
-    weights = Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 0.2}},
-                                    poetry={"sources": {"dickinson": 1}}))
-    report = weights.check(LAYOUT)
-    assert report.ok
-    assert report.warnings == []
+    report = matching().check(LAYOUT)
+    assert report.ok and report.warnings == []
 
 
-def test_unlisted_register_is_a_warning_not_an_error():
-    weights = Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 1}}))
-    report = weights.check(LAYOUT)   # poetry is missing from the file
-    assert not report.ok
+def test_unlisted_register_is_reported():
+    report = Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 1}})).check(LAYOUT)
     assert any("register" in w and "poetry" in w and "1.0" in w for w in report.warnings)
 
 
-def test_unlisted_source_is_a_warning_not_an_error():
-    weights = Weights.from_dict(doc(news={"sources": {"ads": 1}}, poetry={"sources": {"dickinson": 1}}))
-    report = weights.check(LAYOUT)   # obits is missing
+def test_unlisted_source_is_reported():
+    report = Weights.from_dict(doc(news={"sources": {"ads": 1}}, poetry={"sources": {"dickinson": 1}})).check(LAYOUT)
     assert any("source" in w and "obits" in w for w in report.warnings)
 
 
-def test_listed_source_with_no_chunks_is_an_error():
+def test_listed_source_with_no_chunks_is_reported_not_fatal():
     weights = Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 1, "ghost": 1}}))
-    with pytest.raises(WeightsError, match="no chunks.*ghost"):
-        weights.check(LAYOUT)
+    report = weights.check(LAYOUT)
+    assert any("no chunks" in w and "ghost" in w for w in report.warnings)
 
 
-def test_listed_register_with_no_chunks_is_an_error():
-    weights = Weights.from_dict(doc(news={}, poetry={}, cooking={}))
-    with pytest.raises(WeightsError, match="no chunks.*cooking"):
-        weights.check(LAYOUT)
+def test_listed_register_with_no_chunks_is_reported_not_fatal():
+    report = Weights.from_dict(doc(news={}, poetry={}, cooking={})).check(LAYOUT)
+    assert any("no chunks" in w and "cooking" in w for w in report.warnings)
 
 
 def test_register_with_an_empty_source_list_in_the_layout_counts_as_no_chunks():
-    weights = Weights.from_dict(doc(news={}))
-    with pytest.raises(WeightsError, match="no chunks.*news"):
-        weights.check({"news": []})
+    report = Weights.from_dict(doc(news={})).check({"news": []})
+    assert any("no chunks" in w and "news" in w for w in report.warnings)
 
 
-def test_source_listed_under_the_wrong_register_is_a_warning():
+def test_source_listed_under_the_wrong_register_is_reported():
     """The Sun Tzu case: the id says one thing, the folder says another."""
-    weights = Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 1, "dickinson": 1}},
-                                    poetry={}))
+    weights = Weights.from_dict(doc(news={"sources": {"ads": 1, "obits": 1, "dickinson": 1}}, poetry={}))
     report = weights.check(LAYOUT)
     assert any("dickinson" in w and "listed under 'news'" in w and "'poetry'" in w
                for w in report.warnings)
+
+
+def test_check_returns_its_own_report_and_leaves_the_loading_report_alone():
+    weights = Weights.from_dict(doc(news={"sources": {"ads": 1}}))
+    before = len(weights.report)
+    report = weights.check(LAYOUT)
+    assert len(report) > 0 and len(weights.report) == before
 
 
 def test_check_does_not_print(capsys):
@@ -228,17 +298,40 @@ def test_check_does_not_print(capsys):
     assert out.out == "" and out.err == ""
 
 
+STRICT_CHECKS = [
+    ("an unlisted register", doc(news={"sources": {"ads": 1, "obits": 1}}), "poetry"),
+    ("an unlisted source", doc(news={"sources": {"ads": 1}}, poetry={"sources": {"dickinson": 1}}), "obits"),
+    ("a listed source with no chunks", doc(news={"sources": {"ads": 1, "obits": 1, "ghost": 1}}), "ghost"),
+    ("a listed register with no chunks", doc(news={}, poetry={}, cooking={}), "cooking"),
+    ("a source under the wrong register",
+     doc(news={"sources": {"ads": 1, "obits": 1, "dickinson": 1}}, poetry={}), "dickinson"),
+]
+
+
+@pytest.mark.parametrize("label,document,pattern", STRICT_CHECKS, ids=[c[0] for c in STRICT_CHECKS])
+def test_strict_check_raises_for_any_drift(label, document, pattern):
+    with pytest.raises(WeightsError, match=pattern):
+        Weights.from_dict(document, strict=True).check(LAYOUT)
+
+
+def test_strict_check_accepts_a_matching_layout():
+    assert Weights.from_dict(matching_document(), strict=True).check(LAYOUT).ok
+
+
+def matching_document():
+    return doc(news={"sources": {"ads": 1, "obits": 0.2}}, poetry={"sources": {"dickinson": 1}})
+
+
 # --- The committed file ----------------------------------------------------------------
 
 @pytest.mark.skipif(not (REPO / "corpus" / "chunks" / "weights.json").exists(),
                     reason="corpus/chunks/weights.json not present")
-def test_real_weights_file_loads_and_matches_the_real_layout():
+def test_real_weights_file_is_clean_even_in_strict_mode():
     chunks = REPO / "corpus" / "chunks"
     layout = {folder.name: [f.stem for f in sorted(folder.glob("*.jsonl"))]
               for folder in sorted(chunks.iterdir()) if folder.is_dir()}
-    weights = Weights.from_file(chunks / "weights.json")
-    report = weights.check(layout)             # raises if the file lists something that is gone
-    assert report.warnings == []               # and every source and register is listed
+    weights = Weights.from_file(chunks / "weights.json", strict=True)   # raises on any typo
+    assert weights.check(layout).ok
     shares = weights.shares_for(layout)
     assert sum(shares.values()) == pytest.approx(1.0)
     assert set(shares) == set(layout)

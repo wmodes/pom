@@ -47,7 +47,6 @@ Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/c
 | `url` | Where it came from; decides how it is fetched. `inbox/<file>` means a file in `corpus/inbox/`. Handlers: Project Gutenberg, Wikisource, direct `.pdf`, direct `.txt`, inbox. |
 | `status` | `candidate` (found, rights not confirmed), `approved` (ok to fetch), or `excluded` (rejected, kept on record). |
 | `reviewed` | `yes` once a human has checked the draft. Blank until then. |
-| `weight` | Relative sampling weight in the few-shot and training mix (blank = 1.0). A dial for keeping one flavor from dominating: `corpus.py mix` shows each source's and form's weighted share. |
 | `start_marker`, `end_marker` | Where the real text begins and ends (see Trim markers). Blank means the whole text. |
 | `extract` | PDFs only. Blank = text layer unless nearly empty, then OCR; `ocr` = force OCR (scrambled text layer); `layer` = force the embedded text. |
 | `normalize` | Space-separated flags for standardizing this source: `unwrap` (join hard-wrapped prose), `couplets` (split long runs of rhymed verse into sentence-ended groups), `speeches` (plays: keep speech bodies), `entries` (one paragraph per `=Term.=--` entry), `dictionary` (`Term--meaning` becomes `Term: meaning`), `glosses` (strip an edition's margin glosses and note anchors), `summaries` (drop the editor's summary under each "Chapter N" heading), `indented` (keep only mostly-indented blocks: quoted epitaphs, reprinted ads, quatrains), `shortlines` (keep only blocks of short lines: verse in a book that also has prose), `unbracket` (drop an editor's [bracketed notes] and the asterisks pointing to them), `unbrace` (keep [inserted words], drop the brackets), `titles` (verse: drop a poem's title sitting directly above its first line), `linenos` (verse: strip line numbers at line ends), `spellcheck` (OCR sources: drop paragraphs with a word that is not in the system dictionary and not repeated in the source), `keep-accents`. |
@@ -66,6 +65,13 @@ A marker is the exact text of a whole line (surrounding spaces ignored). Add `#N
 
 After trimming, `normalize.py` turns the text into utterances. In order: typography to typewriter-safe ASCII (curly quotes, dashes, accents, ligatures, symbols); markup and footnote debris removed; page furniture removed (page numbers, running heads such as "1-2 User's Guide", trailing verse line numbers, rule lines, tables); text split into paragraphs (prose unwrapped, list items and speeches separated, headings dropped); then per-paragraph cleanup (leading numbers and labels stripped, cross-references removed, source-specific `drop` patterns applied, and junk and fragments such as OCR debris dropped). `clean -v` prints what each rule changed; `clean --audit N` prints N samples of what was removed, so you can check that real content was not lost. Check the audit whenever a rule or a source's flags change. Before a human review, run `audit.py` over `ready/`: the checks that should read zero everywhere are `nonascii`, `lower_start`, `leading_label`, `url_email` and `markup`.
 
+## Chunks and draw weights
+
+`chunks/<register>/<id>.jsonl` is made from `ready/` by `chunk.py`, and is what the voice models use. Each line is one chunk with its source, register and word count, and nothing about the rest of the corpus or its weight. Never edit a chunk file by hand: change `ready/` or the manifest and re-run `chunk.py`.
+
+- **Size.** Utterances over 150 words are cut at sentence breaks (line breaks for verse) into near-equal pieces. Shorter ones are kept whole; `--min-words N` would merge them forward. Exact duplicates anywhere in the corpus are dropped, and the survivor records its `repeats`.
+- **Weights.** We weight the corpus to account for differences in quantity. Every chunk is in one pool and has its own chance of being drawn, set so each register gets its target share over many draws. The chance is computed from the register totals when the corpus is loaded and is never stored, so adding a chunk changes only its own register's numbers. Any combination of draws stays possible, including several from one register. All the weights live in one file, `chunks/weights.json`, laid out as a tree that mirrors the folders: each register has a relative `share` (equal to start) and lists every one of its sources with a `weight` (how often it is drawn compared with its neighbors in the same register; a source left out counts 1.0). Edit it by hand and nothing else needs regenerating. `draw_weights.py` prints the result.
+
 ## Commands
 
 ```
@@ -73,7 +79,7 @@ scripts/dev/corpus/corpus.py add --id ID --form F --title T --rights R --basis B
 scripts/dev/corpus/corpus.py set ID column=value ...  # edit markers, flags, drop patterns, status
 scripts/dev/corpus/corpus.py process ID               # fetch, clean, audit, sample (stops before promote)
 scripts/dev/corpus/corpus.py status                   # what is on disk
-scripts/dev/corpus/corpus.py mix [--prefix bible-]    # weighted share of each source and form
+scripts/dev/corpus/corpus.py mix [--prefix bible-]    # weighted share of each source and form (weights from chunks/weights.json)
 scripts/dev/corpus/corpus.py fetch [--id ID]          # raw/
 scripts/dev/corpus/corpus.py inspect --id ID          # landmarks + first/last lines, to choose markers
 scripts/dev/corpus/corpus.py clean [-v] [--audit N]   # draft/
@@ -81,6 +87,8 @@ scripts/dev/corpus/corpus.py inspect --id ID --trimmed
 scripts/dev/corpus/corpus.py review [--id ID]         # one-screen report per draft
 scripts/dev/corpus/corpus.py promote [--id ID]        # ready/
 scripts/dev/corpus/corpus.py publish-check            # fail if non-public-domain text is committed
+scripts/dev/corpus/chunk.py [--max-words N] [--min-words N] [--check]   # ready/ -> chunks/ (JSONL)
+scripts/dev/corpus/draw_weights.py                  # expected share of draws per register
 scripts/dev/corpus/audit.py [ID CHECK]               # artifact rates per file of ready/ (--dir draft for drafts)
 scripts/dev/corpus/gutenberg_catalog.py search REGEX  # find Gutenberg candidates offline
 ```

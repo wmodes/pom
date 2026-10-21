@@ -1,0 +1,150 @@
+{
+  "_about": "Draw weights for the chunk pool; the only place they live. Each register has a 'share' (relative, normalized when read: how often the register comes up) and lists its 'sources' with a 'weight' each (how often a source is drawn compared with the others in the same register; a source missing from the list counts 1.0). The tree mirrors the folders in chunks/. Nothing in the chunk files depends on these numbers. See scripts/dev/corpus/draw_weights.py.",
+  "registers": {
+    "aphorism": {
+      "share": 1.0,
+      "sources": {
+        "aphorism-la-rochefoucauld-maxims": 1.0,
+        "aphorism-scotch-proverbs": 1.0
+      }
+    },
+    "divination": {
+      "share": 1.0,
+      "sources": {
+        "demonologia-forsyth-1827": 1.0,
+        "dreambook-witches-noe-1900s": 1.0,
+        "fortunes-dreams-cielo-1900s": 1.0,
+        "iching-legge-1882": 1.0,
+        "tarot-illustrated-key-delaurence-1918": 1.0
+      }
+    },
+    "drama": {
+      "share": 1.0,
+      "sources": {
+        "drama-shakespeare-plays": 0.2
+      }
+    },
+    "epitaph": {
+      "share": 1.0,
+      "sources": {
+        "epitaph-curious-andrews": 1.0,
+        "epitaph-funny-eaton": 1.0,
+        "epitaph-gleanings-norfolk": 1.0,
+        "epitaph-quaint": 1.0
+      }
+    },
+    "horoscope": {
+      "share": 1.0,
+      "sources": {
+        "horoscope-sepharial-1920s": 1.0
+      }
+    },
+    "humor": {
+      "share": 1.0,
+      "sources": {
+        "humor-dad-jokes-river": 1.0,
+        "humor-joe-millers-jests-additions": 1.0,
+        "humor-joe-millers-jests-wits-vade-mecum": 1.0
+      }
+    },
+    "manual": {
+      "share": 1.0,
+      "sources": {
+        "manual-civil-defense-emergency": 1.0,
+        "manual-emergency-childbirth-ocd": 1.0,
+        "manual-etiquette-post-1922": 0.5,
+        "manual-etiquette-routledge": 1.0,
+        "manual-gpo-style": 1.0,
+        "manual-infantry-drill-1911": 1.0,
+        "manual-roberts-rules": 1.0,
+        "manual-simple-sabotage-oss-1944": 1.0,
+        "manual-social-security-old-age": 1.0,
+        "manual-usda-canning-freezing": 0.5,
+        "manual-wheelwriter-1-operators-guide-1988": 1.0,
+        "manual-wheelwriter-1000-users-guide": 1.0,
+        "manual-wheelwriters-service-1994": 0.5
+      }
+    },
+    "news": {
+      "share": 1.0,
+      "sources": {
+        "news-annual-monitor-obituaries-1851": 0.2,
+        "news-quaint-curious-advertisements-1886": 1.0
+      }
+    },
+    "poetry": {
+      "share": 1.0,
+      "sources": {
+        "poetry-blake-songs-1794": 1.0,
+        "poetry-chaucer-general-prologue": 1.0,
+        "poetry-chaucer-manciple-tale": 1.0,
+        "poetry-chaucer-nuns-priest-tale": 1.0,
+        "poetry-chaucer-pardoner-tale": 1.0,
+        "poetry-chaucer-wife-of-bath-prologue": 1.0,
+        "poetry-cranmer-byng-lute-of-jade-1909": 1.0,
+        "poetry-dickinson-poems-1890": 1.0,
+        "poetry-headland-chinese-mother-goose": 1.0,
+        "poetry-millay-few-figs-1920": 1.0,
+        "poetry-millay-harp-weaver-1923": 1.0,
+        "poetry-millay-renascence-1917": 1.0,
+        "poetry-millay-second-april-1921": 1.0,
+        "poetry-pope-essay-on-criticism-1711": 1.0,
+        "poetry-pope-essay-on-man-1733": 1.0,
+        "poetry-rubaiyat-fitzgerald-1859": 1.0,
+        "poetry-sappho-carman-100-lyrics": 1.0,
+        "poetry-shakespeare-narrative-poems": 1.0,
+        "poetry-shakespeare-sonnets-1609": 1.0,
+        "poetry-waley-170-chinese-poems-1918": 1.0,
+        "poetry-waley-more-translations-1919": 1.0
+      }
+    },
+    "prophecy": {
+      "share": 1.0,
+      "sources": {
+        "bible-kjv-job-whirlwind": 0.5,
+        "bible-kjv-revelation-new-heaven": 0.5,
+        "bible-kjv-revelation-throne-and-horsemen": 0.5,
+        "bible-kjv-revelation-woman-and-dragon": 0.5,
+        "manifesto-marx-communist-manifesto-1848": 0.5,
+        "prophecy-gibran-madman-1918": 1.0,
+        "prophecy-nietzsche-zarathustra": 0.2,
+        "prophecy-nostradamus-ward": 1.0
+      }
+    },
+    "rhyme": {
+      "share": 1.0,
+      "sources": {
+        "rhyme-lear-book-of-nonsense-1846": 1.0,
+        "rhyme-lear-more-nonsense-1872": 1.0,
+        "rhyme-real-mother-goose-1916": 1.0
+      }
+    },
+    "spiritualism": {
+      "share": 1.0,
+      "sources": {
+        "spiritualism-atkinson-genuine-mediumship": 0.15,
+        "spiritualism-doyle-new-revelation-1918": 0.2,
+        "spiritualism-doyle-vital-message-1919": 0.2,
+        "spiritualism-flammarion-psychic-forces": 0.1,
+        "spiritualism-houdini-magician-among-spirits-1924": 0.15,
+        "spiritualism-planchette-wells": 0.3
+      }
+    },
+    "wisdom": {
+      "share": 1.0,
+      "sources": {
+        "aphorism-epictetus-golden-sayings": 1.0,
+        "aphorism-marcus-aurelius-meditations": 1.0,
+        "aphorism-sun-tzu-art-of-war": 0.5,
+        "bible-kjv-1-corinthians-13": 0.5,
+        "bible-kjv-ecclesiastes": 0.5,
+        "bible-kjv-james": 0.5,
+        "bible-kjv-proverbs": 0.5,
+        "bible-kjv-sermon-on-the-mount": 0.5,
+        "bible-sirach-douay": 0.5,
+        "tao-teh-king-legge-1891": 1.0,
+        "wisdom-theophrastus-characters": 1.0
+      }
+    }
+  }
+}

@@ -28,6 +28,8 @@ All in `scripts/dev/corpus/`, standard-library Python on the Mac:
 | Script | Job |
 |---|---|
 | `corpus.py` | `add`, `set`, `process`, `status`, `fetch`, `inspect`, `clean` (`-v`, `--audit N`), `review`, `promote`, `publish-check` |
+| `chunk.py` | Makes `chunks/` from `ready/`: splits over-long utterances, drops exact duplicates |
+| `draw_weights.py` | Draw odds that give each register its target share, computed at load time from the chunk counts (never stored); all weights in `chunks/weights.json` |
 | `audit.py` | Read-only artifact rates per `ready/` (or `draft/`) file, and examples of any check; the pre-review sweep |
 | `normalize.py` | The standardizer that turns trimmed text into utterances; imported by `corpus.py` |
 | `gutenberg_catalog.py` | `update`, `search`, `authors`: offline search of Gutenberg's whole catalog |

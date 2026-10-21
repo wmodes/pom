@@ -76,7 +76,11 @@ FETCHABLE_STATUSES = {"approved", "fetched", "processed"}
 # Columns added after the manifest was first written. read_manifest adds any that are
 # missing (blank), so older manifests upgrade themselves the next time they are saved.
 # (column, insert after, default)
-LATE_COLUMNS = [("weight", "reviewed", "")]
+LATE_COLUMNS = []
+
+# Columns that moved elsewhere. read_manifest drops them, so the next save removes them.
+# `weight` now lives in corpus/chunks/weights.json, next to the chunks it affects.
+DROPPED_COLUMNS = ["weight"]
 
 
 def read_manifest():
@@ -84,6 +88,11 @@ def read_manifest():
     with MANIFEST.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         fields, rows = list(reader.fieldnames), list(reader)
+    for column in DROPPED_COLUMNS:
+        if column in fields:
+            fields.remove(column)
+            for row in rows:
+                row.pop(column, None)
     for column, after, default in LATE_COLUMNS:
         if column not in fields:
             fields.insert(fields.index(after) + 1, column)
@@ -772,6 +781,8 @@ def cmd_set(args):
     changes = {}
     for pair in args.assignments:
         column, sep, value = pair.partition("=")
+        if column == "weight":
+            sys.exit("Weights live in corpus/chunks/weights.json now; edit that file.")
         if not sep or column not in fields or column == "id":
             sys.exit(f"Bad assignment '{pair}'. Use column=value; columns: "
                      f"{', '.join(f for f in fields if f != 'id')}")
@@ -827,28 +838,37 @@ def cmd_process(args):
           f"and re-run; when it reads right, set reviewed=yes and run promote.")
 
 
-def source_weight(row):
-    """A source's relative sampling weight: the `weight` column, or 1.0 if blank or invalid."""
-    try:
-        return float(row.get("weight") or 1.0)
-    except ValueError:
-        return 1.0
+def source_weights():
+    """Per-source weights from corpus/chunks/weights.json (a missing source counts 1.0)."""
+    path = CORPUS / "chunks" / "weights.json"
+    if not path.exists():
+        return {}
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    return {source: float(weight) for entry in doc.get("registers", {}).values()
+            for source, weight in entry.get("sources", {}).items()}
+
+
+def source_weight(row, weights=None):
+    """A source's relative weight: its entry in weights.json, or 1.0 if absent."""
+    return (weights if weights is not None else source_weights()).get(row["id"], 1.0)
 
 
 def cmd_mix(args):
     """Shows how much each source and form contributes to the mix, after weights.
 
     Effective words = words in ready/ x weight. Use it to keep one flavor (say, the
-    Bible) from overwhelming the rest: change a source's `weight`, run this again.
+    Bible) from overwhelming the rest: change a source's weight in
+    corpus/chunks/weights.json, run this again.
     """
     stats = []
+    weights = source_weights()
     for row in load_manifest():
         path = ready_path_for(row)
         if row["status"] != "approved" or not path.exists():
             continue
         paragraphs = [p for p in re.split(r"\n\s*\n", path.read_text(encoding="utf-8")) if p.strip()]
         words = sum(len(p.split()) for p in paragraphs)
-        stats.append((row, len(paragraphs), words, words * source_weight(row)))
+        stats.append((row, len(paragraphs), words, words * source_weight(row, weights)))
     total_u = sum(s[1] for s in stats)
     total_w = sum(s[3] for s in stats)
     if not stats or not total_w:
@@ -856,7 +876,7 @@ def cmd_mix(args):
     print(f"{'source':<46} {'wt':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
     for row, utterances, words, effective in sorted(stats, key=lambda s: -s[3]):
         flag = "  <-- over 15%" if effective / total_w > 0.15 else ""
-        print(f"{row['id']:<46} {source_weight(row):>4.1f} {utterances:>7} {words:>8} "
+        print(f"{row['id']:<46} {source_weight(row, weights):>4.1f} {utterances:>7} {words:>8} "
               f"{effective / total_w:>8.1%}{flag}")
     print(f"\n{'by form':<46} {'':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
     forms = {}

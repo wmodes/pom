@@ -487,7 +487,8 @@ def test_the_real_corpus_builds_cleanly_and_balances_the_registers():
     sampler = Sampler(store, weights, random.Random(51), strict=True)
     assert sampler.report.ok and sampler.check_report.ok
     assert sum(sampler.register_shares().values()) == pytest.approx(1.0)
+    targets = sampler.register_shares()
     shares = shares_of(sampler, 6000, count=3)
-    assert len(shares) == 13
-    for register, share in shares.items():
-        assert share == pytest.approx(1 / 13, abs=0.015), register
+    assert set(shares) == set(targets)          # every register turns up, whatever the register count
+    for register, target in targets.items():
+        assert shares[register] == pytest.approx(target, abs=0.015), register

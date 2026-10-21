@@ -428,7 +428,8 @@ def test_real_chunks_load_and_agree_with_the_real_weights_file():
     store = ChunkStore.load(REPO / "corpus" / "chunks", strict=True)   # raises on any bad record
     assert store.report.ok
     assert len(store) > 50000
-    assert len(store.registers()) == 13
+    folders = sorted(f.name for f in (REPO / "corpus" / "chunks").iterdir() if f.is_dir())
+    assert store.registers() == folders      # every register folder loaded, however many there are
     assert all(chunk.words <= 150 for chunk in store)
     weights = Weights.from_file(REPO / "corpus" / "chunks" / "weights.json", strict=True)
     assert weights.check(store.layout()).ok

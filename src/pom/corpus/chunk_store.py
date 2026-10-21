@@ -9,25 +9,36 @@ This module reads those files and answers questions about them. It does not deci
 chunk is to be drawn (that is the Weights and the Sampler) and it never writes anything.
 
 Design decisions, and why:
+  * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
+    an unreadable file or a mismatched record is skipped or repaired and recorded in a Report (and
+    logged), never raised. One corrupt record must not cost the gallery its corpus. Only a store
+    with no chunks at all is CRITICAL, and even then nothing is raised: the store is simply empty
+    and says so. `strict=True` raises instead, for tests and dev tools.
+  * Where a record disagrees with where it lives, the location wins. The files are generated, so
+    a record claiming another register or source is drift; trusting the folder and file name keeps
+    the layout that Weights checks against exactly what is on disk.
   * Chunks are immutable. Nothing downstream should be able to edit the corpus by accident.
-  * Loading is eager and strict. The corpus is about 15 MB of text, which is nothing next to the
-    Pi's 16 GB, and failing at startup beats failing mid-session. A record must agree with where
-    it lives: its `register` must match its folder and its `source` its file name, so the layout
-    that Weights checks against is exactly what the chunks claim.
-  * Errors name the file and line, because the files are generated and a person has to find the
-    bad record.
+  * Loading is eager. The corpus is about 15 MB of text, which is nothing next to the Pi's 16 GB,
+    and doing the work at startup keeps the session itself free of file reads.
+  * Report messages name the file and line, because the files are generated and a person has to
+    find the bad record.
   * Order is deterministic (sorted registers, sources, then file order), so a seeded sampler
     gives the same draws on every machine.
   * The folder may hold other files (weights.json). Only `<register>/<source>.jsonl` are read.
 """
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
+from pom.report import Report
+
+_log = logging.getLogger(__name__)
+
 
 class ChunkError(ValueError):
-    """A chunk file is missing, malformed, or inconsistent with where it lives."""
+    """Raised for any chunk problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,42 +69,50 @@ class ChunkStore:
     Build one with `ChunkStore.load` (from disk) or `ChunkStore.from_chunks` (in memory).
     """
 
-    def __init__(self, chunks: Iterable[Chunk]):
+    def __init__(self, chunks: Iterable[Chunk], report: Optional[Report] = None,
+                 strict: bool = False):
         """Indexes the chunks. Use the `load` / `from_chunks` constructors.
 
-        Raises:
-            ChunkError: If two chunks share an id.
+        A chunk whose id was already seen is skipped and reported. A store with no chunks at all
+        records a CRITICAL issue (and raises ChunkError in strict mode).
         """
+        self.report = report if report is not None else _new_report(strict)
         self._tree: dict[str, dict[str, list[Chunk]]] = {}
         self._by_id: dict[str, Chunk] = {}
         for chunk in chunks:
             if chunk.id in self._by_id:
-                raise ChunkError(f"duplicate chunk id: {chunk.id}")
+                self.report.warn(f"duplicate chunk id {chunk.id}; keeping the first")
+                continue
             self._by_id[chunk.id] = chunk
             self._tree.setdefault(chunk.register, {}).setdefault(chunk.source, []).append(chunk)
+        if not self._by_id:
+            self.report.critical("no chunks loaded: the oracle has nothing to say")
 
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_chunks(cls, chunks: Iterable[Chunk]) -> "ChunkStore":
+    def from_chunks(cls, chunks: Iterable[Chunk], strict: bool = False) -> "ChunkStore":
         """Builds a store from chunk objects already in memory (used by tests)."""
-        return cls(chunks)
+        return cls(chunks, strict=strict)
 
     @classmethod
-    def load(cls, directory) -> "ChunkStore":
+    def load(cls, directory, strict: bool = False) -> "ChunkStore":
         """Reads every `<register>/<source>.jsonl` under `directory`.
 
-        Raises:
-            ChunkError: If the directory is missing, or any file or record is bad.
+        A missing directory, an unreadable file or a bad record is recorded in `store.report`
+        and skipped; the rest still loads. With strict=True the first problem raises ChunkError.
         """
+        report = _new_report(strict)
         root = Path(directory)
-        if not root.is_dir():
-            raise ChunkError(f"chunk directory not found: {root}")
         chunks = []
-        for folder in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")):
-            for path in sorted(folder.glob("*.jsonl")):
-                chunks.extend(_read_file(path, register=folder.name, source=path.stem))
-        return cls(chunks)
+        if not root.is_dir():
+            report.critical(f"chunk directory not found: {root}")
+        else:
+            for folder in sorted(p for p in root.iterdir()
+                                 if p.is_dir() and not p.name.startswith(".")):
+                for path in sorted(folder.glob("*.jsonl")):
+                    chunks.extend(_read_file(path, folder.name, path.stem, report))
+        return cls(chunks, report, strict)
 
     # --- Questions ------------------------------------------------------------------
 
@@ -129,7 +148,8 @@ class ChunkStore:
         """The chunk with this id.
 
         Raises:
-            ChunkError: If there is none.
+            ChunkError: If there is none. This is a programming error (the caller asked for an id
+                it never received), not a data problem, so it is not softened.
         """
         try:
             return self._by_id[chunk_id]
@@ -145,16 +165,22 @@ class ChunkStore:
             yield from self.chunks(register)
 
 
-_REQUIRED = ("id", "source", "register", "text")
+def _new_report(strict: bool) -> Report:
+    """A Report that raises ChunkError in strict mode; otherwise it collects and logs."""
+    return Report(strict=strict, error=ChunkError, logger=_log)
 
 
-def _read_file(path: Path, register: str, source: str) -> list[Chunk]:
-    """Parses one chunk file, checking every record against its folder and file name."""
+def _read_file(path: Path, register: str, source: str, report: Report) -> list[Chunk]:
+    """Parses one chunk file, repairing or skipping what is wrong and reporting each problem.
+
+    The folder and file name are trusted over what a record claims.
+    """
     chunks = []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as error:
-        raise ChunkError(f"cannot read {path}: {error}") from error
+    except (OSError, UnicodeDecodeError) as error:
+        report.warn(f"cannot read {path}: {error}; skipping the file")
+        return chunks
     for number, line in enumerate(lines, start=1):
         if not line.strip():
             continue
@@ -162,25 +188,43 @@ def _read_file(path: Path, register: str, source: str) -> list[Chunk]:
         try:
             record = json.loads(line)
         except json.JSONDecodeError as error:
-            raise ChunkError(f"{where}: not valid JSON ({error})") from error
+            report.warn(f"{where}: not valid JSON ({error}); skipping the record")
+            continue
         if not isinstance(record, dict):
-            raise ChunkError(f"{where}: a chunk must be a JSON object")
-        missing = [key for key in _REQUIRED if key not in record]
-        if missing:
-            raise ChunkError(f"{where}: missing field(s): {', '.join(missing)}")
-        if not isinstance(record["text"], str) or not record["text"].strip():
-            raise ChunkError(f"{where}: text must be a non-empty string")
-        if record["register"] != register:
-            raise ChunkError(f"{where}: register {record['register']!r} does not match its folder "
-                             f"{register!r}")
-        if record["source"] != source:
-            raise ChunkError(f"{where}: source {record['source']!r} does not match its file "
-                             f"{source!r}")
+            report.warn(f"{where}: a chunk must be a JSON object; skipping the record")
+            continue
+        text = record.get("text")
+        if "text" not in record:
+            report.warn(f"{where}: missing field(s): text; skipping the record")
+            continue
+        if not isinstance(text, str) or not text.strip():
+            report.warn(f"{where}: text must be a non-empty string; skipping the record")
+            continue
+        chunk_id = record.get("id")
+        if chunk_id is None:
+            chunk_id = f"{source}#line{number}"
+            report.warn(f"{where}: missing field(s): id; using {chunk_id}")
+        for field, expected in (("register", register), ("source", source)):
+            if field not in record:
+                report.warn(f"{where}: missing field(s): {field}; using {expected!r}")
+            elif record[field] != expected:
+                what = "folder" if field == "register" else "file"
+                report.warn(f"{where}: {field} {record[field]!r} does not match its {what} "
+                            f"{expected!r}; using {expected!r}")
         words = record.get("words")
         chunks.append(Chunk(
-            id=str(record["id"]), source=source, register=register, text=record["text"],
+            id=str(chunk_id), source=source, register=register, text=text,
             words=words if isinstance(words, int) and not isinstance(words, bool)
-            else len(record["text"].split()),
-            repeats=int(record.get("repeats", 1)), sha1=str(record.get("sha1", "")),
+            else len(text.split()),
+            repeats=_repeats(record.get("repeats", 1), where, report),
+            sha1=str(record.get("sha1", "")),
         ))
     return chunks
+
+
+def _repeats(value, where: str, report: Report) -> int:
+    """The repeat count; 1 (with a warning) if it is not a positive whole number."""
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
+        return value
+    report.warn(f"{where}: repeats must be a whole number of at least 1, got {value!r}; using 1")
+    return 1

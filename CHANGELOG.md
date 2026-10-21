@@ -24,21 +24,21 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Local log file.** For working on the Mac, `local_logs = true` (or `POM_LOCAL_LOGS=1`) also
   writes the log to `logs/pom.log` with timestamps. The folder is gitignored, the file rotates at
   1 MB with three backups, and if it cannot be opened logging carries on to stdout with one
-  warning. Off by default, since on the Pi journald keeps the log. 77 new tests across the
-  logging, debug-flag and config work.
+  warning. Off by default, since on the Pi journald keeps the log. Tests: 34 in `tests/test_logs.py`,
+  61 in `tests/test_config.py`, 17 in `tests/test_debug_overrides.py`.
 - **Sample count in the config.** `samples_min` and `samples_max` in `config/pom.toml` (or
   `POM_SAMPLES_MIN` / `POM_SAMPLES_MAX`) set how many corpus chunks go into each pull of
   exemplars, 3 to 5 by default. `Config` exposes them as `config.samples`, which the entry
   point passes to `Sampler(samples=...)`; the Sampler never reads Config itself. A bad value
-  falls back to the default with a warning and a reversed pair is swapped. 19 new tests.
+  falls back to the default with a warning and a reversed pair is swapped.
 - **Per-machine config override.** An optional, gitignored `config/pom.local.toml` overrides the
   committed `config/pom.toml` (the environment still wins over both). The committed file keeps
   the quiet defaults the Pi runs with; a developer's machine can keep debug logging and
-  `local_logs` on without touching them. 8 new tests.
+  `local_logs` on without touching them.
 - **Report** (`src/pom/report.py`), the shared way every module reports problems as data
   instead of raising: WARNING (recovered) and CRITICAL (cannot do its job, still no crash),
   a `strict` mode that raises for tests and dev tools, a cap on how many issues are kept,
-  and criticals that are never dropped. 20 tests in `tests/test_report.py`.
+  and criticals that are never dropped. 21 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
 - **Sampler module** (`src/pom/corpus/sampler.py`). Draws weighted random chunks so each register
@@ -59,14 +59,14 @@ December 18 session. Update this file in the same commit as the change it descri
   unreadable file is skipped, a record that disagrees with its folder or file name is repaired
   (the location wins), a missing id is generated, and only an empty store is critical. Every
   problem is recorded in a `Report` and logged; `strict=True` raises instead. Loading is
-  deterministic, and the real corpus (71,474 chunks) loads in about 0.2 seconds. 71 tests in
+  deterministic, and the real corpus (71,474 chunks) loads in about 0.2 seconds. 73 tests in
   `tests/corpus/test_chunk_store.py`.
 - **Weights module** (`src/pom/corpus/weights.py`, the first runtime code). Reads
   `corpus/chunks/weights.json`, treats anything unlisted as 1.0, normalizes register shares over
   the registers that have chunks, and checks the file against the corpus layout. It never stops
   the oracle: a bad number counts 1.0, a bad or unknown entry is skipped, a missing or invalid
   file means all defaults, and every problem is recorded in a `Report`. `strict=True` raises
-  instead, for tests and dev tools. 70 tests in `tests/corpus/test_weights.py`.
+  instead, for tests and dev tools. 75 tests in `tests/corpus/test_weights.py`.
 - **Project setup for tests:** `pyproject.toml` (pytest settings), `requirements-dev.txt`, and the
   `pom` virtual environment on Python 3.11 to match the Pi's Bookworm.
 - **Output validation stub** (`scripts/dev/corpus/validate_output.py`). Reports nothing yet; its

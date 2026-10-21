@@ -105,4 +105,6 @@ The manifest is edited only through `add` and `set`, never by hand or by scratch
 
 A long file with several self-contained parts (Chaucer, Shakespeare) becomes several rows with the same `url` and different markers; a part that is mostly plot, or is only banter, is left out.
 
+Promoting is not the end: the text still has to be chunked and given a weight. The whole path, from choosing a register to the commit, is in `documentation/adding-material.md`.
+
 See `documentation/corpus-notes.md` for the process, tool versions, lessons learned, and known gaps.

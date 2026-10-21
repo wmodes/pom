@@ -41,6 +41,9 @@ December 18 session. Update this file in the same commit as the change it descri
   and criticals that are never dropped. 21 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
+- **A guide to adding material** (`documentation/adding-material.md`): the whole path from
+  choosing a register through chunking, weights, verifying and committing, with the commands. The
+  corpus README and notes point to it.
 - **A new `nonsense` register**, started with *Alice's Adventures in Wonderland* (Project
   Gutenberg #11; 784 utterances, 790 chunks). Added through the normal pipeline as a test of how
   hard it is to grow the corpus: `add`, `process`, one `set` for the markers and `unwrap`, `promote`,

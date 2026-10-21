@@ -51,7 +51,7 @@ scripts/dev/corpus/corpus.py promote                 # ready/ (needs reviewed=ye
 
 ## Adding a source: the working procedure
 
-The short version: `add`, then `process ID`, then adjust with `set` and re-run `process`, read the audit, human sign-off, `promote`. The manifest is only ever changed through `add` and `set`. In detail:
+The short version: `add`, then `process ID`, then adjust with `set` and re-run `process`, read the audit, human sign-off, `promote`. The manifest is only ever changed through `add` and `set`. After `promote` the text still needs chunking and a weight; the whole path is in `documentation/adding-material.md`. In detail:
 
 1. **Find it.** For books: `gutenberg_catalog.py search 'regex'`. Gutenberg only distributes works it has cleared for the US, which is a strong hint, not a legal opinion. For other hosts see "Where sources came from" below.
 2. **Record it first.** `corpus.py add --id ... --form ... --title ... --rights ... --basis ... --url ...`, as `candidate` until the rights are confirmed (or straight to `approved`). The pipeline refuses to approve anything that is not cleared.

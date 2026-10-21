@@ -1,0 +1,10 @@
+# Settings shared by the whole project. Every key is optional; an unknown key or a bad value is
+# logged and ignored, never fatal. Environment variables override this file:
+#   POM_STRICT=1        POM_LOG_LEVEL=DEBUG
+
+# Development and testing only: raise on every problem a module would otherwise recover from, so
+# a typo is loud while you work. Leave false in the gallery.
+strict = false
+
+# How much to log to stdout (journalctl -u pom): DEBUG, INFO, WARNING, ERROR or CRITICAL.
+log_level = "INFO"

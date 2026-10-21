@@ -8,7 +8,8 @@ PROJECT-WIDE PRINCIPLE: the Printer must never stop because of a typo or a recov
 A bad number in a hand-edited file, one corrupt line in a corpus file, a missing optional file,
 a mic that drops out: none of these may crash the oracle in a gallery. A module that meets a
 problem it can recover from recovers (falls back to a default, skips the bad entry, retries) and
-records what it did in a `pom.report.Report` for a person to read later. Only a problem that
+records what it did in a `pom.report.Report` and in the log (stdout, so journald) for a person to
+read later. Only a problem that
 makes a module unable to do its job at all is CRITICAL, and even then the module returns an empty
 result and says so, and the Conductor degrades (stays quiet and keeps listening) instead of
 crashing. `strict=True` turns every issue back into an exception, for tests and dev tools, so

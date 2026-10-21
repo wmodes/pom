@@ -11,10 +11,16 @@ December 18 session. Update this file in the same commit as the change it descri
 ### Added
 
 - **Changelog.** This file, in Keep a Changelog format.
+- **Logging and shared config.** The service's stdout goes to journald, so problems are logged
+  there. `src/pom/logs.py` sets up stdout logging once (no timestamp, since journald adds one,
+  idempotent, never fails). `src/pom/config.py` holds the shared settings `strict` and
+  `log_level` from `config/pom.toml` and the `POM_STRICT` / `POM_LOG_LEVEL` environment
+  variables, with the environment winning, and never raises. A `Report` can now be given a
+  logger, and `Weights` logs its problems through `pom.corpus.weights`. 49 new tests.
 - **Report** (`src/pom/report.py`), the shared way every module reports problems as data
   instead of raising: WARNING (recovered) and CRITICAL (cannot do its job, still no crash),
   a `strict` mode that raises for tests and dev tools, a cap on how many issues are kept,
-  and criticals that are never dropped. 15 tests in `tests/test_report.py`.
+  and criticals that are never dropped. 20 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
 - **ChunkStore module** (`src/pom/corpus/chunk_store.py`). Reads the chunk files into immutable

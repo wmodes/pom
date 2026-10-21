@@ -8,6 +8,7 @@ Everything runs against tiny in-memory documents or temp files, except the last 
 check of the committed weights file.
 """
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -145,6 +146,25 @@ def test_many_problems_at_once_never_raise_and_all_are_reported():
                                     poetry=7, cooking={"shares": 1}))
     assert len(weights.report.warnings) >= 4
     assert weights.share("news") == 1.0
+
+
+def test_problems_are_logged_so_they_reach_journald(caplog):
+    with caplog.at_level(logging.WARNING, logger="pom.corpus.weights"):
+        Weights.from_dict(doc(news={"share": "oops"}))
+    assert any(r.levelno == logging.WARNING and "register 'news' share" in r.message
+               for r in caplog.records)
+
+
+def test_a_clean_file_logs_nothing(caplog):
+    with caplog.at_level(logging.DEBUG, logger="pom.corpus.weights"):
+        Weights.from_dict(doc(news={"share": 2}))
+    assert caplog.records == []
+
+
+def test_check_problems_are_logged_too(caplog):
+    with caplog.at_level(logging.WARNING, logger="pom.corpus.weights"):
+        Weights.from_dict(doc(news={"sources": {"ads": 1}})).check(LAYOUT)
+    assert any("not in weights file" in r.message for r in caplog.records)
 
 
 # --- The same problems in strict mode (development and tests) --------------------------

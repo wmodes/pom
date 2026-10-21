@@ -4,7 +4,12 @@ DESIGN PRINCIPLE (project-wide): the Printer must never stop because of a typo. 
 file with a bad number, one corrupt line in a corpus file, a missing optional file: none of
 these may crash the oracle in a gallery. A module that meets a problem it can recover from
 recovers (it falls back to a default, skips the bad entry) and records what it did here, so a
-person can fix it later. Nothing is printed or raised at the point of the problem.
+person can fix it later. Nothing is raised at the point of the problem.
+
+LOGGING: a Report can be given a logger, and then every issue is also logged the moment it is
+recorded (WARNING for warnings, CRITICAL for criticals). The service's stdout goes to journald,
+so `journalctl -u pom` shows these without any caller having to remember to print them.
+Modules never configure logging themselves; the entry point does that once (pom.logs).
 
 Two severities:
   * WARNING:  recovered. The module carried on with a default or skipped something.
@@ -17,8 +22,10 @@ module's own error type. Tests and dev tools run strict so a typo is loud while 
 runtime never does.
 
 A Report keeps the first `limit` issues and counts the rest, so one corrupt 70,000-line file
-cannot flood the log or exhaust memory. Critical issues are always kept.
+cannot flood the log or exhaust memory; past the limit it logs a single line saying so. Critical
+issues are always kept and always logged.
 """
+import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import Iterator, Optional
@@ -52,12 +59,15 @@ class Report:
         strict: If true, every issue is raised at once as `error` (development only).
         error: The exception type raised in strict mode; defaults to ValueError.
         limit: How many issues to keep; further ones are only counted.
+        logger: If given, every kept issue is logged as it is recorded.
     """
 
-    def __init__(self, strict: bool = False, error: type = ValueError, limit: int = 50):
+    def __init__(self, strict: bool = False, error: type = ValueError, limit: int = 50,
+                 logger: Optional[logging.Logger] = None):
         self._strict = strict
         self._error = error
         self._limit = limit
+        self._logger = logger
         self._issues: list[Issue] = []
         self._suppressed = 0
 
@@ -85,8 +95,18 @@ class Report:
         # a flood of warnings.
         if issue.severity is Severity.CRITICAL or len(self._issues) < self._limit:
             self._issues.append(issue)
+            self._log(issue)
         else:
+            if self._suppressed == 0:
+                self._log(Issue(Severity.WARNING, f"more than {self._limit} issues; the rest are "
+                                                   f"counted but not logged"))
             self._suppressed += 1
+
+    def _log(self, issue: Issue) -> None:
+        """Logs an issue at the matching level, if a logger was given."""
+        if self._logger is not None:
+            level = logging.CRITICAL if issue.severity is Severity.CRITICAL else logging.WARNING
+            self._logger.log(level, issue.message)
 
     # --- Reading --------------------------------------------------------------------
 
@@ -137,6 +157,9 @@ class Report:
         return f"Report({len(self)} issue(s){', critical' if self.has_critical else ''})"
 
 
-def strict_report(error: type, strict: bool, limit: Optional[int] = None) -> Report:
-    """A Report for a module: strict raises `error`, lenient collects. Small convenience."""
-    return Report(strict=strict, error=error, **({} if limit is None else {"limit": limit}))
+def strict_report(error: type, strict: bool, limit: Optional[int] = None,
+                  logger: Optional[logging.Logger] = None) -> Report:
+    """A Report for a module: strict raises `error`, lenient collects (and logs, if a logger is
+    given). Small convenience so every module builds its report the same way."""
+    return Report(strict=strict, error=error, logger=logger,
+                  **({} if limit is None else {"limit": limit}))

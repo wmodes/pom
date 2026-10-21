@@ -1,4 +1,6 @@
 """Tests for pom.report: recording problems as data, with a strict mode for development."""
+import logging
+
 import pytest
 
 from pom.report import Issue, Report, Severity, strict_report
@@ -124,3 +126,55 @@ def test_strict_report_helper():
     report.warn("a")
     report.warn("b")
     assert report.suppressed == 1
+
+
+# --- Logging ---------------------------------------------------------------------------
+
+def test_no_logger_means_nothing_is_logged(caplog):
+    with caplog.at_level(logging.DEBUG):
+        Report().warn("quiet")
+    assert caplog.records == []
+
+
+def test_issues_are_logged_at_the_matching_level(caplog):
+    log = logging.getLogger("pom.test")
+    report = Report(logger=log)
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        report.warn("recovered")
+        report.critical("cannot continue")
+    assert [(r.levelno, r.message) for r in caplog.records] == [
+        (logging.WARNING, "recovered"), (logging.CRITICAL, "cannot continue")]
+
+
+def test_past_the_limit_one_line_says_the_rest_are_not_logged(caplog):
+    report = Report(limit=2, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        for i in range(6):
+            report.warn(f"w{i}")
+    messages = [r.message for r in caplog.records]
+    assert messages[:2] == ["w0", "w1"]
+    assert len(messages) == 3 and "more than 2 issues" in messages[2]
+
+
+def test_a_critical_past_the_limit_is_still_logged(caplog):
+    report = Report(limit=1, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        report.warn("a")
+        report.warn("b")
+        report.critical("must see this")
+    assert any(r.levelno == logging.CRITICAL and r.message == "must see this" for r in caplog.records)
+
+
+def test_strict_raises_and_logs_nothing(caplog):
+    report = Report(strict=True, error=FakeError, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        with pytest.raises(FakeError):
+            report.warn("x")
+    assert caplog.records == []
+
+
+def test_strict_report_helper_passes_the_logger_on(caplog):
+    report = strict_report(FakeError, strict=False, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        report.warn("via helper")
+    assert [r.message for r in caplog.records] == ["via helper"]

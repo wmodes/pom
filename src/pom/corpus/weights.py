@@ -22,9 +22,12 @@ Design decisions, and why:
     can be written however is convenient (0.8, 1, 1) and a register with no chunks cannot steal
     probability from the others. If every share is zero the registers count 1.0 each, since
     drawing nothing is worse than drawing evenly.
-  * The module never prints or logs. The Report carries the problems; the caller decides.
+  * The module never prints. Each problem is recorded in a Report and also logged through the
+    standard `logging` module (logger `pom.corpus.weights`), which reaches journald once the
+    entry point has configured logging.
 """
 import json
+import logging
 import math
 from pathlib import Path
 from typing import Iterable, Mapping, Optional
@@ -33,6 +36,7 @@ from pom.report import Report
 
 DEFAULT_WEIGHT = 1.0
 _REGISTER_KEYS = {"share", "sources"}
+_log = logging.getLogger(__name__)
 
 
 class WeightsError(ValueError):
@@ -202,8 +206,8 @@ class Weights:
 
 
 def _new_report(strict: bool) -> Report:
-    """A Report that raises WeightsError in strict mode and collects otherwise."""
-    return Report(strict=strict, error=WeightsError)
+    """A Report that raises WeightsError in strict mode; otherwise it collects and logs."""
+    return Report(strict=strict, error=WeightsError, logger=_log)
 
 
 def _number(value, label: str, report: Report) -> float:

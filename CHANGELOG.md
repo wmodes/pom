@@ -11,6 +11,11 @@ December 18 session. Update this file in the same commit as the change it descri
 ### Added
 
 - **Changelog.** This file, in Keep a Changelog format.
+- **ChunkStore module** (`src/pom/corpus/chunk_store.py`). Reads the chunk files into immutable
+  `Chunk` objects and answers layout and count questions; its `layout()` is what
+  `Weights.check` compares against. Loading is strict (a record must match its folder and file
+  name; errors name the file and line) and deterministic. The real corpus, 71,474 chunks, loads
+  in about 0.2 seconds. 40 tests in `tests/corpus/test_chunk_store.py`.
 - **Weights module** (`src/pom/corpus/weights.py`, the first runtime code). Reads
   `corpus/chunks/weights.json`, treats anything unlisted as 1.0, normalizes register shares over
   the registers that have chunks, and checks the file against the corpus layout. Drift is a

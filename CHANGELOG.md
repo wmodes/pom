@@ -41,6 +41,10 @@ December 18 session. Update this file in the same commit as the change it descri
   and criticals that are never dropped. 21 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
+- **Sampler playground** (`scripts/dev/corpus/sample.py`). Prints pulls of random chunks, or with
+  `--stats N` draws N pulls quietly and compares each register's share of draws with its
+  target. Builds the real Sampler from the corpus, config and weights, and takes `--weights` to
+  try a different weights file before editing the real one.
 - **Sampler module** (`src/pom/corpus/sampler.py`). Draws weighted random chunks so each register
   gets its target share over many draws while any combination of draws stays possible. A
   chunk's chance is its register's share times its source's weight over the register's total,

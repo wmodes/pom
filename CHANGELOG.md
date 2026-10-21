@@ -36,6 +36,17 @@ December 18 session. Update this file in the same commit as the change it descri
   and criticals that are never dropped. 20 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
+- **Sampler module** (`src/pom/corpus/sampler.py`). Draws weighted random chunks so each register
+  gets its target share over many draws while any combination of draws stays possible. A
+  chunk's chance is its register's share times its source's weight over the register's total,
+  computed once at startup and never stored. One pull never repeats a chunk; asking for more
+  than exist returns fewer. `draw()` with no argument returns a number of chunks in a configurable
+  range (3 to 5 by default); `draw(n)` overrides it. The random generator is injected so draws
+  can be seeded. It never stops the oracle: a register with nothing drawable is skipped with a
+  warning, and nothing at all to draw is a critical issue with an empty result. It counts draws
+  per register (counts only) so an over-represented register can be spotted. `strict=True`
+  raises. A draw takes about 3 microseconds on the real corpus and building the odds about
+  13 ms. 62 tests in `tests/corpus/test_sampler.py`.
 - **ChunkStore module** (`src/pom/corpus/chunk_store.py`). Reads the chunk files into immutable
   `Chunk` objects and answers layout and count questions; its `layout()` is what
   `Weights.check` compares against. It never stops the oracle: a bad line is skipped, an

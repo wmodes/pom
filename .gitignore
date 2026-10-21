@@ -26,3 +26,6 @@ __pycache__/
 
 # Local log files written when local_logs is on (the service logs to journald)
 logs/
+
+# Downloaded resources (NLTK data, lexicons); each machine fetches its own
+data/

@@ -41,6 +41,9 @@ December 18 session. Update this file in the same commit as the change it descri
   and criticals that are never dropped. 21 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
+- **Runtime libraries and data for the Scorer:** `requirements.txt` (`wordfreq`, `nltk`),
+  `scripts/setup/setup-nltk-data.sh` (fetches WordNet, stopwords and a part-of-speech tagger into the
+  gitignored `data/nltk/`), and the decisions behind the Scorer in the project handoff.
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.

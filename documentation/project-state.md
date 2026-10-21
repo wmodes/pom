@@ -171,8 +171,44 @@ The Pi (`ssh pi@pom1.local`) is only reachable on the home network. See
 `documentation/pi-setup-notes.md` for its setup, Comitup Wi-Fi fallback and the whisper.cpp and
 llama.cpp setup scripts.
 
+## Decisions since the first handoff (2026-10-21, later)
+
+- **Pipeline written out as workers with handoff triggers** (Microphone, Segmenter, Transcriber,
+  Fragmenter, Scorer, Trigger policy, Hinge picker, then Prompt builder, Voice, Output; plus an
+  Activity tracker and the keyboard Input). Wes has the current wording in his design notes.
+- **Words:** a *fragment* is a piece the Fragmenter cuts; the Scorer makes *scored fragments*, also
+  called *candidate hinges*; the *hinge* is the one the Hinge picker finally chooses.
+- **Conductor uses asyncio** (Wes dislikes blocking Python): each worker is an async task with an
+  `asyncio.Queue` between them; leaf modules stay plain synchronous code; anything that blocks is
+  awaited or run in a thread; `TaskGroup` (Python 3.11) for clean shutdown.
+- **Deaf only while the typewriter is actually printing.** While deciding whether to trigger, and
+  while the voice generates, the Segmenter keeps gathering utterances into a bounded queue; only the
+  Transcriber pauses during generation and then catches up.
+- **Segmenting:** a voice-activity detector cuts utterances at a pause of about 0.7 s, or at a 20 s
+  maximum with about 2 s overlap (duplicates dropped); an energy-based detector with a slowly moving
+  noise floor first, a library later if too crude; Whisper's own no-speech check is a second screen.
+- **Room activity** is seconds of accepted speech per minute (from the Transcriber), not loudness.
+  Target rate: 0 when silent, about 4 prints an hour with a little talking, about 8 busy (config),
+  steered by a rate governor; paper guards: quiet timeout about 10 min, ceilings about 12 an hour
+  and 60 a day (proposed values).
+- **The Scorer uses no separate model.** Signals (weights in config): snag on the corpus (corpus
+  counts times rarity in everyday speech from `wordfreq`), concreteness (WordNet senses, a vote across
+  senses, not the first sense), feeling (NRC-VAD lexicon: free for non-commercial research and
+  education, **not redistributable**, so each machine downloads its own into the gitignored
+  `data/lexicons/`; missing means the signal is off with a warning; credit it in a credits file),
+  names/numbers/questions (NLTK part-of-speech tags: NNP, CD; the question mark), a filler penalty
+  (stopwords, interjections), a recent-use penalty.
+- **Probe results that shaped it:** exact corpus matches are plentiful (dog 357, candle 108, couch 56,
+  complain 67); WordNet's first sense is often wrong (draft -> a bill, Karen -> communication); WordNet
+  neighbors across senses are noisy (dog -> head), so use them only as a small bonus: synonyms and direct
+  broader/narrower words of the main sense, no siblings.
+- **Libraries:** `wordfreq` and `nltk` are in `requirements.txt`; `scripts/setup/setup-nltk-data.sh`
+  fetches the NLTK data into `data/nltk/` (gitignored). Set `NLTK_DATA=<repo>/data/nltk`.
+
 ## Next steps, in order
 
+0. **Scorer** (now first, at Wes's request): text in, a list of scored candidate hinges out, built signal by
+   signal behind small lookup interfaces so tests can use fakes.
 1. **Trigger policy**: the moving threshold, its jump and decay after a print, and fading of old
    scores. Pure math over time, no clock inside (pass time in).
 2. **Scorer**: interest rating of fragments (heuristics first, a tiny model later), separate from the

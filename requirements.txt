@@ -1,0 +1,10 @@
+# Runtime libraries for the Printer (the Pi and the Mac). Dev and test tools are in requirements-dev.txt.
+# Install into the project venv:  python -m pip install -r requirements.txt
+# Both are pure Python (their own dependencies ship wheels for aarch64); verify on the Pi when deploying.
+
+# Everyday-speech word frequencies, for "how rare is this word in normal talk".
+wordfreq>=3.1,<4
+
+# WordNet (senses and relations), a part-of-speech tagger and stopword lists, for reading the
+# meaning of a fragment. Its data is fetched separately: scripts/setup/setup-nltk-data.sh
+nltk>=3.9,<4

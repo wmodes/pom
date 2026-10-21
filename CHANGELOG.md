@@ -41,6 +41,17 @@ December 18 session. Update this file in the same commit as the change it descri
   and criticals that are never dropped. 21 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
+- **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
+  hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
+  ellipses) and phrases (at commas), depth first and in speech order, each stamped with the
+  timestamp it was given and its sentence index. Single words are kept; a piece that repeats a
+  higher level is not repeated. Abbreviations (Dr., e.g.), initials, decimals and times do not
+  cause false cuts. Text with no punctuation is cut into windows of at most `max_words` words
+  (40 by default). It never stops the oracle: text that is not a string gives nothing and a bad
+  limit falls back to the default with a warning; `strict=True` raises. Tests in
+  `tests/listening/test_fragmenter.py`, including a fuzz test on random junk.
+- **Fragmenter playground** (`scripts/dev/listening/fragment.py`): type or pipe in some speech
+  and see every fragment with its level.
 - **A guide to adding material** (`documentation/adding-material.md`): the whole path from
   choosing a register through chunking, weights, verifying and committing, with the commands. The
   corpus README and notes point to it.

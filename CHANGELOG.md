@@ -89,6 +89,9 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Changed
 
+- **`draw_weights.py` and `chunk.py` now use the `pom` package** for the weights math and the
+  weights.json checks, so the package is the single source of truth. Their output and the chunk
+  files are unchanged.
 - **Source weights moved** from the `weight` column in `corpus/sources.csv` into
   `corpus/chunks/weights.json`. `corpus.py set ID weight=...` now points at the new file.
 - **Standardizer rules tightened** after a full sweep of `ready/`: leftover non-ASCII, lowercase

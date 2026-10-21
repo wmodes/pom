@@ -19,7 +19,7 @@ Rules, in order:
 
 A chunk holds only facts about itself (source, register, text). How likely it is to be
 drawn depends on the whole corpus and on the weights in chunks/weights.json, so that is
-computed at load time by draw_weights.py and never stored here: adding one utterance, or
+computed at load time by the Sampler (src/pom/corpus) and never stored here: adding one utterance, or
 changing a weight, touches no chunk file.
 
 Output is deterministic: one JSONL file per source under corpus/chunks/<register>/<id>.jsonl.
@@ -41,9 +41,11 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import draw_weights  # noqa: E402  (shares the corpus location and the weight math)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
+from pom.corpus import Weights  # noqa: E402  (scripts may import the package, never the reverse)
+from pom.logs import configure_logging  # noqa: E402
 
-CORPUS = draw_weights.CORPUS
+CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "corpus")
 READY = os.path.join(CORPUS, "ready")
 OUT = os.path.join(CORPUS, "chunks")
 
@@ -202,13 +204,14 @@ def build(limit, minimum):
 
 
 def target_shares(records, weights_path):
-    """Returns each register's normalized target share, failing early if one has no target."""
-    registers, source_weights = draw_weights.load_weights(weights_path)
-    sources = [{"id": s, "register": rs[0]["register"], "weight": source_weights.get(s, 1.0),
-                "count": len(rs)} for s, rs in records.items() if rs]
-    for note in draw_weights.unlisted(sources, registers, source_weights):
-        print(f"warning: {note}", file=sys.stderr)
-    return draw_weights.draw_probabilities(sources, registers)[1]
+    """Returns each register's normalized target share; drift in weights.json is logged."""
+    weights = Weights.from_file(weights_path)
+    layout = {}
+    for source, rs in records.items():
+        if rs:
+            layout.setdefault(rs[0]["register"], []).append(source)
+    weights.check(layout)                      # logs unlisted or missing registers and sources
+    return weights.shares_for(layout)
 
 
 def write(records):
@@ -260,6 +263,7 @@ def main():
     parser.add_argument("--weights", default=os.path.join(CORPUS, "chunks", "weights.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
+    configure_logging("WARNING")
     records, stats = build(args.max_words, args.min_words)
     shares = target_shares(records, args.weights)
     if not args.check:

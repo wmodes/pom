@@ -195,7 +195,7 @@ llama.cpp setup scripts.
   counts times rarity in everyday speech from `wordfreq`), concreteness (WordNet senses, a vote across
   senses, not the first sense), feeling (NRC-VAD lexicon: free for non-commercial research and
   education, **not redistributable**, so each machine downloads its own into the gitignored
-  `data/lexicon/NRC-VAD-Lexicon-v2.1/` (already downloaded on Wes's Mac); scores run from -1 to 1 with 0
+  `data/lexicons/NRC-VAD-Lexicon-v2.1/` (already downloaded on Wes's Mac); scores run from -1 to 1 with 0
   neutral, as tab-separated `term valence arousal dominance`, 44,729 words plus multi-word terms; missing
   means the signal is off with a warning; credit it in a credits file),
   names/numbers/questions (NLTK part-of-speech tags: NNP, CD; the question mark), a filler penalty

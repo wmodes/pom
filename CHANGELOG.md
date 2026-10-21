@@ -51,7 +51,8 @@ December 18 session. Update this file in the same commit as the change it descri
   warning, and nothing at all to draw is a critical issue with an empty result. It counts draws
   per register (counts only) so an over-represented register can be spotted. `strict=True`
   raises. A draw takes about 3 microseconds on the real corpus and building the odds about
-  13 ms. 62 tests in `tests/corpus/test_sampler.py`.
+  13 ms. 62 tests in `tests/corpus/test_sampler.py`. Chunks are not remembered across pulls; a
+  measured note in the module says why no recency decay was added and when to revisit it.
 - **ChunkStore module** (`src/pom/corpus/chunk_store.py`). Reads the chunk files into immutable
   `Chunk` objects and answers layout and count questions; its `layout()` is what
   `Weights.check` compares against. It never stops the oracle: a bad line is skipped, an

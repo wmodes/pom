@@ -17,6 +17,20 @@ These odds are computed from the corpus as it stands, once, when the Sampler is 
 never stored: a chunk's chance depends on its register's total, so adding a chunk changes only
 its own register's numbers, and rebuilding takes a few milliseconds.
 
+KNOWN LIMIT: NO MEMORY ACROSS PULLS. A pull never repeats a chunk, but separate pulls are
+independent, so a chunk can come back. Balancing the registers makes small ones repeat more: each
+of the 400 horoscope chunks is about 14 times likelier than in a flat draw. Measured in a
+simulation of this corpus (3 to 5 chunks per pull, no decay), the share of drawn chunks already
+seen earlier in the same run was:
+
+    one evening (16 pulls)        0.1%        two months (1,000 pulls)    9% (horoscope 30%)
+    a week of evenings (100)      1%          a year (5,000 pulls)        31% (horoscope 75%)
+
+That is fine for a gallery session, so no recency decay was added. If an installation ever runs
+for months without a restart, the fix is to make a chunk less likely right after it is drawn and
+let that fade (propose by base odds, accept with a multiplier, count time in draws); it was
+prototyped, with a floor and a half-life taken from Config, and found workable.
+
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A register whose sources all weigh 0
     is skipped with a warning and the others renormalize. If nothing at all can be drawn that is

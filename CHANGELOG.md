@@ -26,6 +26,11 @@ December 18 session. Update this file in the same commit as the change it descri
   1 MB with three backups, and if it cannot be opened logging carries on to stdout with one
   warning. Off by default, since on the Pi journald keeps the log. 77 new tests across the
   logging, debug-flag and config work.
+- **Sample count in the config.** `samples_min` and `samples_max` in `config/pom.toml` (or
+  `POM_SAMPLES_MIN` / `POM_SAMPLES_MAX`) set how many corpus chunks go into each pull of
+  exemplars, 3 to 5 by default. `Config` exposes them as `config.samples`, which the entry
+  point passes to `Sampler(samples=...)`; the Sampler never reads Config itself. A bad value
+  falls back to the default with a warning and a reversed pair is swapped. 19 new tests.
 - **Per-machine config override.** An optional, gitignored `config/pom.local.toml` overrides the
   committed `config/pom.toml` (the environment still wins over both). The committed file keeps
   the quiet defaults the Pi runs with; a developer's machine can keep debug logging and

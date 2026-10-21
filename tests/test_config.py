@@ -101,6 +101,65 @@ def test_the_committed_sample_config_is_clean_and_safe_for_the_pi(tmp_path):
     assert config.log_level == "INFO"
 
 
+# --- How many chunks per pull ----------------------------------------------------------
+
+def test_samples_default_to_three_to_five():
+    config = Config.load(environ={})
+    assert config.samples == (3, 5) and config.report.ok
+
+
+def test_the_defaults_match_the_samplers_defaults():
+    """Config and Sampler each carry the default (neither imports the other), so keep them equal."""
+    from pom.corpus.sampler import DEFAULT_SAMPLES
+    from pom.config import DEFAULT_SAMPLES as CONFIG_DEFAULT
+    assert CONFIG_DEFAULT == DEFAULT_SAMPLES
+
+
+def test_samples_are_read_from_the_file_and_the_environment(tmp_path):
+    path = write(tmp_path, "samples_min = 2\nsamples_max = 4\n")
+    assert Config.load(path, environ={}).samples == (2, 4)
+    assert Config.load(path, environ={"POM_SAMPLES_MIN": "1", "POM_SAMPLES_MAX": "6"}).samples == (1, 6)
+    assert Config.load(environ={"POM_SAMPLES_MAX": "8"}).samples == (3, 8)
+
+
+def test_one_end_alone_can_be_set(tmp_path):
+    assert Config.load(write(tmp_path, "samples_max = 9\n"), environ={}).samples == (3, 9)
+    assert Config.load(write(tmp_path, "samples_min = 2\n"), environ={}).samples == (2, 5)
+
+
+@pytest.mark.parametrize("value", ["0", "-2", "2.5", "true", '"many"', '""'])
+def test_a_bad_samples_value_in_the_file_means_the_default_with_a_warning(tmp_path, value):
+    config = Config.load(write(tmp_path, f"samples_max = {value}\n"), environ={})
+    assert config.samples == (3, 5)
+    assert any("samples_max must be a whole number" in w for w in config.report.warnings)
+
+
+@pytest.mark.parametrize("text", ["0", "-1", "2.5", "many", "", "true"])
+def test_a_bad_samples_value_in_the_environment_means_the_default_with_a_warning(text):
+    config = Config.load(environ={"POM_SAMPLES_MIN": text})
+    assert config.samples == (3, 5)
+    assert any("POM_SAMPLES_MIN" in w for w in config.report.warnings)
+
+
+def test_a_reversed_pair_is_swapped_with_a_warning(tmp_path):
+    config = Config.load(write(tmp_path, "samples_min = 7\nsamples_max = 2\n"), environ={})
+    assert config.samples == (2, 7)
+    assert any("more than samples_max" in w for w in config.report.warnings)
+
+
+def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
+    assert Config.load(write(tmp_path, 'samples_min = "2"\n'), environ={}).samples == (2, 5)
+
+
+def test_config_samples_plug_straight_into_the_sampler():
+    import random
+    from pom.corpus import Chunk, ChunkStore, Sampler, Weights
+    config = Config.load(environ={"POM_SAMPLES_MIN": "2", "POM_SAMPLES_MAX": "2"})
+    store = ChunkStore.from_chunks([Chunk(f"a#{i}", "a", "red", f"Chunk {i}", 2) for i in range(9)])
+    sampler = Sampler(store, Weights.from_dict({}), random.Random(1), samples=config.samples)
+    assert len(sampler.draw()) == 2
+
+
 # --- The per-machine override file ----------------------------------------------------
 
 def write_pair(tmp_path, base, local):

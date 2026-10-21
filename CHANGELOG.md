@@ -47,6 +47,11 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Word tools** (`src/pom/hinge/words.py`), the first piece of the Scorer. Reads a fragment as
+  words and says what each one is: base form, part of speech, name, number, stopword, filler (a
+  configurable list plus any interjection), and whether it can carry interest. Uses NLTK from
+  `data/nltk`; if that data is missing it falls back to plain rules and records a warning rather
+  than stopping. Tests: 27 in `tests/hinge/test_words.py`, which use fakes and need no data.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the

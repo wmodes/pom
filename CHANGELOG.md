@@ -41,6 +41,11 @@ December 18 session. Update this file in the same commit as the change it descri
   and criticals that are never dropped. 21 tests in `tests/test_report.py`.
 - **Design principle:** the Printer never stops because of a typo or a recoverable fault.
   Written into the `pom` package docstring.
+- **A new `nonsense` register**, started with *Alice's Adventures in Wonderland* (Project
+  Gutenberg #11; 784 utterances, 790 chunks). Added through the normal pipeline as a test of how
+  hard it is to grow the corpus: `add`, `process`, one `set` for the markers and `unwrap`, `promote`,
+  `chunk.py`, then one entry in `weights.json`. With equal register shares each register now gets
+  1/14 of the draws instead of 1/13.
 - **Sampler playground** (`scripts/dev/corpus/sample.py`). Prints pulls of random chunks, or with
   `--stats N` draws N pulls quietly and compares each register's share of draws with its
   target. Builds the real Sampler from the corpus, config and weights, and takes `--weights` to

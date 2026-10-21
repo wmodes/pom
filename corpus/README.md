@@ -22,7 +22,7 @@ corpus/
     └── <form>/<id>.txt
 ```
 
-`<form>` is what the oracle might write, not where the text came from. In use: `divination`, `wisdom`, `poetry`, `drama`, `humor`, `horoscope`, `manual`, `prophecy`, `epitaph`, `aphorism`, `rhyme`, `spiritualism`, `news`. Add a form only when a source needs it, and list it here.
+`<form>` is what the oracle might write, not where the text came from. In use: `divination`, `wisdom`, `poetry`, `drama`, `humor`, `horoscope`, `manual`, `prophecy`, `epitaph`, `aphorism`, `rhyme`, `spiritualism`, `news`, `nonsense`. Add a form only when a source needs it, and list it here.
 
 Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/corpus/corpus.py` reading `raw/` and the manifest, deterministically: re-running `clean` gives byte-identical files. To change a text, change its row in `sources.csv` (or a rule in `normalize.py`) and re-run.
 

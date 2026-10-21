@@ -72,6 +72,12 @@
         "news-quaint-curious-advertisements-1886": 1.0
       }
     },
+    "nonsense": {
+      "share": 1.0,
+      "sources": {
+        "nonsense-carroll-alice-1865": 1.0
+      }
+    },
     "poetry": {
       "share": 1.0,
       "sources": {

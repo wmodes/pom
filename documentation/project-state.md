@@ -18,8 +18,12 @@ summarized below.
 
 ## Where things stand
 
-- **Built and tested** (439 tests, all passing): the shared plumbing (`report`, `logs`, `config`),
-  the corpus module (`Weights`, `ChunkStore`, `Sampler`), and the `Fragmenter`.
+- **Built and tested** (470 tests, all passing): the shared plumbing (`report`, `logs`, `config`),
+  the corpus module (`Weights`, `ChunkStore`, `Sampler`), the `Fragmenter`, and the word tools
+  (`hinge/words.py`, now a pre-filter and fallback for the Scorer).
+- **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
+  a time, no context. See `experiments/interest-scorer/README.md` and the decisions below. The
+  Scorer module itself is not built yet.
 - **Corpus:** 81 sources, 14 registers, about 72,000 chunks, public on GitHub. Alice's Adventures in
   Wonderland went in as the 14th register (`nonsense`) to test how hard growing the corpus is: easy.
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see
@@ -79,7 +83,9 @@ src/pom/
   listening/
     fragmenter.py      built   transcript text -> sentence / clause / phrase fragments, all levels
     (audio source, transcriber [whisper.cpp], room energy: planned)
-  hinge/               planned Scorer (interest), Trigger policy (moving threshold), Hinge picker
+  hinge/
+    words.py           built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
+    (Scorer [small LLM, one sentence at a time], Trigger policy, Hinge picker: planned)
   prompt/              planned Prompt builder (system messages come from config)
   voice/               planned Voice interface, Track A and Track B voices, model runner (llama.cpp)
   output/              planned reply selection, formatter, serial port wrapper (pauses listening)
@@ -191,7 +197,20 @@ llama.cpp setup scripts.
   Target rate: 0 when silent, about 4 prints an hour with a little talking, about 8 busy (config),
   steered by a rate governor; paper guards: quiet timeout about 10 min, ceilings about 12 an hour
   and 60 a day (proposed values).
-- **The Scorer uses no separate model.** Signals (weights in config): snag on the corpus (corpus
+- **The Scorer is a small local LLM (decided 2026-10-22, replacing the plan below).** One sentence
+  per request, no context, score read from the digit probabilities, so a sentence scores the same
+  whatever came before it. Batching and shown-context both made scores depend on order and neighbors
+  and were rejected. Qwen3-4B (Q4_K_M) is the current choice; Llama-3.2-3B is the faster alternative.
+  The prompt (in config eventually) keeps the definition of "interesting" separate from the meaning of
+  the numbers, with no persona. Scores run low and relative (top about 6 to 8), so the trigger must
+  work from rank and gaps, not a fixed high threshold; the hinge picker's temperature does this.
+  Fragments become **whole sentences** (the Fragmenter gets a config setting for which levels it
+  emits; clauses and phrases stay available). The word tools stay as a pre-filter and a fallback if
+  the model is down. Evidence, rules and results: `experiments/interest-scorer/`.
+- **Still open for the Scorer:** timing on the Pi with whisper running; real-room transcripts; and
+  Wes's conclusion that we must first define for ourselves what "interesting" is and what should
+  trigger a print, then state it to the model.
+- **Earlier plan, now a fallback:** no separate model. Signals (weights in config): snag on the corpus (corpus
   counts times rarity in everyday speech from `wordfreq`), concreteness (WordNet senses, a vote across
   senses, not the first sense), feeling (NRC-VAD lexicon: free for non-commercial research and
   education, **not redistributable**, so each machine downloads its own into the gitignored
@@ -209,12 +228,12 @@ llama.cpp setup scripts.
 
 ## Next steps, in order
 
-0. **Scorer** (now first, at Wes's request): text in, a list of scored candidate hinges out, built signal by
-   signal behind small lookup interfaces so tests can use fakes.
+0. **Scorer module**: a small client for llama-server (the prompt from config, a fake for tests, a
+   Report and the word-tool fallback when the model is down), plus a playground script. First time it on
+   the Pi with whisper running, and collect real room transcripts to try it on.
 1. **Trigger policy**: the moving threshold, its jump and decay after a print, and fading of old
    scores. Pure math over time, no clock inside (pass time in).
-2. **Scorer**: interest rating of fragments (heuristics first, a tiny model later), separate from the
-   voice.
+2. **Fragmenter setting** for which levels to emit (sentences only by default).
 3. **Hinge picker**: weighted random pick from the top candidates, with a temperature.
 4. **Prompt builder**: persona and system messages come from config; it draws exemplars from the
    Sampler. Config will need multi-line strings and probably sections.

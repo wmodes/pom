@@ -1,0 +1,119 @@
+Interest-scoring bake-off: bakeoff-2026-10-22
+
+model          repeats (max diff)  mean ms  slowest ms  unscored  score range
+gemma3-4b                   0.000      217         249         0  1.91 - 8.00
+llama3.2-3b                 0.001       29         211         0  3.10 - 8.01
+qwen3-4b                    0.000       47         281         0  1.82 - 8.03
+
+rank agreement (1.00 = same order):
+  gemma3-4b vs llama3.2-3b: +0.82
+  gemma3-4b vs qwen3-4b: +0.78
+  llama3.2-3b vs qwen3-4b: +0.89
+
+=== gemma3-4b, best first ===
+ 8.00  What if I beat your face in?
+ 8.00  I ate the whole wedding cake alone in the dark, crying about the nine thousand dollars.
+ 8.00  I found a hundred dollar bill folded inside the dead man's radio, and it was still warm.
+ 8.00  Honestly, if this bullshit keeps up I'm going to be exercising my second amendment rights.
+ 8.00  I'm fucking pissed about this.
+ 7.99  I once got fired for having sex with my boss.
+ 7.98  I heard from friends, that though he's supposedly 'straight,' he gives the best blow job in the world.
+ 7.98  I would put a bullet in the heart of mine enemies.
+ 7.70  Well, that's better than the couch eating your dog.
+ 7.34  What the fuck?
+ 7.19  My mother's dog started barking in her voice about a week after the funeral.
+ 7.12  Lightning hit the house in '98 and ever since, the toaster only burns my grandfather's initials.
+ 7.11  Oh my God, last night the dog ate my couch.
+ 7.07  I found $100 bill in an old Radio I was working on.
+ 7.01  I think my car is posessed.
+ 7.01  I'm kind of social out and I need to get the fuck out of here.
+ 7.00  I got off a bus in a random small town in Iowa to get a snack and my dad who haven't seen in 10 years happen to be standing there.
+ 6.95  How are we supposed to experience this year?
+ 5.71  All right what's going on here?
+ 4.83  Even in New York's most introductionless circles, people always introduce.
+ 4.36  It would be in very bad taste for Alice to introduce herself to Mrs. Worldly if her sister knew her only slightly.
+ 3.95  The four who are at the same bridge table.
+ 3.21  Partners or fellow-players in any game.
+ 2.42  I need to grade all the work my students have turned in.
+ 2.27  A small group of people who are to sit together anywhere.
+ 2.18  The guests at a house party.
+ 2.03  Everyone at a small dinner or luncheon.
+ 2.02  Yesterday I was just talking to Neil about this.
+ 2.01  These self-introductions, however, must never presumingly be made.
+ 2.01  Did you get that website I texted you about?
+ 2.01  Have you read her recent book?
+ 2.01  I love you
+ 2.00  Partners at dinner.
+ 1.91  Oh this is cool.
+
+=== llama3.2-3b, best first ===
+ 8.01  I ate the whole wedding cake alone in the dark, crying about the nine thousand dollars.
+ 7.98  Lightning hit the house in '98 and ever since, the toaster only burns my grandfather's initials.
+ 7.94  I found a hundred dollar bill folded inside the dead man's radio, and it was still warm.
+ 7.90  I got off a bus in a random small town in Iowa to get a snack and my dad who haven't seen in 10 years happen to be standing there.
+ 7.89  Honestly, if this bullshit keeps up I'm going to be exercising my second amendment rights.
+ 7.88  I once got fired for having sex with my boss.
+ 7.87  Oh my God, last night the dog ate my couch.
+ 7.87  I heard from friends, that though he's supposedly 'straight,' he gives the best blow job in the world.
+ 7.84  My mother's dog started barking in her voice about a week after the funeral.
+ 7.84  What if I beat your face in?
+ 7.77  I'm kind of social out and I need to get the fuck out of here.
+ 7.76  What the fuck?
+ 7.70  I would put a bullet in the heart of mine enemies.
+ 7.63  I'm fucking pissed about this.
+ 7.54  Even in New York's most introductionless circles, people always introduce.
+ 7.36  Well, that's better than the couch eating your dog.
+ 7.29  I think my car is posessed.
+ 7.13  It would be in very bad taste for Alice to introduce herself to Mrs. Worldly if her sister knew her only slightly.
+ 7.05  How are we supposed to experience this year?
+ 6.97  I love you
+ 6.84  These self-introductions, however, must never presumingly be made.
+ 6.77  I found $100 bill in an old Radio I was working on.
+ 5.50  Partners or fellow-players in any game.
+ 4.88  The four who are at the same bridge table.
+ 4.84  Did you get that website I texted you about?
+ 4.51  All right what's going on here?
+ 4.47  A small group of people who are to sit together anywhere.
+ 4.19  Yesterday I was just talking to Neil about this.
+ 3.67  Oh this is cool.
+ 3.66  Partners at dinner.
+ 3.60  Have you read her recent book?
+ 3.26  I need to grade all the work my students have turned in.
+ 3.20  Everyone at a small dinner or luncheon.
+ 3.10  The guests at a house party.
+
+=== qwen3-4b, best first ===
+ 8.03  Lightning hit the house in '98 and ever since, the toaster only burns my grandfather's initials.
+ 7.97  I found a hundred dollar bill folded inside the dead man's radio, and it was still warm.
+ 7.82  I think my car is posessed.
+ 7.80  I ate the whole wedding cake alone in the dark, crying about the nine thousand dollars.
+ 7.30  I heard from friends, that though he's supposedly 'straight,' he gives the best blow job in the world.
+ 6.98  I got off a bus in a random small town in Iowa to get a snack and my dad who haven't seen in 10 years happen to be standing there.
+ 6.35  It would be in very bad taste for Alice to introduce herself to Mrs. Worldly if her sister knew her only slightly.
+ 6.18  My mother's dog started barking in her voice about a week after the funeral.
+ 6.13  Well, that's better than the couch eating your dog.
+ 6.11  I would put a bullet in the heart of mine enemies.
+ 6.11  Honestly, if this bullshit keeps up I'm going to be exercising my second amendment rights.
+ 6.06  Oh my God, last night the dog ate my couch.
+ 5.99  I once got fired for having sex with my boss.
+ 5.95  What if I beat your face in?
+ 5.70  I found $100 bill in an old Radio I was working on.
+ 5.44  What the fuck?
+ 5.41  Even in New York's most introductionless circles, people always introduce.
+ 5.01  I'm kind of social out and I need to get the fuck out of here.
+ 5.00  I'm fucking pissed about this.
+ 4.88  How are we supposed to experience this year?
+ 4.81  I love you
+ 3.04  All right what's going on here?
+ 3.00  Partners or fellow-players in any game.
+ 2.98  The four who are at the same bridge table.
+ 2.97  These self-introductions, however, must never presumingly be made.
+ 2.97  A small group of people who are to sit together anywhere.
+ 2.75  Did you get that website I texted you about?
+ 2.30  Yesterday I was just talking to Neil about this.
+ 2.06  Have you read her recent book?
+ 2.01  Partners at dinner.
+ 2.00  I need to grade all the work my students have turned in.
+ 2.00  Everyone at a small dinner or luncheon.
+ 1.98  The guests at a house party.
+ 1.82  Oh this is cool.

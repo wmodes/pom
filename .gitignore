@@ -34,3 +34,6 @@ data/
 *.swp
 *.swo
 *.swn
+
+# server logs written by the experiments' bake-off runners
+experiments/**/server-*.log

@@ -58,6 +58,12 @@ December 18 session. Update this file in the same commit as the change it descri
   the digit probabilities, so it is continuous, repeatable, and independent of the other lines.
   `--batch` sends a numbered list in one request instead (scores shift with order and cluster on a
   few values), and `--context` shows earlier lines. Both prompts are at the top of the script.
+- **Interest-scorer experiment** (`experiments/interest-scorer/`, with a new `experiments/` folder
+  and README for formative experiments, named `<level>_<subject>`). A fixed bake-off
+  (`bakeoff_interest_scorer.py` and `.sh`) that runs the same test, one sentence per request with no
+  context, against Qwen3-4B, Llama-3.2-3B and Gemma-3-4B and writes a report; the first saved run is in
+  `results/bakeoff-2026-10-22/`. The README records the rules, what was learned, and that the Scorer will
+  be a small local model scoring one sentence at a time. `documentation/project-state.md` updated.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the

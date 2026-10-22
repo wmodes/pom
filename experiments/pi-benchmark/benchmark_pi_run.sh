@@ -146,7 +146,9 @@ score_with_whisper() {
   local label="$1" lt="$2" wm="$3" wt="$4" sample="$5"
   local phase="with-whisper-$wm-t$wt-llama-t$lt-$sample" limit=1800
   [ "$sample" = large ] && limit=7200
-  "$PYTHON" -B "$WHISPER" load --model "$wm" --threads "$wt" --phase "$phase" --out "$OUT" \
+  # The whisper log is named by its phase alone, so the Scorer model goes in the name; otherwise the
+  # second model's log would overwrite the first's.
+  "$PYTHON" -B "$WHISPER" load --model "$wm" --threads "$wt" --phase "$label--$phase" --out "$OUT" \
     --max-seconds "$limit" &
   WHISPER_PID=$!
   sleep "$WHISPER_SETTLE"

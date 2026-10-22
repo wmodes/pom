@@ -79,6 +79,26 @@ Scorer running, and PASS or CHECK against two **proposed** thresholds:
 They are guesses to react to, not requirements; change them with `--target-p95` and
 `--max-whisper-slowdown` on the `report` command.
 
+## Results so far
+
+**Quick run, 2026-10-22** (`results/quick-2026-10-22/`: `base.en` only, shared cores, small sample,
+100 sentences twice; `report.txt` has the table). One sentence per request on the Pi:
+
+- Scorer alone: Qwen3-4B median 1.1 s, p95 1.6 s; Llama-3.2-3B median 0.66 s, p95 1.0 s.
+- Scorer with whisper `base.en` running flat out: Qwen median 2.3 s, p95 3.2 s, slowest 4.5 s; Llama
+  median 1.4 s, p95 2.2 s. Both under the proposed 4 s p95.
+- Both models roughly halve in speed when whisper competes, and whisper does too (`base.en` 2.6 s alone,
+  6.0 s with Llama running; Qwen's whisper log was lost, see below). Six seconds is still far inside a
+  30 s window.
+- System memory used: Llama about 2.3 GB alone and 2.7 GB with whisper; Qwen about 2.8 and 3.2 GB.
+- Prompt cache served 94 to 96% of prompt tokens. Peak 71 °C, no throttling.
+- The first call after a server starts took 12 to 28 s (model pages loading), so the Scorer needs a
+  warm-up request at startup.
+
+That run had a bug: both models wrote their whisper log under the same name, so Llama's overwrote
+Qwen's. Fixed afterwards (the log name now includes the model); the full run has not yet been done.
+Not yet measured: `small.en`, the large sample (sustained heat), and any real room audio.
+
 ## What it decides
 
 Whether Qwen3-4B (better ranking) is fast enough on the Pi, or Llama-3.2-3B (faster, flatter ranking)

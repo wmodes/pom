@@ -1,0 +1,18 @@
+run: quick-2026-10-22  (Thu 22 Oct 18:28:19 EDT 2026)
+Linux pom1 6.12.109+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.12.109-1+rpt1 (2026-09-11) aarch64 GNU/Linux
+Model		: Raspberry Pi 5 Model B Rev 1.1
+cores: 4
+scorer context: 2048  whisper models: base.en  splits (llama+whisper): 4+4  large sample: 0
+--- uptime
+ 18:28:19 up 4 days,  2:43,  0 user,  load average: 0.00, 0.00, 0.00
+--- memory (MB)
+               total        used        free      shared  buff/cache   available
+Mem:           16218         333        8645          13        7372       15885
+Swap:            511           0         511
+--- disk
+/dev/mmcblk0p2  117G  8.6G  103G   8% /
+--- vcgencmd
+temp=48.8'C
+throttled=0x0
+frequency(0)=1600023552
+governor: ondemand

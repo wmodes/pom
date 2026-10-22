@@ -1,0 +1,16 @@
+Pi benchmark: quick-2026-10-22
+
+(proposed thresholds: scorer p95 <= 4 s, whisper slowdown <= 1.5x; seconds are per sentence)
+
+scorer runs:
+  model        phase                                      warmup  median     p95  slowest  cached  rss MB  used MB  temp  throttling
+  llama3.2-3b  scorer-alone-small                           11.9    0.66    1.02     1.47    96%    4177     2323    71  none
+  llama3.2-3b  with-whisper-base.en-t4-llama-t4-small       21.2    1.42    2.17     2.77    96%    4177     2664    69  none
+  qwen3-4b     scorer-alone-small                           15.4    1.10    1.59     2.30    94%    5151     2838    70  none
+  qwen3-4b     with-whisper-base.en-t4-llama-t4-small       27.9    2.30    3.23     4.50    94%    5151     3226    69  none
+
+whisper (seconds per transcription of the sample clip; whisper always encodes a full window):
+  whisper model   threads   alone mean   with scorer mean   slowdown   phase
+  base.en              4         2.56               5.95      2.32x   with-whisper-base.en-t4-llama-t4-small  CHECK
+
+CHECK: whisper base.en in with-whisper-base.en-t4-llama-t4-small: 2.32x slower with the scorer running.

@@ -242,8 +242,22 @@ def percentile(values, fraction):
     return ordered[min(len(ordered) - 1, max(0, math.ceil(fraction * len(ordered)) - 1))]
 
 
-def summarize(record):
-    """Reduces one scorer run to the numbers the report prints."""
+def baseline_available_mb(folder):
+    """Memory available before anything started, from the `free -m` line in system.txt, or None."""
+    try:
+        for line in (folder / "system.txt").read_text(encoding="utf-8").splitlines():
+            if line.startswith("Mem:"):
+                return float(line.split()[-1])             # the "available" column
+    except (OSError, ValueError, IndexError):
+        pass
+    return None
+
+
+def summarize(record, baseline_mb=None):
+    """Reduces one scorer run to the numbers the report prints.
+
+    `mem_used` is how far the system's available memory fell below its baseline, which counts what the
+    server really took; the server's resident size (`rss_peak`) also counts file-backed model pages."""
     ok = [c for c in record["calls"] if c.get("score") is not None]
     seconds = [c["seconds"] for c in ok]
     cached = sum(c.get("cache_n") or 0 for c in ok)
@@ -259,6 +273,7 @@ def summarize(record):
         "slowest": max(seconds) if seconds else None,
         "cache_share": cached / (cached + fresh) if (cached + fresh) else None,
         "rss_peak": max(rss) if rss else None, "avail_min": min(avail) if avail else None,
+        "mem_used": baseline_mb - min(avail) if (baseline_mb and avail) else None,
         "temp_max": max(temps) if temps else None, "throttled": record.get("throttled_after"),
     }
 
@@ -292,11 +307,12 @@ def report(args):
            f"(proposed thresholds: scorer p95 <= {args.target_p95:g} s, whisper slowdown <= "
            f"{args.max_whisper_slowdown:g}x; seconds are per sentence)", ""]
     out.append("scorer runs:")
-    out.append("  model        phase                               warmup  median     p95  slowest  cached  "
-               "rss MB  free MB  temp  throttling")
+    out.append("  model        phase                                      warmup  median     p95  slowest  cached  "
+               "rss MB  used MB  temp  throttling")
     problems = []
+    baseline_mb = baseline_available_mb(folder)
     for record in sorted(scorer, key=lambda r: (r["label"], r["phase"])):
-        s = summarize(record)
+        s = summarize(record, baseline_mb)
         verdict = ""
         if s["p95"] is not None and s["p95"] > args.target_p95:
             verdict = "  CHECK p95"
@@ -304,10 +320,10 @@ def report(args):
         if s["ok"] < s["total"]:
             verdict += f"  CHECK {s['total'] - s['ok']} failed"
             problems.append(f"{record['label']} / {record['phase']}: {s['total'] - s['ok']} calls failed")
-        out.append(f"  {record['label']:<12} {record['phase']:<35} {fmt(s['warmup'], '{:6.1f}')} "
+        out.append(f"  {record['label']:<12} {record['phase']:<42} {fmt(s['warmup'], '{:6.1f}')} "
                    f"{fmt(s['median'], '{:7.2f}')} {fmt(s['p95'], '{:7.2f}')} {fmt(s['slowest'], '{:8.2f}')}  "
                    f"{fmt(s['cache_share'] and s['cache_share'] * 100, '{:4.0f}%')}  "
-                   f"{fmt(s['rss_peak'], '{:6.0f}')}  {fmt(s['avail_min'], '{:7.0f}')}  "
+                   f"{fmt(s['rss_peak'], '{:6.0f}')}  {fmt(s['mem_used'], '{:7.0f}')}  "
                    f"{fmt(s['temp_max'], '{:4.0f}')}  {describe_throttling(s['throttled'])}{verdict}")
 
     out += ["", "whisper (seconds per transcription of the sample clip; whisper always encodes a full window):"]

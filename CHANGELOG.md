@@ -72,7 +72,9 @@ December 18 session. Update this file in the same commit as the change it descri
   (`sample-large.txt`, 294 corpus sentences). Records per-call time, prompt-cache use, memory,
   temperature and throttling, and reports PASS or CHECK against proposed thresholds. A prepare script
   (`check`, `push`, `fetch`) works from the Mac; the runner and harnesses use only the standard library.
-  Tested on the Mac with a stand-in for whisper.
+  Tested on the Mac with a stand-in for whisper. First quick run on the Pi saved in
+  `results/quick-2026-10-22/`: both models stay under 4 s p95 even with whisper running flat out, with
+  Llama about 1.7 times faster than Qwen; findings in the README.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the
@@ -161,6 +163,9 @@ December 18 session. Update this file in the same commit as the change it descri
   notes, Douay footnotes, a printer's colophon, indexes, bibliographies, dedications and OCR noise
   in the Wheelwriter manuals.
 - **Wrong attribution** in the personality-types note.
+- **Pi benchmark whisper logs** were named by phase alone, so the second Scorer model's overwrote the
+  first's; the name now includes the model. The report also shows memory used against the pre-start
+  baseline, since the server's resident size counts file-backed model pages.
 - **Pi benchmark readiness check** always said no whisper was running, because `pgrep` rejected the
   long process-name pattern; it now tests `whisper-cli` and `whisper-server` separately.
 

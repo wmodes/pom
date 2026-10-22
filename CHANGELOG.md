@@ -161,6 +161,8 @@ December 18 session. Update this file in the same commit as the change it descri
   notes, Douay footnotes, a printer's colophon, indexes, bibliographies, dedications and OCR noise
   in the Wheelwriter manuals.
 - **Wrong attribution** in the personality-types note.
+- **Pi benchmark readiness check** always said no whisper was running, because `pgrep` rejected the
+  long process-name pattern; it now tests `whisper-cli` and `whisper-server` separately.
 
 ### Security
 

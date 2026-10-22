@@ -82,8 +82,12 @@ for f in Qwen3-4B-Q4_K_M.gguf Llama-3.2-3B-Instruct-Q4_K_M.gguf; do
   [ -s "$HOME/models/$f" ] && ok "$f  $(stat -c%s "$HOME/models/$f" | awk '{printf "%.1f GB", $1/1e9}')" || miss "$f  (push copies it)"
 done
 echo "busy right now:"
-pgrep -ax llama-server >/dev/null && miss "a llama-server is running and would skew results" || ok "no llama-server running"
-pgrep -ax 'whisper-cli|whisper-server' >/dev/null && miss "a whisper process is running and would skew results" || ok "no whisper running"
+pgrep -x llama-server >/dev/null && miss "a llama-server is running and would skew results" || ok "no llama-server running"
+if pgrep -x whisper-cli >/dev/null || pgrep -x whisper-server >/dev/null; then
+  miss "a whisper process is running and would skew results"
+else
+  ok "no whisper running"
+fi
 df -h "$HOME" | awk 'NR==2 {print "disk:     " $4 " free"}'
 EOF
 }

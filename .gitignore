@@ -29,3 +29,8 @@ logs/
 
 # Downloaded resources (NLTK data, lexicons); each machine fetches its own
 data/
+
+# editor swap files
+*.swp
+*.swo
+*.swn

@@ -52,6 +52,11 @@ December 18 session. Update this file in the same commit as the change it descri
   configurable list plus any interjection), and whether it can carry interest. Uses NLTK from
   `data/nltk`; if that data is missing it falls back to plain rules and records a warning rather
   than stopping. Tests: 27 in `tests/hinge/test_words.py`, which use fakes and need no data.
+- **LLM rater probe** (`scripts/dev/hinge/probe_rater.py`). A throwaway experiment, not part of
+  the Printer: asks a local llama-server how interesting each sentence of overheard speech is. By
+  default it sends a numbered list of sentences in one request with a plain "how interesting is
+  it" prompt (kept at the top of the script so it is easy to edit) and reads back a score per
+  sentence; `--single` rates one line per request from the digit probabilities instead.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the

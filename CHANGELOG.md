@@ -66,6 +66,13 @@ December 18 session. Update this file in the same commit as the change it descri
   be a small local model scoring one sentence at a time. `documentation/project-state.md` updated.
   The sample sentences (now `BENCHMARK` in the probe, 100 of them) grew beyond the first 34; the
   scripts follow whichever name the probe uses.
+- **Pi benchmark** (`experiments/pi-benchmark/`, prepared but not yet run on the Pi). Measures how fast
+  and how heavy the interest Scorer is on the Raspberry Pi 5, alone and while whisper.cpp transcribes
+  back to back, with the cores shared or split, on a small sample (the probe's sentences) and a large one
+  (`sample-large.txt`, 294 corpus sentences). Records per-call time, prompt-cache use, memory,
+  temperature and throttling, and reports PASS or CHECK against proposed thresholds. A prepare script
+  (`check`, `push`, `fetch`) works from the Mac; the runner and harnesses use only the standard library.
+  Tested on the Mac with a stand-in for whisper.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the

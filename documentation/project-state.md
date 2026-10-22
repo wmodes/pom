@@ -229,8 +229,10 @@ llama.cpp setup scripts.
 ## Next steps, in order
 
 0. **Scorer module**: a small client for llama-server (the prompt from config, a fake for tests, a
-   Report and the word-tool fallback when the model is down), plus a playground script. First time it on
-   the Pi with whisper running, and collect real room transcripts to try it on.
+   Report and the word-tool fallback when the model is down), plus a playground script. First run the
+   prepared Pi benchmark (`experiments/pi-benchmark/`, README there) with the Pi reachable: it times
+   the Scorer on the Pi alone and while whisper transcribes. Then collect real room transcripts to
+   try the Scorer on.
 1. **Trigger policy**: the moving threshold, its jump and decay after a print, and fading of old
    scores. Pure math over time, no clock inside (pass time in).
 2. **Fragmenter setting** for which levels to emit (sentences only by default).

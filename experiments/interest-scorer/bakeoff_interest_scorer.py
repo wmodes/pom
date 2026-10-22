@@ -8,7 +8,7 @@ it, or compares the saved results of several models.
 The rules are fixed so every model gets exactly the same test:
   * batch size 1: each sentence is a request of its own
   * no context: the model never sees any other sentence
-  * the prompt is SINGLE_PROMPT and the sentences are DEFAULT_LINES, both read from
+  * the prompt is SINGLE_PROMPT and the sentences are the BENCHMARK list, both read from
     probe_interest_scorer.py (written by Wes), and both saved next to the results
   * the score is the probe's: the expected value of the digit the model starts its reply with
 Every line is scored twice, so the results also show whether the scores repeat.
@@ -39,15 +39,21 @@ def load_probe():
     return module
 
 
+def sample_lines(probe) -> list:
+    """The probe's sample sentences, whichever name it currently gives the list."""
+    return getattr(probe, "BENCHMARK", None) or probe.DEFAULT_LINES
+
+
 def run(label: str, port: int, results_dir: Path) -> None:
     """Scores every line twice with the server on `port` and saves LABEL.json in `results_dir`."""
     probe = load_probe()
+    lines = sample_lines(probe)
     url = f"http://127.0.0.1:{port}/v1/chat/completions"
     results_dir.mkdir(parents=True, exist_ok=True)
 
     def score_all():
         scores, seconds = {}, []
-        for line in probe.DEFAULT_LINES:
+        for line in lines:
             score, took = probe.rate(url, probe.SINGLE_PROMPT, line, [])    # no context, ever
             scores[line] = score
             seconds.append(took)
@@ -68,7 +74,7 @@ def run(label: str, port: int, results_dir: Path) -> None:
     (results_dir / f"{label}.json").write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
     # The test itself, written once per results folder so the folder is self-describing.
     (results_dir / "PROMPT.txt").write_text(probe.SINGLE_PROMPT.strip() + "\n", encoding="utf-8")
-    (results_dir / "LINES.txt").write_text("\n".join(probe.DEFAULT_LINES) + "\n", encoding="utf-8")
+    (results_dir / "LINES.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"{label}: scored {len(first)} lines, {record['ms_mean']:.0f} ms each")
 
 

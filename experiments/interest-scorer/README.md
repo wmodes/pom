@@ -16,7 +16,7 @@ a phrase means ("the couch ate my dog" is not "the dog ate my couch"), so we tri
 - **Batch size 1.** Each sentence is its own request.
 - **No context.** The model never sees any other sentence, so a sentence scores the same whatever
   came before it or wherever it sits in a list.
-- **One prompt**, `SINGLE_PROMPT`, and **one set of sample sentences**, `DEFAULT_LINES`, both in
+- **One prompt**, `SINGLE_PROMPT`, and **one set of sample sentences**, `BENCHMARK`, both in
   `probe_interest_scorer.py` (written by Wes). Both are copied next to each saved result.
 - **The score** is the expected value of the digit the model starts its reply with, read from the
   model's probabilities (one generated token), so it is continuous and repeatable. The prompt asks for a

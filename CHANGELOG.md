@@ -64,6 +64,8 @@ December 18 session. Update this file in the same commit as the change it descri
   context, against Qwen3-4B, Llama-3.2-3B and Gemma-3-4B and writes a report; the first saved run is in
   `results/bakeoff-2026-10-22/`. The README records the rules, what was learned, and that the Scorer will
   be a small local model scoring one sentence at a time. `documentation/project-state.md` updated.
+  The sample sentences (now `BENCHMARK` in the probe, 100 of them) grew beyond the first 34; the
+  scripts follow whichever name the probe uses.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the

@@ -68,7 +68,7 @@ December 18 session. Update this file in the same commit as the change it descri
   scripts follow whichever name the probe uses.
 - **Pi benchmark** (`experiments/pi-benchmark/`, prepared but not yet run on the Pi). Measures how fast
   and how heavy the interest Scorer is on the Raspberry Pi 5, alone and while whisper.cpp transcribes
-  back to back, with the cores shared or split, on a small sample (the probe's sentences) and a large one
+  back to back, with the cores shared (an even 2+2 split is optional), on a small sample (the probe's sentences) and a large one
   (`sample-large.txt`, 294 corpus sentences). Records per-call time, prompt-cache use, memory,
   temperature and throttling, and reports PASS or CHECK against proposed thresholds. A prepare script
   (`check`, `push`, `fetch`) works from the Mac; the runner and harnesses use only the standard library.

@@ -6,7 +6,8 @@
 # For each model it measures, with one sentence per request and no context:
 #   1. the Scorer alone, on all four cores
 #   2. the Scorer while whisper.cpp transcribes back to back (the worst case for a busy room),
-#      with the cores shared (4 + 4 threads) and then split (2 + 2), for each whisper model
+#      with the cores shared (4 + 4 threads, so the system divides them as load changes), for each
+#      whisper model; set SPLITS="4+4 2+2" to also try them split evenly (2 + 2)
 # The small sample (Wes's sentences) runs in every phase. The large sample (a few hundred corpus
 # sentences, a long sustained run) runs only in the Scorer-alone phase and the harshest shared
 # phase, because it takes much longer. Whisper alone is timed first, as the baseline for slowdown.
@@ -24,7 +25,7 @@
 #   CTX             server context size        [2048]  (one sentence plus the prompt needs well under 1024)
 #   PORT            server port                [8098]
 #   WHISPER_MODELS  whisper models to load with [base.en small.en]
-#   SPLITS          llama+whisper thread splits [4+4 2+2]
+#   SPLITS          llama+whisper thread splits [4+4]  (e.g. "4+4 2+2" to add an even split)
 #   RUN_LARGE       1 to run the large sample  [1]
 #   COOLDOWN        seconds to rest between phases [20]
 #   WHISPER_SETTLE  seconds to let whisper reach steady load before scoring [15]
@@ -46,7 +47,7 @@ MODEL_DIR="${MODEL_DIR:-$HOME/models}"
 CTX="${CTX:-2048}"
 PORT="${PORT:-8098}"
 WHISPER_MODELS="${WHISPER_MODELS:-base.en small.en}"
-SPLITS="${SPLITS:-4+4 2+2}"
+SPLITS="${SPLITS:-4+4}"
 RUN_LARGE="${RUN_LARGE:-1}"
 COOLDOWN="${COOLDOWN:-20}"
 WHISPER_SETTLE="${WHISPER_SETTLE:-15}"

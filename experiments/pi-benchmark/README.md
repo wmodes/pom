@@ -20,7 +20,9 @@ For two models, Qwen3-4B and Llama-3.2-3B (Q4_K_M), scoring one sentence per req
 
 - **Scorer alone**, on all four cores.
 - **Scorer with whisper transcribing back to back** (the worst case; a real room leaves gaps), with whisper
-  `base.en` and `small.en`, and with the cores **shared** (4 + 4 threads) and **split** (2 + 2).
+  `base.en` and `small.en`, with the cores **shared** (4 + 4 threads: both programs may use all four, and
+  the system divides them as the load changes, which is how the real system will run). An even **split**
+  (2 + 2) is available with `SPLITS="4+4 2+2"` if the shared results look bad.
 - **How much the Scorer slows whisper down**, against whisper alone.
 - Per call: the time, and how much of the prompt came from the cache (the prompt is the same every time,
   so most of it should).
@@ -80,7 +82,7 @@ They are guesses to react to, not requirements; change them with `--target-p95` 
 ## What it decides
 
 Whether Qwen3-4B (better ranking) is fast enough on the Pi, or Llama-3.2-3B (faster, flatter ranking)
-is needed; whether the cores are better shared or split; whether the context can stay small; and how
+is needed; whether the context can stay small; and how
 much memory is left for the voice model.
 
 ## Files

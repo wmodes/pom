@@ -95,6 +95,11 @@ much memory is left for the voice model.
 
 ## Caveats
 
+- **The numbers are for comparing, not for predicting.** The point is Qwen against Llama under the same
+  conditions. The whisper load runs `whisper-cli`, which reloads its model on every pass, unlike the
+  final system's resident whisper; that costs both Scorer models the same, so the comparison holds,
+  but absolute whisper times will look worse than the real thing.
+
 - A clip of 11 seconds stands in for a whisper window; whisper encodes a full 30 second window either
   way, so the cost is about the same.
 - Back-to-back whisper is pessimistic. A real room is mostly gaps.

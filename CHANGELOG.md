@@ -52,8 +52,8 @@ December 18 session. Update this file in the same commit as the change it descri
   configurable list plus any interjection), and whether it can carry interest. Uses NLTK from
   `data/nltk`; if that data is missing it falls back to plain rules and records a warning rather
   than stopping. Tests: 27 in `tests/hinge/test_words.py`, which use fakes and need no data.
-- **LLM rater probe** (`scripts/dev/hinge/probe_rater.py`). A throwaway experiment, not part of
-  the Printer: asks a local llama-server how interesting each sentence of overheard speech is. By
+- **Interest-scoring probe** (`experiments/interest-scorer/probe_interest_scorer.py`). Part of a
+  formative experiment, not of the Printer: asks a local llama-server how interesting each sentence of overheard speech is. By
   default each sentence is sent alone and the model answers with one digit; the score is read from
   the digit probabilities, so it is continuous, repeatable, and independent of the other lines.
   `--batch` sends a numbered list in one request instead (scores shift with order and cluster on a

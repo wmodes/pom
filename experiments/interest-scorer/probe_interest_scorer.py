@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Probe: can a small local LLM rate how striking a line of overheard speech is?
+"""Probe: can a small local LLM score how interesting a sentence of overheard speech is?
 
-A throwaway experiment, not part of the Printer. By default it sends each line to a running
-llama-server on its own and asks for a single digit, 1-9. It reads the probabilities of the
+Part of experiments/interest-scorer, a formative experiment that settled how the Scorer works. It
+is not part of the Printer (see the README in this folder). By default it sends each line to a
+running llama-server on its own and asks for a single digit, 1-9. It reads the probabilities of the
 digits instead of sampling, so the score is continuous, repeatable, cannot be moved by the other
 lines, and costs one generated token. With --context the earlier lines are also shown as "what was
 said just before". With --batch it instead sends all the lines in one numbered list and reads back
@@ -13,11 +14,11 @@ Start a server first, for example:
     llama-server -hf unsloth/Qwen3-1.7B-GGUF:Q4_K_M --port 8091 --ctx-size 8192 --jinja
 
 Usage:
-    probe_rater.py                       # built-in test lines
-    probe_rater.py --file lines.txt      # one line per row
-    probe_rater.py --context             # also show each line the lines before it
-    probe_rater.py --batch               # one request for the whole list (order-sensitive)
-    probe_rater.py --port 8091 --prompt-file my_prompt.txt
+    probe_interest_scorer.py                  # built-in test lines
+    probe_interest_scorer.py --file lines.txt # one line per row
+    probe_interest_scorer.py --context        # also show each line the lines before it
+    probe_interest_scorer.py --batch          # one request for the whole list (order-sensitive)
+    probe_interest_scorer.py --port 8091 --prompt-file my_prompt.txt
 
 The prompt is a plain file argument so it can be varied without editing this script. It uses only
 the standard library.
@@ -38,10 +39,10 @@ import urllib.request
     # "a single digit from 1 (dull) to 9 (very striking) and nothing else."
 # )
 BATCH_PROMPT = """
-You rate how interesting sentences are.
+You score how interesting sentences are.
 
 Each message is a numbered list of sentences that people said out loud in a
-room. Rate every sentence by how *interesting* it is, defined as having one or
+room. Score every sentence by how *interesting* it is, defined as having one or
 more of the following content:
 
 - a vivid or physical image
@@ -53,47 +54,51 @@ more of the following content:
 A sentence is not interesting when it is ordinary talk: greetings, filler,
 agreement, plans and logistics, or vague statements.
 
-Scale, from 1.0 to 9.0:
-1.0-1.9  not interesting: no interesting content
-2.0-3.9  slightly interesting: little interesting content
-4.0-5.9  interesting: some interesting content
-6.0-7.9  very interesting: more interesting content
-8.0-9.0  extremely interesting: lots of interesting content
+Score on a scale, from 1.00 to 9.99:
+1.00-1.99  not interesting: no interesting content
+2.00-3.99  slightly interesting: little interesting content
+4.00-5.99  interesting: some interesting content
+6.00-7.99  very interesting: more interesting content
+8.00-9.99  extremely interesting: lots of interesting content
 
-Most sentences are ordinary and score below 5.
+Most sentences are ordinary and score below 5. 
 
 Reply with one line for every sentence, in order, through the last number: the
-sentence number, a space, and a score from 1.0 to 9.0 with one decimal place.
+sentence number, a space, and a score with two decimal places from 1.00 to 9.99.
 Do not skip any sentence. Write nothing else.
 """
 
 # One sentence per request, one token back. The score is read from the probabilities of the digits
 # 1-9 (see rate()), so it is continuous, repeatable, and cannot be moved by neighboring sentences.
 SINGLE_PROMPT = """
-You rate how interesting a sentence is.
+You score how interesting a sentence is.
 
-Each message is one sentence that someone said out loud in a room. Rate how
+Each message is one sentence that someone said out loud in a room. Score how
 *interesting* it is, defined as having one or more of the following content:
 
 - a vivid or physical image
-- an odd or specific detail
-- a clear emotion, a confession, or a question
-- a surprise, a contradiction, weird, strange, or an absurdity, even a comic one
+- an odd or specific detail, a name, or a number
+- a big human feeling: love, grief, fear, shame, desire
+- a confession, a secret, or a question
+- something at stake: danger, a consequence, a decision
+- gossip or a judgment about someone
+- something left open or unfinished, a mystery
+- a surprise, a contradiction, or something strange or absurd
 - death, spirits, bodies, animals, food, money, weather, or machines
 
 A sentence is not interesting when it is ordinary talk: greetings, filler, 
 agreement, plans and logistics, or vague statements.
 
-Scale, from 1.0 to 9.0:
-1.0-1.9  not interesting: no interesting content
-2.0-3.9  slightly interesting: little interesting content
-4.0-5.9  interesting: some interesting content
-6.0-7.9  very interesting: more interesting content
-8.0-9.0  extremely interesting: lots of interesting content
+Score on a scale, from 1.00 to 9.99:
+1.00-1.99  not interesting: no interesting content
+2.00-3.99  slightly interesting: little interesting content
+4.00-5.99  interesting: some interesting content
+6.00-7.99  very interesting: more interesting content
+8.00-9.99  extremely interesting: lots of interesting content
 
 Most sentences are ordinary and score below 5. 
 
-Reply with a single number with two significant digits from 1.0 to 9.0 and nothing else.
+Reply with a single number with two decimal places from 1.00 to 9.99 and nothing else.
 """
 
 DEFAULT_LINES = [
@@ -110,11 +115,21 @@ DEFAULT_LINES = [
     "What if I beat your face in?",
     "Oh my God, last night the dog ate my couch.",
     "Well, that's better than the couch eating your dog.",
+    "I heard from friends, that though he's supposedly 'straight,' he gives the best blow job in the world.",
+    "I got off a bus in a random small town in Iowa to get a snack and my dad who haven't seen in 10 years happen to be standing there.",
+    "I found $100 bill in an old Radio I was working on.",
+    "I need to grade all the work my students have turned in.",
+    "I once got fired for having sex with my boss.",
+    "I would put a bullet in the heart of mine enemies.",
     "Yesterday I was just talking to Neil about this.",
     "Honestly, if this bullshit keeps up I'm going to be exercising my second amendment rights.",
     "Have you read her recent book?",
     "What the fuck?",
     "I think my car is posessed.",
+    "I found a hundred dollar bill folded inside the dead man's radio, and it was still warm.",
+    "My mother's dog started barking in her voice about a week after the funeral.",
+    "Lightning hit the house in '98 and ever since, the toaster only burns my grandfather's initials.",
+    "I ate the whole wedding cake alone in the dark, crying about the nine thousand dollars.",
     "I'm fucking pissed about this.",
     "Did you get that website I texted you about?",
     "I'm kind of social out and I need to get the fuck out of here.",

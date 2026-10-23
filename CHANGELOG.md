@@ -204,6 +204,8 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Changed
 
+- **Scorer prompt: dropped "Most sentences are ordinary and score below 5."** (Wes). That line was an absolute
+  expectation about the scale; the scoring prompt now only describes the scale.
 - **Scorer prompt split into three parts** in `config/pom.toml`: `prompt_scoring` (what counts as
   interesting and what the numbers mean), `prompt_output` (reply with a bare number) and
   `prompt_output_debug` (reply with the number and the content that earned it). `ScorerSettings` exposes

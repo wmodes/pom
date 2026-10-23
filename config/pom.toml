@@ -68,9 +68,7 @@ Score on a scale, from 1.00 to 9.99:
 2.00-3.99  slightly interesting: little interesting content
 4.00-5.99  interesting: some interesting content
 6.00-7.99  very interesting: more interesting content
-8.00-9.99  extremely interesting: lots of interesting content
-
-Most sentences are ordinary and score below 5. 
+8.00-9.99  extremely interesting: lots of interesting content 
 """
 
 prompt_output = """

@@ -330,8 +330,8 @@ class Transcriber:
     def vad_in_use(self) -> bool:
         return self._vad is not None
 
-    def transcribe(self, pcm: bytes):
-        """(text, kind): kind is "speech", "sound" (music or a caption, not speech) or "" if nothing was heard.
+    def transcribe(self, pcm: bytes) -> "WhisperText":
+        """What whisper heard in an utterance: words for the Scorer, and ambient captions kept apart.
 
         The audio file is in memory-backed storage and is deleted as soon as whisper has read it.
         """
@@ -343,16 +343,15 @@ class Transcriber:
                 wav.setframerate(SAMPLE_RATE)
                 wav.writeframes(pcm)
             raw = self._run(handle.name, vad=self._vad is not None)
-            text = clean_transcript(raw)
-            if text:
-                return text, "sound" if is_only_sound(raw) else "speech"
+            heard = split_whisper(raw)
+            if heard.words or heard.ambient:
+                return heard
             if self._sounds and not raw.strip():          # the VAD found no speech at all; if whisper said "silence" it is
-                heard = sound_text(self._run(handle.name, vad=False))
-                if heard:
-                    return heard, "sound"
-            return "", ""
+                # Without the VAD, plain text is where whisper invents words, so only lyrics and captions are kept.
+                return split_whisper(self._run(handle.name, vad=False), plain_text=False)
+            return heard
         except subprocess.TimeoutExpired:
-            return "", ""
+            return WhisperText("", [], "")
         finally:
             handle.close()
             os.unlink(handle.name)
@@ -364,35 +363,43 @@ class Transcriber:
         return subprocess.run(command, capture_output=True, text=True, timeout=180).stdout
 
 
-# Whisper's own way of saying "there is nothing here". They carry no information, so they are not scored.
+# Whisper's own way of saying "there is nothing here". They carry no information, so they are not used at all.
 EMPTY_MARKS = re.compile(r"[\[(]\s*(blank[_ ]audio|silence|silent|no audio|no speech)\s*[\])]", re.IGNORECASE)
+CAPTION = re.compile(r"\([^()]*\)|\[[^\[\]]*\]")                  # (dog barks) or [Music]: a guess at a sound
+LYRICS = re.compile(r"\u266a[^\u266a]+\u266a")                        # words between music symbols
 
 
-def clean_transcript(raw: str) -> str:
-    """Whisper's text with the music symbol removed (the words stay) and its "nothing here" markers dropped.
+@dataclass
+class WhisperText:
+    """What whisper said about one utterance, sorted into the kinds the Printer treats differently.
 
-    Whisper's other bracketed sound captions, like "(dog barks)", are kept on purpose: they give the
-    model more to go on.
+    Attributes:
+        words: Speech and song lyrics, with the music symbols removed. This is what the Scorer is given.
+        ambient: Whisper's captions of sounds, such as "(dog barks)" or "(dramatic music)". They describe the
+            room, not something said, so they are shown but never scored; later they can go into the voice's
+            prompt as context ("a dog is barking").
+        kind: "speech", "lyrics" (the words came only from between music symbols), or "" if there are no words.
     """
-    text = " ".join(raw.replace("\u266a", " ").split())
-    return " ".join(EMPTY_MARKS.sub(" ", text).split())
+    words: str
+    ambient: list
+    kind: str
 
 
-SOUND_MARKS = r"\u266a[^\u266a]+\u266a|\([^()]*\)|\[[^\[\]]*\]"
+def split_whisper(raw: str, plain_text: bool = True) -> WhisperText:
+    """Sorts whisper's output into words, ambient captions and nothing-here markers (which are dropped).
 
-
-def is_only_sound(raw: str) -> bool:
-    """True if whisper's text is nothing but non-speech marks: lyrics between music symbols, (captions), [captions]."""
-    return not re.sub(SOUND_MARKS, " ", EMPTY_MARKS.sub(" ", raw)).strip()
-
-
-def sound_text(raw: str) -> str:
-    """Only the pieces whisper marks as non-speech: lyrics between music symbols and (captions) or [captions].
-
-    Used on the pass without the VAD, where plain text is more likely invented than heard.
+    With plain_text False (the pass without the VAD, where plain text is more likely invented than heard) only
+    lyrics count as words.
     """
-    pieces = re.findall(SOUND_MARKS, raw)
-    return clean_transcript(" ".join(pieces))
+    raw = EMPTY_MARKS.sub(" ", raw)
+    ambient = list(dict.fromkeys(" ".join(caption.split()) for caption in CAPTION.findall(raw)))   # once each, in order
+    uncaptioned = CAPTION.sub(" ", raw)
+    plain = " ".join(LYRICS.sub(" ", uncaptioned).replace("\u266a", " ").split())
+    lyrics = " ".join(" ".join(piece.replace("\u266a", " ").split()) for piece in LYRICS.findall(uncaptioned))
+    if not plain_text:
+        return WhisperText(lyrics, ambient, "lyrics" if lyrics else "")
+    words = " ".join(uncaptioned.replace("\u266a", " ").split())
+    return WhisperText(words, ambient, ("speech" if plain else "lyrics") if words else "")
 
 
 # --- The Printer's judgment, from the real pom modules ----------------------------------------
@@ -501,6 +508,8 @@ class Pipeline:
         self.last_text = ""
         self.working = False                                         # True while an utterance is being handled
         self.source_done = False                                     # True once a recording has played out
+        self.ambient = collections.deque(maxlen=6)                   # recent captions of the room, for the voice's prompt later
+        self.last_ambient = []                                       # to show a caption once, not every time it repeats
         self.segmenter = None                                        # set once listening starts
         self.interactive = sys.stdin.isatty()                        # someone can type r, e, l, q
         self.stop = threading.Event()
@@ -574,12 +583,20 @@ class Pipeline:
         if changed:
             self.display.line(f"\n[{self.display.stamp()}] {changed}  [{self.brain.fingerprint()}]")
         started = time.perf_counter()
-        text, kind = self.transcriber.transcribe(normalize_pcm(utterance.pcm))
+        heard = self.transcriber.transcribe(normalize_pcm(utterance.pcm))
         took = time.perf_counter() - started
+        if heard.ambient and heard.ambient != self.last_ambient:
+            self.last_ambient = heard.ambient
+            self.ambient.extend(heard.ambient)
+            self.display.line(f"\n[{self.display.stamp()}] ambient, not scored (whisper's guess at the room): "
+                              f"{', '.join(heard.ambient)}")
+        text, kind = heard.words, heard.kind
+        if self.args.score_ambient:
+            text = " ".join(part for part in [text] + heard.ambient if part)
         if not text or text == self.last_text:
             return
         self.last_text = text
-        label = "sound, not speech" if kind == "sound" else "speech"
+        label = "lyrics, not speech" if kind == "lyrics" else "speech"
         self.display.line(f"\n[{self.display.stamp()}] heard {utterance.seconds:.1f} s ({label}, peak {utterance.peak_db:.0f} dB, "
                           f"whisper {took:.1f} s): \"{text}\"")
         for fragment in self.fragmenter.split(text):
@@ -590,7 +607,7 @@ class Pipeline:
             self.history.append(Heard(self.count, fragment.text, scored.score, scored.source.value))
             self.display.sentence(self.count, scored.score, scored.source.value, fragment.text)
             worth_it = (scored.source.value == "model" and scored.score >= self.args.explain_above
-                        and (kind == "speech" or self.args.explain_sounds))
+                        and (kind == "speech" or self.args.explain_lyrics))
             if self.args.explain and worth_it:
                 self._explain(self.count, fragment.text, scored.score)
 
@@ -701,8 +718,10 @@ def main() -> None:
     parser.add_argument("--no-explain", dest="explain", action="store_false", help="skip the written interpretations")
     parser.add_argument("--explain-above", type=float, default=4.0,
                         help="only explain scores at or above this (e explains anything, on request)")
-    parser.add_argument("--explain-sounds", action="store_true",
-                        help="also explain whisper's sound captions and lyrics (by default only speech is explained)")
+    parser.add_argument("--explain-lyrics", action="store_true",
+                        help="also explain song lyrics (by default only speech is explained)")
+    parser.add_argument("--score-ambient", action="store_true",
+                        help="also score whisper's captions of sounds, like (dog barks); by default they are shown but not scored")
     parser.add_argument("--explain-quiet", type=float, default=3.0,
                         help="seconds of quiet before a written explanation starts (they never compete with listening)")
     parser.add_argument("--history", type=int, default=12, help="sentences kept in memory for the r command")
@@ -721,7 +740,8 @@ def main() -> None:
     display.line(f"  scorer at {brain.settings.url}; whisper {args.model}; threshold {args.threshold:g}; "
                  f"{'interpretations on' if args.explain and brain.client.can_interpret else 'interpretations off'}")
     display.line(f"  hearing: whisper {args.model}, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
-                 f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}")
+                 f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
+                 f"sound captions are shown, not scored")
     display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (scores will be fallback)'}")
     if args.explain and not brain.client.can_interpret:
         display.line("  (no prompt_output_debug in the config, so there are no interpretations)")

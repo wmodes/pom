@@ -103,13 +103,17 @@ not run it as a service. It is a development tool, used on purpose.
   does: one explanation measured 1.25 tokens a second (45 s for 58 tokens) while the Pi was also listening and
   scoring, and whisper stalled for 12 to 24 s behind it. So an explanation (a) is only made for **speech** scoring
   `--explain-above` (4.0 by default) or more, not for whisper's sound captions or the dull sentences
-  (`--explain-sounds` includes the captions), and (b) only starts after `--explain-quiet` seconds (3 by default)
+  (`--explain-lyrics` includes song lyrics), and (b) only starts after `--explain-quiet` seconds (3 by default)
   during which the **audio itself** has been quiet, so it never starts in the middle of someone talking. If the room
   never goes quiet, type `e` (or `e 8`) to explain the last few sentences of any kind right away. If they pile up,
   older ones are skipped, and it says so.
-- **Whisper's captions are kept**, like "(dog barks)", and the music symbol is removed with the words kept.
-  Its "nothing here" markers (`[BLANK_AUDIO]`, `[silence]`, `(silence)`, `[no audio]`) are dropped, not scored, and
-  when whisper has said an audio was silent the second pass is not run.
+- **Whisper's output is sorted three ways.** *Words* (speech, and song lyrics with the music symbols removed) go to
+  the Scorer. *Ambient captions*, whisper's guesses at the room such as `(dog barks)`, `[Music]` or `(heavy breathing)`,
+  are shown on their own `ambient, not scored` line and **never scored or explained**: they describe the room rather
+  than something said, and as hinge candidates they only gave the scorer a caption word to react to. They are kept as a
+  short list of recent ambient sounds, ready to go into the voice's prompt later as context. `--score-ambient` scores
+  them anyway. Whisper's "nothing here" markers (`[BLANK_AUDIO]`, `[silence]`, `(silence)`, `[no audio]`) are dropped
+  entirely, and when whisper has said an audio was silent the second pass is not run.
 - **Whisper reloads its model for every utterance** here, as in the Pi benchmark. The real system will keep
   it resident.
 - **One run gives the number and the reasons together.** Your `prompt_output_debug` asks for the score, the

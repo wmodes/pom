@@ -60,9 +60,7 @@ cd experiments/hearing-debug
 `probe_hearing_run.sh` sets the microphone gain, starts the language model (from `~/pom/data/models`), runs
 the pipeline on the live config (or `config/pom.toml` if there is none) and stops the model when you quit. Useful options (all passed through): `--model small.en` for a bigger whisper
 model, `--threshold 7.0`, `--no-explain` for **fast mode** (each sentence scored at once by the Printer's
-one-token scorer, no reasons, much lighter on the CPU), `--also-score` to ask the one-token scorer as well, for
-comparison (a second request), `--explain-quiet 5` to wait longer for quiet, `--margin-db 4` if music or noise is
-masking speech, `--speed 0` to play a recording as fast as possible.
+one-token scorer, no reasons, much lighter on the CPU), `--margin-db 4` if music or noise is masking speech, `--speed 0` to play a recording as fast as possible.
 
 To try it on the Mac against a recording, set `POM_SCORER_URL` to a running llama-server and use `--wav`;
 see the header of `probe_hearing_pipeline.py`.
@@ -100,20 +98,18 @@ not run it as a service. It is a development tool, used on purpose.
   only what whisper itself marks as non-speech: lyrics between music symbols and captions like "(dog barks)". Those
   lines say "sound, not speech". Plain text from that pass is dropped, since that is where whisper invents words.
   `--no-sounds` skips the second pass; `--no-vad` turns the VAD off.
-- **Each sentence makes ONE trip through the model, in a quiet moment.** In debug mode (the default) a sentence is
-  shown as `waiting` the moment it is heard. When the audio has been quiet for `--explain-quiet` seconds (3 by
-  default) the model runs your debug prompt on it once, and the score and the reasons come out of that same output;
-  nothing is scored first and explained afterwards. The wait matters: writing words is by far the slowest thing the
-  model does, one measured 1.25 tokens a second (45 s for 58 tokens) while the Pi was also listening, and whisper
-  stalled for 12 to 24 s behind it. Quiet means the **audio** is quiet, so a run never starts in the middle of
-  someone talking. If the room never goes quiet, type `e` to run the waiting sentences now. Sentences that have no
-  content words skip the model, and fast mode scores everything at once.
+- **Each sentence makes ONE trip through the model, as soon as whisper has produced it.** In debug mode (the
+  default) a sentence is shown as `waiting` the moment it is heard, then the model runs your debug prompt on it
+  once, and the score and the reasons come out of that same output; nothing is scored first and explained
+  afterwards. The model takes one sentence at a time, in order. Writing words is the slowest thing the model does
+  (one measured 1.25 tokens a second while the Pi was also listening), so on the Pi results can trail the room and
+  whisper can run slower beside it; fast mode (`--no-explain`) is the light option. Sentences that have no content
+  words skip the model.
 - **Whisper's output is sorted three ways.** *Words* (speech, and song lyrics with the music symbols removed) go to
   the Scorer. *Ambient captions*, whisper's guesses at the room such as `(dog barks)`, `[Music]` or `(heavy breathing)`,
   are shown on their own `ambient, not scored` line and **never scored or explained**: they describe the room rather
   than something said, and as hinge candidates they only gave the scorer a caption word to react to. They are kept as a
-  short list of recent ambient sounds, ready to go into the voice's prompt later as context. `--score-ambient` scores
-  them anyway. Whisper's "nothing here" markers (`[BLANK_AUDIO]`, `[silence]`, `(silence)`, `[no audio]`) are dropped
+  short list of recent ambient sounds, ready to go into the voice's prompt later as context. Whisper's "nothing here" markers (`[BLANK_AUDIO]`, `[silence]`, `(silence)`, `[no audio]`) are dropped
   entirely, and when whisper has said an audio was silent the second pass is not run.
 - **Whisper reloads its model for every utterance** here, as in the Pi benchmark. The real system will keep
   it resident.
@@ -123,8 +119,7 @@ not run it as a service. It is a development tool, used on purpose.
   output. Under each result it prints what the model wrote as its score and how long the run took. The reasons
   are written after the number, so they are a story the model tells about it, not a readout of its insides; the
   one-run design guarantees only that the number and the story belong together. The real Printer will use the
-  one-token scorer, so the debug prompt's score can differ a little from what the Printer would give; `--also-score`
-  shows both.
+  one-token scorer, so the debug prompt's score can differ a little from what the Printer would give.
 
 ## Files
 

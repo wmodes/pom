@@ -227,6 +227,11 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Fixed
 
+- **Hearing-debug passes each sentence to the model as soon as whisper produces it.** The wait for a quiet room
+  never ended in a room that is never quiet, so results sat at "waiting" forever. Removed the machinery built around
+  it (`--explain-quiet`, the `e` command, the audio quiet-time tracking) and two comparison flags nobody had asked
+  for (`--also-score`, `--score-ambient`). The model takes one sentence at a time, in order; `--no-explain` stays
+  as the light option.
 - **Leaks found in `ready/`:** Greek and Hebrew text, jest and maxim numbers, editors' bracketed
   notes, Douay footnotes, a printer's colophon, indexes, bibliographies, dedications and OCR noise
   in the Wheelwriter manuals.

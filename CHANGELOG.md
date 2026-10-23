@@ -47,6 +47,13 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Scorer** (`src/pom/hinge/scorer.py`). Turns fragments into scored candidate hinges. Sentences
+  with no content words (all filler, stopwords or numbers) skip the model and get the floor score;
+  the rest go to the interest client. If the model gives no score, a crude word-tool stand-in is used,
+  capped below the model's usual top, and a circuit breaker leaves a dead server alone for a while
+  (3 failures in a row, 30 seconds by default) before trying it again. Each result says whether it came
+  from the model, the filter or the fallback. Never raises and never logs what was said. Tests: 49 in
+  `tests/hinge/test_scorer.py`, with fakes for the client and the clock.
 - **Interest client** (`src/pom/hinge/interest_client.py`), the first half of the Scorer. Asks a
   local llama-server how interesting one sentence is and returns a score read from the digit
   probabilities, one sentence per request with no context, built exactly as the interest-scorer

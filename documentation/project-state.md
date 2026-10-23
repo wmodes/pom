@@ -223,8 +223,14 @@ llama.cpp setup scripts.
 - **First look at the real microphone** (ATR4697-USB on the Pi, 2026-10-23, music playing in the room):
   it records quietly, mean -38 dB with peaks near -18 dB, like the phone recordings; its capture gain is
   21 of 30 (+19.5 dB) with hardware auto-gain off, so there is room to raise it. Whisper transcribed the
-  song lyrics almost completely and wrapped every line in ♪ marks, so the Transcriber should treat
-  ♪ lines as music, not speech. Whisper took 0.2 (base.en) and 0.5 (small.en) times real time on the music.
+  song lyrics almost completely and wrapped most lines in ♪ marks (not all: one lyric line came through
+  unmarked). **Wes's decision (2026-10-23): the Printer reacts to what it hears, not only conversation, so
+  the Transcriber strips the ♪ symbol and keeps the words**; lyrics then compete on score like any other
+  sentence (the lyrics seen scored at most 6.0, under the 7.0 threshold). Open: whisper's bracketed sound
+  captions such as "(dog barks)" or "(muffled speaking)", which are guesses, not heard words; proposed
+  to drop them to start, as a setting. Whisper took 0.2 (base.en) and 0.5 (small.en) times real time on
+  the music. Mic gain: raised to 26 of 30 for a test (+7.5 dB, no clipping with music playing); a shouted
+  loud-room check is still to do; software level normalization per utterance is the adaptive part.
 - **Still open for the Scorer:** a real-room test of speech with the USB microphone; and
   Wes's conclusion that we must first define for ourselves what "interesting" is and what should
   trigger a print, then state it to the model.

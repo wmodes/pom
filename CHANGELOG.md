@@ -47,6 +47,14 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Hearing-debug experiment** (`experiments/hearing-debug/`). A live prototype of the front half of the
+  Printer for watching how it interprets what it hears and refining the prompt in a closed loop. On the Pi
+  (or the Mac, against a recording) it cuts the microphone at pauses, normalizes the level, transcribes with
+  whisper, splits sentences, scores them with the real Scorer from `config/pom.toml` and prints the model's
+  own written account of each score using `prompt_output_debug`. The config is re-read before every
+  utterance, a push script copies it to the Pi each time it is saved, and typing `r` re-scores the last
+  sentences with the new prompt and shows old and new. Nothing heard is kept: audio goes through memory-backed
+  temporary files that are deleted at once, and the output must not be redirected to a file.
 - **Startup** (`src/pom/startup.py`), a stub for everything done once when the Printer starts. The
   runner is built: it runs steps in order, never raises, records a failed optional step as a warning and a
   failed critical one as critical (with `ready` false), and keeps going either way. The ten duties (config

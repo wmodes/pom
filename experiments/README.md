@@ -15,6 +15,8 @@ Experiments:
 - `interest-scorer/`: can a small local language model score how interesting a sentence is? Settled
   how the Scorer works (complete).
 - `pi-benchmark/`: can the Raspberry Pi 5 run that Scorer fast enough while whisper is transcribing?
-  Prepared and tested on the Mac; not yet run on the Pi.
+  Run on the Pi on 2026-10-22: yes (complete).
+- `hearing-debug/`: a live pipeline on the Pi that shows how the Printer interprets what it hears, and
+  re-reads the prompts as you edit them. A working prototype, not part of the Printer.
 
 A related, still-planned experiment is the voice bake-off (Track A against Track B); it will live here too.

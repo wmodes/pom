@@ -183,6 +183,13 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Changed
 
+- **Scorer prompt split into three parts** in `config/pom.toml`: `prompt_scoring` (what counts as
+  interesting and what the numbers mean), `prompt_output` (reply with a bare number) and
+  `prompt_output_debug` (reply with the number and the content that earned it). `ScorerSettings` exposes
+  `prompt` (scoring plus output) and `prompt_debug` (scoring plus debug output), each joined with a blank
+  line. The old single `prompt` key is now an unknown key. A scoring part with no output part is warned
+  about. The scoring prompt also gained lines for gossip, mysteries, stakes and secrets. A stray extra
+  quote after the debug prompt was removed.
 - **Scorer prompt: "a big human feeling" is now "a human feeling"** in `config/pom.toml`. "Big" nudged
   heated lines up a little (on the 100 benchmark sentences "What the fuck?" went 5.44 to 4.76 without
   it, "I love you" 4.81 to 4.31) without changing the ranking much (agreement 0.996). The experiment's

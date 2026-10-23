@@ -44,7 +44,7 @@ retry_seconds = 30
 # What the model is told. This text defines what "interesting" means and what the numbers mean, so
 # it is the main thing to adjust. The model must answer with a single number; only the digit it
 # starts with is read, from its probabilities. Keep it free of anything specific to one room.
-prompt = """
+prompt_scoring = """
 You score how interesting a sentence is.
 
 Each message is one sentence that someone said out loud in a room. Score how
@@ -60,8 +60,8 @@ Each message is one sentence that someone said out loud in a room. Score how
 - a surprise, a contradiction, or something strange or absurd
 - death, spirits, bodies, animals, food, money, weather, or machines
 
-A sentence is not interesting when it is ordinary talk: greetings, filler, 
-agreement, plans and logistics, or vague statements.
+A sentence is not interesting when it is ordinary talk, including greetings, filler, 
+agreement, or plans and logistics.
 
 Score on a scale, from 1.00 to 9.99:
 1.00-1.99  not interesting: no interesting content
@@ -71,6 +71,12 @@ Score on a scale, from 1.00 to 9.99:
 8.00-9.99  extremely interesting: lots of interesting content
 
 Most sentences are ordinary and score below 5. 
+"""
 
+prompt_output = """
 Reply with a single number with two decimal places from 1.00 to 9.99 and nothing else.
+"""
+
+prompt_output_debug = """
+Output the score as a single number with two decimal places from 1.00 to 9.99 and what content you found that earned that score as a comma-separated list.
 """

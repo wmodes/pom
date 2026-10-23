@@ -283,7 +283,8 @@ def test_scorer_defaults_when_nothing_is_set():
     assert config.scorer.url == "http://127.0.0.1:8098/v1/chat/completions"
     assert (config.scorer.timeout, config.scorer.floor, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (15.0, 1.0, 1, 3, 30.0)
-    assert config.scorer.prompt == ""
+    assert config.scorer.prompt_scoring == "" and config.scorer.prompt_output == ""
+    assert config.scorer.prompt_output_debug == "" and config.scorer.prompt == "" and config.scorer.prompt_debug == ""
 
 
 def test_the_scorer_defaults_match_the_scorers_own():
@@ -298,15 +299,17 @@ def test_the_scorer_defaults_match_the_scorers_own():
 
 def test_scorer_values_are_read_from_the_section(tmp_path):
     text = ('[scorer]\nurl = "http://10.0.0.5:9000/v1/chat/completions"\ntimeout = 4\nfloor = 2\n'
-            'min_content_words = 0\nfailure_limit = 5\nretry_seconds = 12.5\nprompt = "Score it."\n')
+            'min_content_words = 0\nfailure_limit = 5\nretry_seconds = 12.5\nprompt_scoring = "Score it."\n'
+            'prompt_output = "Reply with a number."\nprompt_output_debug = "Reply with a number and why."\n')
     scorer = Config.load(write(tmp_path, text), environ={}).scorer
-    assert scorer == ScorerSettings("http://10.0.0.5:9000/v1/chat/completions", 4.0, "Score it.", 2.0, 0, 5, 12.5)
+    assert scorer == ScorerSettings("http://10.0.0.5:9000/v1/chat/completions", 4.0, "Score it.", 2.0, 0, 5, 12.5,
+                                    "Reply with a number.", "Reply with a number and why.")
 
 
 def test_a_multi_line_prompt_is_kept_whole(tmp_path):
-    text = '[scorer]\nprompt = """\nLine one.\n\nLine "two".\n"""\n'
+    text = '[scorer]\nprompt_scoring = """\nLine one.\n\nLine "two".\n"""\nprompt_output = "Reply."\n'
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.scorer.prompt == 'Line one.\n\nLine "two".\n' and config.report.ok
+    assert config.scorer.prompt_scoring == 'Line one.\n\nLine "two".\n' and config.report.ok
 
 
 def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
@@ -317,7 +320,7 @@ def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
 
 @pytest.mark.parametrize("key,value", [
     ("url", "5"), ("url", "true"), ("timeout", '"slow"'), ("timeout", "0"), ("timeout", "-3"), ("timeout", "true"),
-    ("prompt", "5"), ("prompt", "[1, 2]"), ("floor", "-1"), ("floor", '"x"'), ("floor", "true"),
+    ("prompt_scoring", "5"), ("prompt_scoring", "[1, 2]"), ("prompt_output", "5"), ("prompt_output_debug", "true"), ("floor", "-1"), ("floor", '"x"'), ("floor", "true"),
     ("min_content_words", "-1"), ("min_content_words", "1.5"), ("min_content_words", "true"),
     ("failure_limit", "0"), ("failure_limit", "2.5"), ("failure_limit", '"3"'),
     ("retry_seconds", "-5"), ("retry_seconds", '"soon"')])
@@ -347,10 +350,10 @@ def test_an_unknown_section_is_warned_about(tmp_path):
 
 
 def test_the_local_file_overrides_one_scorer_key_and_keeps_the_rest(tmp_path):
-    write(tmp_path, '[scorer]\ntimeout = 4\nfailure_limit = 5\nprompt = "Main."\n')
+    write(tmp_path, '[scorer]\ntimeout = 4\nfailure_limit = 5\nprompt_scoring = "Main."\nprompt_output = "Reply."\n')
     (tmp_path / "pom.local.toml").write_text("[scorer]\ntimeout = 9\n", encoding="utf-8")
     scorer = Config.load(tmp_path / "pom.toml", environ={}).scorer
-    assert (scorer.timeout, scorer.failure_limit, scorer.prompt) == (9.0, 5, "Main.")
+    assert (scorer.timeout, scorer.failure_limit, scorer.prompt_scoring) == (9.0, 5, "Main.")
 
 
 def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path):
@@ -361,15 +364,20 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
     shutil.copy(sample, copy)
     config = Config.load(copy, environ={})
     assert config.report.ok
-    assert "interesting" in config.scorer.prompt and "Reply with" in config.scorer.prompt
-    assert config.scorer == ScorerSettings(prompt=config.scorer.prompt)      # everything else is the default
+    assert "interesting" in config.scorer.prompt_scoring and "Reply with" in config.scorer.prompt_output
+    assert "comma-separated" in config.scorer.prompt_output_debug
+    scorer = config.scorer
+    assert scorer == ScorerSettings(prompt_scoring=scorer.prompt_scoring, prompt_output=scorer.prompt_output,
+                                    prompt_output_debug=scorer.prompt_output_debug)   # the rest is the default
+    for text in (scorer.prompt_scoring, scorer.prompt_output, scorer.prompt_output_debug):
+        assert '"' not in text.strip()[-1:], "a stray quote ended a prompt"
 
 
 def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
     from pom.hinge.interest_client import InterestClient
     from pom.hinge.scorer import Scorer, Source
     from pom.hinge.words import WordTools
-    config = Config.load(write(tmp_path, '[scorer]\nprompt = "Score it."\nfloor = 2\nfailure_limit = 2\n'), environ={})
+    config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfloor = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
     client = InterestClient(settings.url, settings.prompt, settings.timeout,
                             post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
@@ -381,3 +389,28 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
     assert client.available and scorer.report.ok
     assert scorer.score_text("The lamp hums.").score == 6.0
     assert scorer.score_text("The").source is Source.FILTER and scorer.score_text("The").score == 2.0
+
+
+def test_the_scoring_prompt_is_the_scoring_part_plus_the_output_part(tmp_path):
+    text = ('[scorer]\nprompt_scoring = """Score it.  \n"""\n'
+            'prompt_output = """\nReply with a number.\n"""\nprompt_output_debug = "Explain."\n')
+    scorer = Config.load(write(tmp_path, text), environ={}).scorer
+    assert scorer.prompt == "Score it.\n\nReply with a number."
+    assert scorer.prompt_debug == "Score it.\n\nExplain."
+
+
+def test_with_no_scoring_part_there_is_no_prompt_at_all(tmp_path):
+    scorer = Config.load(write(tmp_path, '[scorer]\nprompt_output = "Reply."\nprompt_output_debug = "Explain."\n'),
+                         environ={}).scorer
+    assert scorer.prompt == "" and scorer.prompt_debug == ""
+
+
+def test_a_missing_output_part_is_warned_about_but_the_scoring_part_still_works(tmp_path):
+    config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\n'), environ={})
+    assert len(config.report.warnings) == 1 and "prompt_output" in config.report.warnings[0]
+    assert config.scorer.prompt == "Score it."
+
+
+def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
+    config = Config.load(write(tmp_path, '[scorer]\nprompt = "Score it."\n'), environ={})
+    assert any("scorer.prompt" in w for w in config.report.warnings) and config.scorer.prompt == ""

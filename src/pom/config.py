@@ -51,8 +51,9 @@ _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 _KEYS = {"strict", "debug", "log_level", "local_logs", "samples_min", "samples_max",
-         "scorer.url", "scorer.timeout", "scorer.prompt", "scorer.floor", "scorer.min_content_words",
-         "scorer.failure_limit", "scorer.retry_seconds"}
+         "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
+         "scorer.prompt_output_debug", "scorer.floor", "scorer.min_content_words", "scorer.failure_limit",
+         "scorer.retry_seconds"}
 DEFAULT_SAMPLES = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -71,20 +72,39 @@ class ScorerSettings:
     Attributes:
         url: The llama-server chat-completions address.
         timeout: Seconds to wait for one score.
-        prompt: The system message that defines "interesting" and the scale, from the config file.
+        prompt_scoring: What "interesting" means and what the numbers mean, from the config file.
             Empty means none was set, and the Scorer then runs on its word-tool fallback alone.
         floor: The score given to fragments the filter keeps from the model.
         min_content_words: Fragments with fewer content words skip the model (0 = never skip).
         failure_limit: Model failures in a row that make the Scorer leave the model alone.
         retry_seconds: How long it leaves the model alone before trying again.
+        prompt_output: How the model is told to reply when it is scoring (a bare number).
+        prompt_output_debug: How it is told to reply when explaining a score (the number and what
+            content earned it). Only the debug view uses this.
+
+    The system message the Scorer sends is `prompt` (scoring plus output), and the one for the
+    debug view is `prompt_debug` (scoring plus the debug output); each is the two parts joined
+    by a blank line.
     """
     url: str = DEFAULT_SCORER_URL
     timeout: float = DEFAULT_SCORER_TIMEOUT
-    prompt: str = ""
+    prompt_scoring: str = ""
     floor: float = DEFAULT_SCORER_FLOOR
     min_content_words: int = DEFAULT_SCORER_MIN_CONTENT_WORDS
     failure_limit: int = DEFAULT_SCORER_FAILURE_LIMIT
     retry_seconds: float = DEFAULT_SCORER_RETRY_SECONDS
+    prompt_output: str = ""
+    prompt_output_debug: str = ""
+
+    @property
+    def prompt(self) -> str:
+        """The system message for scoring: the scoring part and the output part, or "" if no scoring part."""
+        return _join_prompt(self.prompt_scoring, self.prompt_output)
+
+    @property
+    def prompt_debug(self) -> str:
+        """The system message for explaining a score: the scoring part and the debug output part."""
+        return _join_prompt(self.prompt_scoring, self.prompt_output_debug)
 
 
 class Config:
@@ -141,7 +161,12 @@ class Config:
         scorer_url = _text(values.get("scorer.url", DEFAULT_SCORER_URL), "scorer.url", DEFAULT_SCORER_URL, report)
         scorer_timeout = _number(values.get("scorer.timeout", DEFAULT_SCORER_TIMEOUT), "scorer.timeout",
                                  DEFAULT_SCORER_TIMEOUT, 0.1, report)
-        scorer_prompt = _text(values.get("scorer.prompt", ""), "scorer.prompt", "", report)
+        scorer_prompt = _text(values.get("scorer.prompt_scoring", ""), "scorer.prompt_scoring", "", report)
+        scorer_output = _text(values.get("scorer.prompt_output", ""), "scorer.prompt_output", "", report)
+        scorer_output_debug = _text(values.get("scorer.prompt_output_debug", ""),
+                                    "scorer.prompt_output_debug", "", report)
+        if scorer_prompt.strip() and not scorer_output.strip():
+            report.warn("scorer.prompt_output is empty, so the model is not told how to reply")
         scorer_floor = _number(values.get("scorer.floor", DEFAULT_SCORER_FLOOR), "scorer.floor",
                                DEFAULT_SCORER_FLOOR, 0.0, report)
         scorer_min_content = _whole(values.get("scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS),
@@ -169,7 +194,7 @@ class Config:
         if "POM_SCORER_URL" in environ:
             scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, report)
         scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_floor, scorer_min_content,
-                                scorer_failure_limit, scorer_retry)
+                                scorer_failure_limit, scorer_retry, scorer_output, scorer_output_debug)
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer)
 
 
@@ -188,6 +213,13 @@ def _read_file(path: Path, report: Report) -> dict:
     if unknown:
         report.warn(f"config file {path} has unknown key(s): {', '.join(unknown)}; ignoring them")
     return {k: v for k, v in document.items() if k in _KEYS}
+
+
+def _join_prompt(*parts: str) -> str:
+    """Joins prompt parts with a blank line between, leaving out empty ones; "" if the first is empty."""
+    if not parts[0].strip():
+        return ""
+    return "\n\n".join(part.strip() for part in parts if part.strip())
 
 
 def _flatten(document: dict) -> dict:

@@ -47,6 +47,10 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Decisions recorded** (`documentation/project-state.md`): Qwen3-4B is the starting Scorer model and
+  7.0 the starting trigger threshold. First look at the real USB microphone on the Pi: it records quietly
+  (mean -38 dB) with capture gain to spare, and whisper wraps song lyrics in ♪ marks that the
+  Transcriber should treat as music.
 - **Scorer settings in the config.** `config/pom.toml` gains a `[scorer]` section: the language
   model's address and timeout, the prompt that defines "interesting" and the score scale (kept here as
   the single copy, so it is the main thing to adjust), the floor score, how many content words a

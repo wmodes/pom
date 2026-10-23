@@ -18,12 +18,15 @@ summarized below.
 
 ## Where things stand
 
-- **Built and tested** (470 tests, all passing): the shared plumbing (`report`, `logs`, `config`),
-  the corpus module (`Weights`, `ChunkStore`, `Sampler`), the `Fragmenter`, and the word tools
-  (`hinge/words.py`, now a pre-filter and fallback for the Scorer).
+- **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
+  now with a `[scorer]` section), the corpus module (`Weights`, `ChunkStore`, `Sampler`), the
+  `Fragmenter`, the word tools (`hinge/words.py`, the Scorer's pre-filter and fallback), the
+  `InterestClient` (asks llama-server for a sentence's score) and the `Scorer` (filter, model,
+  fallback, circuit breaker).
 - **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
   a time, no context. See `experiments/interest-scorer/README.md` and the decisions below. The
-  Scorer module itself is not built yet.
+  Scorer module is built; what remains is a playground script and the entry point that builds it
+  from `config.scorer` and calls `warm_up` at startup.
 - **Corpus:** 81 sources, 14 registers, about 72,000 chunks, public on GitHub. Alice's Adventures in
   Wonderland went in as the 14th register (`nonsense`) to test how hard growing the corpus is: easy.
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see
@@ -213,7 +216,16 @@ llama.cpp setup scripts.
   times but stays real-time. The first call after a server starts takes 12 to 28 s, so warm it up at
   startup. Real whisper output on a quiet room needs level normalization first and a filter for non-speech
   tags and phantom repeats; Qwen scores the phantom words 1.0, Llama about 4.
-- **Still open for the Scorer:** a real-room test with the USB microphone; and
+- **Decided by Wes (2026-10-23):** start with **Qwen3-4B**, and start the trigger threshold at
+  **7.0** on the Scorer's scale (the Trigger is not built yet; put the value in config when it is).
+  On the saved samples that lets through only the vivid lines (scores of about 7.3 to 8.0) and none of
+  the ordinary class chatter (top 5.0) or song lyrics (top 6.0). Scores are relative, so expect to tune it.
+- **First look at the real microphone** (ATR4697-USB on the Pi, 2026-10-23, music playing in the room):
+  it records quietly, mean -38 dB with peaks near -18 dB, like the phone recordings; its capture gain is
+  21 of 30 (+19.5 dB) with hardware auto-gain off, so there is room to raise it. Whisper transcribed the
+  song lyrics almost completely and wrapped every line in ♪ marks, so the Transcriber should treat
+  ♪ lines as music, not speech. Whisper took 0.2 (base.en) and 0.5 (small.en) times real time on the music.
+- **Still open for the Scorer:** a real-room test of speech with the USB microphone; and
   Wes's conclusion that we must first define for ourselves what "interesting" is and what should
   trigger a print, then state it to the model.
 - **Earlier plan, now a fallback:** no separate model. Signals (weights in config): snag on the corpus (corpus
@@ -234,11 +246,10 @@ llama.cpp setup scripts.
 
 ## Next steps, in order
 
-0. **Scorer module**: a small client for llama-server (the prompt from config, a fake for tests, a
-   Report and the word-tool fallback when the model is down), plus a playground script. First run the
-   prepared Pi benchmark (`experiments/pi-benchmark/`, README there) with the Pi reachable: it times
-   the Scorer on the Pi alone and while whisper transcribes. Then collect real room transcripts to
-   try the Scorer on.
+0. **Scorer playground** (`scripts/dev/hinge/score.py`: text in, ranked scored sentences out), then
+   the entry point that builds the client and Scorer from `config.scorer`, calls `warm_up`, and starts
+   llama-server. The Pi benchmark is done (see above). Then collect more real-room transcripts to try
+   the Scorer on.
 1. **Trigger policy**: the moving threshold, its jump and decay after a print, and fading of old
    scores. Pure math over time, no clock inside (pass time in).
 2. **Fragmenter setting** for which levels to emit (sentences only by default).

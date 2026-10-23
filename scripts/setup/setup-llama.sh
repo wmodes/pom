@@ -17,7 +17,7 @@
 #
 # Environment overrides:
 #   LLAMA_TAG  upstream release tag to build (default: b11721)
-#   LLAMA_DIR  checkout/build location       (default: ~/llama.cpp)
+#   LLAMA_DIR  checkout/build location       (default: <repo>/data/tools/llama.cpp)
 #
 # Not enabled yet, worth a later experiment: -DGGML_CPU_KLEIDIAI=ON (Arm
 # kernels for AArch64). The baseline build keeps to upstream defaults.
@@ -25,7 +25,8 @@
 set -euo pipefail
 
 LLAMA_TAG="${LLAMA_TAG:-b11721}"
-LLAMA_DIR="${LLAMA_DIR:-$HOME/llama.cpp}"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+LLAMA_DIR="${LLAMA_DIR:-$REPO/data/tools/llama.cpp}"   # data/ is gitignored, so the clone stays clean
 LLAMA_REPO="https://github.com/ggml-org/llama.cpp.git"
 
 log() { printf '==> %s\n' "$*"; }
@@ -65,7 +66,9 @@ if [ -x "$LLAMA_DIR/build/bin/llama-cli" ]; then
   log "Already built: $LLAMA_DIR/build/bin/llama-cli"
 else
   log "Building (this takes a while)"
-  cmake -S "$LLAMA_DIR" -B "$LLAMA_DIR/build" -DCMAKE_BUILD_TYPE=Release
+  # The libraries are found through $ORIGIN, not an absolute path, so the folder can be moved later.
+  cmake -S "$LLAMA_DIR" -B "$LLAMA_DIR/build" -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON "-DCMAKE_INSTALL_RPATH=\$ORIGIN"
   cmake --build "$LLAMA_DIR/build" -j"$(nproc)" --config Release
 fi
 

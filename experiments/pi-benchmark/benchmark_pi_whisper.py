@@ -17,7 +17,7 @@ Whisper encodes a full 30 s window whatever the clip length, so the 11 s sample 
 a real window costs. The first pass includes loading the model and is left out of the averages.
 
 Where things are (the defaults match scripts/setup/setup-whisper.sh):
-    WHISPER_DIR  checkout location        (default ~/whisper.cpp)
+    WHISPER_DIR  checkout location        (default <repo>/data/tools/whisper.cpp)
     WHISPER_CLI  the whisper-cli binary   (default $WHISPER_DIR/build/bin/whisper-cli)
     WHISPER_WAV  the clip to transcribe   (default $WHISPER_DIR/samples/jfk.wav)
 
@@ -34,7 +34,7 @@ from pathlib import Path
 
 def settings(model: str):
     """(whisper-cli, model file, wav) from the environment, exiting with a clear message if missing."""
-    root = Path(os.environ.get("WHISPER_DIR", Path.home() / "whisper.cpp"))
+    root = Path(os.environ.get("WHISPER_DIR", Path(__file__).resolve().parents[2] / "data" / "tools" / "whisper.cpp"))
     cli = Path(os.environ.get("WHISPER_CLI", root / "build" / "bin" / "whisper-cli"))
     model_file = root / "models" / f"ggml-{model}.bin"
     wav = Path(os.environ.get("WHISPER_WAV", root / "samples" / "jfk.wav"))

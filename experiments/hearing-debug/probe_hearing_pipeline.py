@@ -259,7 +259,7 @@ class Transcriber:
     """Turns an utterance into text with whisper.cpp's whisper-cli."""
 
     def __init__(self, model: str, threads: int):
-        root = Path(os.environ.get("WHISPER_DIR", Path.home() / "whisper.cpp"))
+        root = Path(os.environ.get("WHISPER_DIR", ROOT / "data" / "tools" / "whisper.cpp"))
         candidates = [os.environ.get("WHISPER_CLI"), str(root / "build" / "bin" / "whisper-cli"),
                       shutil.which("whisper-cli")]
         self._cli = next((c for c in candidates if c and Path(c).exists()), None)

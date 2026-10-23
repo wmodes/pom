@@ -21,7 +21,7 @@
 #   ~/pom/                               the clone (git pull)
 #   ~/pom/data/models/*.gguf             the language models, copied by `models`; git does not carry them
 #   ~/pom/data/recordings/               recordings and transcripts of real speech; never in git
-#   ~/whisper.cpp, ~/llama.cpp           the third-party tools, built by scripts/setup
+#   ~/pom/data/tools/                    whisper.cpp and llama.cpp, built by scripts/setup
 # The models come from the Hugging Face cache on the Mac (the bake-off downloaded them). The Pi's
 # llama.cpp is built without TLS, so it cannot download them itself.
 
@@ -71,8 +71,8 @@ echo "tools:"
 command -v python3 >/dev/null && ok "python3 $(python3 -V 2>&1 | cut -d' ' -f2)" || miss "python3"
 command -v curl >/dev/null && ok curl || miss curl
 command -v git >/dev/null && ok git || miss git
-have "$HOME/llama.cpp/build/bin/llama-server" llama-server
-W="${WHISPER_DIR:-$HOME/whisper.cpp}"
+have "$HOME/pom/data/tools/llama.cpp/build/bin/llama-server" llama-server
+W="${WHISPER_DIR:-$HOME/pom/data/tools/whisper.cpp}"
 have "$W/build/bin/whisper-cli" whisper-cli
 have "$W/models/ggml-base.en.bin" "whisper model base.en"
 have "$W/models/ggml-small.en.bin" "whisper model small.en"

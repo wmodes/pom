@@ -20,7 +20,7 @@
 #   QUICK=1 ./benchmark_pi_run.sh [run-name]    # sanity run: one whisper model, shared cores only, no large sample
 #
 # Environment overrides (defaults in brackets):
-#   LLAMA_SERVER    path to llama-server       [~/llama.cpp/build/bin/llama-server]
+#   LLAMA_SERVER    path to llama-server       [<repo>/data/tools/llama.cpp/build/bin/llama-server]
 #   MODEL_DIR       where the .gguf files are  [<repo>/data/models]
 #   CTX             server context size        [2048]  (one sentence plus the prompt needs well under 1024)
 #   PORT            server port                [8098]
@@ -43,7 +43,7 @@ WHISPER="$HERE/benchmark_pi_whisper.py"
 if [ "${QUICK:-0}" = 1 ]; then
   : "${WHISPER_MODELS:=base.en}" "${SPLITS:=4+4}" "${RUN_LARGE:=0}" "${COOLDOWN:=10}"
 fi
-LLAMA_SERVER="${LLAMA_SERVER:-$HOME/llama.cpp/build/bin/llama-server}"
+LLAMA_SERVER="${LLAMA_SERVER:-$ROOT/data/tools/llama.cpp/build/bin/llama-server}"
 MODEL_DIR="${MODEL_DIR:-$ROOT/data/models}"
 CTX="${CTX:-2048}"
 PORT="${PORT:-8098}"

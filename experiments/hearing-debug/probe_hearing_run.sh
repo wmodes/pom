@@ -23,7 +23,7 @@
 #   MIC_GAIN      capture gain, 0 to 30 on the ATR4697-USB          [24]
 #   MODEL_FILE    the language model to serve                        [<repo>/data/models/Qwen3-4B-Q4_K_M.gguf]
 #   CONFIG        the config file to read and watch                  [<repo>/data/live/pom.toml if it exists, else <repo>/config/pom.toml]
-#   LLAMA_SERVER  path to llama-server                               [~/llama.cpp/build/bin/llama-server]
+#   LLAMA_SERVER  path to llama-server                               [<repo>/data/tools/llama.cpp/build/bin/llama-server]
 #   LLAMA_THREADS threads for the language model                     [4]
 #   PORT          the port; it must match [scorer] url in the config [8098]
 #   (WHISPER_DIR, WHISPER_CLI and WHISPER_MODEL_FILE are read by the pipeline; see its header.)
@@ -39,7 +39,7 @@ MODEL_FILE="${MODEL_FILE:-$ROOT/data/models/Qwen3-4B-Q4_K_M.gguf}"
 if [ -z "${CONFIG:-}" ]; then
   if [ -s "$ROOT/data/live/pom.toml" ]; then CONFIG="$ROOT/data/live/pom.toml"; else CONFIG="$ROOT/config/pom.toml"; fi
 fi
-LLAMA_SERVER="${LLAMA_SERVER:-$HOME/llama.cpp/build/bin/llama-server}"
+LLAMA_SERVER="${LLAMA_SERVER:-$ROOT/data/tools/llama.cpp/build/bin/llama-server}"
 LLAMA_THREADS="${LLAMA_THREADS:-4}"
 PORT="${PORT:-8098}"
 SERVER_LOG="/dev/shm/hearing-debug-llama.log"

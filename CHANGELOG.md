@@ -52,6 +52,10 @@ December 18 session. Update this file in the same commit as the change it descri
   live under the gitignored `data/`. The per-experiment copy scripts were replaced: `probe_hearing_push.sh`
   became `probe_hearing_sync_config.sh` (copies only `config/pom.toml`, to `data/live/`), and
   `benchmark_pi_prepare.sh push` became `models`. Documented in `documentation/pi-setup-notes.md`.
+- **Everything on the Pi now lives inside `~/pom`.** whisper.cpp and llama.cpp are built under
+  `data/tools/` (the setup scripts default there and build with a relative `$ORIGIN` library path so the
+  folders can be moved without rebuilding), logs under `data/logs/`, and the early whisper sample under
+  `data/recordings/samples/`. Scripts and docs that assumed `~/llama.cpp` and `~/whisper.cpp` were updated.
 - **Hearing-debug experiment** (`experiments/hearing-debug/`). A live prototype of the front half of the
   Printer for watching how it interprets what it hears and refining the prompt in a closed loop. On the Pi
   (or the Mac, against a recording) it cuts the microphone at pauses, normalizes the level, transcribes with

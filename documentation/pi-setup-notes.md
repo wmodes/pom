@@ -102,6 +102,8 @@ If the Pi can't join a known network, it raises its own hotspot with a captive p
 
 ## whisper.cpp (speech to text)
 
+*(Paths below are as first built, in the home folder. Since 2026-10-23 the tools live in `~/pom/data/tools/`; see "Deploying the project code".)*
+
 Third-party, not bespoke: built on the Pi from a pinned upstream tag, not copied into this repo.
 
 **Reproduce it with `scripts/setup/setup-whisper.sh`** (idempotent; pinned to v1.9.5; installs build tools, clones, builds, downloads `base.en` and `small.en`, then smoke-tests on `jfk.wav`). Override with `WHISPER_TAG`, `WHISPER_DIR`, `WHISPER_MODELS`. Tested 2026-10-18 on the Pi: re-run against the existing install (all steps skipped, smoke test passes), a fresh build into a throwaway directory (passes), and refusal when pointed at a checkout on a different tag. The manual steps below are what the script automates.
@@ -163,14 +165,19 @@ git clone https://github.com/wmodes/pom.git ~/pom        # once
 cd ~/pom && git pull                                     # to update, after pushing from the Mac
 ```
 
-What git does not carry lives under `~/pom/data/` (gitignored, as on the Mac):
+Everything on the Pi lives inside `~/pom`; nothing is loose in the home folder. What git does not carry is
+under `~/pom/data/` (gitignored, as on the Mac):
+- `data/tools/` the third-party builds, `llama.cpp/` and `whisper.cpp/` (with the whisper models), made by `scripts/setup`
+- `data/logs/` build and server logs
 - `data/models/` the language models (`.gguf`), copied from the Mac with `experiments/pi-benchmark/benchmark_pi_prepare.sh models`
-- `data/recordings/` recordings and transcripts of real speech, which must never be committed
+- `data/recordings/` recordings and transcripts of real speech, which must never be committed (`work/` for
+  working copies, `samples/` for the early whisper test clip)
 - `data/live/pom.toml` a copy of `config/pom.toml` kept in step while the prompts are being edited
   (`experiments/hearing-debug/probe_hearing_sync_config.sh watch`), outside git so a pull never meets a modified file
 
-The third-party tools stay where their setup scripts put them: `~/whisper.cpp`, `~/llama.cpp`. Keep the Pi's
-clone clean (no edits in tracked files), so `git pull` always works; `benchmark_pi_prepare.sh check` says if it is not.
+The tools were first built in the home folder and moved here on 2026-10-23. A built binary found its libraries
+through an absolute path, so they were rebuilt in place, and the setup scripts now build with a relative library
+path (`$ORIGIN`) so the folder can be moved again without rebuilding. Keep the Pi's clone clean (no edits in tracked files), so `git pull` always works; `benchmark_pi_prepare.sh check` says if it is not.
 
 ## Fan check
 

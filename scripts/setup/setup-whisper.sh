@@ -18,13 +18,14 @@
 #
 # Environment overrides:
 #   WHISPER_TAG     upstream release tag to build (default: v1.9.5)
-#   WHISPER_DIR     checkout/build location       (default: ~/whisper.cpp)
+#   WHISPER_DIR     checkout/build location       (default: <repo>/data/tools/whisper.cpp)
 #   WHISPER_MODELS  space-separated model names   (default: "base.en small.en")
 
 set -euo pipefail
 
 WHISPER_TAG="${WHISPER_TAG:-v1.9.5}"
-WHISPER_DIR="${WHISPER_DIR:-$HOME/whisper.cpp}"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+WHISPER_DIR="${WHISPER_DIR:-$REPO/data/tools/whisper.cpp}"   # data/ is gitignored, so the clone stays clean
 WHISPER_MODELS="${WHISPER_MODELS:-base.en small.en}"
 WHISPER_REPO="https://github.com/ggml-org/whisper.cpp.git"
 CLI="$WHISPER_DIR/build/bin/whisper-cli"
@@ -66,7 +67,9 @@ if [ -x "$CLI" ]; then
   log "Already built: $CLI"
 else
   log "Building (this takes a few minutes)"
-  cmake -S "$WHISPER_DIR" -B "$WHISPER_DIR/build"
+  # The libraries are found through $ORIGIN, not an absolute path, so the folder can be moved later.
+  cmake -S "$WHISPER_DIR" -B "$WHISPER_DIR/build" \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON "-DCMAKE_INSTALL_RPATH=\$ORIGIN"
   cmake --build "$WHISPER_DIR/build" -j"$(nproc)" --config Release
 fi
 

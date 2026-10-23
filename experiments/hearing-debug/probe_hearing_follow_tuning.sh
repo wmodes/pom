@@ -11,7 +11,7 @@
 #   probe_hearing_follow_tuning.sh once     update the scratch checkout; print the path of its config file
 #                                           if the branch exists, and print nothing if it does not
 #   probe_hearing_follow_tuning.sh loop     do that every few seconds until killed
-#   probe_hearing_follow_tuning.sh remove   delete the scratch checkout
+#   probe_hearing_follow_tuning.sh remove   delete the scratch checkout and the local copy of the branch's tip
 #
 # Environment overrides (defaults in brackets):
 #   TUNING_BRANCH  the branch        [prompt-tuning]
@@ -42,6 +42,7 @@ update() {
 remove() {
   if [ -e "$TUNE/.git" ]; then git -C "$ROOT" worktree remove --force "$TUNE"; fi
   git -C "$ROOT" worktree prune
+  git -C "$ROOT" update-ref -d "refs/remotes/$REMOTE/$BRANCH" 2>/dev/null   # the branch is throwaway; leave no trace
 }
 
 case "${1:-}" in

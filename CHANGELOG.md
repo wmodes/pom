@@ -237,7 +237,7 @@ December 18 session. Update this file in the same commit as the change it descri
   worktree of a throwaway `prompt-tuning` branch; on each save it checks the config loads with no problems
   (a typo is not sent), commits it there and pushes, never switching your checkout off `main`. On the Pi,
   `probe_hearing_run.sh` follows that branch with `git fetch` into a scratch worktree (`probe_hearing_follow_tuning.sh`),
-  leaving the main clone untouched. `stop` deletes the branch. An earlier file-copy version was replaced.
+  leaving the main clone untouched. `stop` deletes the branch; the Pi's runner removes its scratch checkout and the branch's tracking ref on exit. An earlier file-copy version was replaced.
 - **Hearing-debug uses whisper's own voice detection.** `whisper-cli --vad` (a Silero model) now decides what
   is speech, instead of a threshold of mine; the energy cut is only a chunker for the live stream. On the quiet
   class recording it replaced a drift into invented text ("You", "I'm sorry") with an accurate transcript that

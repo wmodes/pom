@@ -207,7 +207,13 @@ llama.cpp setup scripts.
   Fragments become **whole sentences** (the Fragmenter gets a config setting for which levels it
   emits; clauses and phrases stay available). The word tools stay as a pre-filter and a fallback if
   the model is down. Evidence, rules and results: `experiments/interest-scorer/`.
-- **Still open for the Scorer:** timing on the Pi with whisper running; real-room transcripts; and
+- **Pi timing done** (`experiments/pi-benchmark/`, 2026-10-22): with whisper running flat out on shared
+  cores, Qwen3-4B scores a sentence in a median 2.3 s (p95 3.2 s; 4.3 s in the harshest sustained case)
+  and Llama-3.2-3B in 1.4 s; both use about 3 GB, peak 72 °C, no throttling. Whisper slows about 2.3
+  times but stays real-time. The first call after a server starts takes 12 to 28 s, so warm it up at
+  startup. Real whisper output on a quiet room needs level normalization first and a filter for non-speech
+  tags and phantom repeats; Qwen scores the phantom words 1.0, Llama about 4.
+- **Still open for the Scorer:** a real-room test with the USB microphone; and
   Wes's conclusion that we must first define for ourselves what "interesting" is and what should
   trigger a print, then state it to the model.
 - **Earlier plan, now a fallback:** no separate model. Signals (weights in config): snag on the corpus (corpus

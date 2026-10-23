@@ -50,7 +50,10 @@ ranking, with one JSON file per model, plus the exact `PROMPT.txt` and `LINES.tx
 runner reproduced the earlier scores exactly.
 
 **Current choice:** Qwen3-4B for the Scorer (graded top, clear break, repeatable, fast on the Mac),
-with Llama-3.2-3B as the faster alternative if the Pi needs it. Not final until it is timed on the Pi.
+with Llama-3.2-3B as the faster alternative. Timed on the Pi (`../pi-benchmark/`): Qwen is fast
+enough even with whisper running flat out, though about 1.7 times slower than Llama. On real whisper
+output from a quiet room, Qwen scored whisper's phantom words ("You", "I") at 1.0 and Llama at about 4,
+which counts for Qwen.
 
 ## Files
 

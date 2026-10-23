@@ -74,7 +74,10 @@ December 18 session. Update this file in the same commit as the change it descri
   (`check`, `push`, `fetch`) works from the Mac; the runner and harnesses use only the standard library.
   Tested on the Mac with a stand-in for whisper. First quick run on the Pi saved in
   `results/quick-2026-10-22/`: both models stay under 4 s p95 even with whisper running flat out, with
-  Llama about 1.7 times faster than Qwen; findings in the README.
+  Llama about 1.7 times faster than Qwen; findings in the README. The full run is in
+  `results/full-2026-10-22/`: it adds whisper `small.en` and a 294-sentence sustained run, and finds
+  no throttling, a peak of 72 °C, whisper about 2.3 times slower beside the Scorer (still real-time),
+  and Qwen's p95 just over 4 s only in the harshest case.
 - **Fragmenter module** (`src/pom/listening/fragmenter.py`). Cuts punctuated transcript text into
   hinge candidates at every level together: sentences (at . ? !), clauses (at ; : dashes and
   ellipses) and phrases (at commas), depth first and in speech order, each stamped with the

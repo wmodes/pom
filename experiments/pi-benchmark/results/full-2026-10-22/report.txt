@@ -1,0 +1,27 @@
+Pi benchmark: full-2026-10-22
+
+(proposed thresholds: scorer p95 <= 4 s, whisper slowdown <= 1.5x; seconds are per sentence)
+
+scorer runs:
+  model        phase                                      warmup  median     p95  slowest  cached  rss MB  used MB  temp  throttling
+  llama3.2-3b  scorer-alone-large                            0.8    0.81    1.40     1.65    94%    4178     2278    70  none
+  llama3.2-3b  scorer-alone-small                           11.8    0.66    1.02     1.48    96%    4177     2318    69  none
+  llama3.2-3b  with-whisper-base.en-t4-llama-t4-small       21.3    1.41    2.09     2.85    96%    4177     2647    69  none
+  llama3.2-3b  with-whisper-small.en-t4-llama-t4-large       1.9    1.74    2.93     3.72    94%    4178     3125    70  none
+  llama3.2-3b  with-whisper-small.en-t4-llama-t4-small       1.9    1.45    2.16     3.05    96%    4178     3150    69  none
+  qwen3-4b     scorer-alone-large                            1.3    1.29    2.10     2.42    93%    5151     2793    72  none
+  qwen3-4b     scorer-alone-small                           15.4    1.10    1.58     2.30    94%    5151     2824    71  none
+  qwen3-4b     with-whisper-base.en-t4-llama-t4-small       28.5    2.30    3.20     4.71    94%    5151     3217    69  none
+  qwen3-4b     with-whisper-small.en-t4-llama-t4-large       2.7    2.71    4.30     5.14    93%    5151     3656    70  none  CHECK p95
+  qwen3-4b     with-whisper-small.en-t4-llama-t4-small       3.1    2.33    3.31     4.57    94%    5151     3648    71  none
+
+whisper (seconds per transcription of the sample clip; whisper always encodes a full window):
+  whisper model   threads   alone mean   with scorer mean   slowdown   phase
+  base.en              4         2.56               6.26      2.45x   llama3.2-3b--with-whisper-base.en-t4-llama-t4-small  CHECK
+  small.en             4         7.59              17.02      2.24x   llama3.2-3b--with-whisper-small.en-t4-llama-t4-large  CHECK
+  small.en             4         7.59              16.40      2.16x   llama3.2-3b--with-whisper-small.en-t4-llama-t4-small  CHECK
+  base.en              4         2.56               6.17      2.42x   qwen3-4b--with-whisper-base.en-t4-llama-t4-small  CHECK
+  small.en             4         7.59              16.95      2.23x   qwen3-4b--with-whisper-small.en-t4-llama-t4-large  CHECK
+  small.en             4         7.59              17.19      2.26x   qwen3-4b--with-whisper-small.en-t4-llama-t4-small  CHECK
+
+CHECK: qwen3-4b / with-whisper-small.en-t4-llama-t4-large: p95 4.30 s; whisper base.en in llama3.2-3b--with-whisper-base.en-t4-llama-t4-small: 2.45x slower with the scorer running; whisper small.en in llama3.2-3b--with-whisper-small.en-t4-llama-t4-large: 2.24x slower with the scorer running; whisper small.en in llama3.2-3b--with-whisper-small.en-t4-llama-t4-small: 2.16x slower with the scorer running; whisper base.en in qwen3-4b--with-whisper-base.en-t4-llama-t4-small: 2.42x slower with the scorer running; whisper small.en in qwen3-4b--with-whisper-small.en-t4-llama-t4-large: 2.23x slower with the scorer running; whisper small.en in qwen3-4b--with-whisper-small.en-t4-llama-t4-small: 2.26x slower with the scorer running.

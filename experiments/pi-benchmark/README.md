@@ -1,8 +1,7 @@
 # Pi benchmark
 
-**Status: prepared, not yet run.** The Pi was out of reach when this was written, so everything that can
-be tested without it was tested on the Mac (the scripts run end to end with a stand-in for whisper). The
-Pi itself has not been touched. Nothing here is part of the Printer.
+**Status: run on the Pi on 2026-10-22 (a quick run and a full run); results below.** The scripts were
+first tested on the Mac with a stand-in for whisper. Nothing here is part of the Printer.
 
 ## The question
 
@@ -96,8 +95,33 @@ They are guesses to react to, not requirements; change them with `--target-p95` 
   warm-up request at startup.
 
 That run had a bug: both models wrote their whisper log under the same name, so Llama's overwrote
-Qwen's. Fixed afterwards (the log name now includes the model); the full run has not yet been done.
-Not yet measured: `small.en`, the large sample (sustained heat), and any real room audio.
+Qwen's. Fixed afterwards (the log name now includes the model).
+
+**Full run, 2026-10-22** (`results/full-2026-10-22/`: 74 minutes; whisper `base.en` and `small.en`,
+shared cores, small sample plus the large sample on the harshest phases). Seconds per sentence:
+
+- Scorer alone: Qwen3-4B median 1.1 s, p95 1.6 s (large sample: 1.3 s, 2.1 s); Llama-3.2-3B median
+  0.66 s, p95 1.0 s (large sample: 0.8 s, 1.4 s).
+- Scorer with whisper running flat out: Qwen median 2.3 s and p95 3.2 to 3.3 s with either whisper
+  model; Llama median 1.4 s and p95 2.1 to 2.2 s. On the large sample with `small.en`, the harshest
+  phase, Qwen's p95 was 4.3 s and its slowest call 5.1 s (over the proposed 4 s); Llama's was 2.9 s and 3.7 s.
+- Whisper slows about 2.2 to 2.5 times with the Scorer running, whichever Scorer model: `base.en` 2.6 s
+  alone and about 6.2 s loaded; `small.en` 7.6 s alone and about 17 s loaded, still inside a 30 s window.
+  The choice of Scorer model hardly changes how much whisper slows.
+- System memory used (Scorer, plus whisper when it was running): Qwen 2.8 GB alone and up to 3.7 GB
+  with `small.en`; Llama 2.3 GB alone and up to 3.2 GB. Qwen costs about 0.5 GB more.
+- Prompt cache served 93 to 96% of prompt tokens. Peak temperature 72 °C, **no throttling in any phase**,
+  including the sustained large-sample runs.
+- Warm-up: the first call after a server starts took 12 to 28 s while the model loaded into memory.
+
+What it means: both models are fast enough, with whisper loaded. The only threshold crossed was Qwen's
+p95 in the harshest sustained case (whisper `small.en` plus 294 sentences back to back), and that is a
+worst case: a real room leaves both busy only part of the time. At about 2.7 s per sentence, Qwen can
+still keep up with roughly 20 sentences a minute, about twice the pace of one person talking
+continuously (my estimate, about 10 a minute). The 1.5 times
+whisper-slowdown line was my guess and is crossed in every phase; a better test is that whisper stays
+well inside real time, which it does. Remaining unknowns are real room audio and the voice model running
+beside them.
 
 ## What it decides
 

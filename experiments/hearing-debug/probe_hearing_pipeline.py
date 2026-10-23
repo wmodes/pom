@@ -475,14 +475,25 @@ class Display:
         was = f"   (was {previous:.2f})" if previous is not None else ""
         self.line(f"  #{number:<3} {score:5.2f}  {source:<8} {text}{was}{mark}")
 
-    def interpretation(self, number: int, run, production_score: float, seconds: float) -> None:
-        """One debug run: the number and the reasons from the same output, beside the score the Printer itself gave."""
-        written = parse_written_score(run.text)
-        this_run = f"this run's probabilities {run.score:.2f}" if run.score is not None else "no digit to score from"
-        wrote = f", it wrote {written:.2f}" if written is not None else ""
-        wrapped = textwrap.fill(run.text, width=96, initial_indent=f"  #{number:<3} says: ",
-                                subsequent_indent=" " * 12)
-        self.line(f"{wrapped}\n        ({seconds:.1f} s; {this_run}{wrote}; the Printer's own score {production_score:.2f})")
+    def pending(self, number: int, text: str) -> None:
+        """A sentence that has been heard and is waiting for its one debug run."""
+        self.line(f"  #{number:<3}  ....  waiting  {text}")
+
+    def result(self, number: int, score: Optional[float], run, seconds: float, text: str,
+               previous: Optional[float] = None, production: Optional[float] = None) -> None:
+        """One debug run: the score and the reasons, which came out of the same output."""
+        shown = f"{score:5.2f}" if score is not None else "  ?  "
+        mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
+        was = f"   (was {previous:.2f})" if previous is not None else ""
+        self.line(f"  #{number:<3} {shown}  debug    {text}{was}{mark}")
+        wrote = parse_written_score(run.text)
+        foot = f"{seconds:.1f} s; score from this run's first-token probabilities"
+        if wrote is not None:
+            foot += f", it wrote {wrote:.2f}"
+        if production is not None:
+            foot += f"; the one-token Printer score {production:.2f}"
+        wrapped = textwrap.fill(run.text, width=96, initial_indent="        says: ", subsequent_indent=" " * 14)
+        self.line(f"{wrapped}\n        ({foot})")
 
 
 # --- The pipeline -----------------------------------------------------------------------------
@@ -491,7 +502,7 @@ class Display:
 class Heard:
     number: int
     text: str
-    score: float
+    score: Optional[float]      # None until the sentence's debug run has finished
     source: str
 
 
@@ -502,12 +513,13 @@ class Pipeline:
                                        vad_threshold=args.vad_threshold, sounds=args.sounds)
         self.fragmenter = Fragmenter(max_words=40)
         self.utterances = queue.Queue(maxsize=6)
-        self.explain_queue = queue.Queue(maxsize=8)
+        self.run_queue = queue.Queue(maxsize=40)                     # sentences waiting for their debug run (cheap to hold)
         self.history = collections.deque(maxlen=args.history)       # in memory only; for the `r` command
         self.count = 0
         self.last_text = ""
         self.working = False                                         # True while an utterance is being handled
         self.source_done = False                                     # True once a recording has played out
+        self.hurry_until = 0.0                                       # the e command: run waiting sentences without waiting for quiet
         self.ambient = collections.deque(maxlen=6)                   # recent captions of the room, for the voice's prompt later
         self.last_ambient = []                                       # to show a caption once, not every time it repeats
         self.segmenter = None                                        # set once listening starts
@@ -564,7 +576,7 @@ class Pipeline:
             utterance = self.utterances.get()
             if utterance is None:
                 if not self.interactive:
-                    self.explain_queue.put(None)                       # nobody can type e later: finish up
+                    self.run_queue.put(None)                       # nobody can type e later: finish up
                 if self.args.wav:
                     self.display.line("\n  (the recording is done; type r to re-score its sentences with the "
                                       "current prompts, e to explain them, q to quit)")
@@ -602,102 +614,112 @@ class Pipeline:
         for fragment in self.fragmenter.split(text):
             if fragment.kind is not Kind.SENTENCE:
                 continue
-            scored = self.brain.scorer.score(fragment)
             self.count += 1
-            self.history.append(Heard(self.count, fragment.text, scored.score, scored.source.value))
-            self.display.sentence(self.count, scored.score, scored.source.value, fragment.text)
-            worth_it = (scored.source.value == "model" and scored.score >= self.args.explain_above
-                        and (kind == "speech" or self.args.explain_lyrics))
-            if self.args.explain and worth_it:
-                self._explain(self.count, fragment.text, scored.score)
+            number = self.count
+            if self.debug_mode() and not self.brain.scorer.is_filtered(fragment.text):
+                # ONE request per sentence, made when the room is quiet: the score and the reasons both come out of it.
+                self.history.append(Heard(number, fragment.text, None, "waiting"))
+                self.display.pending(number, fragment.text)
+                self._queue_run(number, fragment.text)
+            else:
+                # Fast mode, or a sentence the filter keeps from the model: the Printer's one-token score, straight away.
+                scored = self.brain.scorer.score(fragment)
+                self.history.append(Heard(number, fragment.text, scored.score, scored.source.value))
+                self.display.sentence(number, scored.score, scored.source.value, fragment.text)
 
-    def _explain(self, number: int, text: str, score: float, now: bool = False) -> None:
-        """Queues a sentence for a written explanation. Unless `now`, it waits for a quiet moment."""
-        item = (number, text, score, now)
+    def debug_mode(self) -> bool:
+        """True if each sentence gets one debug run (score and reasons together) instead of the one-token score."""
+        return self.args.explain and self.brain.client.can_interpret
+
+    def _queue_run(self, number: int, text: str, now: bool = False, previous: Optional[float] = None) -> None:
+        """Queues a sentence for its debug run. Unless `now`, the run waits for a quiet moment."""
+        item = (number, text, now, previous)
         try:
-            self.explain_queue.put_nowait(item)
+            self.run_queue.put_nowait(item)
         except queue.Full:
             try:
-                skipped = self.explain_queue.get_nowait()
-                self.display.line(f"  (explanations are behind; skipped #{skipped[0]})")
+                skipped = self.run_queue.get_nowait()
+                self.display.line(f"  (the model is behind; skipped #{skipped[0]}. Quieter moments catch up; "
+                                  f"--no-explain scores every sentence at once)")
             except queue.Empty:
                 pass
-            self.explain_queue.put_nowait(item)
+            self.run_queue.put_nowait(item)
 
     def _wait_until_quiet(self) -> None:
-        """Holds an explanation back until nothing has been heard or scored for a few seconds.
+        """Holds a debug run back until the AUDIO has been quiet for a few seconds.
 
         Writing words is by far the slowest thing the model does on a Pi: while someone is talking, with
-        whisper and the scorer busy on the same four cores, one explanation measured 1.25 tokens a second
-        and took 45 s. So explanations never compete with listening; they take the quiet moments. If the
-        room never goes quiet, type e to explain the recent sentences right away.
+        whisper busy on the same four cores, one explanation measured 1.25 tokens a second and took 45 s.
+        So the model works in the quiet moments and never competes with listening. Quiet means the audio is
+        quiet, not that the pipeline has no news: someone speaking for twenty seconds produces no event until
+        the end, and a run must not start in the middle of it. Type e to hurry the waiting sentences.
         """
-        while not self.stop.is_set():
-            # Quiet means the AUDIO is quiet, not that the pipeline has no news: someone speaking for twenty
-            # seconds produces no event until the end, and an explanation must not start in the middle of it.
+        while not self.stop.is_set() and time.monotonic() >= self.hurry_until:
             heard_lately = (self.segmenter is not None and not self.source_done
                             and self.segmenter.quiet_seconds < self.args.explain_quiet)
             if not self.working and self.utterances.empty() and not heard_lately:
                 return
             time.sleep(0.2)
 
-    def explain_worker(self) -> None:
+    def debug_worker(self) -> None:
         while True:
-            item = self.explain_queue.get()
+            item = self.run_queue.get()
             if item is None:
                 return
-            number, text, score, now = item
+            number, text, now, previous = item
             if not now:
                 self._wait_until_quiet()
             client = self.brain.client
             if not client.can_interpret:
                 continue
             run = client.interpret(text)
-            if run:
-                self.display.interpretation(number, run, score, client.last_seconds or 0.0)
-            else:
-                self.display.line(f"  #{number:<3} (no interpretation: {'; '.join(client.report.lines()[-1:]) or 'no reply'})")
+            if run is None:
+                self.display.line(f"  #{number:<3} (no result: {'; '.join(client.report.lines()[-1:]) or 'no reply'})")
+                continue
+            score = run.score if run.score is not None else parse_written_score(run.text)
+            production = self.brain.scorer.score_text(text).score if self.args.also_score else None
+            for entry in self.history:
+                if entry.number == number:
+                    entry.score, entry.source = score, "debug"
+            self.display.result(number, score, run, client.last_seconds or 0.0, text, previous, production)
 
     # commands typed at the terminal
     def rescore(self) -> None:
+        """Runs the recent sentences again with the current prompts, showing the old score beside the new one."""
         changed = self.brain.refresh()
         self.display.line(f"\n[{self.display.stamp()}] re-scoring the last {len(self.history)} sentences "
                           f"with [{self.brain.fingerprint()}]" + (f" ({changed})" if changed else ""))
         for item in list(self.history):
-            scored = self.brain.scorer.score_text(item.text)
-            self.display.sentence(item.number, scored.score, scored.source.value, item.text, previous=item.score)
-            item.score, item.source = scored.score, scored.source.value
+            if self.debug_mode() and not self.brain.scorer.is_filtered(item.text):
+                self._queue_run(item.number, item.text, now=True, previous=item.score)
+            else:
+                scored = self.brain.scorer.score_text(item.text)
+                self.display.sentence(item.number, scored.score, scored.source.value, item.text, previous=item.score)
+                item.score, item.source = scored.score, scored.source.value
 
-    def explain_recent(self, count: int) -> None:
-        """Asks for written explanations of the last few sentences now, whether or not the room is quiet."""
-        if not self.brain.client.can_interpret:
-            self.display.line("  (no prompt_output_debug in the config, so there is nothing to explain with)")
-            return
-        recent = [item for item in self.history if item.source == "model"][-count:]
-        if not recent:
-            self.display.line("  (nothing has been scored by the model yet)")
-            return
-        self.display.line(f"\n[{self.display.stamp()}] explaining the last {len(recent)} sentences "
-                          f"(each takes a few seconds; they appear as they finish)")
-        for item in recent:
-            self._explain(item.number, item.text, item.score, now=True)
+    def hurry(self) -> None:
+        """Runs the sentences that are waiting for the model now, without waiting for the room to go quiet."""
+        waiting = self.run_queue.qsize()
+        self.hurry_until = time.monotonic() + 60
+        self.display.line(f"\n[{self.display.stamp()}] {waiting} sentence(s) waiting; running them now "
+                          f"(each takes a few seconds; the results appear as they finish)" if waiting
+                          else "  (nothing is waiting for the model)")
 
     def commands(self) -> None:
         for line in sys.stdin:
             word = line.strip().lower()
             if word == "r":
                 self.rescore()
-            elif word.split()[:1] == ["e"]:
-                parts = word.split()
-                self.explain_recent(int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 4)
+            elif word == "e":
+                self.hurry()
             elif word == "q":
-                self.explain_queue.put(None)
+                self.run_queue.put(None)
                 break
             elif word == "l":
                 self.display.line(f"  levels: {self.segmenter.describe_levels() if self.segmenter else 'not listening yet'}")
             elif word in ("?", "h", "help"):
-                self.display.line("  r = re-score the recent sentences with the current prompts   e [n] = explain the last n "
-                                  "(default 4) now   l = show the room's levels   q = quit")
+                self.display.line("  r = run the recent sentences again with the current prompts   e = run the waiting "
+                                  "sentences now   l = show the room's levels   q = quit")
         self.stop.set()
 
 
@@ -715,15 +737,14 @@ def main() -> None:
     parser.add_argument("--no-sounds", dest="sounds", action="store_false",
                         help="skip the second pass that keeps song lyrics and sound captions the VAD ignores")
     parser.add_argument("--threshold", type=float, default=7.0, help="mark scores at or above this (default 7.0)")
-    parser.add_argument("--no-explain", dest="explain", action="store_false", help="skip the written interpretations")
-    parser.add_argument("--explain-above", type=float, default=4.0,
-                        help="only explain scores at or above this (e explains anything, on request)")
-    parser.add_argument("--explain-lyrics", action="store_true",
-                        help="also explain song lyrics (by default only speech is explained)")
+    parser.add_argument("--no-explain", dest="explain", action="store_false",
+                        help="fast mode: score each sentence at once with the Printer's one-token scorer, no reasons")
+    parser.add_argument("--also-score", action="store_true",
+                        help="also ask the Printer's one-token scorer for each debug result, to compare (a second request)")
     parser.add_argument("--score-ambient", action="store_true",
                         help="also score whisper's captions of sounds, like (dog barks); by default they are shown but not scored")
     parser.add_argument("--explain-quiet", type=float, default=3.0,
-                        help="seconds of quiet before a written explanation starts (they never compete with listening)")
+                        help="seconds of quiet before the model works on a sentence (it never competes with listening)")
     parser.add_argument("--history", type=int, default=12, help="sentences kept in memory for the r command")
     parser.add_argument("--score-timeout", type=float, default=30.0,
                         help="seconds to wait for a score (at least; the config's value if larger)")
@@ -752,12 +773,17 @@ def main() -> None:
     source = WavSource(args.wav, args.speed) if args.wav else MicSource(args.device)
     threads = [threading.Thread(target=pipeline.listen, args=(source,), daemon=True),
                threading.Thread(target=pipeline.transcribe_and_score, daemon=True),
-               threading.Thread(target=pipeline.explain_worker, daemon=True)]
+               threading.Thread(target=pipeline.debug_worker, daemon=True)]
     for thread in threads:
         thread.start()
-    display.line("  nothing to do: it listens and scores by itself. Written explanations, for speech scoring "
-                 f"{args.explain_above:g} or more, arrive in quiet moments (after {args.explain_quiet:g} s of quiet).\n  Optional: e + Enter explains the last few sentences now, r + Enter "
-                 "re-scores them with the current prompts, l shows the levels, q quits\n")
+    if args.explain and brain.client.can_interpret:
+        display.line("  nothing to do: it listens by itself. Each sentence makes ONE trip through your debug prompt, in the "
+                     f"quiet moments (after {args.explain_quiet:g} s of quiet),\n  and the score and the reasons come out of "
+                     "that same output. --no-explain scores every sentence at once instead, with no reasons.")
+    else:
+        display.line("  nothing to do: it listens and scores every sentence at once with the one-token scorer.")
+    display.line("  Optional: e + Enter runs the waiting sentences now, r + Enter runs the recent ones again with the current "
+                 "prompts, l shows the levels, q quits\n")
     try:
         if sys.stdin.isatty():
             pipeline.commands()                           # a recording can be re-scored after it has played

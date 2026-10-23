@@ -234,6 +234,13 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Hearing-debug: one request per sentence, with the score and the reasons from the same output.** In the
+  default debug mode each sentence is run once through `prompt_output_debug` in a quiet moment, and the score (read
+  from the first token's probabilities) and the reasons print together; the separate one-token score that was shown
+  first is gone (`--also-score` brings it back for comparison, `--no-explain` is fast mode with one-token scores and
+  no reasons). `--explain-above` and `--explain-lyrics` were removed, since every sentence is now run. The waiting
+  queue holds 40, so a stretch of continuous talk no longer drops sentences. `e` runs the waiting sentences now and
+  `r` runs the recent ones again showing the old score.
 - **Hearing-debug: whisper's ambient captions are never scored.** Output is sorted into words (speech and song
   lyrics, scored), ambient captions like `(dog barks)` or `(dramatic music)` (shown on their own line, not scored or
   explained, and kept as a short list of recent ambient sounds for the voice's prompt later), and "nothing here"

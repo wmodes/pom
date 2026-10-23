@@ -243,6 +243,9 @@ llama.cpp setup scripts.
   (something Shakespearean) might be worth acting on. Today a whisper is treated like any quiet sound: the energy
   gate may not pass it and the VAD may not call it speech. Revisit once the rest is sorted: how a very quiet voice
   against a very quiet room is segmented and transcribed, and whether it should count for more.
+- **Model size is a lever (2026-10-23):** with Wes's unchanged prompt, Qwen3-8B scores gentle-weird single sentences
+  at 7 to 8 where the 4B gives about 5, without rewarding stacked sentences more (see
+  `experiments/interest-scorer/README.md`). Next: time the 8B on the Pi with whisper running before choosing it.
 - **Still open for the Scorer:** a real-room test of speech with the USB microphone; and
   Wes's conclusion that we must first define for ourselves what "interesting" is and what should
   trigger a print, then state it to the model.

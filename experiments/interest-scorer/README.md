@@ -65,6 +65,15 @@ which counts for Qwen.
   prints the report.
 - `results/`: saved runs. Server logs are not kept.
 
+## A later finding: a bigger model fixes the compression
+
+With the same prompt, Qwen3-8B (about 5 GB) scored fourteen single-sensational sentences ("He had no face", "a room
+that only exists on Tuesdays", "the baby was born with a full set of teeth") at a mean of 7.7, 13 of them at 7 or
+more, where the 4B scored a mean of 6.2 and 4 of 14. Plain talk stayed at 2.0 to 2.4 and a sentence stacking several
+shocking things scored about the same as the single ones (8.0 to 8.2), so it judges strength, not a count. The one new
+false high was "What the fuck?" (7.99). Three prompt rewrites tried on the 4B changed little, so the 4B's compression, not the
+wording, was the limit. The 8B has not yet been timed on the Pi (it is about twice the size of the 4B).
+
 ## Re-running it
 
 Needs `llama-server` (`brew install llama.cpp`); the models download on first use (about 2 GB each).

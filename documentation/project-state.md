@@ -275,6 +275,10 @@ llama.cpp setup scripts.
    pairs, Track B training.
 6. Listening adapters (audio, whisper.cpp, room energy), the Output side, the Conductor, then run it
    on the Pi (deployed with `git pull`; see `documentation/pi-setup-notes.md`) and check memory and latency there.
+   Future idea (Wes): updating the Pi is `git pull` then `scripts/restart.py`. That needs an entry point, a
+   systemd unit and a Pi virtualenv first; the script would pull fast-forward only, refuse on a dirty tree, install
+   dependencies only if they changed, check the new config before touching the running service, skip the restart
+   for docs-only changes, then restart and show the startup "ready" line.
 7. Open: base model choice (4B class), the hinge-pair set, scorer design, threshold parameters.
 
 ## Gotchas

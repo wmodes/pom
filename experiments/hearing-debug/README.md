@@ -73,9 +73,14 @@ not run it as a service. It is a development tool, used on purpose.
 
 ## Things to know
 
-- **Cutting at pauses is energy-based.** It learns the room's noise floor at the start and calls anything a
-  few dB above it speech. It cannot tell speech from music or a steady noise: with music playing, lower
-  `--margin-db` (4 worked in the attic) and expect long utterances.
+- **What is speech is decided by whisper's own Silero VAD** (`--vad`), not by a threshold of mine. With it, whisper
+  stops inventing words for silence and noise, and hears quiet speech better. The cut into utterances is still
+  energy-based, but only as a chunker: the noise floor is re-estimated all the time (a low percentile of the last
+  30 s), so it works when started in a loud room. Lower `--margin-db` if quiet speech is missed.
+- **The VAD ignores singing and most sounds.** So when it finds no speech, a second pass runs without it and keeps
+  only what whisper itself marks as non-speech: lyrics between music symbols and captions like "(dog barks)". Those
+  lines say "sound, not speech". Plain text from that pass is dropped, since that is where whisper invents words.
+  `--no-sounds` skips the second pass; `--no-vad` turns the VAD off.
 - **Interpretations are slow.** Writing about 100 words takes the Pi several seconds, so they arrive after
   the score, and if the room talks faster than the model writes, older ones are skipped (it says so). Scores
   are never held up by them: the model server has two slots.

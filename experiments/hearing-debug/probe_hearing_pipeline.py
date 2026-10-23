@@ -40,6 +40,7 @@ import hashlib
 import math
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -280,9 +281,23 @@ class WavSource:
 # --- Words ------------------------------------------------------------------------------------
 
 class Transcriber:
-    """Turns an utterance into text with whisper.cpp's whisper-cli."""
+    """Turns an utterance into text with whisper.cpp's whisper-cli, using whisper's own voice detection.
 
-    def __init__(self, model: str, threads: int):
+    Whether something is speech is decided by whisper's built-in Silero VAD (`--vad`), the intended tool,
+    not by a threshold of mine. With it, whisper only sees the speech, so it stops inventing words for
+    silence and noise ("You", "I'm sorry") and hears quiet speech better.
+
+    The VAD is a speech detector and treats singing, and most other sounds, as not speech. The Printer is
+    meant to react to what it hears, so when pass 1 (VAD on) finds no speech, pass 2 runs whisper without
+    the VAD and keeps only what whisper itself marks as a non-speech sound: song lyrics between music
+    symbols and captions like "(dog barks)". Plain text from that pass is where whisper hallucinates, so it
+    is thrown away.
+    """
+
+    VAD_MODEL = "ggml-silero-v6.2.0.bin"
+
+    def __init__(self, model: str, threads: int, use_vad: bool = True, vad_threshold: float = 0.5,
+                 sounds: bool = True):
         root = Path(os.environ.get("WHISPER_DIR", ROOT / "data" / "tools" / "whisper.cpp"))
         candidates = [os.environ.get("WHISPER_CLI"), str(root / "build" / "bin" / "whisper-cli"),
                       shutil.which("whisper-cli")]
@@ -293,11 +308,26 @@ class Transcriber:
         if not self._cli or not self._model:
             sys.exit(f"whisper not found (cli: {self._cli}, model: {self._model}); set WHISPER_DIR, "
                      f"WHISPER_CLI or WHISPER_MODEL_FILE (see the README)")
+        vads = [os.environ.get("WHISPER_VAD_MODEL"), str(root / "models" / self.VAD_MODEL),
+                str(ROOT / "data" / "whisper" / self.VAD_MODEL)]
+        self._vad = next((v for v in vads if v and Path(v).exists()), None) if use_vad else None
+        self.note = ""
+        if use_vad and not self._vad:
+            self.note = "no VAD model found (scripts/setup/setup-whisper.sh fetches it); transcribing without it"
+        self._vad_threshold = vad_threshold
+        self._sounds = sounds and self._vad is not None          # pass 2 only makes sense after a VAD pass 1
         self._threads = threads
         self._scratch = "/dev/shm" if os.access("/dev/shm", os.W_OK) else tempfile.gettempdir()
 
-    def transcribe(self, pcm: bytes) -> str:
-        """The cleaned text of an utterance ("" if whisper heard nothing). The audio file is deleted at once."""
+    @property
+    def vad_in_use(self) -> bool:
+        return self._vad is not None
+
+    def transcribe(self, pcm: bytes):
+        """(text, kind): kind is "speech", "sound" (music or a caption, not speech) or "" if nothing was heard.
+
+        The audio file is in memory-backed storage and is deleted as soon as whisper has read it.
+        """
         handle = tempfile.NamedTemporaryFile(suffix=".wav", dir=self._scratch, delete=False)
         try:
             with wave.open(handle, "wb") as wav:
@@ -305,14 +335,26 @@ class Transcriber:
                 wav.setsampwidth(2)
                 wav.setframerate(SAMPLE_RATE)
                 wav.writeframes(pcm)
-            done = subprocess.run([self._cli, "-m", self._model, "-f", handle.name, "-t", str(self._threads),
-                                   "-nt"], capture_output=True, text=True, timeout=180)
-            return clean_transcript(done.stdout)
+            raw = self._run(handle.name, vad=self._vad is not None)
+            text = clean_transcript(raw)
+            if text:
+                return text, "sound" if is_only_sound(raw) else "speech"
+            if self._sounds:
+                heard = sound_text(self._run(handle.name, vad=False))
+                if heard:
+                    return heard, "sound"
+            return "", ""
         except subprocess.TimeoutExpired:
-            return ""
+            return "", ""
         finally:
             handle.close()
             os.unlink(handle.name)
+
+    def _run(self, path: str, vad: bool) -> str:
+        command = [self._cli, "-m", self._model, "-f", path, "-t", str(self._threads), "-nt"]
+        if vad:
+            command += ["--vad", "-vm", self._vad, "-vt", str(self._vad_threshold)]
+        return subprocess.run(command, capture_output=True, text=True, timeout=180).stdout
 
 
 def clean_transcript(raw: str) -> str:
@@ -321,8 +363,25 @@ def clean_transcript(raw: str) -> str:
     Whisper's other bracketed sound captions, like "(dog barks)", are kept on purpose: they give the
     model more to go on.
     """
-    text = " ".join(raw.replace("♪", " ").split())
+    text = " ".join(raw.replace("\u266a", " ").split())
     return " ".join(text.replace("[BLANK_AUDIO]", " ").split())
+
+
+SOUND_MARKS = r"\u266a[^\u266a]+\u266a|\([^()]*\)|\[[^\[\]]*\]"
+
+
+def is_only_sound(raw: str) -> bool:
+    """True if whisper's text is nothing but non-speech marks: lyrics between music symbols, (captions), [captions]."""
+    return not re.sub(SOUND_MARKS, " ", raw).strip()
+
+
+def sound_text(raw: str) -> str:
+    """Only the pieces whisper marks as non-speech: lyrics between music symbols and (captions) or [captions].
+
+    Used on the pass without the VAD, where plain text is more likely invented than heard.
+    """
+    pieces = re.findall(SOUND_MARKS, raw)
+    return clean_transcript(" ".join(piece for piece in pieces if "BLANK_AUDIO" not in piece))
 
 
 # --- The Printer's judgment, from the real pom modules ----------------------------------------
@@ -419,7 +478,8 @@ class Heard:
 class Pipeline:
     def __init__(self, args, brain: Brain, display: Display):
         self.args, self.brain, self.display = args, brain, display
-        self.transcriber = Transcriber(args.model, args.whisper_threads)
+        self.transcriber = Transcriber(args.model, args.whisper_threads, use_vad=args.vad,
+                                       vad_threshold=args.vad_threshold, sounds=args.sounds)
         self.fragmenter = Fragmenter(max_words=40)
         self.utterances = queue.Queue(maxsize=6)
         self.explain_queue = queue.Queue(maxsize=8)
@@ -429,6 +489,11 @@ class Pipeline:
         self.working = False                                         # True while an utterance is being handled
         self.segmenter = None                                        # set once listening starts
         self.stop = threading.Event()
+
+    @staticmethod
+    def vad_note(args) -> Optional[str]:
+        """A sentence if the VAD is switched off, else None (the Transcriber reports a missing VAD model itself)."""
+        return None if args.vad else "VAD off"
 
     # capture and cutting
     def listen(self, source) -> None:
@@ -441,7 +506,7 @@ class Pipeline:
                     break
                 utterance = segmenter.feed(frame)
                 silent_frames = 0 if utterance else silent_frames + 1
-                if announced and silent_frames % int(30 / FRAME_SECONDS) == 0:
+                if announced and silent_frames and silent_frames % int(30 / FRAME_SECONDS) == 0:
                     self.display.line(f"  (nothing heard in the last 30 s: {segmenter.describe_levels()}; "
                                       f"if you are speaking, try --margin-db 3)")
                 if segmenter.floor_db is not None and not announced:
@@ -492,12 +557,13 @@ class Pipeline:
         if changed:
             self.display.line(f"\n[{self.display.stamp()}] {changed}  [{self.brain.fingerprint()}]")
         started = time.perf_counter()
-        text = self.transcriber.transcribe(normalize_pcm(utterance.pcm))
+        text, kind = self.transcriber.transcribe(normalize_pcm(utterance.pcm))
         took = time.perf_counter() - started
         if not text or text == self.last_text:
             return
         self.last_text = text
-        self.display.line(f"\n[{self.display.stamp()}] heard {utterance.seconds:.1f} s (peak {utterance.peak_db:.0f} dB, "
+        label = "sound, not speech" if kind == "sound" else "speech"
+        self.display.line(f"\n[{self.display.stamp()}] heard {utterance.seconds:.1f} s ({label}, peak {utterance.peak_db:.0f} dB, "
                           f"whisper {took:.1f} s): \"{text}\"")
         for fragment in self.fragmenter.split(text):
             if fragment.kind is not Kind.SENTENCE:
@@ -582,6 +648,11 @@ def main() -> None:
     parser.add_argument("--device", default="plughw:0,0", help="the arecord capture device")
     parser.add_argument("--model", default="base.en", help="the whisper model (base.en or small.en)")
     parser.add_argument("--whisper-threads", type=int, default=4)
+    parser.add_argument("--no-vad", dest="vad", action="store_false",
+                        help="do not use whisper's built-in voice-activity detection (it is what stops invented words)")
+    parser.add_argument("--vad-threshold", type=float, default=0.5, help="how sure the VAD must be that it is speech")
+    parser.add_argument("--no-sounds", dest="sounds", action="store_false",
+                        help="skip the second pass that keeps song lyrics and sound captions the VAD ignores")
     parser.add_argument("--threshold", type=float, default=7.0, help="mark scores at or above this (default 7.0)")
     parser.add_argument("--no-explain", dest="explain", action="store_false", help="skip the written interpretations")
     parser.add_argument("--explain-above", type=float, default=0.0, help="only interpret scores at or above this")
@@ -600,11 +671,15 @@ def main() -> None:
     display.line(f"  {brain.refresh() or 'config loaded'}  [{brain.fingerprint()}]")
     display.line(f"  scorer at {brain.settings.url}; whisper {args.model}; threshold {args.threshold:g}; "
                  f"{'interpretations on' if args.explain and brain.client.can_interpret else 'interpretations off'}")
+    display.line(f"  hearing: whisper {args.model}, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
+                 f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}")
     display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (scores will be fallback)'}")
     if args.explain and not brain.client.can_interpret:
         display.line("  (no prompt_output_debug in the config, so there are no interpretations)")
 
     pipeline = Pipeline(args, brain, display)
+    if pipeline.transcriber.note:
+        display.line(f"  ({pipeline.transcriber.note})")
     source = WavSource(args.wav, args.speed) if args.wav else MicSource(args.device)
     threads = [threading.Thread(target=pipeline.listen, args=(source,), daemon=True),
                threading.Thread(target=pipeline.transcribe_and_score, daemon=True),

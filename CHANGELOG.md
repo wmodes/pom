@@ -233,6 +233,14 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Hearing-debug uses whisper's own voice detection.** `whisper-cli --vad` (a Silero model) now decides what
+  is speech, instead of a threshold of mine; the energy cut is only a chunker for the live stream. On the quiet
+  class recording it replaced a drift into invented text ("You", "I'm sorry") with an accurate transcript that
+  stops where the speech stops. The VAD ignores singing and most sounds, so when it finds no speech a second pass
+  runs without it and keeps only what whisper itself marks as non-speech (lyrics between music symbols and
+  captions like "(dog barks)"), labeled "sound, not speech"; plain text from that pass is dropped as likely
+  invented. `setup-whisper.sh` now fetches the VAD model. A bug fixed on the way: the "nothing heard in 30 s"
+  message printed after every utterance.
 - **Hearing-debug no longer measures the room's noise floor once at startup.** That failed when it was
   started in a room that was already loud. The floor is now re-estimated continuously as a low percentile of the
   last 30 s of levels, so it works from the first frame whatever the room is doing. On the attic clip (music from

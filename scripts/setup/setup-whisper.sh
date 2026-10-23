@@ -20,6 +20,7 @@
 #   WHISPER_TAG     upstream release tag to build (default: v1.9.5)
 #   WHISPER_DIR     checkout/build location       (default: <repo>/data/tools/whisper.cpp)
 #   WHISPER_MODELS  space-separated model names   (default: "base.en small.en")
+#   WHISPER_VAD_MODEL  the voice-activity model    (default: silero-v6.2.0)
 
 set -euo pipefail
 
@@ -71,6 +72,17 @@ else
   cmake -S "$WHISPER_DIR" -B "$WHISPER_DIR/build" \
     -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON "-DCMAKE_INSTALL_RPATH=\$ORIGIN"
   cmake --build "$WHISPER_DIR/build" -j"$(nproc)" --config Release
+fi
+
+# 4a. The voice-activity-detection model (Silero), used by `whisper-cli --vad` to find the speech in
+#     audio before whisper transcribes it. Tiny (under 1 MB). Whisper's own tool is the intended way
+#     to tell speech from silence, noise and music, so we use it instead of an energy threshold.
+VAD_MODEL="${WHISPER_VAD_MODEL:-silero-v6.2.0}"
+if [ -s "$WHISPER_DIR/models/ggml-$VAD_MODEL.bin" ]; then
+  log "VAD model $VAD_MODEL already present"
+else
+  log "Downloading VAD model $VAD_MODEL"
+  sh "$WHISPER_DIR/models/download-vad-model.sh" "$VAD_MODEL"
 fi
 
 # 4. Models, via the project's own download script (checks and resumes itself).

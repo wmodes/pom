@@ -47,6 +47,12 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Startup** (`src/pom/startup.py`), a stub for everything done once when the Printer starts. The
+  runner is built: it runs steps in order, never raises, records a failed optional step as a warning and a
+  failed critical one as critical (with `ready` false), and keeps going either way. The ten duties (config
+  report, data check, mic gain, audio device, whisper, the Scorer's server and warm-up, the voice model,
+  the typewriter's serial port, a readiness line) are listed in `planned_steps()` as placeholders to be
+  written one at a time. Tests: 24 in `tests/test_startup.py`.
 - **Decisions recorded** (`documentation/project-state.md`): Qwen3-4B is the starting Scorer model and
   7.0 the starting trigger threshold. First look at the real USB microphone on the Pi: it records quietly
   (mean -38 dB) with capture gain to spare, and whisper wraps song lyrics in ♪ marks; the

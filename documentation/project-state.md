@@ -261,8 +261,9 @@ llama.cpp setup scripts.
 ## Next steps, in order
 
 0. **Scorer playground** (`scripts/dev/hinge/score.py`: text in, ranked scored sentences out), then
-   the entry point that builds the client and Scorer from `config.scorer`, calls `warm_up`, and starts
-   llama-server. The Pi benchmark is done (see above). Then collect more real-room transcripts to try
+   the entry point that builds the client and Scorer from `config.scorer`. Starting things up is the job
+   of `src/pom/startup.py`: the runner is built and the ten duties (mic gain, Scorer warm-up, checks
+   for whisper, the voice model and the typewriter...) are placeholders in `planned_steps()` to fill in. The Pi benchmark is done (see above). Then collect more real-room transcripts to try
    the Scorer on.
 1. **Trigger policy**: the moving threshold, its jump and decay after a print, and fading of old
    scores. Pure math over time, no clock inside (pass time in).

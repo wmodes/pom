@@ -152,6 +152,26 @@ llama.cpp is the *runtime*, not a model; it runs Llama, Qwen, Gemma, Phi and oth
 - Model not chosen. Candidates verified on Hugging Face from trusted publishers (Q4_K_M): Qwen3-4B (`Qwen/Qwen3-4B-GGUF`, 2.50 GB, Apache-2.0); Llama 3.2 3B Instruct (`bartowski/Llama-3.2-3B-Instruct-GGUF`, 2.02 GB, Llama 3.2 license); Gemma 3 4B (`unsloth/gemma-3-4b-it-GGUF`, 2.49 GB, Gemma terms); LFM2.5 2.6B (`LiquidAI/LFM2.5-2.6B-GGUF`, 1.67 GB, license "other", read before using). No base (non-instruct) GGUF verified yet.
 - Skipped on purpose: popular community "distill" and fine-tune uploads of unknown provenance.
 
+## Deploying the project code (decided 2026-10-23)
+
+The Pi has a real clone of the (public) repo at `~/pom`, so the layout matches the Mac and code arrives with
+`git pull`; there is no deploy script. A clone is small: about 57 MB, with 16 MB of history, of which the
+corpus is nearly all (the heavy folders `data/` and `corpus/raw` are gitignored and not in a clone).
+
+```bash
+git clone https://github.com/wmodes/pom.git ~/pom        # once
+cd ~/pom && git pull                                     # to update, after pushing from the Mac
+```
+
+What git does not carry lives under `~/pom/data/` (gitignored, as on the Mac):
+- `data/models/` the language models (`.gguf`), copied from the Mac with `experiments/pi-benchmark/benchmark_pi_prepare.sh models`
+- `data/recordings/` recordings and transcripts of real speech, which must never be committed
+- `data/live/pom.toml` a copy of `config/pom.toml` kept in step while the prompts are being edited
+  (`experiments/hearing-debug/probe_hearing_sync_config.sh watch`), outside git so a pull never meets a modified file
+
+The third-party tools stay where their setup scripts put them: `~/whisper.cpp`, `~/llama.cpp`. Keep the Pi's
+clone clean (no edits in tracked files), so `git pull` always works; `benchmark_pi_prepare.sh check` says if it is not.
+
 ## Fan check
 
 The Active Cooler is firmware-controlled over the Pi 5's fan header and stays **off at idle**, ramping from roughly 50 C. A still fan is not a fault.
@@ -171,4 +191,4 @@ Fan noise may matter for the hidden mic, so include it in the typewriter idle-no
 - [x] **Wi-Fi fallback AP for venues.** Done 2026-10-18 with Comitup (see the section above). Still untested: whether it rescans for known networks while the hotspot is up, and the real venue Wi-Fi flow.
 - [x] Fan verified 2026-10-18: during the llama.cpp build the Pi reached 52.7 C and `fan1_input` read 2794 RPM (it is off at idle).
 - [ ] Case: stacked acrylic / open-frame case that explicitly supports Pi 5 + official Active Cooler (top window open, power button and fan header accessible).
-- [ ] Mic: Audio-Technica ATR4697-USB ordered. It is wired, not wireless as the project brief assumed. Test it as a USB audio device on the Pi (`arecord -l`), and run the typewriter idle-noise test with it and the fan.
+- [~] Mic: Audio-Technica ATR4697-USB is wired, not wireless as the project brief assumed. Verified 2026-10-23: it shows up as `card 0: ATR4697USB`, records with `arecord -D plughw:0,0 -f S16_LE -r 16000 -c 1`, and its ALSA `Mic` capture control goes 0 to 30 (default 21; **24 chosen**, since a yell reached -2.7 dB at 26) with hardware auto-gain off; the gain resets on reboot. Plugging it in power-cycled the Pi. Still to do: the typewriter idle-noise test with it and the fan.

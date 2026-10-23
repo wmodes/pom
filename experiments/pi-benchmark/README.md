@@ -42,13 +42,14 @@ From the Mac, with the Pi on the network:
 
 ```
 experiments/pi-benchmark/benchmark_pi_prepare.sh check     # what does the Pi have, what is missing?
-experiments/pi-benchmark/benchmark_pi_prepare.sh push      # copy the code and any missing models (about 2 GB: Qwen is already there)
+experiments/pi-benchmark/benchmark_pi_prepare.sh models    # copy any missing model files to the Pi (git does not carry them)
 ```
 
 On the Pi (nothing else heavy running; give it its proper power supply and cooling):
 
 ```
-cd ~/pom-bench/experiments/pi-benchmark
+cd ~/pom && git pull          # the code comes from git
+cd experiments/pi-benchmark
 QUICK=1 ./benchmark_pi_run.sh sanity       # a sanity run, roughly 20 to 30 minutes (my estimate): one whisper model, shared cores, no large sample
 ./benchmark_pi_run.sh                      # the full run; plan on a couple of hours (an estimate, not measured)
 ```

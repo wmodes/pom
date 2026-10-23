@@ -273,8 +273,8 @@ llama.cpp setup scripts.
    Sampler. Config will need multi-line strings and probably sections.
 5. **Voice interface and model runner** (llama.cpp), Track A first; then the bake-off harness, hinge
    pairs, Track B training.
-6. Listening adapters (audio, whisper.cpp, room energy), the Output side, the Conductor, then deploy
-   to the Pi (git remote or deploy key) and the memory and latency checks there.
+6. Listening adapters (audio, whisper.cpp, room energy), the Output side, the Conductor, then run it
+   on the Pi (deployed with `git pull`; see `documentation/pi-setup-notes.md`) and check memory and latency there.
 7. Open: base model choice (4B class), the hinge-pair set, scorer design, threshold parameters.
 
 ## Gotchas

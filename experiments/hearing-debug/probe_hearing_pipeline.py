@@ -11,7 +11,7 @@ a little later, the model's own written account of why: the content it found tha
 from the debug prompt. Lines at or above the threshold are marked as ones that would trigger.
 
 THE CLOSED LOOP. The config file is checked before every utterance. Edit the prompts in
-config/pom.toml (push it to the Pi with probe_hearing_push.sh watch) and the next thing you say is
+config/pom.toml (keep the Pi in step with probe_hearing_sync_config.sh watch) and the next thing you say is
 scored with the new wording. To compare the same words under two prompts, type `r` and Enter in this
 terminal: it re-scores the last few sentences with the current prompts and shows old -> new.
 

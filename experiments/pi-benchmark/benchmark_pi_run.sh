@@ -2,7 +2,7 @@
 #
 # benchmark_pi_run.sh - run the interest-Scorer benchmark on the Raspberry Pi.
 #
-# Part of experiments/pi-benchmark. Run this ON THE PI (benchmark_pi_prepare.sh puts it there).
+# Part of experiments/pi-benchmark. Run this ON THE PI (it is part of the clone at ~/pom).
 # For each model it measures, with one sentence per request and no context:
 #   1. the Scorer alone, on all four cores
 #   2. the Scorer while whisper.cpp transcribes back to back (the worst case for a busy room),
@@ -21,7 +21,7 @@
 #
 # Environment overrides (defaults in brackets):
 #   LLAMA_SERVER    path to llama-server       [~/llama.cpp/build/bin/llama-server]
-#   MODEL_DIR       where the .gguf files are  [~/models]
+#   MODEL_DIR       where the .gguf files are  [<repo>/data/models]
 #   CTX             server context size        [2048]  (one sentence plus the prompt needs well under 1024)
 #   PORT            server port                [8098]
 #   WHISPER_MODELS  whisper models to load with [base.en small.en]
@@ -35,6 +35,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
 PYTHON="${PYTHON:-python3}"
 SCORER="$HERE/benchmark_pi_scorer.py"
 WHISPER="$HERE/benchmark_pi_whisper.py"
@@ -43,7 +44,7 @@ if [ "${QUICK:-0}" = 1 ]; then
   : "${WHISPER_MODELS:=base.en}" "${SPLITS:=4+4}" "${RUN_LARGE:=0}" "${COOLDOWN:=10}"
 fi
 LLAMA_SERVER="${LLAMA_SERVER:-$HOME/llama.cpp/build/bin/llama-server}"
-MODEL_DIR="${MODEL_DIR:-$HOME/models}"
+MODEL_DIR="${MODEL_DIR:-$ROOT/data/models}"
 CTX="${CTX:-2048}"
 PORT="${PORT:-8098}"
 WHISPER_MODELS="${WHISPER_MODELS:-base.en small.en}"
@@ -83,11 +84,11 @@ preflight() {
   [ -x "$LLAMA_SERVER" ] || die "llama-server not found at $LLAMA_SERVER (scripts/setup/setup-llama.sh)"
   command -v "$PYTHON" >/dev/null || die "$PYTHON not found"
   [ -f "$HERE/sample-large.txt" ] || die "sample-large.txt missing; run benchmark_pi_make_sample.py on the Mac and push again"
-  [ -f "$HERE/../interest-scorer/probe_interest_scorer.py" ] || die "the probe is missing; push again (benchmark_pi_prepare.sh push)"
+  [ -f "$HERE/../interest-scorer/probe_interest_scorer.py" ] || die "the probe is missing; is this the clone at ~/pom? (git pull)"
   local entry file
   for entry in "${MODELS[@]}"; do
     file="${entry#*|}"
-    [ -s "$MODEL_DIR/$file" ] || die "model missing: $MODEL_DIR/$file (benchmark_pi_prepare.sh push)"
+    [ -s "$MODEL_DIR/$file" ] || die "model missing: $MODEL_DIR/$file (on the Mac: benchmark_pi_prepare.sh models)"
   done
   if [ "${ALLOW_BUSY:-0}" != 1 ] && { pgrep -x llama-server >/dev/null || pgrep -x whisper-cli >/dev/null \
        || pgrep -x whisper-server >/dev/null; }; then

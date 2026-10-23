@@ -24,7 +24,8 @@ that are not built yet; if it works well it becomes the Segmenter and Transcribe
 1. The prompts live in `config/pom.toml`: `prompt_scoring` (what counts as interesting, and the scale),
    `prompt_output` (how to reply when scoring) and `prompt_output_debug` (how to reply when explaining).
    The Scorer is sent scoring plus output; the interpretation is sent scoring plus debug output.
-2. `probe_hearing_push.sh watch` (on the Mac) copies the config to the Pi every time you save it.
+2. `probe_hearing_sync_config.sh watch` (on the Mac) copies the config to the Pi every time you save it,
+   to `~/pom/data/live/pom.toml`, outside git so a `git pull` there never meets a modified file.
 3. The pipeline re-reads the config before each utterance, and says so when it changes, with a short
    fingerprint of each prompt so you can tell which version scored what.
 4. Type `r` and Enter at the pipeline's terminal to **re-score the last dozen sentences with the current
@@ -36,23 +37,26 @@ the same audio, the same sentences, only the prompt differs.
 
 ## Running it
 
-On the Mac, with the Pi on the network:
+The code gets to the Pi with git: push from the Mac, then `git pull` on the Pi (it has a clone at `~/pom`).
+
+On the Mac, with the Pi on the network, to keep the prompts in step while you edit them:
 
 ```
-experiments/hearing-debug/probe_hearing_push.sh watch     # copies the code and config, then keeps the config in step
+experiments/hearing-debug/probe_hearing_sync_config.sh watch
 ```
 
 On the Pi, in a second terminal:
 
 ```
 ssh pi@pom1.local
-cd ~/pom-bench/experiments/hearing-debug
+cd ~/pom && git pull
+cd experiments/hearing-debug
 ./probe_hearing_run.sh                      # listen on the microphone
-./probe_hearing_run.sh --wav ~/recordings-work/some-clip.wav    # or replay a 16 kHz mono recording
+./probe_hearing_run.sh --wav ~/pom/data/recordings/work/some-clip.wav    # or replay a 16 kHz mono recording
 ```
 
-`probe_hearing_run.sh` sets the microphone gain, starts the language model, runs the pipeline and stops
-the model when you quit. Useful options (all passed through): `--model small.en` for a bigger whisper
+`probe_hearing_run.sh` sets the microphone gain, starts the language model (from `~/pom/data/models`), runs
+the pipeline on the live config (or `config/pom.toml` if there is none) and stops the model when you quit. Useful options (all passed through): `--model small.en` for a bigger whisper
 model, `--threshold 7.0`, `--no-explain` to skip the written interpretations (much lighter on the CPU),
 `--explain-above 5` to interpret only sentences scoring 5 or more, `--margin-db 4` if music or noise is
 masking speech, `--speed 0` to play a recording as fast as possible.
@@ -86,4 +90,4 @@ not run it as a service. It is a development tool, used on purpose.
 
 - `probe_hearing_pipeline.py`: the pipeline (Segmenter, Transcriber, Scorer and display, in one file).
 - `probe_hearing_run.sh`: on the Pi; microphone gain, language model, pipeline.
-- `probe_hearing_push.sh`: on the Mac; copies the code and config to the Pi, and `watch` keeps the config in step.
+- `probe_hearing_sync_config.sh`: on the Mac; copies `config/pom.toml` to the Pi, and `watch` keeps it in step as you edit.

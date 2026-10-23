@@ -47,6 +47,12 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Interest client** (`src/pom/hinge/interest_client.py`), the first half of the Scorer. Asks a
+  local llama-server how interesting one sentence is and returns a score read from the digit
+  probabilities, one sentence per request with no context, built exactly as the interest-scorer
+  experiment built it. A server that is down, slow or answering oddly gives no score and a warning,
+  never an exception; sentence text is never logged or put in a report. Has a warm-up call for startup.
+  Tests: 56 in `tests/hinge/test_interest_client.py`, using a fake transport.
 - **Word tools** (`src/pom/hinge/words.py`), the first piece of the Scorer. Reads a fragment as
   words and says what each one is: base form, part of speech, name, number, stopword, filler (a
   configurable list plus any interjection), and whether it can carry interest. Uses NLTK from

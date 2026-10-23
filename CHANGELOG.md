@@ -233,6 +233,10 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Hearing-debug no longer measures the room's noise floor once at startup.** That failed when it was
+  started in a room that was already loud. The floor is now re-estimated continuously as a low percentile of the
+  last 30 s of levels, so it works from the first frame whatever the room is doing. On the attic clip (music from
+  the start) it finds 8 sensible utterances where the old version found 2.
 - **Hearing-debug now explains silence.** When nothing has been heard for 30 s it says why (the room's noise
   floor, the speech threshold and the loudest sound of the last 5 s), and an `l` command shows the live levels.
   It also said nothing when the noise floor had been measured with a podcast already playing, which put the

@@ -132,15 +132,22 @@ class Utterance:
 class Segmenter:
     """Cuts a stream of 30 ms frames into utterances at pauses.
 
-    It learns the room's noise floor from the first few seconds, then treats a frame as speech if it is
-    `margin_db` above the floor (and above an absolute minimum). An utterance starts after a few speech
-    frames in a row (with a little sound from before), and ends after `pause_s` of quiet or at `max_s`.
-    Utterances with too little real speech in them are dropped. A simple stand-in for the real Segmenter.
+    The room's noise floor is not measured once at the start (the Printer may be switched on in a room
+    that is already loud): it is re-estimated all the time as a low percentile of the last half minute of
+    levels. Even in a room full of chatter, speech has dips between words and syllables, and those dips
+    mark the floor. A frame counts as speech if it is `margin_db` above the floor (and above an absolute
+    minimum). An utterance starts after a few speech frames in a row (with a little sound from before),
+    and ends after `pause_s` of quiet or at `max_s`; utterances with too little real speech are dropped.
+    A simple stand-in for the real Segmenter, and not able to tell speech from music or other steady noise.
     """
 
-    def __init__(self, calibrate_s=2.0, margin_db=6.0, min_threshold_db=-58.0, pause_s=0.7, max_s=20.0,
-                 min_speech_s=0.4, preroll_s=0.3, post_s=0.3, start_frames=3):
-        self._calibrate_frames = int(calibrate_s / FRAME_SECONDS)
+    def __init__(self, warmup_s=1.0, margin_db=6.0, min_threshold_db=-58.0, pause_s=0.7, max_s=20.0,
+                 min_speech_s=0.4, preroll_s=0.3, post_s=0.3, start_frames=3, window_s=30.0,
+                 floor_percentile=15.0):
+        self._warmup_frames = int(warmup_s / FRAME_SECONDS)
+        self._levels = collections.deque(maxlen=int(window_s / FRAME_SECONDS))   # the recent past
+        self._percentile = floor_percentile
+        self._since_update = 0
         self._margin, self._min_threshold = margin_db, min_threshold_db
         self._pause_frames = int(pause_s / FRAME_SECONDS)
         self._max_frames = int(max_s / FRAME_SECONDS)
@@ -148,7 +155,6 @@ class Segmenter:
         self._post_frames = int(post_s / FRAME_SECONDS)
         self._start_frames = start_frames
         self._preroll = collections.deque(maxlen=int(preroll_s / FRAME_SECONDS))
-        self._seen = []                    # frame levels while calibrating
         self.floor_db: Optional[float] = None
         self.threshold_db: Optional[float] = None
         self._candidate = []               # consecutive loud frames not yet an utterance
@@ -161,17 +167,17 @@ class Segmenter:
         """Takes one frame; returns an Utterance when one has just ended."""
         level = frame_db(frame)
         self._recent.append(level)
+        self._levels.append(level)
+        self._since_update += 1
+        if self.floor_db is None and len(self._levels) >= self._warmup_frames:
+            self._update_floor()
+        elif self.floor_db is not None and self._since_update >= int(1.0 / FRAME_SECONDS):
+            self._update_floor()                                       # once a second, from the last half minute
         if self.floor_db is None:
-            self._seen.append(level)
-            if len(self._seen) >= self._calibrate_frames:
-                self.floor_db = sorted(self._seen)[len(self._seen) // 4]      # a low quartile: speech may be present
-                self._set_threshold()
             return None
         loud = level > self.threshold_db
         if self._active is None:
             if not loud:
-                self.floor_db = 0.99 * self.floor_db + 0.01 * level           # follow slow drift in the room
-                self._set_threshold()
                 self._preroll.append(frame)
                 self._candidate = []
                 return None
@@ -207,8 +213,12 @@ class Segmenter:
         """Ends any utterance in progress (at the end of a recording)."""
         return self._finish() if self._active is not None else None
 
-    def _set_threshold(self) -> None:
+    def _update_floor(self) -> None:
+        """The floor is a low percentile of the recent levels; the speech threshold sits a margin above it."""
+        ordered = sorted(self._levels)
+        self.floor_db = ordered[min(len(ordered) - 1, int(len(ordered) * self._percentile / 100))]
         self.threshold_db = max(self.floor_db + self._margin, self._min_threshold)
+        self._since_update = 0
 
     def _finish(self) -> Optional[Utterance]:
         frames, speech, silence = self._active, self._speech, self._silence

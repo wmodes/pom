@@ -146,6 +146,33 @@ class TestFilter:
         assert client.calls == ["Yeah, okay."]
 
 
+class TestIsFiltered:
+    def test_filler_and_empty_text_are_filtered(self):
+        scorer = make()
+        assert scorer.is_filtered("Yeah, okay.") and scorer.is_filtered("") and scorer.is_filtered("   ")
+
+    def test_text_with_content_is_not(self):
+        assert not make().is_filtered("The lamp hums.")
+
+    def test_it_follows_min_content_words(self):
+        assert make(min_content_words=2).is_filtered("Lamp.")
+        assert not make(min_content_words=2).is_filtered("The lamp hums.")
+        assert not make(min_content_words=0).is_filtered("Yeah, okay.")
+        assert make(min_content_words=0).is_filtered("")
+
+    def test_it_agrees_with_what_scoring_does(self):
+        scorer = make()
+        for text in ("Yeah, okay.", "The lamp hums.", "", "It is the 40.", "Lamp."):
+            assert scorer.is_filtered(text) == (scorer.score_text(text).source is Source.FILTER)
+
+    def test_asking_never_calls_the_model_or_counts(self):
+        client = FakeClient()
+        scorer = make(client)
+        scorer.is_filtered("The lamp hums.")
+        scorer.is_filtered("Yeah, okay.")
+        assert client.calls == [] and scorer.counts() == {"model": 0, "filter": 0, "fallback": 0}
+
+
 class TestFallback:
     def scorer_without_model(self, **options):
         return make(FakeClient(None), failure_limit=100, **options)

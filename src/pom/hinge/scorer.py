@@ -150,7 +150,7 @@ class Scorer:
         """Scores one fragment. Always returns a result; see `source` for how it was made."""
         words = self._words.analyze(fragment.text)
         content = [word for word in words if word.content]
-        if not fragment.text.strip() or len(content) < self._min_content:
+        if self._skips_model(fragment.text, content):
             return self._result(fragment, self._floor, Source.FILTER)
         if self._model_allowed():
             value = self._client.score(fragment.text)
@@ -159,6 +159,14 @@ class Scorer:
                 return self._result(fragment, value, Source.MODEL)
             self._model_failed()
         return self._result(fragment, self._fallback_score(fragment.text, words, content), Source.FALLBACK)
+
+    def is_filtered(self, text: str) -> bool:
+        """True if this text would skip the model (empty, or too few content words), without scoring it."""
+        return self._skips_model(text, [word for word in self._words.analyze(text) if word.content])
+
+    def _skips_model(self, text: str, content: list) -> bool:
+        """The filter rule, in one place: nothing to ask about, or fewer content words than the setting needs."""
+        return not text.strip() or len(content) < self._min_content
 
     def score_text(self, text: str, at: float = 0.0) -> ScoredFragment:
         """Scores plain text as a one-sentence fragment (for playgrounds and tests)."""

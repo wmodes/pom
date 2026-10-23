@@ -90,7 +90,8 @@ December 18 session. Update this file in the same commit as the change it descri
   capped below the model's usual top, and a circuit breaker leaves a dead server alone for a while
   (3 failures in a row, 30 seconds by default) before trying it again. Each result says whether it came
   from the model, the filter or the fallback. Never raises and never logs what was said. Tests: 49 in
-  `tests/hinge/test_scorer.py`, with fakes for the client and the clock.
+  `tests/hinge/test_scorer.py`, with fakes for the client and the clock. `Scorer.is_filtered(text)` says
+  whether a sentence would skip the model, using the same rule, without scoring it (5 more tests).
 - **Interest client** (`src/pom/hinge/interest_client.py`), the first half of the Scorer. Asks a
   local llama-server how interesting one sentence is and returns a score read from the digit
   probabilities, one sentence per request with no context, built exactly as the interest-scorer

@@ -233,6 +233,12 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Hearing-debug: explanations are one run with the score, and no longer compete with listening.** The debug
+  request now returns the model's written reply and the score read from the probabilities of that same output's
+  first token (`InterestClient.interpret` returns an `Interpretation`), so the number and the reasons belong
+  together; the Printer's own one-token score is shown beside them. On the Pi, explanations measured 1.25 tokens a
+  second while listening and scoring, so they now start only after 3 s of quiet (`--explain-quiet`) and an `e`
+  command explains the last few sentences on demand, including after a recording has played.
 - **Prompt edits reach the Pi through git, not by copying.** `probe_hearing_tune.sh` (Mac) keeps a second
   worktree of a throwaway `prompt-tuning` branch; on each save it checks the config loads with no problems
   (a typo is not sent), commits it there and pushes, never switching your checkout off `main`. On the Pi,

@@ -31,8 +31,12 @@ Design decisions, and why:
     uses the standard library, so there is nothing to install.
   * `interpret` is the debug view's request: the same sentence and the same system message plus the
     debug output instructions, but this time the model writes a reply (its score and the content that
-    earned it). Writing words is slow on a small machine, so it has its own, longer timeout. It is
-    for watching how the model reads speech while refining the prompt, not for the running Printer.
+    earned it). It is ONE run: the score is read from the probabilities of the reply's first token, exactly
+    as `score` reads it, and the written reasons are the rest of that same output, so the number and
+    the explanation belong together. (The reasons are still written after the number, so they are a
+    story the model tells about it, not a readout of its insides.) Writing words is slow on a small
+    machine, so it has its own, longer timeout. It is for watching how the model reads speech while
+    refining the prompt, not for the running Printer.
   * The first request after a server starts is slow (the model is being loaded into memory, 12 to 28
     seconds measured on the Pi), so the entry point should call `warm_up` at startup.
 """
@@ -41,6 +45,7 @@ import math
 import re
 import time
 import urllib.request
+from dataclasses import dataclass
 from typing import Callable, Optional
 
 from pom.logs import get_logger
@@ -90,6 +95,19 @@ def expected_digit(reply) -> Optional[float]:
     if total <= 0:
         return None
     return sum(digit * weight for digit, weight in weights.items()) / total
+
+
+@dataclass(frozen=True, slots=True)
+class Interpretation:
+    """One debug run of the model: what it wrote, and the score its first token's probabilities give.
+
+    Attributes:
+        text: The written reply (by default the score, the sentence and the content that earned the score).
+        score: The expected value of the first token's digit, as `InterestClient.score` reads it, or None if
+            the reply did not begin with a digit.
+    """
+    text: str
+    score: Optional[float]
 
 
 def parse_written_score(reply) -> Optional[float]:
@@ -199,8 +217,8 @@ class InterestClient:
         """
         return self.score(WARM_UP_SENTENCE) is not None
 
-    def interpret(self, sentence: str) -> Optional[str]:
-        """The model's written explanation of one sentence's score, or None.
+    def interpret(self, sentence: str) -> Optional[Interpretation]:
+        """One debug run for a sentence: the model's written reply and the score from the same run, or None.
 
         The reply is whatever the debug prompt asks for (by default the score and the content that
         earned it, as a comma-separated list). Slow: it writes words. Never raises (except in strict
@@ -211,7 +229,7 @@ class InterestClient:
         body = {
             "messages": [{"role": "system", "content": self._debug_prompt},
                          {"role": "user", "content": USER_TEMPLATE.format(sentence=sentence.strip())}],
-            "max_tokens": INTERPRET_MAX_TOKENS, "temperature": 0,
+            "max_tokens": INTERPRET_MAX_TOKENS, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},
         }
         started = time.perf_counter()
@@ -224,4 +242,4 @@ class InterestClient:
             return None
         self.last_seconds = time.perf_counter() - started
         _log.debug("interpreted a sentence of %d characters in %.0f ms", len(sentence), self.last_seconds * 1000)
-        return text or None
+        return Interpretation(text, expected_digit(reply)) if text else None

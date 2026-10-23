@@ -60,7 +60,7 @@ cd experiments/hearing-debug
 `probe_hearing_run.sh` sets the microphone gain, starts the language model (from `~/pom/data/models`), runs
 the pipeline on the live config (or `config/pom.toml` if there is none) and stops the model when you quit. Useful options (all passed through): `--model small.en` for a bigger whisper
 model, `--threshold 7.0`, `--no-explain` to skip the written interpretations (much lighter on the CPU),
-`--explain-above 5` to interpret only sentences scoring 5 or more, `--margin-db 4` if music or noise is
+`--explain-above 5` to explain only sentences scoring 5 or more, `--explain-quiet 5` to wait longer, `--margin-db 4` if music or noise is
 masking speech, `--speed 0` to play a recording as fast as possible.
 
 To try it on the Mac against a recording, set `POM_SCORER_URL` to a running llama-server and use `--wav`;
@@ -99,15 +99,22 @@ not run it as a service. It is a development tool, used on purpose.
   only what whisper itself marks as non-speech: lyrics between music symbols and captions like "(dog barks)". Those
   lines say "sound, not speech". Plain text from that pass is dropped, since that is where whisper invents words.
   `--no-sounds` skips the second pass; `--no-vad` turns the VAD off.
-- **Interpretations are slow.** Writing about 100 words takes the Pi several seconds, so they arrive after
-  the score, and if the room talks faster than the model writes, older ones are skipped (it says so). Scores
-  are never held up by them: the model server has two slots.
+- **Explanations wait for quiet.** Writing words is by far the slowest thing the model does: one explanation
+  measured 1.25 tokens a second (45 s for 58 tokens) while the Pi was also listening and scoring. So an
+  explanation only starts after `--explain-quiet` seconds (3 by default) with nothing heard or scored, and never
+  competes with listening. If the room never goes quiet, type `e` (or `e 8`) to explain the last few sentences
+  right away. If they pile up, older ones are skipped, and it says so.
 - **Whisper's captions are kept**, like "(dog barks)", and the music symbol is removed with the words kept.
   Its `[BLANK_AUDIO]` silence marker is dropped.
 - **Whisper reloads its model for every utterance** here, as in the Pi benchmark. The real system will keep
   it resident.
-- **The explanation is the model's own account, not a readout of its reasoning.** It is useful for seeing
-  what it thinks it found, and it can be wrong or wander; the debug prompt is yours to tighten.
+- **One run gives the number and the reasons together.** Your `prompt_output_debug` asks for the score, the
+  sentence and the content found in a single answer, so the tool makes one such request per explained sentence
+  and reads the score from the probabilities of that answer's first token, with the reasons being the rest of the
+  same output. Under each explanation it prints that run's score, what it wrote, and the score the Printer itself
+  gave (from the one-token scoring prompt), so you can see whether the debug wording shifts the result. The reasons are
+  written after the number, so they are a story the model tells about it, not a readout of its insides; the
+  one-run design only guarantees that the number and the story belong together.
 
 ## Files
 

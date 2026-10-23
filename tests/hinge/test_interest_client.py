@@ -6,7 +6,7 @@ import pytest
 
 from pom.hinge.interest_client import (DEFAULT_INTERPRET_TIMEOUT, DEFAULT_TIMEOUT, INTERPRET_MAX_TOKENS,
                                        USER_TEMPLATE, WARM_UP_SENTENCE, InterestClient, InterestClientError,
-                                       expected_digit, parse_written_score)
+                                       Interpretation, expected_digit, parse_written_score)
 
 URL = "http://127.0.0.1:8098/v1/chat/completions"
 PROMPT = "You score how interesting a sentence is."
@@ -205,9 +205,13 @@ class TestWarmUp:
 DEBUG_PROMPT = "You score a sentence and say why."
 
 
-def written(text):
-    """A llama-server style reply that holds written text."""
-    return {"choices": [{"message": {"role": "assistant", "content": text}}]}
+def written(text, first_token=None):
+    """A llama-server style reply that holds written text, and (if given) the first token's candidates."""
+    choice = {"message": {"role": "assistant", "content": text}}
+    if first_token is not None:
+        choice["logprobs"] = {"content": [{"top_logprobs": [
+            {"token": token, "logprob": math.log(p)} for token, p in first_token]}]}
+    return {"choices": [choice]}
 
 
 def interpreter(text="7.89, a vivid image, a death", **options):
@@ -218,7 +222,23 @@ def interpreter(text="7.89, a vivid image, a death", **options):
 class TestInterpret:
     def test_returns_the_written_reply(self):
         c, _ = interpreter("  7.89, a vivid image, a death \n")
-        assert c.interpret("The lamp hums.") == "7.89, a vivid image, a death"
+        assert c.interpret("The lamp hums.").text == "7.89, a vivid image, a death"
+
+    def test_the_score_comes_from_the_same_run_as_the_words(self):
+        c, post = interpreter()
+        post.result = written("6.00 | The lamp hums. | image", first_token=[("5", 0.5), ("7", 0.5)])
+        result = c.interpret("The lamp hums.")
+        assert result == Interpretation("6.00 | The lamp hums. | image", pytest.approx(6.0))
+        assert len(post.calls) == 1                          # one request gave both
+
+    def test_with_no_probabilities_in_the_reply_there_is_text_but_no_score(self):
+        c, _ = interpreter("6.00 | words")
+        assert c.interpret("The lamp hums.") == Interpretation("6.00 | words", None)
+
+    def test_a_first_token_that_is_not_a_digit_gives_text_but_no_score(self):
+        c, post = interpreter()
+        post.result = written("The sentence is dull.", first_token=[("The", 0.9), ("This", 0.1)])
+        assert c.interpret("hello there").score is None
 
     def test_request_uses_the_debug_prompt_and_asks_for_words(self):
         c, post = interpreter(interpret_timeout=33.0)
@@ -228,7 +248,8 @@ class TestInterpret:
         assert body["messages"] == [{"role": "system", "content": DEBUG_PROMPT},
                                     {"role": "user", "content": USER_TEMPLATE.format(sentence="The lamp hums.")}]
         assert body["max_tokens"] == INTERPRET_MAX_TOKENS and body["temperature"] == 0
-        assert "logprobs" not in body and body["chat_template_kwargs"] == {"enable_thinking": False}
+        assert body["logprobs"] is True and body["top_logprobs"] == 20          # for the score from the same run
+        assert body["chat_template_kwargs"] == {"enable_thinking": False}
 
     def test_the_debug_prompt_is_stripped_but_otherwise_sent_whole(self):
         post = FakePost(written("7.0"))

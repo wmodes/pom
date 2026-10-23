@@ -239,6 +239,10 @@ llama.cpp setup scripts.
   producing many interesting things or few. Plan: 7.0 is the neutral starting point; the moving threshold
   steers toward the target print rate (so a run of strong lines raises the bar and a dull stretch eases
   it, never below a floor); optionally also compare with a high percentile of the room's recent scores.
+- **Revisit later (Wes, 2026-10-23): real whispers.** In the quietest of rooms, an actual whispered aside
+  (something Shakespearean) might be worth acting on. Today a whisper is treated like any quiet sound: the energy
+  gate may not pass it and the VAD may not call it speech. Revisit once the rest is sorted: how a very quiet voice
+  against a very quiet room is segmented and transcribed, and whether it should count for more.
 - **Still open for the Scorer:** a real-room test of speech with the USB microphone; and
   Wes's conclusion that we must first define for ourselves what "interesting" is and what should
   trigger a print, then state it to the model.

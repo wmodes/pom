@@ -29,6 +29,11 @@ CONFIG="$REPO/config/pom.toml"
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
+# This copies the Mac's config TO the Pi, so it only makes sense on the Mac.
+if [ "$(uname -s)" != "Darwin" ]; then
+  die "this script runs on the Mac, not here (it copies the Mac's config/pom.toml to the Pi). On the Pi, just run probe_hearing_run.sh"
+fi
+
 ssh -o ConnectTimeout=8 -o BatchMode=yes "$PI_HOST" 'test -d ~/pom/.git' 2>/dev/null \
   || die "cannot reach $PI_HOST, or it has no clone at ~/pom (git clone https://github.com/wmodes/pom.git ~/pom)"
 

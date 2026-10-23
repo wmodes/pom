@@ -152,6 +152,7 @@ class Segmenter:
         self.floor_db: Optional[float] = None
         self.threshold_db: Optional[float] = None
         self._candidate = []               # consecutive loud frames not yet an utterance
+        self._recent = collections.deque(maxlen=int(5 / FRAME_SECONDS))     # the last five seconds of levels
         self._active = None                # frames of the utterance in progress
         self._silence = 0
         self._speech = 0
@@ -159,6 +160,7 @@ class Segmenter:
     def feed(self, frame: bytes) -> Optional[Utterance]:
         """Takes one frame; returns an Utterance when one has just ended."""
         level = frame_db(frame)
+        self._recent.append(level)
         if self.floor_db is None:
             self._seen.append(level)
             if len(self._seen) >= self._calibrate_frames:
@@ -188,6 +190,18 @@ class Segmenter:
         if self._silence >= self._pause_frames or len(self._active) >= self._max_frames:
             return self._finish()
         return None
+
+    @property
+    def loudest_recent_db(self) -> Optional[float]:
+        """The loudest frame in the last five seconds, to explain why nothing is being heard."""
+        return max(self._recent) if self._recent else None
+
+    def describe_levels(self) -> str:
+        """The room's levels in words: what the loudest recent sound was against what counts as speech."""
+        if self.floor_db is None:
+            return "still measuring the room's noise"
+        return (f"noise floor {self.floor_db:.0f} dB, speech threshold {self.threshold_db:.0f} dB, "
+                f"loudest sound in the last 5 s {self.loudest_recent_db:.0f} dB")
 
     def flush(self) -> Optional[Utterance]:
         """Ends any utterance in progress (at the end of a recording)."""
@@ -403,17 +417,23 @@ class Pipeline:
         self.count = 0
         self.last_text = ""
         self.working = False                                         # True while an utterance is being handled
+        self.segmenter = None                                        # set once listening starts
         self.stop = threading.Event()
 
     # capture and cutting
     def listen(self, source) -> None:
-        segmenter = Segmenter(margin_db=self.args.margin_db)
+        segmenter = self.segmenter = Segmenter(margin_db=self.args.margin_db)
         announced = False
+        silent_frames = 0
         try:
             for frame in source.frames():
                 if self.stop.is_set():
                     break
                 utterance = segmenter.feed(frame)
+                silent_frames = 0 if utterance else silent_frames + 1
+                if announced and silent_frames % int(30 / FRAME_SECONDS) == 0:
+                    self.display.line(f"  (nothing heard in the last 30 s: {segmenter.describe_levels()}; "
+                                      f"if you are speaking, try --margin-db 3)")
                 if segmenter.floor_db is not None and not announced:
                     announced = True
                     self.display.line(f"  room noise floor {segmenter.floor_db:.0f} dB; speech is anything above "
@@ -536,8 +556,11 @@ class Pipeline:
                 self.rescore()
             elif word == "q":
                 break
+            elif word == "l":
+                self.display.line(f"  levels: {self.segmenter.describe_levels() if self.segmenter else 'not listening yet'}")
             elif word in ("?", "h", "help"):
-                self.display.line("  r = re-score the recent sentences with the current prompts   q = quit")
+                self.display.line("  r = re-score the recent sentences with the current prompts   "
+                                  "l = show the room's levels   q = quit")
         self.stop.set()
 
 
@@ -578,7 +601,8 @@ def main() -> None:
                threading.Thread(target=pipeline.explain_worker, daemon=True)]
     for thread in threads:
         thread.start()
-    display.line("  type r + Enter to re-score the recent sentences with the current prompts, q to quit\n")
+    display.line("  nothing to do: it listens and scores by itself. Optional: r + Enter re-scores the recent sentences "
+                 "with the current prompts, l shows the levels, q quits\n")
     try:
         if sys.stdin.isatty():
             pipeline.commands()                           # a recording can be re-scored after it has played

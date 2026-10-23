@@ -233,6 +233,10 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Hearing-debug now explains silence.** When nothing has been heard for 30 s it says why (the room's noise
+  floor, the speech threshold and the loudest sound of the last 5 s), and an `l` command shows the live levels.
+  It also said nothing when the noise floor had been measured with a podcast already playing, which put the
+  speech threshold above a quiet podcast's voice.
 - **Hearing-debug's config sync** now says plainly that it runs on the Mac when it is started on the Pi.
 - **Pi benchmark whisper logs** were named by phase alone, so the second Scorer model's overwrote the
   first's; the name now includes the model. The report also shows memory used against the pre-start

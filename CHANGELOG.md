@@ -174,6 +174,10 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Changed
 
+- **Scorer prompt: "a big human feeling" is now "a human feeling"** in `config/pom.toml`. "Big" nudged
+  heated lines up a little (on the 100 benchmark sentences "What the fuck?" went 5.44 to 4.76 without
+  it, "I love you" 4.81 to 4.31) without changing the ranking much (agreement 0.996). The experiment's
+  own copy of the prompt in `experiments/interest-scorer/` is left as it was run.
 - **`draw_weights.py` and `chunk.py` now use the `pom` package** for the weights math and the
   weights.json checks, so the package is the single source of truth. Their output and the chunk
   files are unchanged.

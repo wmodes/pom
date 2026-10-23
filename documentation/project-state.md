@@ -226,11 +226,16 @@ llama.cpp setup scripts.
   song lyrics almost completely and wrapped most lines in ♪ marks (not all: one lyric line came through
   unmarked). **Wes's decision (2026-10-23): the Printer reacts to what it hears, not only conversation, so
   the Transcriber strips the ♪ symbol and keeps the words**; lyrics then compete on score like any other
-  sentence (the lyrics seen scored at most 6.0, under the 7.0 threshold). Open: whisper's bracketed sound
-  captions such as "(dog barks)" or "(muffled speaking)", which are guesses, not heard words; proposed
-  to drop them to start, as a setting. Whisper took 0.2 (base.en) and 0.5 (small.en) times real time on
+  sentence (the lyrics seen scored at most 6.0, under the 7.0 threshold). **Whisper's bracketed sound
+  captions** such as "(dog barks)" are kept too (Wes: its guesses give the model more to go on); most
+  score 1 to 2, but "(gunshot)" scored 8.0 and "(screaming)" 4.65 as written (3.4 and 2.0 without the
+  brackets), so a hallucinated dramatic caption can clear 7.0. Whisper took 0.2 (base.en) and 0.5 (small.en) times real time on
   the music. Mic gain: raised to 26 of 30 for a test (+7.5 dB, no clipping with music playing); a shouted
   loud-room check is still to do; software level normalization per utterance is the adaptive part.
+- **Trigger idea (Wes, 2026-10-23):** make the threshold variable, depending on whether the room is
+  producing many interesting things or few. Plan: 7.0 is the neutral starting point; the moving threshold
+  steers toward the target print rate (so a run of strong lines raises the bar and a dull stretch eases
+  it, never below a floor); optionally also compare with a high percentile of the room's recent scores.
 - **Still open for the Scorer:** a real-room test of speech with the USB microphone; and
   Wes's conclusion that we must first define for ourselves what "interesting" is and what should
   trigger a print, then state it to the model.

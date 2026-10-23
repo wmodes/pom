@@ -51,6 +51,8 @@ December 18 session. Update this file in the same commit as the change it descri
   7.0 the starting trigger threshold. First look at the real USB microphone on the Pi: it records quietly
   (mean -38 dB) with capture gain to spare, and whisper wraps song lyrics in ♪ marks; the
   Transcriber will strip the symbol and keep the words, since the Printer reacts to what it hears.
+  Whisper's bracketed sound captions are kept too; a variable trigger threshold that follows how
+  interesting the room is, starting from 7.0, is the plan.
 - **Scorer settings in the config.** `config/pom.toml` gains a `[scorer]` section: the language
   model's address and timeout, the prompt that defines "interesting" and the score scale (kept here as
   the single copy, so it is the main thing to adjust), the floor score, how many content words a

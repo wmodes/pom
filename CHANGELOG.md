@@ -230,6 +230,9 @@ December 18 session. Update this file in the same commit as the change it descri
   notes, Douay footnotes, a printer's colophon, indexes, bibliographies, dedications and OCR noise
   in the Wheelwriter manuals.
 - **Wrong attribution** in the personality-types note.
+- **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
+  explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
+  now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
 - **Pi benchmark whisper logs** were named by phase alone, so the second Scorer model's overwrote the
   first's; the name now includes the model. The report also shows memory used against the pre-start
   baseline, since the server's resident size counts file-backed model pages.

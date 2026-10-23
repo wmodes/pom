@@ -310,8 +310,9 @@ def short_hash(text: str) -> str:
 class Brain:
     """The real Scorer and interest client, rebuilt whenever config/pom.toml changes."""
 
-    def __init__(self, config_path: Path, words: WordTools):
+    def __init__(self, config_path: Path, words: WordTools, score_timeout: float = 0.0):
         self._path, self._words = config_path, words
+        self._score_timeout = score_timeout        # at least this long to wait for a score (0 = as configured)
         self._mtime = None
         self.settings = None
         self.client = None
@@ -331,7 +332,8 @@ class Brain:
         self._mtime = mtime
         config = Config.load(self._path)
         settings = config.scorer
-        client = InterestClient(settings.url, settings.prompt, settings.timeout, debug_prompt=settings.prompt_debug)
+        client = InterestClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
+                                debug_prompt=settings.prompt_debug)
         self.scorer = Scorer(client, self._words, floor=settings.floor, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings = client, settings
@@ -400,6 +402,7 @@ class Pipeline:
         self.history = collections.deque(maxlen=args.history)       # in memory only; for the `r` command
         self.count = 0
         self.last_text = ""
+        self.working = False                                         # True while an utterance is being handled
         self.stop = threading.Event()
 
     # capture and cutting
@@ -445,10 +448,13 @@ class Pipeline:
                     self.display.line("\n  (the recording is done; type r to re-score its sentences with the "
                                       "current prompts, q to quit)")
                 return
+            self.working = True
             try:
                 self._handle(utterance)
             except Exception as error:               # a surprise must not end the session
                 self.display.line(f"  (error handling an utterance: {type(error).__name__})")
+            finally:
+                self.working = False
 
     def _handle(self, utterance: Utterance) -> None:
         """Transcribes one utterance, then scores each sentence of it and queues the interpretations."""
@@ -484,12 +490,24 @@ class Pipeline:
                 pass
             self.explain_queue.put_nowait((number, text, score))
 
+    def _wait_until_idle(self, longest: float = 60.0) -> None:
+        """Holds an explanation back while the pipeline is busy hearing or scoring.
+
+        Writing a few sentences keeps the model busy for many seconds on a Pi, and a score that arrives
+        meanwhile would wait behind it. Scores come first; explanations take the quiet moments.
+        """
+        waited = 0.0
+        while (self.working or not self.utterances.empty()) and waited < longest and not self.stop.is_set():
+            time.sleep(0.2)
+            waited += 0.2
+
     def explain_worker(self) -> None:
         while True:
             item = self.explain_queue.get()
             if item is None:
                 return
             number, text, score = item
+            self._wait_until_idle()
             client = self.brain.client
             if not client.can_interpret:
                 continue
@@ -535,12 +553,15 @@ def main() -> None:
     parser.add_argument("--no-explain", dest="explain", action="store_false", help="skip the written interpretations")
     parser.add_argument("--explain-above", type=float, default=0.0, help="only interpret scores at or above this")
     parser.add_argument("--history", type=int, default=12, help="sentences kept in memory for the r command")
+    parser.add_argument("--score-timeout", type=float, default=30.0,
+                        help="seconds to wait for a score (at least; the config's value if larger)")
     parser.add_argument("--margin-db", type=float, default=6.0,
                         help="how far above the room noise counts as speech (lower it if music or noise masks speech)")
     args = parser.parse_args()
 
     nltk_dir = ROOT / "data" / "nltk"
-    brain = Brain(Path(args.config), WordTools(nltk_data=str(nltk_dir) if nltk_dir.exists() else None))
+    brain = Brain(Path(args.config), WordTools(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
+                  score_timeout=args.score_timeout)
     display = Display(args.threshold)
     display.line("hearing-debug: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     display.line(f"  {brain.refresh() or 'config loaded'}  [{brain.fingerprint()}]")

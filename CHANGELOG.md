@@ -47,6 +47,13 @@ December 18 session. Update this file in the same commit as the change it descri
 - **A project handoff** (`documentation/project-state.md`): where things stand, the working rules,
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
+- **Scorer settings in the config.** `config/pom.toml` gains a `[scorer]` section: the language
+  model's address and timeout, the prompt that defines "interesting" and the score scale (kept here as
+  the single copy, so it is the main thing to adjust), the floor score, how many content words a
+  sentence needs to be sent to the model, and the circuit-breaker numbers. `Config` reads it into
+  `config.scorer` (a `ScorerSettings`), validates each value with a warning and a default, merges a
+  `[scorer]` key from `pom.local.toml` one key at a time, and accepts `POM_SCORER_URL`. Unknown
+  sections and keys are warned about. 30 new tests in `tests/test_config.py`.
 - **Scorer** (`src/pom/hinge/scorer.py`). Turns fragments into scored candidate hinges. Sentences
   with no content words (all filler, stopwords or numbers) skip the model and get the floor score;
   the rest go to the interest client. If the model gives no score, a crude word-tool stand-in is used,

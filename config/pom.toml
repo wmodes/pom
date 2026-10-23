@@ -1,7 +1,7 @@
 # Settings shared by the whole project. Every key is optional; an unknown key or a bad value is
 # logged and ignored, never fatal. Environment variables override this file:
 #   POM_STRICT=1   POM_DEBUG=1   POM_LOCAL_LOGS=1   POM_LOG_LEVEL=DEBUG
-#   POM_SAMPLES_MIN=3   POM_SAMPLES_MAX=5
+#   POM_SAMPLES_MIN=3   POM_SAMPLES_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
 
 # Development and testing only: raise on every problem a module would otherwise recover from, so
 # a typo is loud while you work. Leave false in the gallery.
@@ -22,3 +22,55 @@ local_logs = false
 # samples_max, inclusive. Both must be whole numbers of at least 1.
 samples_min = 3
 samples_max = 5
+
+# The Scorer: how it reaches the local language model (a llama-server) and what it asks it.
+[scorer]
+# Where the model answers. The entry point starts llama-server on this port.
+url = "http://127.0.0.1:8098/v1/chat/completions"
+
+# Seconds to wait for one score before giving up on that sentence (the word-tool fallback is used).
+timeout = 15
+
+# Sentences with fewer than this many content words (not filler, stopwords or numbers) are not sent
+# to the model; they get the floor score. 0 sends everything.
+min_content_words = 1
+floor = 1.0
+
+# If the model fails this many times in a row, leave it alone for retry_seconds, scoring with the
+# word-tool fallback meanwhile, then try it again.
+failure_limit = 3
+retry_seconds = 30
+
+# What the model is told. This text defines what "interesting" means and what the numbers mean, so
+# it is the main thing to adjust. The model must answer with a single number; only the digit it
+# starts with is read, from its probabilities. Keep it free of anything specific to one room.
+prompt = """
+You score how interesting a sentence is.
+
+Each message is one sentence that someone said out loud in a room. Score how
+*interesting* it is, defined as having one or more of the following content:
+
+- a vivid or physical image
+- an odd or specific detail, a name, or a number
+- a big human feeling: love, grief, fear, shame, desire
+- a confession, a secret, or a question
+- something at stake: danger, a consequence, a decision
+- gossip or a judgment about someone
+- something left open or unfinished, a mystery
+- a surprise, a contradiction, or something strange or absurd
+- death, spirits, bodies, animals, food, money, weather, or machines
+
+A sentence is not interesting when it is ordinary talk: greetings, filler, 
+agreement, plans and logistics, or vague statements.
+
+Score on a scale, from 1.00 to 9.99:
+1.00-1.99  not interesting: no interesting content
+2.00-3.99  slightly interesting: little interesting content
+4.00-5.99  interesting: some interesting content
+6.00-7.99  very interesting: more interesting content
+8.00-9.99  extremely interesting: lots of interesting content
+
+Most sentences are ordinary and score below 5. 
+
+Reply with a single number with two decimal places from 1.00 to 9.99 and nothing else.
+"""

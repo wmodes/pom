@@ -12,6 +12,11 @@ of being threaded through by hand. Today there are five:
     samples_min, samples_max
                How many corpus chunks go into each pull of exemplars (3 and 5 by default). The
                entry point passes `config.samples` to the Sampler; the Sampler never reads Config.
+    [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
+               that defines "interesting" and the score scale, the floor score, how many content
+               words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
+               entry point builds the InterestClient and Scorer from `config.scorer`. Environment:
+               POM_SCORER_URL.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
@@ -34,6 +39,7 @@ Design decisions, and why:
 """
 import os
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional
 
@@ -44,10 +50,41 @@ DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "debug", "log_level", "local_logs", "samples_min", "samples_max"}
+_KEYS = {"strict", "debug", "log_level", "local_logs", "samples_min", "samples_max",
+         "scorer.url", "scorer.timeout", "scorer.prompt", "scorer.floor", "scorer.min_content_words",
+         "scorer.failure_limit", "scorer.retry_seconds"}
 DEFAULT_SAMPLES = (3, 5)
+DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
+DEFAULT_SCORER_TIMEOUT = 15.0
+DEFAULT_SCORER_FLOOR = 1.0
+DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
+DEFAULT_SCORER_FAILURE_LIMIT = 3
+DEFAULT_SCORER_RETRY_SECONDS = 30.0
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
+
+
+@dataclass(frozen=True)
+class ScorerSettings:
+    """The `[scorer]` section: how the Scorer reaches its language model and behaves around it.
+
+    Attributes:
+        url: The llama-server chat-completions address.
+        timeout: Seconds to wait for one score.
+        prompt: The system message that defines "interesting" and the scale, from the config file.
+            Empty means none was set, and the Scorer then runs on its word-tool fallback alone.
+        floor: The score given to fragments the filter keeps from the model.
+        min_content_words: Fragments with fewer content words skip the model (0 = never skip).
+        failure_limit: Model failures in a row that make the Scorer leave the model alone.
+        retry_seconds: How long it leaves the model alone before trying again.
+    """
+    url: str = DEFAULT_SCORER_URL
+    timeout: float = DEFAULT_SCORER_TIMEOUT
+    prompt: str = ""
+    floor: float = DEFAULT_SCORER_FLOOR
+    min_content_words: int = DEFAULT_SCORER_MIN_CONTENT_WORDS
+    failure_limit: int = DEFAULT_SCORER_FAILURE_LIMIT
+    retry_seconds: float = DEFAULT_SCORER_RETRY_SECONDS
 
 
 class Config:
@@ -59,13 +96,15 @@ class Config:
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         local_logs: Also write the log to a local file (development only).
         samples: (fewest, most) chunks per pull of exemplars, for the Sampler.
+        scorer: The `[scorer]` section, as a ScorerSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
                  report: Optional[Report] = None, debug: bool = False, local_logs: bool = False,
-                 samples: tuple = DEFAULT_SAMPLES):
+                 samples: tuple = DEFAULT_SAMPLES, scorer: Optional[ScorerSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
+        self.scorer = scorer if scorer is not None else ScorerSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -99,6 +138,18 @@ class Config:
         low = _count(values.get("samples_min", DEFAULT_SAMPLES[0]), "samples_min", DEFAULT_SAMPLES[0], report)
         high = _count(values.get("samples_max", DEFAULT_SAMPLES[1]), "samples_max", DEFAULT_SAMPLES[1], report)
         log_level = _level(values.get("log_level", "INFO"), "log_level", report)
+        scorer_url = _text(values.get("scorer.url", DEFAULT_SCORER_URL), "scorer.url", DEFAULT_SCORER_URL, report)
+        scorer_timeout = _number(values.get("scorer.timeout", DEFAULT_SCORER_TIMEOUT), "scorer.timeout",
+                                 DEFAULT_SCORER_TIMEOUT, 0.1, report)
+        scorer_prompt = _text(values.get("scorer.prompt", ""), "scorer.prompt", "", report)
+        scorer_floor = _number(values.get("scorer.floor", DEFAULT_SCORER_FLOOR), "scorer.floor",
+                               DEFAULT_SCORER_FLOOR, 0.0, report)
+        scorer_min_content = _whole(values.get("scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS),
+                                    "scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS, 0, report)
+        scorer_failure_limit = _whole(values.get("scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT),
+                                      "scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT, 1, report)
+        scorer_retry = _number(values.get("scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS),
+                               "scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS, 0.0, report)
 
         if "POM_STRICT" in environ:
             strict = _bool(environ["POM_STRICT"], "POM_STRICT", report)
@@ -115,7 +166,11 @@ class Config:
             low, high = high, low
         if "POM_LOG_LEVEL" in environ:
             log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)
-        return cls(strict, log_level, report, debug, local_logs, (low, high))
+        if "POM_SCORER_URL" in environ:
+            scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, report)
+        scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_floor, scorer_min_content,
+                                scorer_failure_limit, scorer_retry)
+        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer)
 
 
 def _read_file(path: Path, report: Report) -> dict:
@@ -128,10 +183,23 @@ def _read_file(path: Path, report: Report) -> dict:
     except (OSError, tomllib.TOMLDecodeError) as error:
         report.warn(f"cannot read config file {path}: {error}; using defaults")
         return {}
+    document = _flatten(document)
     unknown = sorted(k for k in document if k not in _KEYS)
     if unknown:
         report.warn(f"config file {path} has unknown key(s): {', '.join(unknown)}; ignoring them")
     return {k: v for k, v in document.items() if k in _KEYS}
+
+
+def _flatten(document: dict) -> dict:
+    """Turns a `[section]` table into dotted keys ("scorer.url"), so the main and local files merge key by key."""
+    flat = {}
+    for key, value in document.items():
+        if isinstance(value, dict):
+            for inner, inner_value in value.items():
+                flat[f"{key}.{inner}"] = inner_value
+        else:
+            flat[key] = value
+    return flat
 
 
 def _bool(value, label: str, report: Report) -> bool:
@@ -157,6 +225,30 @@ def _count(value, label: str, default: int, report: Report) -> int:
     if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
         return value
     report.warn(f"{label} must be a whole number of at least 1, got {value!r}; using {default}")
+    return default
+
+
+def _number(value, label: str, default: float, minimum: float, report: Report) -> float:
+    """A number of at least `minimum` (an int or float, not a boolean); otherwise the default."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
+        return float(value)
+    report.warn(f"{label} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
+    return default
+
+
+def _whole(value, label: str, default: int, minimum: int, report: Report) -> int:
+    """A whole number of at least `minimum` (not a boolean or a decimal); otherwise the default."""
+    if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
+        return value
+    report.warn(f"{label} must be a whole number of at least {minimum}, got {value!r}; using {default}")
+    return default
+
+
+def _text(value, label: str, default: str, report: Report) -> str:
+    """Text; anything else (a number, a list) is a mistake and gives the default."""
+    if isinstance(value, str):
+        return value
+    report.warn(f"{label} must be text, got {value!r}; using the default")
     return default
 
 

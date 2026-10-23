@@ -3,7 +3,9 @@ import logging
 
 import pytest
 
-from pom.config import Config
+from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FLOOR, DEFAULT_SCORER_MIN_CONTENT_WORDS,
+                        DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL, Config,
+                        ScorerSettings)
 
 
 def write(tmp_path, text):
@@ -271,3 +273,111 @@ def test_problems_are_logged_so_they_reach_journald(tmp_path, caplog):
     with caplog.at_level(logging.WARNING, logger="pom.config"):
         Config.load(write(tmp_path, "log_level = 5"), environ={})
     assert any("log_level must be one of" in r.message for r in caplog.records)
+
+
+# --- The [scorer] section --------------------------------------------------------------
+
+def test_scorer_defaults_when_nothing_is_set():
+    config = Config.load(environ={})
+    assert config.scorer == ScorerSettings() and config.report.ok
+    assert config.scorer.url == "http://127.0.0.1:8098/v1/chat/completions"
+    assert (config.scorer.timeout, config.scorer.floor, config.scorer.min_content_words,
+            config.scorer.failure_limit, config.scorer.retry_seconds) == (15.0, 1.0, 1, 3, 30.0)
+    assert config.scorer.prompt == ""
+
+
+def test_the_scorer_defaults_match_the_scorers_own():
+    from pom.hinge import interest_client, scorer
+    assert DEFAULT_SCORER_TIMEOUT == interest_client.DEFAULT_TIMEOUT
+    assert DEFAULT_SCORER_FLOOR == scorer.DEFAULT_FLOOR
+    assert DEFAULT_SCORER_MIN_CONTENT_WORDS == scorer.DEFAULT_MIN_CONTENT_WORDS
+    assert DEFAULT_SCORER_FAILURE_LIMIT == scorer.DEFAULT_FAILURE_LIMIT
+    assert DEFAULT_SCORER_RETRY_SECONDS == scorer.DEFAULT_RETRY_SECONDS
+    assert DEFAULT_SCORER_URL.startswith("http://")
+
+
+def test_scorer_values_are_read_from_the_section(tmp_path):
+    text = ('[scorer]\nurl = "http://10.0.0.5:9000/v1/chat/completions"\ntimeout = 4\nfloor = 2\n'
+            'min_content_words = 0\nfailure_limit = 5\nretry_seconds = 12.5\nprompt = "Score it."\n')
+    scorer = Config.load(write(tmp_path, text), environ={}).scorer
+    assert scorer == ScorerSettings("http://10.0.0.5:9000/v1/chat/completions", 4.0, "Score it.", 2.0, 0, 5, 12.5)
+
+
+def test_a_multi_line_prompt_is_kept_whole(tmp_path):
+    text = '[scorer]\nprompt = """\nLine one.\n\nLine "two".\n"""\n'
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.scorer.prompt == 'Line one.\n\nLine "two".\n' and config.report.ok
+
+
+def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
+    path = write(tmp_path, '[scorer]\nurl = "http://a.test/v1/chat/completions"\n')
+    config = Config.load(path, environ={"POM_SCORER_URL": "http://b.test/v1/chat/completions"})
+    assert config.scorer.url == "http://b.test/v1/chat/completions"
+
+
+@pytest.mark.parametrize("key,value", [
+    ("url", "5"), ("url", "true"), ("timeout", '"slow"'), ("timeout", "0"), ("timeout", "-3"), ("timeout", "true"),
+    ("prompt", "5"), ("prompt", "[1, 2]"), ("floor", "-1"), ("floor", '"x"'), ("floor", "true"),
+    ("min_content_words", "-1"), ("min_content_words", "1.5"), ("min_content_words", "true"),
+    ("failure_limit", "0"), ("failure_limit", "2.5"), ("failure_limit", '"3"'),
+    ("retry_seconds", "-5"), ("retry_seconds", '"soon"')])
+def test_a_bad_scorer_value_means_the_default_with_a_warning(tmp_path, key, value):
+    config = Config.load(write(tmp_path, f"[scorer]\n{key} = {value}\n"), environ={})
+    assert config.scorer == ScorerSettings()
+    assert len(config.report.warnings) == 1 and f"scorer.{key}" in config.report.warnings[0]
+
+
+def test_the_smallest_allowed_scorer_values_are_accepted(tmp_path):
+    text = "[scorer]\ntimeout = 0.1\nfloor = 0\nmin_content_words = 0\nfailure_limit = 1\nretry_seconds = 0\n"
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.report.ok
+    assert (config.scorer.timeout, config.scorer.floor, config.scorer.min_content_words,
+            config.scorer.failure_limit, config.scorer.retry_seconds) == (0.1, 0.0, 0, 1, 0.0)
+
+
+def test_an_unknown_scorer_key_is_warned_about(tmp_path):
+    config = Config.load(write(tmp_path, "[scorer]\nurll = 5\n"), environ={})
+    assert config.scorer == ScorerSettings()
+    assert any("scorer.urll" in w for w in config.report.warnings)
+
+
+def test_an_unknown_section_is_warned_about(tmp_path):
+    config = Config.load(write(tmp_path, "[voice]\nmodel = 5\n"), environ={})
+    assert any("voice.model" in w for w in config.report.warnings)
+
+
+def test_the_local_file_overrides_one_scorer_key_and_keeps_the_rest(tmp_path):
+    write(tmp_path, '[scorer]\ntimeout = 4\nfailure_limit = 5\nprompt = "Main."\n')
+    (tmp_path / "pom.local.toml").write_text("[scorer]\ntimeout = 9\n", encoding="utf-8")
+    scorer = Config.load(tmp_path / "pom.toml", environ={}).scorer
+    assert (scorer.timeout, scorer.failure_limit, scorer.prompt) == (9.0, 5, "Main.")
+
+
+def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path):
+    import shutil
+    from pathlib import Path
+    sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
+    copy = tmp_path / "pom.toml"
+    shutil.copy(sample, copy)
+    config = Config.load(copy, environ={})
+    assert config.report.ok
+    assert "interesting" in config.scorer.prompt and "Reply with" in config.scorer.prompt
+    assert config.scorer == ScorerSettings(prompt=config.scorer.prompt)      # everything else is the default
+
+
+def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
+    from pom.hinge.interest_client import InterestClient
+    from pom.hinge.scorer import Scorer, Source
+    from pom.hinge.words import WordTools
+    config = Config.load(write(tmp_path, '[scorer]\nprompt = "Score it."\nfloor = 2\nfailure_limit = 2\n'), environ={})
+    settings = config.scorer
+    client = InterestClient(settings.url, settings.prompt, settings.timeout,
+                            post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
+                                {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
+    scorer = Scorer(client, WordTools(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
+                                      stopwords={"the"}),
+                    floor=settings.floor, min_content_words=settings.min_content_words,
+                    failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
+    assert client.available and scorer.report.ok
+    assert scorer.score_text("The lamp hums.").score == 6.0
+    assert scorer.score_text("The").source is Source.FILTER and scorer.score_text("The").score == 2.0

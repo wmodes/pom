@@ -51,6 +51,7 @@ December 18 session. Update this file in the same commit as the change it descri
   7.0 the starting trigger threshold. First look at the real USB microphone on the Pi: it records quietly
   (mean -38 dB) with capture gain to spare, and whisper wraps song lyrics in ♪ marks; the
   Transcriber will strip the symbol and keep the words, since the Printer reacts to what it hears.
+  Mic gain on the Pi settled at 24 of 30 after a loud-room test (a yell reached -2.7 dB at 26).
   Whisper's bracketed sound captions are kept too; a variable trigger threshold that follows how
   interesting the room is, starting from 7.0, is the plan.
 - **Scorer settings in the config.** `config/pom.toml` gains a `[scorer]` section: the language

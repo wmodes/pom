@@ -230,8 +230,11 @@ llama.cpp setup scripts.
   captions** such as "(dog barks)" are kept too (Wes: its guesses give the model more to go on); most
   score 1 to 2, but "(gunshot)" scored 8.0 and "(screaming)" 4.65 as written (3.4 and 2.0 without the
   brackets), so a hallucinated dramatic caption can clear 7.0. Whisper took 0.2 (base.en) and 0.5 (small.en) times real time on
-  the music. Mic gain: raised to 26 of 30 for a test (+7.5 dB, no clipping with music playing); a shouted
-  loud-room check is still to do; software level normalization per utterance is the adaptive part.
+  the music. Mic gain: tested at 26 of 30 (+7.5 dB over the default 21); normal speech averaged -33 to -27 dB,
+  but a yell peaked at -2.7 dB, too close to clipping, so the working setting is **24 of 30**
+  (+24 dB; about 5.7 dB of headroom for a yell). It resets on reboot, so the service must set it at startup
+  (a config setting, to be built). Hardware auto-gain stays off. Software level normalization per
+  utterance, before whisper, is the part that adapts to the room.
 - **Trigger idea (Wes, 2026-10-23):** make the threshold variable, depending on whether the room is
   producing many interesting things or few. Plan: 7.0 is the neutral starting point; the moving threshold
   steers toward the target print rate (so a run of strong lines raises the bar and a dull stretch eases

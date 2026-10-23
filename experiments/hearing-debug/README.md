@@ -24,8 +24,9 @@ that are not built yet; if it works well it becomes the Segmenter and Transcribe
 1. The prompts live in `config/pom.toml`: `prompt_scoring` (what counts as interesting, and the scale),
    `prompt_output` (how to reply when scoring) and `prompt_output_debug` (how to reply when explaining).
    The Scorer is sent scoring plus output; the interpretation is sent scoring plus debug output.
-2. `probe_hearing_sync_config.sh watch` (on the Mac) copies the config to the Pi every time you save it,
-   to `~/pom/data/live/pom.toml`, outside git so a `git pull` there never meets a modified file.
+2. `probe_hearing_tune.sh watch` (on the Mac) delivers the config to the Pi every time you save it, **by git**:
+   it commits each valid version to a throwaway branch, `prompt-tuning`, and pushes it. The Pi follows that branch
+   with `git fetch` (see below). Nothing is copied, and your working tree stays on `main`.
 3. The pipeline re-reads the config before each utterance, and says so when it changes, with a short
    fingerprint of each prompt so you can tell which version scored what.
 4. Type `r` and Enter at the pipeline's terminal to **re-score the last dozen sentences with the current
@@ -39,10 +40,11 @@ the same audio, the same sentences, only the prompt differs.
 
 The code gets to the Pi with git: push from the Mac, then `git pull` on the Pi (it has a clone at `~/pom`).
 
-On the Mac, with the Pi on the network, to keep the prompts in step while you edit them:
+On the Mac, to deliver your prompt edits to the Pi as you make them:
 
 ```
-experiments/hearing-debug/probe_hearing_sync_config.sh watch
+experiments/hearing-debug/probe_hearing_tune.sh start     # once: makes the throwaway branch and sends the current prompts
+experiments/hearing-debug/probe_hearing_tune.sh watch     # leave running: each save of config/pom.toml is sent
 ```
 
 On the Pi, in a second terminal:
@@ -63,6 +65,22 @@ masking speech, `--speed 0` to play a recording as fast as possible.
 
 To try it on the Mac against a recording, set `POM_SCORER_URL` to a running llama-server and use `--wav`;
 see the header of `probe_hearing_pipeline.py`.
+
+## How the prompts travel (git, no copying)
+
+You edit `config/pom.toml` on `main`, uncommitted, as for any change. `probe_hearing_tune.sh` keeps a second
+checkout of a throwaway branch, `prompt-tuning` (a git worktree in `data/tuning-push`, ignored by git). On each
+save it checks that the config loads **without a single problem** (a typo is not sent), commits it on that branch
+with the three prompt fingerprints in the message, and pushes. Your checkout is never switched, so commits made to
+`main` meanwhile land where they should.
+
+On the Pi, `probe_hearing_run.sh` follows that branch: a scratch worktree in `data/tuning` is brought up to date
+with an ordinary `git fetch` every few seconds, and the pipeline reads its config from there. The Pi's main clone is
+not touched, so `git pull` there stays simple. If no tuning branch exists, the committed config is used.
+
+When you settle on a prompt, commit `config/pom.toml` to `main` as usual and run `probe_hearing_tune.sh stop`, which
+deletes the throwaway branch (local and remote) and its checkouts; it holds nothing worth keeping. Expect a delay
+of a few seconds between saving and the Pi seeing the change.
 
 ## What it keeps
 
@@ -95,4 +113,5 @@ not run it as a service. It is a development tool, used on purpose.
 
 - `probe_hearing_pipeline.py`: the pipeline (Segmenter, Transcriber, Scorer and display, in one file).
 - `probe_hearing_run.sh`: on the Pi; microphone gain, language model, pipeline.
-- `probe_hearing_sync_config.sh`: on the Mac; copies `config/pom.toml` to the Pi, and `watch` keeps it in step as you edit.
+- `probe_hearing_tune.sh`: on the Mac; `start`, `watch`, `sync`, `stop`. Delivers prompt edits through git.
+- `probe_hearing_follow_tuning.sh`: on the Pi (used by `probe_hearing_run.sh`); follows the tuning branch with `git fetch`.

@@ -172,8 +172,8 @@ under `~/pom/data/` (gitignored, as on the Mac):
 - `data/models/` the language models (`.gguf`), copied from the Mac with `experiments/pi-benchmark/benchmark_pi_prepare.sh models`
 - `data/recordings/` recordings and transcripts of real speech, which must never be committed (`work/` for
   working copies, `samples/` for the early whisper test clip)
-- `data/live/pom.toml` a copy of `config/pom.toml` kept in step while the prompts are being edited
-  (`experiments/hearing-debug/probe_hearing_sync_config.sh watch`), outside git so a pull never meets a modified file
+- `data/tuning/` a scratch git worktree that follows the throwaway `prompt-tuning` branch while prompts are being
+  tuned (`experiments/hearing-debug/probe_hearing_tune.sh` on the Mac); it is removed when the run ends
 
 The tools were first built in the home folder and moved here on 2026-10-23. A built binary found its libraries
 through an absolute path, so they were rebuilt in place, and the setup scripts now build with a relative library

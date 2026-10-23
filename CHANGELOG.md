@@ -48,10 +48,10 @@ December 18 session. Update this file in the same commit as the change it descri
   the architecture, the design decisions, how to run things, the next steps and the gotchas, for
   picking the work up after a break.
 - **The Pi is deployed with git.** It has a clone of the repo at `~/pom` (about 57 MB, 16 MB of history), so
-  the layout matches the Mac and code arrives with `git pull`; models, recordings and the live-edited config
-  live under the gitignored `data/`. The per-experiment copy scripts were replaced: `probe_hearing_push.sh`
-  became `probe_hearing_sync_config.sh` (copies only `config/pom.toml`, to `data/live/`), and
-  `benchmark_pi_prepare.sh push` became `models`. Documented in `documentation/pi-setup-notes.md`.
+  the layout matches the Mac and code arrives with `git pull`; models and recordings live under the gitignored
+  `data/`. The per-experiment copy scripts were replaced: `probe_hearing_push.sh` became `probe_hearing_tune.sh`
+  (prompt edits travel by git, see the next entry), and `benchmark_pi_prepare.sh push` became `models`.
+  Documented in `documentation/pi-setup-notes.md`.
 - **Everything on the Pi now lives inside `~/pom`.** whisper.cpp and llama.cpp are built under
   `data/tools/` (the setup scripts default there and build with a relative `$ORIGIN` library path so the
   folders can be moved without rebuilding), logs under `data/logs/`, and the early whisper sample under
@@ -233,6 +233,11 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Prompt edits reach the Pi through git, not by copying.** `probe_hearing_tune.sh` (Mac) keeps a second
+  worktree of a throwaway `prompt-tuning` branch; on each save it checks the config loads with no problems
+  (a typo is not sent), commits it there and pushes, never switching your checkout off `main`. On the Pi,
+  `probe_hearing_run.sh` follows that branch with `git fetch` into a scratch worktree (`probe_hearing_follow_tuning.sh`),
+  leaving the main clone untouched. `stop` deletes the branch. An earlier file-copy version was replaced.
 - **Hearing-debug uses whisper's own voice detection.** `whisper-cli --vad` (a Silero model) now decides what
   is speech, instead of a threshold of mine; the energy cut is only a chunker for the live stream. On the quiet
   class recording it replaced a drift into invented text ("You", "I'm sorry") with an accurate transcript that

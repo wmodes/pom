@@ -78,5 +78,6 @@ Reply with a single number with two decimal places from 1.00 to 9.99 and nothing
 """
 
 prompt_output_debug = """
-Output the score as a single number with two decimal places from 1.00 to 9.99 and what content you found that earned that score as a comma-separated list.
+Output the score as a single number with two decimal places from 1.00 to 9.99 | the sentence | what content you found that earned that score as a comma-separated list. Example:
+6.00 | I'm going to cut out your heart. | vivid, anger, threat, danger, death
 """

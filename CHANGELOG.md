@@ -80,6 +80,9 @@ December 18 session. Update this file in the same commit as the change it descri
   experiment built it. A server that is down, slow or answering oddly gives no score and a warning,
   never an exception; sentence text is never logged or put in a report. Has a warm-up call for startup.
   Tests: 56 in `tests/hinge/test_interest_client.py`, using a fake transport.
+  It also has `interpret(sentence)` for the debug view: it sends the debug prompt and returns the
+  model's written reply (the score and the content that earned it), with its own longer timeout, and
+  `parse_written_score` reads the leading number from such a reply. 32 more tests.
 - **Word tools** (`src/pom/hinge/words.py`), the first piece of the Scorer. Reads a fragment as
   words and says what each one is: base form, part of speech, name, number, stopword, filler (a
   configurable list plus any interjection), and whether it can carry interest. Uses NLTK from

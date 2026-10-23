@@ -4,8 +4,9 @@ import math
 
 import pytest
 
-from pom.hinge.interest_client import (DEFAULT_TIMEOUT, USER_TEMPLATE, WARM_UP_SENTENCE,
-                                       InterestClient, InterestClientError, expected_digit)
+from pom.hinge.interest_client import (DEFAULT_INTERPRET_TIMEOUT, DEFAULT_TIMEOUT, INTERPRET_MAX_TOKENS,
+                                       USER_TEMPLATE, WARM_UP_SENTENCE, InterestClient, InterestClientError,
+                                       expected_digit, parse_written_score)
 
 URL = "http://127.0.0.1:8098/v1/chat/completions"
 PROMPT = "You score how interesting a sentence is."
@@ -197,3 +198,107 @@ class TestWarmUp:
 
     def test_warm_up_reports_failure_without_raising(self):
         assert client(FakePost(OSError("down"))).warm_up() is False
+
+
+# --- The debug view's request ----------------------------------------------------------
+
+DEBUG_PROMPT = "You score a sentence and say why."
+
+
+def written(text):
+    """A llama-server style reply that holds written text."""
+    return {"choices": [{"message": {"role": "assistant", "content": text}}]}
+
+
+def interpreter(text="7.89, a vivid image, a death", **options):
+    post = FakePost(written(text))
+    return InterestClient(URL, PROMPT, post=post, debug_prompt=DEBUG_PROMPT, **options), post
+
+
+class TestInterpret:
+    def test_returns_the_written_reply(self):
+        c, _ = interpreter("  7.89, a vivid image, a death \n")
+        assert c.interpret("The lamp hums.") == "7.89, a vivid image, a death"
+
+    def test_request_uses_the_debug_prompt_and_asks_for_words(self):
+        c, post = interpreter(interpret_timeout=33.0)
+        c.interpret("  The lamp hums.  ")
+        url, body, timeout = post.calls[0]
+        assert url == URL and timeout == 33.0
+        assert body["messages"] == [{"role": "system", "content": DEBUG_PROMPT},
+                                    {"role": "user", "content": USER_TEMPLATE.format(sentence="The lamp hums.")}]
+        assert body["max_tokens"] == INTERPRET_MAX_TOKENS and body["temperature"] == 0
+        assert "logprobs" not in body and body["chat_template_kwargs"] == {"enable_thinking": False}
+
+    def test_the_debug_prompt_is_stripped_but_otherwise_sent_whole(self):
+        post = FakePost(written("7.0"))
+        InterestClient(URL, PROMPT, post=post, debug_prompt="\n  Line one.\nLine two.\n\n").interpret("hello there")
+        assert post.calls[0][1]["messages"][0]["content"] == "Line one.\nLine two."
+
+    def test_the_scoring_prompt_is_not_sent(self):
+        c, post = interpreter()
+        c.interpret("hello there")
+        assert PROMPT not in post.calls[0][1]["messages"][0]["content"]
+
+    def test_the_wait_is_longer_than_for_a_score(self):
+        assert DEFAULT_INTERPRET_TIMEOUT > DEFAULT_TIMEOUT
+        c, post = interpreter()
+        c.interpret("hello there")
+        assert post.calls[0][2] == DEFAULT_INTERPRET_TIMEOUT
+
+    def test_without_a_debug_prompt_it_does_nothing(self):
+        post = FakePost(written("7.0"))
+        c = InterestClient(URL, PROMPT, post=post)
+        assert not c.can_interpret and c.interpret("hello there") is None and post.calls == []
+
+    def test_can_interpret_needs_a_usable_client_and_a_debug_prompt(self):
+        assert interpreter()[0].can_interpret
+        assert not InterestClient("nonsense", PROMPT, post=FakePost(), debug_prompt=DEBUG_PROMPT).can_interpret
+
+    @pytest.mark.parametrize("text", ["", "   ", None, 7])
+    def test_empty_or_non_text_is_not_sent(self, text):
+        c, post = interpreter()
+        assert c.interpret(text) is None and post.calls == []
+
+    def test_a_failure_gives_none_and_a_warning(self):
+        c = InterestClient(URL, PROMPT, post=FakePost(TimeoutError()), debug_prompt=DEBUG_PROMPT)
+        assert c.interpret("hello there") is None and len(c.report.warnings) == 1
+        assert c.last_seconds is not None
+
+    @pytest.mark.parametrize("bad", [None, {}, {"choices": []}, {"choices": [{}]}, {"choices": [{"message": {}}]},
+                                     {"choices": [{"message": {"content": None}}]}, written("   ")])
+    def test_a_reply_without_text_gives_none(self, bad):
+        c, _ = interpreter()
+        c._post = FakePost(bad)
+        assert c.interpret("hello there") is None
+
+    def test_strict_mode_raises_on_a_failure(self):
+        c = InterestClient(URL, PROMPT, post=FakePost(OSError("down")), debug_prompt=DEBUG_PROMPT, strict=True)
+        with pytest.raises(InterestClientError):
+            c.interpret("hello there")
+
+    def test_a_bad_interpret_timeout_falls_back_with_a_warning(self):
+        for bad in (0, -5, "slow", None, True):
+            c, post = interpreter(interpret_timeout=bad)
+            c.interpret("hello there")
+            assert post.calls[0][2] == DEFAULT_INTERPRET_TIMEOUT and len(c.report.warnings) == 1
+
+    def test_what_was_said_never_reaches_a_report_or_a_log(self, caplog):
+        secret = "my secret sentence about the funeral"
+        c = InterestClient(URL, PROMPT, post=FakePost(OSError(f"failed on {secret}")), debug_prompt=DEBUG_PROMPT)
+        with caplog.at_level(logging.DEBUG):
+            c.interpret(secret)
+            interpreter("7.0, a funeral")[0].interpret(secret)
+        assert all("funeral" not in w for w in c.report.warnings)
+        assert "funeral" not in caplog.text
+
+
+class TestParseWrittenScore:
+    @pytest.mark.parametrize("text,expected", [("7.89, a vivid image", 7.89), ("  3", 3.0), ("1.00", 1.0),
+                                               ("9.99, extremely", 9.99), ("5.5 because", 5.5)])
+    def test_the_leading_number_is_read(self, text, expected):
+        assert parse_written_score(text) == pytest.approx(expected)
+
+    @pytest.mark.parametrize("text", ["", "a vivid image, 7.89", "Score: 7", "0.5", "10", "12.3, odd", None, 7, "-4"])
+    def test_anything_else_is_none(self, text):
+        assert parse_written_score(text) is None

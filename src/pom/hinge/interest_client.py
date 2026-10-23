@@ -29,11 +29,16 @@ Design decisions, and why:
   * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.
   * The transport is injected (`post`), so tests run with a fake and need no server. The default
     uses the standard library, so there is nothing to install.
+  * `interpret` is the debug view's request: the same sentence and the same system message plus the
+    debug output instructions, but this time the model writes a reply (its score and the content that
+    earned it). Writing words is slow on a small machine, so it has its own, longer timeout. It is
+    for watching how the model reads speech while refining the prompt, not for the running Printer.
   * The first request after a server starts is slow (the model is being loaded into memory, 12 to 28
     seconds measured on the Pi), so the entry point should call `warm_up` at startup.
 """
 import json
 import math
+import re
 import time
 import urllib.request
 from typing import Callable, Optional
@@ -48,6 +53,8 @@ _log = get_logger(__name__, DEBUG)
 USER_TEMPLATE = "Rate this line: {sentence}"
 WARM_UP_SENTENCE = "Hello there."
 DEFAULT_TIMEOUT = 15.0
+DEFAULT_INTERPRET_TIMEOUT = 90.0
+INTERPRET_MAX_TOKENS = 120
 
 
 class InterestClientError(ValueError):
@@ -85,6 +92,18 @@ def expected_digit(reply) -> Optional[float]:
     return sum(digit * weight for digit, weight in weights.items()) / total
 
 
+def parse_written_score(reply) -> Optional[float]:
+    """The number a debug reply starts with (1.00 to 9.99), or None.
+
+    A debug reply looks like "7.89, a striking image, a death"; only the leading number is read.
+    """
+    found = re.match(r"\s*(\d+(?:\.\d+)?)", reply) if isinstance(reply, str) else None
+    if found is None:
+        return None
+    value = float(found.group(1))
+    return value if 1.0 <= value <= 9.99 else None
+
+
 class InterestClient:
     """Scores one sentence at a time with a language model served by llama-server.
 
@@ -94,13 +113,17 @@ class InterestClient:
     """
 
     def __init__(self, url: str, prompt: str, timeout: float = DEFAULT_TIMEOUT,
-                 post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False):
+                 post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
+                 debug_prompt: str = "", interpret_timeout: float = DEFAULT_INTERPRET_TIMEOUT):
         """Args:
             url: The server's chat-completions address, e.g. http://127.0.0.1:8098/v1/chat/completions.
             prompt: The system message that tells the model how to score (from Config).
             timeout: Seconds to wait for one reply.
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
             strict: Raise InterestClientError on any problem instead of recording it.
+            debug_prompt: The system message for `interpret` (from Config); without one `interpret`
+                does nothing.
+            interpret_timeout: Seconds to wait for a written reply, which takes much longer than a score.
         """
         self.report = Report(strict=strict, error=InterestClientError, logger=_log)
         self._url, self._prompt = url, (prompt or "").strip()
@@ -109,6 +132,13 @@ class InterestClient:
         if self._timeout != timeout:
             self.report.warn(f"the scorer timeout must be a positive number of seconds, got "
                              f"{timeout!r}; using {DEFAULT_TIMEOUT:g}")
+        self._debug_prompt = (debug_prompt or "").strip()
+        self._interpret_timeout = (interpret_timeout if isinstance(interpret_timeout, (int, float))
+                                   and not isinstance(interpret_timeout, bool) and interpret_timeout > 0
+                                   else DEFAULT_INTERPRET_TIMEOUT)
+        if self._interpret_timeout != interpret_timeout:
+            self.report.warn(f"the interpret timeout must be a positive number of seconds, got "
+                             f"{interpret_timeout!r}; using {DEFAULT_INTERPRET_TIMEOUT:g}")
         self._post = post if post is not None else _http_post
         self.last_seconds: Optional[float] = None
         self._usable = True
@@ -124,6 +154,11 @@ class InterestClient:
     def available(self) -> bool:
         """False if the address or prompt was unusable, so the model will never be asked."""
         return self._usable
+
+    @property
+    def can_interpret(self) -> bool:
+        """True if the model can be asked to explain a score (usable, and a debug prompt was given)."""
+        return self._usable and bool(self._debug_prompt)
 
     def score(self, sentence: str) -> Optional[float]:
         """The model's interest score for one sentence (about 1 to 9.99), or None if it got none.
@@ -163,3 +198,30 @@ class InterestClient:
         request after a server starts can take many seconds.
         """
         return self.score(WARM_UP_SENTENCE) is not None
+
+    def interpret(self, sentence: str) -> Optional[str]:
+        """The model's written explanation of one sentence's score, or None.
+
+        The reply is whatever the debug prompt asks for (by default the score and the content that
+        earned it, as a comma-separated list). Slow: it writes words. Never raises (except in strict
+        mode); with no debug prompt, or after a failure, it returns None.
+        """
+        if not self.can_interpret or not isinstance(sentence, str) or not sentence.strip():
+            return None
+        body = {
+            "messages": [{"role": "system", "content": self._debug_prompt},
+                         {"role": "user", "content": USER_TEMPLATE.format(sentence=sentence.strip())}],
+            "max_tokens": INTERPRET_MAX_TOKENS, "temperature": 0,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
+        started = time.perf_counter()
+        try:
+            reply = self._post(self._url, body, self._interpret_timeout)
+            text = reply["choices"][0]["message"]["content"].strip()
+        except Exception as error:               # a dead server or an odd reply must not stop the debug view
+            self.last_seconds = time.perf_counter() - started
+            self.report.warn(f"the model did not give an interpretation ({type(error).__name__})")
+            return None
+        self.last_seconds = time.perf_counter() - started
+        _log.debug("interpreted a sentence of %d characters in %.0f ms", len(sentence), self.last_seconds * 1000)
+        return text or None

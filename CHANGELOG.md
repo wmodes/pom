@@ -233,6 +233,12 @@ December 18 session. Update this file in the same commit as the change it descri
 - **Hearing-debug: a long explanation could make a score time out.** On the Pi, a model busy writing an
   explanation left a one-token score waiting past its 15 s limit, so it fell back to the word tools. Explanations
   now wait until nothing is being heard or scored, and the tool waits up to 30 s for a score (`--score-timeout`).
+- **Hearing-debug stops spending the model's time on what is not worth it.** Explanations are made only for
+  speech scoring 4.0 or more (`--explain-above`; `--explain-sounds` adds whisper's captions), and quiet is now
+  judged from the live audio, not from pipeline events, because a long stretch of talking produced no event and
+  explanations started in the middle of it, stalling whisper for 12 to 24 s. Whisper's `[silence]`, `(silence)`,
+  `[BLANK_AUDIO]` and `[no audio]` markers are dropped before scoring, and the sound-only second pass is skipped
+  when whisper has already called the audio silent. The written reply is capped at 80 tokens, down from 120.
 - **Hearing-debug: explanations are one run with the score, and no longer compete with listening.** The debug
   request now returns the model's written reply and the score read from the probabilities of that same output's
   first token (`InterestClient.interpret` returns an `Interpretation`), so the number and the reasons belong

@@ -160,6 +160,7 @@ class Segmenter:
         self.threshold_db: Optional[float] = None
         self._candidate = []               # consecutive loud frames not yet an utterance
         self._recent = collections.deque(maxlen=int(5 / FRAME_SECONDS))     # the last five seconds of levels
+        self._frames_since_loud = 0        # how long ago anything was above the speech threshold, in frames
         self._active = None                # frames of the utterance in progress
         self._silence = 0
         self._speech = 0
@@ -177,6 +178,7 @@ class Segmenter:
         if self.floor_db is None:
             return None
         loud = level > self.threshold_db
+        self._frames_since_loud = 0 if loud else self._frames_since_loud + 1
         if self._active is None:
             if not loud:
                 self._preroll.append(frame)
@@ -197,6 +199,11 @@ class Segmenter:
         if self._silence >= self._pause_frames or len(self._active) >= self._max_frames:
             return self._finish()
         return None
+
+    @property
+    def quiet_seconds(self) -> float:
+        """How long the audio has been below the speech threshold, in seconds of audio (0 while it is loud)."""
+        return self._frames_since_loud * FRAME_SECONDS
 
     @property
     def loudest_recent_db(self) -> Optional[float]:
@@ -339,7 +346,7 @@ class Transcriber:
             text = clean_transcript(raw)
             if text:
                 return text, "sound" if is_only_sound(raw) else "speech"
-            if self._sounds:
+            if self._sounds and not raw.strip():          # the VAD found no speech at all; if whisper said "silence" it is
                 heard = sound_text(self._run(handle.name, vad=False))
                 if heard:
                     return heard, "sound"
@@ -357,14 +364,18 @@ class Transcriber:
         return subprocess.run(command, capture_output=True, text=True, timeout=180).stdout
 
 
+# Whisper's own way of saying "there is nothing here". They carry no information, so they are not scored.
+EMPTY_MARKS = re.compile(r"[\[(]\s*(blank[_ ]audio|silence|silent|no audio|no speech)\s*[\])]", re.IGNORECASE)
+
+
 def clean_transcript(raw: str) -> str:
-    """Whisper's text with the music symbol removed (the words stay) and its silence marker dropped.
+    """Whisper's text with the music symbol removed (the words stay) and its "nothing here" markers dropped.
 
     Whisper's other bracketed sound captions, like "(dog barks)", are kept on purpose: they give the
     model more to go on.
     """
     text = " ".join(raw.replace("\u266a", " ").split())
-    return " ".join(text.replace("[BLANK_AUDIO]", " ").split())
+    return " ".join(EMPTY_MARKS.sub(" ", text).split())
 
 
 SOUND_MARKS = r"\u266a[^\u266a]+\u266a|\([^()]*\)|\[[^\[\]]*\]"
@@ -372,7 +383,7 @@ SOUND_MARKS = r"\u266a[^\u266a]+\u266a|\([^()]*\)|\[[^\[\]]*\]"
 
 def is_only_sound(raw: str) -> bool:
     """True if whisper's text is nothing but non-speech marks: lyrics between music symbols, (captions), [captions]."""
-    return not re.sub(SOUND_MARKS, " ", raw).strip()
+    return not re.sub(SOUND_MARKS, " ", EMPTY_MARKS.sub(" ", raw)).strip()
 
 
 def sound_text(raw: str) -> str:
@@ -381,7 +392,7 @@ def sound_text(raw: str) -> str:
     Used on the pass without the VAD, where plain text is more likely invented than heard.
     """
     pieces = re.findall(SOUND_MARKS, raw)
-    return clean_transcript(" ".join(piece for piece in pieces if "BLANK_AUDIO" not in piece))
+    return clean_transcript(" ".join(pieces))
 
 
 # --- The Printer's judgment, from the real pom modules ----------------------------------------
@@ -489,7 +500,7 @@ class Pipeline:
         self.count = 0
         self.last_text = ""
         self.working = False                                         # True while an utterance is being handled
-        self.last_activity = time.monotonic()                        # when anything last arrived or finished
+        self.source_done = False                                     # True once a recording has played out
         self.segmenter = None                                        # set once listening starts
         self.interactive = sys.stdin.isatty()                        # someone can type r, e, l, q
         self.stop = threading.Event()
@@ -524,10 +535,10 @@ class Pipeline:
                 self._offer(tail)
         finally:
             source.close()
+            self.source_done = True
             self.utterances.put(None)
 
     def _offer(self, utterance: Utterance) -> None:
-        self.last_activity = time.monotonic()
         try:
             self.utterances.put_nowait(utterance)
         except queue.Full:
@@ -556,7 +567,6 @@ class Pipeline:
                 self.display.line(f"  (error handling an utterance: {type(error).__name__})")
             finally:
                 self.working = False
-                self.last_activity = time.monotonic()
 
     def _handle(self, utterance: Utterance) -> None:
         """Transcribes one utterance, then scores each sentence of it and queues the interpretations."""
@@ -579,7 +589,9 @@ class Pipeline:
             self.count += 1
             self.history.append(Heard(self.count, fragment.text, scored.score, scored.source.value))
             self.display.sentence(self.count, scored.score, scored.source.value, fragment.text)
-            if self.args.explain and scored.source.value == "model" and scored.score >= self.args.explain_above:
+            worth_it = (scored.source.value == "model" and scored.score >= self.args.explain_above
+                        and (kind == "speech" or self.args.explain_sounds))
+            if self.args.explain and worth_it:
                 self._explain(self.count, fragment.text, scored.score)
 
     def _explain(self, number: int, text: str, score: float, now: bool = False) -> None:
@@ -604,8 +616,11 @@ class Pipeline:
         room never goes quiet, type e to explain the recent sentences right away.
         """
         while not self.stop.is_set():
-            quiet_for = time.monotonic() - self.last_activity
-            if not self.working and self.utterances.empty() and quiet_for >= self.args.explain_quiet:
+            # Quiet means the AUDIO is quiet, not that the pipeline has no news: someone speaking for twenty
+            # seconds produces no event until the end, and an explanation must not start in the middle of it.
+            heard_lately = (self.segmenter is not None and not self.source_done
+                            and self.segmenter.quiet_seconds < self.args.explain_quiet)
+            if not self.working and self.utterances.empty() and not heard_lately:
                 return
             time.sleep(0.2)
 
@@ -684,7 +699,10 @@ def main() -> None:
                         help="skip the second pass that keeps song lyrics and sound captions the VAD ignores")
     parser.add_argument("--threshold", type=float, default=7.0, help="mark scores at or above this (default 7.0)")
     parser.add_argument("--no-explain", dest="explain", action="store_false", help="skip the written interpretations")
-    parser.add_argument("--explain-above", type=float, default=0.0, help="only interpret scores at or above this")
+    parser.add_argument("--explain-above", type=float, default=4.0,
+                        help="only explain scores at or above this (e explains anything, on request)")
+    parser.add_argument("--explain-sounds", action="store_true",
+                        help="also explain whisper's sound captions and lyrics (by default only speech is explained)")
     parser.add_argument("--explain-quiet", type=float, default=3.0,
                         help="seconds of quiet before a written explanation starts (they never compete with listening)")
     parser.add_argument("--history", type=int, default=12, help="sentences kept in memory for the r command")
@@ -717,8 +735,8 @@ def main() -> None:
                threading.Thread(target=pipeline.explain_worker, daemon=True)]
     for thread in threads:
         thread.start()
-    display.line("  nothing to do: it listens and scores by itself. Written explanations arrive in quiet moments "
-                 f"(after {args.explain_quiet:g} s of quiet).\n  Optional: e + Enter explains the last few sentences now, r + Enter "
+    display.line("  nothing to do: it listens and scores by itself. Written explanations, for speech scoring "
+                 f"{args.explain_above:g} or more, arrive in quiet moments (after {args.explain_quiet:g} s of quiet).\n  Optional: e + Enter explains the last few sentences now, r + Enter "
                  "re-scores them with the current prompts, l shows the levels, q quits\n")
     try:
         if sys.stdin.isatty():

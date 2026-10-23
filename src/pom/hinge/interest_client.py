@@ -59,7 +59,7 @@ USER_TEMPLATE = "Rate this line: {sentence}"
 WARM_UP_SENTENCE = "Hello there."
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_INTERPRET_TIMEOUT = 90.0
-INTERPRET_MAX_TOKENS = 120
+INTERPRET_MAX_TOKENS = 80
 
 
 class InterestClientError(ValueError):

@@ -99,13 +99,17 @@ not run it as a service. It is a development tool, used on purpose.
   only what whisper itself marks as non-speech: lyrics between music symbols and captions like "(dog barks)". Those
   lines say "sound, not speech". Plain text from that pass is dropped, since that is where whisper invents words.
   `--no-sounds` skips the second pass; `--no-vad` turns the VAD off.
-- **Explanations wait for quiet.** Writing words is by far the slowest thing the model does: one explanation
-  measured 1.25 tokens a second (45 s for 58 tokens) while the Pi was also listening and scoring. So an
-  explanation only starts after `--explain-quiet` seconds (3 by default) with nothing heard or scored, and never
-  competes with listening. If the room never goes quiet, type `e` (or `e 8`) to explain the last few sentences
-  right away. If they pile up, older ones are skipped, and it says so.
+- **Explanations are rationed, because they are expensive.** Writing words is by far the slowest thing the model
+  does: one explanation measured 1.25 tokens a second (45 s for 58 tokens) while the Pi was also listening and
+  scoring, and whisper stalled for 12 to 24 s behind it. So an explanation (a) is only made for **speech** scoring
+  `--explain-above` (4.0 by default) or more, not for whisper's sound captions or the dull sentences
+  (`--explain-sounds` includes the captions), and (b) only starts after `--explain-quiet` seconds (3 by default)
+  during which the **audio itself** has been quiet, so it never starts in the middle of someone talking. If the room
+  never goes quiet, type `e` (or `e 8`) to explain the last few sentences of any kind right away. If they pile up,
+  older ones are skipped, and it says so.
 - **Whisper's captions are kept**, like "(dog barks)", and the music symbol is removed with the words kept.
-  Its `[BLANK_AUDIO]` silence marker is dropped.
+  Its "nothing here" markers (`[BLANK_AUDIO]`, `[silence]`, `(silence)`, `[no audio]`) are dropped, not scored, and
+  when whisper has said an audio was silent the second pass is not run.
 - **Whisper reloads its model for every utterance** here, as in the Pi benchmark. The real system will keep
   it resident.
 - **One run gives the number and the reasons together.** Your `prompt_output_debug` asks for the score, the

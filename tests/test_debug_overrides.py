@@ -14,7 +14,7 @@ import pytest
 SRC = Path(__file__).resolve().parents[1] / "src"
 MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_store.py",
            "pom/corpus/exemplar_selector.py", "pom/listening/fragmenter.py",
-           "pom/hinge/word_tagger.py", "pom/hinge/interest_client.py",
+           "pom/hinge/word_tagger.py", "pom/hinge/scorer_model_client.py",
            "pom/hinge/scorer.py", "pom/hinge/fallback_scorer.py", "pom/startup.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 

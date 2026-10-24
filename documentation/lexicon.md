@@ -73,7 +73,6 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 
 These names predate the lexicon. Each rename is Wes's decision.
 
-- **`InterestClient`** and the word "interest" in it describe scoring.
 - The scorer calls the fragment_filter just the *filter* (`is_filtered`, and `filter` as a score's
   source).
 - The hearing-debug **`Segmenter`** cuts *audio* by loudness before whisper runs; it does not

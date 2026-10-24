@@ -17,7 +17,7 @@
 #   ./probe_hearing_run.sh                      # listen on the microphone
 #   ./probe_hearing_run.sh --model small.en     # a bigger whisper model (slower, a little more accurate)
 #   ./probe_hearing_run.sh --wav clip.wav --speed 1   # replay a recording instead
-#   ./probe_hearing_run.sh --no-explain         # skip the written interpretations (lighter on the CPU)
+#   ./probe_hearing_run.sh --no-explain         # skip the written explanations (lighter on the CPU)
 #
 # Environment overrides (defaults in brackets):
 #   MIC_GAIN      capture gain, 0 to 30 on the ATR4697-USB          [24]

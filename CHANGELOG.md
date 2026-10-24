@@ -205,6 +205,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`InterestClient` is now `ScorerModelClient`** (`src/pom/hinge/scorer_model_client.py`; `InterestClientError` is
+  `ScorerModelClientError`). Its debug request is now `explain()` (was `interpret()`; `can_explain`,
+  `Explanation`, `explain_prompt`, `explain_timeout`, `EXPLAIN_MAX_TOKENS`), `expected_digit()` is
+  `score_from_probabilities()`, its argument is `fragment_text`, and the Scorer's `client` argument is
+  `scorer_model_client`. The text sent to the model is unchanged. Tests moved to
+  `tests/hinge/test_scorer_model_client.py`. The hearing-debug view now says "explanations".
 - **`Sampler` is now `ExemplarSelector`** (`src/pom/corpus/exemplar_selector.py`; `SamplerError` is
   `ExemplarSelectorError`, `sample_range` is `exemplar_range`, its `samples` argument is `exemplar_range`, and
   its default is `DEFAULT_EXEMPLAR_RANGE`). The warning text says "exemplar_range" where it said "samples".

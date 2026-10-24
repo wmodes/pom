@@ -29,7 +29,7 @@ def words():
 
 
 class FakeClient:
-    """Stands in for the InterestClient: returns a canned score, or None, and records the calls."""
+    """Stands in for the ScorerModelClient: returns a canned score, or None, and records the calls."""
 
     def __init__(self, score=6.5, available=True):
         self.value = score

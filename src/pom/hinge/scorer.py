@@ -7,7 +7,7 @@ sample the best sentence scored only about 8, and ordinary talk 2 to 3, so whate
 should work from ranks and gaps, not a fixed high threshold.
 
 THREE KINDS OF RESULT, recorded in `ScoredFragment.source`:
-  * MODEL:    the scorer model scored it (through the InterestClient). The normal case.
+  * MODEL:    the scorer model scored it (through the ScorerModelClient). The normal case.
   * FILTER:   the fragment has no content words (it is all filler, stopwords or numbers, like
               "Yeah, okay."), so the model is not asked and it gets the floor score. This saves a
               model call on talk that cannot be interesting. The word tagger decides.
@@ -90,13 +90,13 @@ class Scorer:
         report: Problems met (settings corrected, model unavailable, breaker opened).
     """
 
-    def __init__(self, client, word_tagger: WordTagger, floor: float = DEFAULT_FLOOR,
+    def __init__(self, scorer_model_client, word_tagger: WordTagger, floor: float = DEFAULT_FLOOR,
                  min_content_words: int = DEFAULT_MIN_CONTENT_WORDS,
                  failure_limit: int = DEFAULT_FAILURE_LIMIT,
                  retry_seconds: float = DEFAULT_RETRY_SECONDS,
                  clock: Callable[[], float] = time.monotonic, strict: bool = False):
         """Args:
-            client: An InterestClient (anything with score(text), warm_up() and available).
+            scorer_model_client: A ScorerModelClient (anything with score(text), warm_up() and available).
             word_tagger: The WordTagger that tags each word of a fragment.
             floor: The score for a fragment the filter keeps from the model.
             min_content_words: Fragments with fewer content words skip the model (0 = never skip).
@@ -106,7 +106,8 @@ class Scorer:
             strict: Raise ScorerError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=ScorerError, logger=_log)
-        self._client, self._word_tagger, self._clock = client, word_tagger, clock
+        self._scorer_model_client, self._word_tagger, self._clock = (
+            scorer_model_client, word_tagger, clock)
         self._floor = self._number(floor, "floor", DEFAULT_FLOOR, minimum=0.0)
         self._min_content = self._whole(min_content_words, "min_content_words", DEFAULT_MIN_CONTENT_WORDS, minimum=0)
         self._failure_limit = self._whole(failure_limit, "failure_limit", DEFAULT_FAILURE_LIMIT, minimum=1)
@@ -114,7 +115,7 @@ class Scorer:
         self._failures = 0
         self._reopen_at: Optional[float] = None       # None while the breaker is closed
         self._counts = {source: 0 for source in Source}
-        if not client.available:
+        if not scorer_model_client.available:
             self.report.warn("the scorer model is not available (see the client's report); every "
                              "fragment that passes the filter will go unscored")
 
@@ -142,7 +143,7 @@ class Scorer:
         if self._skips_model(fragment.text, content):
             return self._result(fragment, self._floor, Source.FILTER)
         if self._model_allowed():
-            value = self._client.score(fragment.text)
+            value = self._scorer_model_client.score(fragment.text)
             if value is not None:
                 self._model_worked()
                 return self._result(fragment, value, Source.MODEL)
@@ -172,7 +173,7 @@ class Scorer:
 
     def warm_up(self) -> bool:
         """Loads the model before a real sentence needs it. True if it answered."""
-        return bool(self._client.available and self._client.warm_up())
+        return bool(self._scorer_model_client.available and self._scorer_model_client.warm_up())
 
     # --- State ----------------------------------------------------------------------
 
@@ -195,7 +196,7 @@ class Scorer:
 
     def _model_allowed(self) -> bool:
         """False while the client is unusable or the breaker is open and not yet due a retry."""
-        if not self._client.available:
+        if not self._scorer_model_client.available:
             return False
         return self._reopen_at is None or self._clock() >= self._reopen_at
 

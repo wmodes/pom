@@ -20,7 +20,7 @@ summarized below.
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
   now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`), the
   `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter), the
-  `InterestClient` (asks llama-server for a sentence's score) and the `Scorer` (filter, model,
+  `ScorerModelClient` (asks llama-server for a fragment's score) and the `Scorer` (filter, model,
   circuit breaker; a fragment the model cannot score is left unscored).
 - **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
   a time, no context. See `experiments/interest-scorer/README.md` and the decisions below. The

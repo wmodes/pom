@@ -15,7 +15,7 @@ of being threaded through by hand. Today there are five:
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
                that defines "interesting" and the score scale, the floor score, how many content
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
-               entry point builds the InterestClient and Scorer from `config.scorer`. Environment:
+               entry point builds the ScorerModelClient and Scorer from `config.scorer`. Environment:
                POM_SCORER_URL.
 
 Where values come from, highest priority first:

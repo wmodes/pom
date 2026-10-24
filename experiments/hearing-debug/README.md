@@ -8,7 +8,7 @@ window onto how the Printer interprets what it hears, built so the prompt can be
 A small pipeline that runs on the Pi (or on the Mac against a recording):
 
 ```
-microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Scorer -> interpretation
+microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Scorer -> explanation
 ```
 
 For every sentence it prints the real `pom` Scorer's score, and a little later the model's own written

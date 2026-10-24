@@ -4,7 +4,7 @@
 Part of experiments/hearing-debug. A prototype of the front half of the Printer, run on the Pi (or on
 the Mac against a recording):
 
-    microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Scorer -> interpretation
+    microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Scorer -> explanation
 
 For every sentence it prints the Scorer's score (the real `pom` Scorer, built from config/pom.toml) and,
 a little later, the model's own written account of why: the content it found that earned the score,
@@ -66,8 +66,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
-from pom.hinge import InterestClient, Scorer, WordTagger        # noqa: E402
-from pom.hinge.interest_client import parse_written_score      # noqa: E402
+from pom.hinge import ScorerModelClient, Scorer, WordTagger        # noqa: E402
+from pom.hinge.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.fragmenter import Fragmenter, Kind          # noqa: E402
 
 SAMPLE_RATE = 16000
@@ -402,7 +402,7 @@ def short_hash(text: str) -> str:
 
 
 class Brain:
-    """The real Scorer and interest client, rebuilt whenever config/pom.toml changes."""
+    """The real Scorer and scorer model client, rebuilt whenever config/pom.toml changes."""
 
     def __init__(self, config_path: Path, word_tagger: WordTagger, score_timeout: float = 0.0):
         self._path, self._word_tagger = config_path, word_tagger
@@ -426,8 +426,8 @@ class Brain:
         self._mtime = mtime
         config = Config.load(self._path)
         settings = config.scorer
-        client = InterestClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
-                                debug_prompt=settings.prompt_debug)
+        client = ScorerModelClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
+                                explain_prompt=settings.prompt_debug)
         self.scorer = Scorer(client, self._word_tagger, floor=settings.floor, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings = client, settings
@@ -576,7 +576,7 @@ class Pipeline:
                 self.display.line(f"  (error handling an utterance: {type(error).__name__})")
 
     def _handle(self, utterance: Utterance) -> None:
-        """Transcribes one utterance, then scores each sentence of it and queues the interpretations."""
+        """Transcribes one utterance, then scores each sentence of it and queues the explanations."""
         changed = self.brain.refresh()
         if changed:
             self.display.line(f"\n[{self.display.stamp()}] {changed}  [{self.brain.fingerprint()}]")
@@ -613,7 +613,7 @@ class Pipeline:
 
     def debug_mode(self) -> bool:
         """True if each sentence gets one debug run (score and reasons together) instead of the one-token score."""
-        return self.args.explain and self.brain.client.can_interpret
+        return self.args.explain and self.brain.client.can_explain
 
     def _queue_run(self, number: int, text: str, previous: Optional[float] = None) -> None:
         """Queues a sentence for its debug run; the model takes them one at a time, in order."""
@@ -635,9 +635,9 @@ class Pipeline:
                 return
             number, text, previous = item
             client = self.brain.client
-            if not client.can_interpret:
+            if not client.can_explain:
                 continue
-            run = client.interpret(text)
+            run = client.explain(text)
             if run is None:
                 self.display.line(f"  #{number:<3} (no result: {'; '.join(client.report.lines()[-1:]) or 'no reply'})")
                 continue
@@ -707,13 +707,13 @@ def main() -> None:
     display.line("hearing-debug: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     display.line(f"  {brain.refresh() or 'config loaded'}  [{brain.fingerprint()}]")
     display.line(f"  scorer at {brain.settings.url}; whisper {args.model}; threshold {args.threshold:g}; "
-                 f"{'interpretations on' if args.explain and brain.client.can_interpret else 'interpretations off'}")
+                 f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
     display.line(f"  hearing: whisper {args.model}, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")
     display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (fragments will go unscored)'}")
-    if args.explain and not brain.client.can_interpret:
-        display.line("  (no prompt_output_debug in the config, so there are no interpretations)")
+    if args.explain and not brain.client.can_explain:
+        display.line("  (no prompt_output_debug in the config, so there are no explanations)")
 
     pipeline = Pipeline(args, brain, display)
     if pipeline.transcriber.note:
@@ -724,7 +724,7 @@ def main() -> None:
                threading.Thread(target=pipeline.debug_worker, daemon=True)]
     for thread in threads:
         thread.start()
-    if args.explain and brain.client.can_interpret:
+    if args.explain and brain.client.can_explain:
         display.line("  nothing to do: it listens by itself. Each sentence makes ONE trip through your debug prompt as soon as "
                      "whisper has produced it,\n  and the score and the reasons come out of that same output. --no-explain "
                      "scores every sentence at once instead, with no reasons.")

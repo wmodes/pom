@@ -1,27 +1,27 @@
-"""The interest client: asks the local language model how interesting one sentence is.
+"""The ScorerModelClient: asks the scorer model how interesting one fragment is.
 
-The Scorer decides which overheard sentences are worth answering by asking a small language model
-(served by llama.cpp's `llama-server`) to score each one. This module is only the conversation with
-that server: one sentence in, one number out, or None if no number could be had. It knows nothing
+The Scorer decides which overheard fragments are worth responding to by asking a small language
+model (the scorer model, served by llama.cpp's `llama-server`) to score each one. This module is only the conversation with
+that server: one fragment in, one number out, or None if no number could be had. It knows nothing
 about fragments or filtering; the Scorer does that.
 
 HOW THE SCORE IS READ. The model is asked to reply with a number, but only its first token is
 generated, and the score is read from the probabilities of the digits 1 to 9 in that one token (the
-expected value of the digit). That makes it continuous (no ties between sentences), repeatable (no
+expected value of the digit). That makes it continuous (no ties between fragments), repeatable (no
 sampling, temperature 0), and cheap (one generated token). Written decimals from a small model
 cluster on a few values, so they are not used. This is the method the interest-scorer experiment
 settled on (experiments/interest-scorer/README.md), and the request is built exactly as the
 experiment built it, so scores here match the saved results.
 
-ONE SENTENCE PER REQUEST, NO CONTEXT. The model is never shown any other sentence. Batching several
-sentences, or showing earlier ones as context, made a sentence's score depend on its neighbors and
-their order. A sentence must score the same wherever it comes in the conversation.
+ONE FRAGMENT PER REQUEST, NO CONTEXT. The model is never shown any other fragment. Batching several
+fragments, or showing earlier ones as context, made a fragment's score depend on its neighbors and
+their order. A fragment must score the same wherever it comes in the conversation.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or
     answering oddly gives None and a warning in `report`, never an exception. `strict=True` raises
-    InterestClientError instead, for tests and dev tools.
-  * Sentence text is never logged and never put in a FaultRecorder message: nothing that was said in the
+    ScorerModelClientError instead, for tests and dev tools.
+  * Fragment text is never logged and never put in a FaultRecorder message: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config
     and has no built-in prompt, so the words that define "interesting" live in one place, the
@@ -29,7 +29,7 @@ Design decisions, and why:
   * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.
   * The transport is injected (`post`), so tests run with a fake and need no server. The default
     uses the standard library, so there is nothing to install.
-  * `interpret` is the debug view's request: the same sentence and the same system message plus the
+  * `explain` is the debug view's request: the same fragment and the same system message plus the
     debug output instructions, but this time the model writes a reply (its score and the content that
     earned it). It is ONE run: the score is read from the probabilities of the reply's first token, exactly
     as `score` reads it, and the written reasons are the rest of that same output, so the number and
@@ -55,14 +55,14 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 # The user message, word for word as in the experiment, so scores match its saved results.
-USER_TEMPLATE = "Rate this line: {sentence}"
-WARM_UP_SENTENCE = "Hello there."
+USER_TEMPLATE = "Rate this line: {fragment_text}"
+WARM_UP_FRAGMENT = "Hello there."
 DEFAULT_TIMEOUT = 15.0
-DEFAULT_INTERPRET_TIMEOUT = 90.0
-INTERPRET_MAX_TOKENS = 80
+DEFAULT_EXPLAIN_TIMEOUT = 90.0
+EXPLAIN_MAX_TOKENS = 80
 
 
-class InterestClientError(ValueError):
+class ScorerModelClientError(ValueError):
     """Raised for any client problem, but only in strict mode (development and tests)."""
 
 
@@ -74,7 +74,7 @@ def _http_post(url: str, body: dict, timeout: float) -> dict:
         return json.load(response)
 
 
-def expected_digit(reply) -> Optional[float]:
+def score_from_probabilities(reply) -> Optional[float]:
     """The expected value of the digit 1 to 9 the model starts its reply with, or None.
 
     Reads the probabilities of the first generated token from an OpenAI-style reply that asked for
@@ -98,12 +98,12 @@ def expected_digit(reply) -> Optional[float]:
 
 
 @dataclass(frozen=True, slots=True)
-class Interpretation:
+class Explanation:
     """One debug run of the model: what it wrote, and the score its first token's probabilities give.
 
     Attributes:
-        text: The written reply (by default the score, the sentence and the content that earned the score).
-        score: The expected value of the first token's digit, as `InterestClient.score` reads it, or None if
+        text: The written reply (by default the score, the fragment and the content that earned the score).
+        score: The expected value of the first token's digit, as `ScorerModelClient.score` reads it, or None if
             the reply did not begin with a digit.
     """
     text: str
@@ -122,41 +122,41 @@ def parse_written_score(reply) -> Optional[float]:
     return value if 1.0 <= value <= 9.99 else None
 
 
-class InterestClient:
-    """Scores one sentence at a time with a language model served by llama-server.
+class ScorerModelClient:
+    """Scores one fragment at a time with a language model served by llama-server.
 
     Attributes:
-        report: Problems met (server down, odd reply, bad address). Never holds sentence text.
+        report: Problems met (server down, odd reply, bad address). Never holds fragment text.
         last_seconds: How long the most recent request took, or None before the first.
     """
 
     def __init__(self, url: str, prompt: str, timeout: float = DEFAULT_TIMEOUT,
                  post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
-                 debug_prompt: str = "", interpret_timeout: float = DEFAULT_INTERPRET_TIMEOUT):
+                 explain_prompt: str = "", explain_timeout: float = DEFAULT_EXPLAIN_TIMEOUT):
         """Args:
             url: The server's chat-completions address, e.g. http://127.0.0.1:8098/v1/chat/completions.
             prompt: The system message that tells the model how to score (from Config).
             timeout: Seconds to wait for one reply.
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
-            strict: Raise InterestClientError on any problem instead of recording it.
-            debug_prompt: The system message for `interpret` (from Config); without one `interpret`
+            strict: Raise ScorerModelClientError on any problem instead of recording it.
+            explain_prompt: The system message for `explain` (from Config); without one `explain`
                 does nothing.
-            interpret_timeout: Seconds to wait for a written reply, which takes much longer than a score.
+            explain_timeout: Seconds to wait for a written reply, which takes much longer than a score.
         """
-        self.report = FaultRecorder(strict=strict, error=InterestClientError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=ScorerModelClientError, logger=_log)
         self._url, self._prompt = url, (prompt or "").strip()
         self._timeout = (timeout if isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
                          and timeout > 0 else DEFAULT_TIMEOUT)
         if self._timeout != timeout:
             self.report.warn(f"the scorer timeout must be a positive number of seconds, got "
                              f"{timeout!r}; using {DEFAULT_TIMEOUT:g}")
-        self._debug_prompt = (debug_prompt or "").strip()
-        self._interpret_timeout = (interpret_timeout if isinstance(interpret_timeout, (int, float))
-                                   and not isinstance(interpret_timeout, bool) and interpret_timeout > 0
-                                   else DEFAULT_INTERPRET_TIMEOUT)
-        if self._interpret_timeout != interpret_timeout:
-            self.report.warn(f"the interpret timeout must be a positive number of seconds, got "
-                             f"{interpret_timeout!r}; using {DEFAULT_INTERPRET_TIMEOUT:g}")
+        self._explain_prompt = (explain_prompt or "").strip()
+        self._explain_timeout = (explain_timeout if isinstance(explain_timeout, (int, float))
+                                 and not isinstance(explain_timeout, bool) and explain_timeout > 0
+                                 else DEFAULT_EXPLAIN_TIMEOUT)
+        if self._explain_timeout != explain_timeout:
+            self.report.warn(f"the explain timeout must be a positive number of seconds, got "
+                             f"{explain_timeout!r}; using {DEFAULT_EXPLAIN_TIMEOUT:g}")
         self._post = post if post is not None else _http_post
         self.last_seconds: Optional[float] = None
         self._usable = True
@@ -174,21 +174,21 @@ class InterestClient:
         return self._usable
 
     @property
-    def can_interpret(self) -> bool:
+    def can_explain(self) -> bool:
         """True if the model can be asked to explain a score (usable, and a debug prompt was given)."""
-        return self._usable and bool(self._debug_prompt)
+        return self._usable and bool(self._explain_prompt)
 
-    def score(self, sentence: str) -> Optional[float]:
-        """The model's interest score for one sentence (about 1 to 9.99), or None if it got none.
+    def score(self, fragment_text: str) -> Optional[float]:
+        """The model's interest score for one fragment (about 1 to 9.99), or None if it got none.
 
         None means no score could be had; the reason is in `report`. Never raises (except in
         strict mode).
         """
-        if not self._usable or not isinstance(sentence, str) or not sentence.strip():
+        if not self._usable or not isinstance(fragment_text, str) or not fragment_text.strip():
             return None
         body = {
             "messages": [{"role": "system", "content": self._prompt},
-                         {"role": "user", "content": USER_TEMPLATE.format(sentence=sentence.strip())}],
+                         {"role": "user", "content": USER_TEMPLATE.format(fragment_text=fragment_text.strip())}],
             "max_tokens": 1, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},      # Qwen3 thinks otherwise; others ignore it
         }
@@ -201,45 +201,45 @@ class InterestClient:
                              f"the fragment will go unscored")
             return None
         self.last_seconds = time.perf_counter() - started
-        value = expected_digit(reply)
+        value = score_from_probabilities(reply)
         if value is None:
             self.report.warn("the scorer model's reply held no score; the fragment will go unscored")
             return None
-        _log.debug("scored a sentence of %d characters: %.2f in %.0f ms",
-                   len(sentence), value, self.last_seconds * 1000)
+        _log.debug("scored a fragment of %d characters: %.2f in %.0f ms",
+                   len(fragment_text), value, self.last_seconds * 1000)
         return value
 
     def warm_up(self) -> bool:
-        """Asks for one throwaway score so the model is loaded before a real sentence needs it.
+        """Asks for one throwaway score so the model is loaded before a real fragment needs it.
 
         Returns True if the model answered with a score. Call this once at startup; the first
         request after a server starts can take many seconds.
         """
-        return self.score(WARM_UP_SENTENCE) is not None
+        return self.score(WARM_UP_FRAGMENT) is not None
 
-    def interpret(self, sentence: str) -> Optional[Interpretation]:
-        """One debug run for a sentence: the model's written reply and the score from the same run, or None.
+    def explain(self, fragment_text: str) -> Optional[Explanation]:
+        """One debug run for a fragment: the model's written reply and the score from the same run, or None.
 
         The reply is whatever the debug prompt asks for (by default the score and the content that
         earned it, as a comma-separated list). Slow: it writes words. Never raises (except in strict
         mode); with no debug prompt, or after a failure, it returns None.
         """
-        if not self.can_interpret or not isinstance(sentence, str) or not sentence.strip():
+        if not self.can_explain or not isinstance(fragment_text, str) or not fragment_text.strip():
             return None
         body = {
-            "messages": [{"role": "system", "content": self._debug_prompt},
-                         {"role": "user", "content": USER_TEMPLATE.format(sentence=sentence.strip())}],
-            "max_tokens": INTERPRET_MAX_TOKENS, "temperature": 0, "logprobs": True, "top_logprobs": 20,
+            "messages": [{"role": "system", "content": self._explain_prompt},
+                         {"role": "user", "content": USER_TEMPLATE.format(fragment_text=fragment_text.strip())}],
+            "max_tokens": EXPLAIN_MAX_TOKENS, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},
         }
         started = time.perf_counter()
         try:
-            reply = self._post(self._url, body, self._interpret_timeout)
+            reply = self._post(self._url, body, self._explain_timeout)
             text = reply["choices"][0]["message"]["content"].strip()
         except Exception as error:               # a dead server or an odd reply must not stop the debug view
             self.last_seconds = time.perf_counter() - started
-            self.report.warn(f"the model did not give an interpretation ({type(error).__name__})")
+            self.report.warn(f"the model did not give an explanation ({type(error).__name__})")
             return None
         self.last_seconds = time.perf_counter() - started
-        _log.debug("interpreted a sentence of %d characters in %.0f ms", len(sentence), self.last_seconds * 1000)
-        return Interpretation(text, expected_digit(reply)) if text else None
+        _log.debug("explained a fragment of %d characters in %.0f ms", len(fragment_text), self.last_seconds * 1000)
+        return Explanation(text, score_from_probabilities(reply)) if text else None

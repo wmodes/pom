@@ -220,6 +220,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Hearing-debug uses the ConvoInterestTracker instead of a fixed threshold.** Every score goes to the real
+  tracker; a sentence that stands out from the room's average interest (by `trigger_fraction`, after `min_scores`)
+  is marked `<-- would trigger`, and each line ends with a note: the average and the bar, a warm-up count, or
+  `below the floor, ignored`. The `--threshold` option is gone; the startup banner prints the trigger settings.
+  Reloading the config restarts the average, and `r` re-runs do not count a sentence twice.
 - **Trigger settings renamed and re-based (Wes).** `floor_fraction` is `floor_ignore_fraction` (clearer: the bottom
   fraction of the score range that is ignored). `interest_weight` is replaced by `interest_half_life`, in scores:
   how many more scores it takes for an old score's pull on avg_convo_interest to halve (10, which works out to

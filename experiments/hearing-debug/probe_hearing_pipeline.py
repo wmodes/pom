@@ -8,7 +8,9 @@ the Mac against a recording):
 
 For every sentence it prints the Scorer's score (the real `pom` Scorer, built from config/pom.toml) and,
 a little later, the model's own written account of why: the content it found that earned the score,
-from the debug prompt. Lines at or above the threshold are marked as ones that would trigger.
+from the debug prompt. Each score also goes to the real `pom` ConvoInterestTracker, which keeps the room's
+average interest, and a sentence that stands out from that average by the configured margin is marked as one
+that would trigger. There is no fixed threshold: the bar moves with the room.
 
 THE CLOSED LOOP. The config file is checked before every utterance. Edit the prompts in
 config/pom.toml (deliver it with git using probe_hearing_tune.sh watch) and the next thing you say is
@@ -24,7 +26,7 @@ transcript of the room is kept; this is a development tool used on purpose, by s
 Usage:
     probe_hearing_pipeline.py                       # listen on the Pi's microphone
     probe_hearing_pipeline.py --wav clip.wav        # replay a 16 kHz mono recording instead
-    probe_hearing_pipeline.py --threshold 7.0 --model small.en --no-explain
+    probe_hearing_pipeline.py --model small.en --no-explain
 
 While running, type: r (re-score the recent sentences), ? (help), q (quit).
 
@@ -66,7 +68,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
-from pom.scoring import ScorerModelClient, Scorer, WordTagger        # noqa: E402
+from pom.scoring import ConvoInterestTracker, ScoreEffect, ScorerModelClient, Scorer, WordTagger   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
 
@@ -409,8 +411,10 @@ class Brain:
         self._score_timeout = score_timeout        # at least this long to wait for a score (0 = as configured)
         self._mtime = None
         self.settings = None
+        self.trigger = None
         self.client = None
         self.scorer = None
+        self.tracker = None
         self.refresh()
 
     def refresh(self) -> Optional[str]:
@@ -430,16 +434,20 @@ class Brain:
                                 explain_prompt=settings.prompt_debug)
         self.scorer = Scorer(client, self._word_tagger, fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-        self.client, self.settings = client, settings
-        problems = config.report.lines() + client.report.lines()
+        self.client, self.settings, self.trigger = client, settings, config.trigger
+        # A new config can mean new prompts, and a score under new wording is not the same measure, so the
+        # room's average interest starts over whenever the config is reloaded.
+        self.tracker = ConvoInterestTracker(self.trigger.floor_ignore_fraction, self.trigger.trigger_fraction,
+                                            self.trigger.interest_half_life, self.trigger.min_scores)
+        problems = config.report.lines() + client.report.lines() + self.tracker.report.lines()
         note = "; ".join(problems)
         if first:
             return f"config loaded{(' (problems: ' + note + ')') if note else ''}"
         changed = [name for name in ("prompt_scoring", "prompt_output", "prompt_output_debug", "url", "fragment_filter_score",
                                      "min_content_words")
                    if getattr(before, name) != getattr(settings, name)]
-        return (f"config reloaded: {', '.join(changed) if changed else 'no scorer setting changed'}"
-                f"{(' (problems: ' + note + ')') if note else ''}")
+        return (f"config reloaded: {', '.join(changed) if changed else 'no scorer setting changed'}; "
+                f"the room's average interest starts over{(' (problems: ' + note + ')') if note else ''}")
 
     def fingerprint(self) -> str:
         s = self.settings
@@ -452,9 +460,8 @@ class Brain:
 class Display:
     """Prints to the terminal, one thread at a time."""
 
-    def __init__(self, threshold: float):
+    def __init__(self):
         self._lock = threading.Lock()
-        self.threshold = threshold
 
     def line(self, text: str = "") -> None:
         with self._lock:
@@ -464,23 +471,21 @@ class Display:
         return time.strftime("%H:%M:%S")
 
     def sentence(self, number: int, score: Optional[float], source: str, text: str,
-                 previous: Optional[float] = None) -> None:
-        mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
+                 previous: Optional[float] = None, standing: str = "") -> None:
         was = f"   (was {previous:.2f})" if previous is not None else ""
         shown = f"{score:5.2f}" if score is not None else "  -  "          # None: the scorer model gave no score
-        self.line(f"  #{number:<3} {shown}  {source:<15} {text}{was}{mark}")
+        self.line(f"  #{number:<3} {shown}  {source:<15} {text}{was}{standing}")
 
     def pending(self, number: int, text: str) -> None:
         """A sentence that has been heard and is waiting for its one debug run."""
         self.line(f"  #{number:<3}  ....  waiting  {text}")
 
     def result(self, number: int, score: Optional[float], run, seconds: float, text: str,
-               previous: Optional[float] = None) -> None:
+               previous: Optional[float] = None, standing: str = "") -> None:
         """One debug run: the score and the reasons, which came out of the same output."""
         shown = f"{score:5.2f}" if score is not None else "  ?  "
-        mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
         was = f"   (was {previous:.2f})" if previous is not None else ""
-        self.line(f"  #{number:<3} {shown}  debug    {text}{was}{mark}")
+        self.line(f"  #{number:<3} {shown}  debug    {text}{was}{standing}")
         wrote = parse_written_score(run.text)
         foot = f"{seconds:.1f} s; score from this run's first-token probabilities"
         if wrote is not None:
@@ -515,6 +520,25 @@ class Pipeline:
         self.segmenter = None                                        # set once listening starts
         self.interactive = sys.stdin.isatty()                        # someone can type r, e, l, q
         self.stop = threading.Event()
+        self.tracker_lock = threading.Lock()                         # two threads hand scores to the tracker
+
+    def standing(self, score: Optional[float]) -> str:
+        """Hands one score to the tracker and describes where it stands, for the end of its line.
+
+        The bar it had to clear is read before the score goes in, because the tracker judges a score against
+        the average as it stood before that score was added.
+        """
+        tracker, min_scores = self.brain.tracker, self.brain.trigger.min_scores
+        with self.tracker_lock:
+            bar = tracker.trigger_level
+            effect = tracker.record(score)
+            interest, counted = tracker.avg_convo_interest, tracker.counted
+        if effect is ScoreEffect.IGNORED:
+            return "" if score is None else "   [below the floor, ignored]"
+        detail = f"interest {interest:.2f}" + (f", bar {bar:.2f}" if bar is not None else "")
+        if counted <= min_scores:                  # this score came before the trigger was allowed to fire
+            return f"   [warming up {counted}/{min_scores}; {detail}]"
+        return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [{detail}]"
 
     @staticmethod
     def vad_note(args) -> Optional[str]:
@@ -609,15 +633,19 @@ class Pipeline:
                 # Fast mode, or a sentence the filter keeps from the model: the Printer's one-token score, straight away.
                 scored = self.brain.scorer.score(fragment)
                 self.history.append(Heard(number, fragment.text, scored.score, scored.scored_by.value))
-                self.display.sentence(number, scored.score, scored.scored_by.value, fragment.text)
+                self.display.sentence(number, scored.score, scored.scored_by.value, fragment.text,
+                                      standing=self.standing(scored.score))
 
     def debug_mode(self) -> bool:
         """True if each sentence gets one debug run (score and reasons together) instead of the one-token score."""
         return self.args.explain and self.brain.client.can_explain
 
-    def _queue_run(self, number: int, text: str, previous: Optional[float] = None) -> None:
-        """Queues a sentence for its debug run; the model takes them one at a time, in order."""
-        item = (number, text, previous)
+    def _queue_run(self, number: int, text: str, previous: Optional[float] = None, feed: bool = True) -> None:
+        """Queues a sentence for its debug run; the model takes them one at a time, in order.
+
+        `feed` is False for a re-run (the r command), so the same sentence is not counted twice.
+        """
+        item = (number, text, previous, feed)
         try:
             self.run_queue.put_nowait(item)
         except queue.Full:
@@ -633,7 +661,7 @@ class Pipeline:
             item = self.run_queue.get()
             if item is None:
                 return
-            number, text, previous = item
+            number, text, previous, feed = item
             client = self.brain.client
             if not client.can_explain:
                 continue
@@ -645,7 +673,8 @@ class Pipeline:
             for entry in self.history:
                 if entry.number == number:
                     entry.score, entry.source = score, "debug"
-            self.display.result(number, score, run, client.last_seconds or 0.0, text, previous)
+            self.display.result(number, score, run, client.last_seconds or 0.0, text, previous,
+                                standing=self.standing(score) if feed else "")
 
     # commands typed at the terminal
     def rescore(self) -> None:
@@ -655,7 +684,7 @@ class Pipeline:
                           f"with [{self.brain.fingerprint()}]" + (f" ({changed})" if changed else ""))
         for item in list(self.history):
             if self.debug_mode() and not self.brain.scorer.is_fragment_filtered(item.text):
-                self._queue_run(item.number, item.text, previous=item.score)
+                self._queue_run(item.number, item.text, previous=item.score, feed=False)
             else:
                 scored = self.brain.scorer.score_text(item.text)
                 self.display.sentence(item.number, scored.score, scored.scored_by.value, item.text, previous=item.score)
@@ -690,7 +719,6 @@ def main() -> None:
     parser.add_argument("--vad-threshold", type=float, default=0.5, help="how sure the VAD must be that it is speech")
     parser.add_argument("--no-sounds", dest="sounds", action="store_false",
                         help="skip the second pass that keeps song lyrics and sound captions the VAD ignores")
-    parser.add_argument("--threshold", type=float, default=7.0, help="mark scores at or above this (default 7.0)")
     parser.add_argument("--no-explain", dest="explain", action="store_false",
                         help="fast mode: score each sentence at once with the Printer's one-token scorer, no reasons")
     parser.add_argument("--history", type=int, default=12, help="sentences kept in memory for the r command")
@@ -703,11 +731,15 @@ def main() -> None:
     nltk_dir = ROOT / "data" / "nltk"
     brain = Brain(Path(args.config), WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                   score_timeout=args.score_timeout)
-    display = Display(args.threshold)
+    display = Display()
     display.line("hearing-debug: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     display.line(f"  {brain.refresh() or 'config loaded'}  [{brain.fingerprint()}]")
-    display.line(f"  scorer at {brain.settings.url}; whisper {args.model}; threshold {args.threshold:g}; "
+    display.line(f"  scorer at {brain.settings.url}; whisper {args.model}; "
                  f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
+    trigger = brain.trigger
+    display.line(f"  trigger: ignore scores below {brain.tracker.avg_convo_floor:.2f}; mark a score {trigger.trigger_fraction:.0%} "
+                 f"above the room's average interest (which covers about the last {trigger.interest_half_life:g} scores); "
+                 f"nothing is marked until {trigger.min_scores} scores have counted")
     display.line(f"  hearing: whisper {args.model}, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")

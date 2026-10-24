@@ -12,8 +12,16 @@ microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Score
 ```
 
 For every sentence it prints the real `pom` Scorer's score, and a little later the model's own written
-account of why: the content it found that earned the score. Sentences at or above the threshold (7.0 to
-start) are marked as ones that would trigger.
+account of why: the content it found that earned the score. Each score also goes to the real
+`ConvoInterestTracker`, which keeps the room's average interest, and a sentence that stands out from that
+average is marked `<-- would trigger`. There is no fixed threshold: the bar moves with the room.
+
+At the end of each line a note says where the score stands, for example `[interest 4.31, bar 4.74]` (the
+room's average interest after this score, and the score the sentence had to reach), `[warming up 3/10; ...]`
+(not enough scores have counted yet for anything to trigger), or `[below the floor, ignored]`. The settings
+are in the `[trigger]` section of `config/pom.toml`, and the startup banner prints the ones in force.
+Reloading the config restarts the average, because a changed prompt changes what a score means. The `r`
+command re-runs sentences without counting them again.
 
 The Scorer, its settings and its prompts are the real thing, read from `config/pom.toml`. The
 microphone handling (cutting at pauses, level normalization, whisper) is a quick stand-in for modules
@@ -59,7 +67,7 @@ cd experiments/hearing-debug
 
 `probe_hearing_run.sh` sets the microphone gain, starts the language model (from `~/pom/data/models`), runs
 the pipeline on the live config (or `config/pom.toml` if there is none) and stops the model when you quit. Useful options (all passed through): `--model small.en` for a bigger whisper
-model, `--threshold 7.0`, `--no-explain` for **fast mode** (each sentence scored at once by the Printer's
+model, `--no-explain` for **fast mode** (each sentence scored at once by the Printer's
 one-token scorer, no reasons, much lighter on the CPU), `--margin-db 4` if music or noise is masking speech, `--speed 0` to play a recording as fast as possible.
 
 To try it on the Mac against a recording, set `POM_SCORER_URL` to a running llama-server and use `--wav`;

@@ -24,6 +24,7 @@ confirm.
 
 - **score**: the process of assigning a value to each incoming chunk, and the value itself
   (1.00 to 9.99). The Scorer does it with a small language model.
+- **scoring model** †: the small language model that scores chunks (Qwen3-4B for now); not the voice.
 - **chunk_filter**: the check in front of the Scorer that gives chunks with no content words (such as
   "or not.") the lowest score without asking the model.
 - **fallback** †: the rough word-based score used when the model does not answer.
@@ -41,7 +42,7 @@ confirm.
 - **corpus**: the material from which the language model draws example material for its output.
 - **register** †: one kind of writing in the corpus (the 14 registers include `nonsense`).
 - **source** †: one text in the corpus, such as Alice's Adventures in Wonderland.
-- **exemplars** †: the pieces of corpus drawn at random for one portent, as examples of voice.
+- **exemplar**: a piece of the corpus drawn at random for one portent, as an example of voice.
 - **weights**: values we assign to scale things proportionally, such as how often each register
   and source is drawn.
 - **portent**: the output of the language model that is ultimately typed.

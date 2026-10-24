@@ -6,4 +6,4 @@ Helpers that run on the Mac while developing, grouped by task.
   - `corpus/validate_output.py` is a stub for checks on a voice's replies. It reports nothing yet; the reasons are in its header.
   - `corpus/sample.py` plays with the ExemplarSelector: prints pulls of random chunks, or measures
     the long-run register shares.
-- `listening/`: `fragment.py` shows where the Fragmenter cuts a piece of speech into hinge candidates.
+- `listening/`: `fragment.py` shows where the SegmentFragmenter cuts a piece of speech into hinge candidates.

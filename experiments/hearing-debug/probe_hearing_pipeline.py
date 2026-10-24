@@ -68,7 +68,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                  # noqa: E402
 from pom.hinge import ScorerModelClient, Scorer, WordTagger        # noqa: E402
 from pom.hinge.scorer_model_client import parse_written_score      # noqa: E402
-from pom.listening.fragmenter import Fragmenter, Kind          # noqa: E402
+from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
 
 SAMPLE_RATE = 16000
 FRAME_MS = 30
@@ -504,7 +504,7 @@ class Pipeline:
         self.args, self.brain, self.display = args, brain, display
         self.transcriber = Transcriber(args.model, args.whisper_threads, use_vad=args.vad,
                                        vad_threshold=args.vad_threshold, sounds=args.sounds)
-        self.fragmenter = Fragmenter(max_words=40)
+        self.fragmenter = SegmentFragmenter(max_words=40)
         self.utterances = queue.Queue(maxsize=6)
         self.run_queue = queue.Queue(maxsize=40)                     # sentences waiting for their debug run (cheap to hold)
         self.history = collections.deque(maxlen=args.history)       # in memory only; for the `r` command
@@ -596,7 +596,7 @@ class Pipeline:
         self.display.line(f"\n[{self.display.stamp()}] heard {utterance.seconds:.1f} s ({label}, peak {utterance.peak_db:.0f} dB, "
                           f"whisper {took:.1f} s): \"{text}\"")
         for fragment in self.fragmenter.split(text):
-            if fragment.kind is not Kind.SENTENCE:
+            if fragment.level is not FragmentLevel.SENTENCE:
                 continue
             self.count += 1
             number = self.count

@@ -205,6 +205,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`Fragmenter` is now `SegmentFragmenter`** (`src/pom/listening/segment_fragmenter.py`; `FragmenterError` is
+  `SegmentFragmenterError`), named for what it does: it fragments segments. `Kind` is `FragmentLevel` and
+  `Fragment.kind` is `Fragment.level` (sentence, clause or phrase); `Fragment.at` and the `at` argument of
+  `split()` and `score_text()` are `heard_at`. Tests moved to `tests/listening/test_segment_fragmenter.py`. No
+  behavior changed.
 - **Scorer vocabulary now follows the lexicon.** `Source` is `ScoredBy` (values `MODEL`, `FRAGMENT_FILTER`,
   `UNSCORED`; the strings are `model`, `fragment_filter`, `unscored`), `ScoredFragment.source` is `.scored_by`,
   `is_filtered()` is `is_fragment_filtered()`, and the Scorer's `floor` argument is `fragment_filter_score`

@@ -19,7 +19,7 @@ summarized below.
 
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
   now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`), the
-  `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter), the
+  `SegmentFragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter), the
   `ScorerModelClient` (asks llama-server for a fragment's score) and the `Scorer` (filter, model,
   circuit breaker; a fragment the model cannot score is left unscored).
 - **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
@@ -29,7 +29,7 @@ summarized below.
 - **Corpus:** 81 sources, 14 registers, about 72,000 chunks, public on GitHub. Alice's Adventures in
   Wonderland went in as the 14th register (`nonsense`) to test how hard growing the corpus is: easy.
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see
-  what is unpushed; as of writing that is the Fragmenter, its helper script and this handoff.
+  what is unpushed; as of writing that is the SegmentFragmenter, its helper script and this handoff.
 - **Not built yet:** everything from the Trigger policy up (see "Next steps"), the Voice and model
   runner, the Output side, the Conductor, and the Pi deployment. The LLM bake-off, the Track B
   fine-tune and the curated hinge pairs have not been started.
@@ -83,7 +83,7 @@ src/pom/
     chunk_store.py     built   reads corpus/chunks/*.jsonl into immutable Chunk objects
     exemplar_selector.py built weighted random draws; 3 to 5 chunks per pull; no repeats in a pull
   listening/
-    fragmenter.py      built   transcript text -> sentence / clause / phrase fragments, all levels
+    segment_fragmenter.py built transcript text -> sentence / clause / phrase fragments, all levels
     (audio source, transcriber [whisper.cpp], room energy: planned)
   hinge/
     word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
@@ -97,7 +97,7 @@ src/pom/
 
 ## Design decisions to keep
 
-**The pipeline.** Whisper transcribes; the Fragmenter cuts the text into candidates at all levels
+**The pipeline.** Whisper transcribes; the SegmentFragmenter cuts the text into candidates at all levels
 (sentence, clause, phrase), each stamped with a time. A scorer rates how interesting each is.
 Scores fade with age (so hinges come from roughly the last minute). An utterance triggers when the
 best recent fragment clears a moving threshold: lower in a quiet room, higher in a loud one, driven
@@ -169,7 +169,7 @@ by default share the draws equally.
 
 python -m pytest -q                                     # all tests (use PYTHONDONTWRITEBYTECODE=1)
 python scripts/dev/corpus/sample.py --pulls 3           # play with the ExemplarSelector (--stats N for shares)
-python scripts/dev/listening/fragment.py "Hi, there."   # play with the Fragmenter
+python scripts/dev/listening/fragment.py "Hi, there."   # play with the SegmentFragmenter
 python scripts/dev/corpus/audit.py                      # artifact rates per ready/ file
 python scripts/dev/corpus/chunk.py                      # regenerate corpus/chunks/
 python scripts/dev/corpus/draw_weights.py               # the draw-odds table
@@ -182,9 +182,9 @@ llama.cpp setup scripts.
 ## Decisions since the first handoff (2026-10-21, later)
 
 - **Pipeline written out as workers with handoff triggers** (Microphone, Segmenter, Transcriber,
-  Fragmenter, Scorer, Trigger policy, Hinge picker, then Prompt builder, Voice, Output; plus an
+  SegmentFragmenter, Scorer, Trigger policy, Hinge picker, then Prompt builder, Voice, Output; plus an
   Activity tracker and the keyboard Input). Wes has the current wording in his design notes.
-- **Words:** a *fragment* is a piece the Fragmenter cuts; the Scorer makes *scored fragments*, also
+- **Words:** a *fragment* is a piece the SegmentFragmenter cuts; the Scorer makes *scored fragments*, also
   called *candidate hinges*; the *hinge* is the one the Hinge picker finally chooses.
 - **Conductor uses asyncio** (Wes dislikes blocking Python): each worker is an async task with an
   `asyncio.Queue` between them; leaf modules stay plain synchronous code; anything that blocks is
@@ -206,7 +206,7 @@ llama.cpp setup scripts.
   The prompt (in config eventually) keeps the definition of "interesting" separate from the meaning of
   the numbers, with no persona. Scores run low and relative (top about 6 to 8), so the trigger must
   work from rank and gaps, not a fixed high threshold; the hinge picker's temperature does this.
-  Fragments become **whole sentences** (the Fragmenter gets a config setting for which levels it
+  Fragments become **whole sentences** (the SegmentFragmenter gets a config setting for which levels it
   emits; clauses and phrases stay available). The word tagger stays as the filter. The
   word-counting fallback is shelved, unused, in `hinge/fallback_scorer.py`. Evidence, rules and results: `experiments/interest-scorer/`.
 - **Pi timing done** (`experiments/pi-benchmark/`, 2026-10-22): with whisper running flat out on shared
@@ -273,7 +273,7 @@ llama.cpp setup scripts.
    the Scorer on.
 1. **Trigger policy**: the moving threshold, its jump and decay after a print, and fading of old
    scores. Pure math over time, no clock inside (pass time in).
-2. **Fragmenter setting** for which levels to emit (sentences only by default).
+2. **SegmentFragmenter setting** for which levels to emit (sentences only by default).
 3. **Hinge picker**: weighted random pick from the top candidates, with a temperature.
 4. **Prompt builder**: persona and system messages come from config; it draws exemplars from the
    ExemplarSelector. Config will need multi-line strings and probably sections.

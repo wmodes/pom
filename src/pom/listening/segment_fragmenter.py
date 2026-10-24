@@ -1,4 +1,4 @@
-"""The Fragmenter: cuts a transcript into the pieces a hinge can be chosen from.
+"""The SegmentFragmenter: cuts a transcript into the pieces a hinge can be chosen from.
 
 Whisper turns speech into punctuated text. The oracle does not answer the whole conversation; it
 picks a word, a phrase or a sentence from what was just said and lets it in sideways. This module
@@ -15,7 +15,7 @@ sentence with no commas has no separate phrases) is not repeated. A single word 
 fragment.
 
 Order is depth first and in speech order: a sentence, then its first clause, that clause's phrases,
-its next clause, and so on, then the next sentence. Each fragment carries the `at` time it was
+its next clause, and so on, then the next sentence. Each fragment carries the `heard_at` time it was
 given (the segment's timestamp, used later to fade old fragments) and the index of its sentence.
 
 Design decisions, and why:
@@ -27,7 +27,7 @@ Design decisions, and why:
     decimals, times and thousands separators are safe because a break needs whitespace after it.
   * Nothing here may stop the oracle (see pom/__init__.py). Text that is not a string, or has no
     letters or digits, gives an empty list; a bad `max_words` falls back to the default with a
-    warning. `strict=True` raises FragmenterError instead, for tests and dev tools.
+    warning. `strict=True` raises SegmentFragmenterError instead, for tests and dev tools.
   * A fragment longer than `max_words` (Whisper missed the punctuation) is cut into consecutive
     windows of that many words, so a hinge is always a bounded size.
 """
@@ -56,11 +56,11 @@ _EDGES = " \t\r\n,;:-—–"
 _QUOTES = "\"“”"
 
 
-class FragmenterError(ValueError):
+class SegmentFragmenterError(ValueError):
     """Raised for any fragmenter problem, but only in strict mode (development and tests)."""
 
 
-class Kind(Enum):
+class FragmentLevel(Enum):
     """How a fragment was cut."""
     SENTENCE = "sentence"
     CLAUSE = "clause"
@@ -73,13 +73,13 @@ class Fragment:
 
     Attributes:
         text: The words, as spoken (internal punctuation kept; surrounding separators trimmed).
-        kind: SENTENCE, CLAUSE or PHRASE.
-        at: The timestamp given for the text this came from (seconds; 0.0 if none was given).
+        level: SENTENCE, CLAUSE or PHRASE.
+        heard_at: The timestamp given for the text this came from (seconds; 0.0 if none was given).
         sentence: Index of the sentence it belongs to within the input text, from 0.
     """
     text: str
-    kind: Kind
-    at: float = 0.0
+    level: FragmentLevel
+    heard_at: float = 0.0
     sentence: int = 0
 
     @property
@@ -88,7 +88,7 @@ class Fragment:
         return len(self.text.split())
 
 
-class Fragmenter:
+class SegmentFragmenter:
     """Cuts transcript text into sentence, clause and phrase fragments.
 
     Attributes:
@@ -99,9 +99,9 @@ class Fragmenter:
         """Args:
             max_words: The most words a fragment may have; longer ones are cut into windows of
                 this size. A whole number of at least 1.
-            strict: Raise FragmenterError on any problem instead of recording it.
+            strict: Raise SegmentFragmenterError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=FragmenterError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=SegmentFragmenterError, logger=_log)
         if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
             self._max_words = max_words
         else:
@@ -114,12 +114,12 @@ class Fragmenter:
         """The word limit in use after validation."""
         return self._max_words
 
-    def split(self, text, at: float = 0.0) -> list:
+    def split(self, text, heard_at: float = 0.0) -> list:
         """Cuts text into fragments at every level.
 
         Args:
             text: Punctuated transcript text (one Whisper segment, or several).
-            at: The timestamp to stamp on every fragment, in seconds.
+            heard_at: The timestamp to stamp on every fragment, in seconds.
 
         Returns:
             A list of Fragments, depth first and in speech order; empty if there is no text.
@@ -131,7 +131,7 @@ class Fragmenter:
         fragments: list = []
         sentences = self._sentences(" ".join(text.split()))
         for index, sentence in enumerate(sentences):
-            fragments.extend(self._levels(sentence, index, at))
+            fragments.extend(self._levels(sentence, index, heard_at))
         _log.debug("split %d character(s) into %d sentence(s) and %d fragment(s)",
                    len(text), len(sentences), len(fragments))
         return fragments
@@ -167,11 +167,11 @@ class Fragmenter:
 
     # --- The three levels -----------------------------------------------------------
 
-    def _levels(self, sentence: str, index: int, at: float) -> list:
+    def _levels(self, sentence: str, index: int, heard_at: float) -> list:
         """The sentence, its clauses, and their phrases, skipping any that only repeat a level above."""
         out, seen = [], set()
 
-        def add(text: str, kind: Kind) -> None:
+        def add(text: str, level: FragmentLevel) -> None:
             text = self._clean(text)
             key = re.sub(r"[.!?]+$", "", text).casefold()
             if key in seen:
@@ -179,13 +179,13 @@ class Fragmenter:
             seen.add(key)
             for window in self._windows(text):
                 if any(c.isalnum() for c in window):      # a window of bare punctuation is no hinge
-                    out.append(Fragment(window, kind, at, index))
+                    out.append(Fragment(window, level, heard_at, index))
 
-        add(sentence, Kind.SENTENCE)
+        add(sentence, FragmentLevel.SENTENCE)
         for clause in _CLAUSE_BREAK.split(sentence):
-            add(clause, Kind.CLAUSE)
+            add(clause, FragmentLevel.CLAUSE)
             for phrase in _PHRASE_BREAK.split(clause):
-                add(phrase, Kind.PHRASE)
+                add(phrase, FragmentLevel.PHRASE)
         return out
 
     @staticmethod

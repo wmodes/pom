@@ -6,7 +6,7 @@ import pytest
 from pom.hinge.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FRAGMENT_FILTER_SCORE,
                               DEFAULT_RETRY_SECONDS, ScoredBy, ScoredFragment, Scorer, ScorerError)
 from pom.hinge.word_tagger import WordTagger
-from pom.listening.fragmenter import Fragment, Kind
+from pom.listening.segment_fragmenter import Fragment, FragmentLevel
 
 STOP = {"the", "a", "my", "i", "you", "and", "is", "it", "to", "of", "me"}
 
@@ -60,8 +60,8 @@ def make(client=None, **options):
     return Scorer(client or FakeClient(), words(), **options)
 
 
-def fragment(text, at=0.0):
-    return Fragment(text=text, kind=Kind.SENTENCE, at=at)
+def fragment(text, heard_at=0.0):
+    return Fragment(text=text, level=FragmentLevel.SENTENCE, heard_at=heard_at)
 
 
 class TestModel:
@@ -72,14 +72,14 @@ class TestModel:
         assert client.calls == ["The lamp hums."]
 
     def test_the_result_carries_the_fragment(self):
-        f = fragment("The lamp hums.", at=12.5)
+        f = fragment("The lamp hums.", heard_at=12.5)
         result = make().score(f)
         assert isinstance(result, ScoredFragment) and result.fragment is f
         assert result.text == "The lamp hums."
 
     def test_score_text_makes_a_sentence_fragment(self):
-        result = make().score_text("The lamp hums.", at=3.0)
-        assert result.fragment.kind is Kind.SENTENCE and result.fragment.at == 3.0
+        result = make().score_text("The lamp hums.", heard_at=3.0)
+        assert result.fragment.level is FragmentLevel.SENTENCE and result.fragment.heard_at == 3.0
 
     def test_score_many_keeps_the_order_given(self):
         client = FakeClient()
@@ -182,7 +182,7 @@ class TestUnscored:
         assert result.scored_by is ScoredBy.UNSCORED and result.score is None
 
     def test_the_unscored_result_still_carries_the_fragment(self):
-        f = fragment("The lamp hums.", at=4.0)
+        f = fragment("The lamp hums.", heard_at=4.0)
         result = self.scorer_without_model().score(f)
         assert result.fragment is f and result.text == "The lamp hums."
 

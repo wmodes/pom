@@ -1,6 +1,6 @@
 """The Scorer: gives each overheard fragment an interest score, so the Trigger can pick a hinge.
 
-A fragment goes in (normally a whole sentence, from the Fragmenter); a `ScoredFragment` comes out,
+A fragment goes in (normally a whole sentence, from the SegmentFragmenter); a `ScoredFragment` comes out,
 the fragment plus a score and where the score came from. Scores run from about 1 (nothing to hold
 on to) to about 9.99 (extremely interesting). They are relative, not absolute: on the experiment's
 sample the best sentence scored only about 8, and ordinary talk 2 to 3, so whatever uses them
@@ -39,7 +39,7 @@ from enum import Enum
 from typing import Callable, Iterable, Optional
 
 from pom.hinge.word_tagger import WordTagger
-from pom.listening.fragmenter import Fragment, Kind
+from pom.listening.segment_fragmenter import Fragment, FragmentLevel
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
@@ -159,9 +159,9 @@ class Scorer:
         """The filter rule, in one place: nothing to ask about, or fewer content words than the setting needs."""
         return not text.strip() or len(content) < self._min_content
 
-    def score_text(self, text: str, at: float = 0.0) -> ScoredFragment:
+    def score_text(self, text: str, heard_at: float = 0.0) -> ScoredFragment:
         """Scores plain text as a one-sentence fragment (for playgrounds and tests)."""
-        return self.score(Fragment(text=text or "", kind=Kind.SENTENCE, at=at))
+        return self.score(Fragment(text=text or "", level=FragmentLevel.SENTENCE, heard_at=heard_at))
 
     def score_many(self, fragments: Iterable[Fragment]) -> list:
         """Scores each fragment on its own, in the order given."""

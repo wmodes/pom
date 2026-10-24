@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Iterable, Optional
 
-from pom.hinge.word_tagger import WordTagger
+from pom.scoring.word_tagger import WordTagger
 from pom.listening.segment_fragmenter import Fragment, FragmentLevel
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder

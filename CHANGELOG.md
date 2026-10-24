@@ -205,6 +205,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The `hinge/` package is now `scoring/`** (`src/pom/scoring/`, tests in `tests/scoring/`): it scores
+  fragments, and the hinge is only the fragment the trigger will choose. Import paths and module log names
+  changed from `pom.hinge...` to `pom.scoring...`. No behavior changed.
 - **`Fragmenter` is now `SegmentFragmenter`** (`src/pom/listening/segment_fragmenter.py`; `FragmenterError` is
   `SegmentFragmenterError`), named for what it does: it fragments segments. `Kind` is `FragmentLevel` and
   `Fragment.kind` is `Fragment.level` (sentence, clause or phrase); `Fragment.at` and the `at` argument of

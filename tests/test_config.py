@@ -289,7 +289,7 @@ def test_scorer_defaults_when_nothing_is_set():
 
 
 def test_the_scorer_defaults_match_the_scorers_own():
-    from pom.hinge import scorer, scorer_model_client
+    from pom.scoring import scorer, scorer_model_client
     assert DEFAULT_SCORER_TIMEOUT == scorer_model_client.DEFAULT_TIMEOUT
     assert DEFAULT_SCORER_FLOOR == scorer.DEFAULT_FRAGMENT_FILTER_SCORE
     assert DEFAULT_SCORER_MIN_CONTENT_WORDS == scorer.DEFAULT_MIN_CONTENT_WORDS
@@ -375,9 +375,9 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
 
 
 def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
-    from pom.hinge.scorer_model_client import ScorerModelClient
-    from pom.hinge.scorer import ScoredBy, Scorer
-    from pom.hinge.word_tagger import WordTagger
+    from pom.scoring.scorer_model_client import ScorerModelClient
+    from pom.scoring.scorer import ScoredBy, Scorer
+    from pom.scoring.word_tagger import WordTagger
     config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfloor = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
     client = ScorerModelClient(settings.url, settings.prompt, settings.timeout,

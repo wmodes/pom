@@ -1,11 +1,11 @@
-"""Tests for pom.hinge.scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
+"""Tests for pom.scoring.scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
 import logging
 
 import pytest
 
-from pom.hinge.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FRAGMENT_FILTER_SCORE,
+from pom.scoring.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FRAGMENT_FILTER_SCORE,
                               DEFAULT_RETRY_SECONDS, ScoredBy, ScoredFragment, Scorer, ScorerError)
-from pom.hinge.word_tagger import WordTagger
+from pom.scoring.word_tagger import WordTagger
 from pom.listening.segment_fragmenter import Fragment, FragmentLevel
 
 STOP = {"the", "a", "my", "i", "you", "and", "is", "it", "to", "of", "me"}

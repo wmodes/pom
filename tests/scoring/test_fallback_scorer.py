@@ -1,8 +1,8 @@
-"""Tests for pom.hinge.fallback_scorer: the shelved word-counting scorer. Delete this file with the module."""
+"""Tests for pom.scoring.fallback_scorer: the shelved word-counting scorer. Delete this file with the module."""
 import pytest
 
-from pom.hinge.fallback_scorer import CEILING, DEFAULT_BASE, FallbackScorer
-from pom.hinge.word_tagger import WordTagger
+from pom.scoring.fallback_scorer import CEILING, DEFAULT_BASE, FallbackScorer
+from pom.scoring.word_tagger import WordTagger
 
 STOP = {"the", "a", "my", "i", "you", "and", "is", "it", "to", "of", "me"}
 

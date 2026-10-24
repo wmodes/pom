@@ -19,7 +19,7 @@ summarized below.
 
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
   now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`), the
-  `SegmentFragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter), the
+  `SegmentFragmenter`, the word tagger (`scoring/word_tagger.py`, the Scorer's filter), the
   `ScorerModelClient` (asks llama-server for a fragment's score) and the `Scorer` (filter, model,
   circuit breaker; a fragment the model cannot score is left unscored).
 - **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
@@ -85,9 +85,12 @@ src/pom/
   listening/
     segment_fragmenter.py built transcript text -> sentence / clause / phrase fragments, all levels
     (audio source, transcriber [whisper.cpp], room energy: planned)
-  hinge/
+  scoring/
     word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
-    (Scorer [small LLM, one sentence at a time], Trigger policy, Hinge picker: planned)
+    scorer_model_client.py built one fragment to the scorer model, one score (or an explanation) back
+    scorer.py          built   fragment_filter, scorer model, circuit breaker; unscored if no answer
+    fallback_scorer.py shelved word-counting stand-in for the scorer model; unused
+    (Trigger policy with avg_convo_floor and avg_convo_interest, Hinge picker: planned)
   prompt/              planned Prompt builder (system messages come from config)
   voice/               planned Voice interface, Track A and Track B voices, model runner (llama.cpp)
   output/              planned reply selection, formatter, serial port wrapper (pauses listening)
@@ -208,7 +211,7 @@ llama.cpp setup scripts.
   work from rank and gaps, not a fixed high threshold; the hinge picker's temperature does this.
   Fragments become **whole sentences** (the SegmentFragmenter gets a config setting for which levels it
   emits; clauses and phrases stay available). The word tagger stays as the filter. The
-  word-counting fallback is shelved, unused, in `hinge/fallback_scorer.py`. Evidence, rules and results: `experiments/interest-scorer/`.
+  word-counting fallback is shelved, unused, in `scoring/fallback_scorer.py`. Evidence, rules and results: `experiments/interest-scorer/`.
 - **Pi timing done** (`experiments/pi-benchmark/`, 2026-10-22): with whisper running flat out on shared
   cores, Qwen3-4B scores a sentence in a median 2.3 s (p95 3.2 s; 4.3 s in the harshest sustained case)
   and Llama-3.2-3B in 1.4 s; both use about 3 GB, peak 72 °C, no throttling. Whisper slows about 2.3
@@ -266,7 +269,7 @@ llama.cpp setup scripts.
 
 ## Next steps, in order
 
-0. **Scorer playground** (`scripts/dev/hinge/score.py`: text in, ranked scored sentences out), then
+0. **Scorer playground** (`scripts/dev/scoring/score.py`: text in, ranked scored sentences out), then
    the entry point that builds the client and Scorer from `config.scorer`. Starting things up is the job
    of `src/pom/startup.py`: the runner is built and the ten duties (mic gain, Scorer warm-up, checks
    for whisper, the voice model and the typewriter...) are placeholders in `planned_steps()` to fill in. The Pi benchmark is done (see above). Then collect more real-room transcripts to try

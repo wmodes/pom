@@ -1,7 +1,7 @@
-"""Tests for pom.hinge.word_tagger: reading text as words, with fakes so no NLTK data is needed."""
+"""Tests for pom.scoring.word_tagger: reading text as words, with fakes so no NLTK data is needed."""
 import pytest
 
-from pom.hinge.word_tagger import DEFAULT_FILLERS, Word, WordTagger, WordTaggerError
+from pom.scoring.word_tagger import DEFAULT_FILLERS, Word, WordTagger, WordTaggerError
 
 STOP = {"the", "my", "a", "about", "i", "you", "and"}
 

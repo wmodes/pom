@@ -1,7 +1,7 @@
 """The FallbackScorer: a crude, word-counting stand-in for the scorer model. NOT IN USE.
 
 This is shelved work, kept in case it is wanted again. Nothing imports it; the Scorer does not call
-it. To remove it for good, delete this file and `tests/hinge/test_fallback_scorer.py`; nothing else
+it. To remove it for good, delete this file and `tests/scoring/test_fallback_scorer.py`; nothing else
 depends on it.
 
 WHAT IT DOES

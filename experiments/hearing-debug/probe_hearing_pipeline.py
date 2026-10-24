@@ -66,8 +66,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
-from pom.hinge import ScorerModelClient, Scorer, WordTagger        # noqa: E402
-from pom.hinge.scorer_model_client import parse_written_score      # noqa: E402
+from pom.scoring import ScorerModelClient, Scorer, WordTagger        # noqa: E402
+from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
 
 SAMPLE_RATE = 16000

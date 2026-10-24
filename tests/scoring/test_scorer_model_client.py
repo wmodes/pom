@@ -1,10 +1,10 @@
-"""Tests for pom.hinge.scorer_model_client: scoring one fragment through a fake llama-server."""
+"""Tests for pom.scoring.scorer_model_client: scoring one fragment through a fake llama-server."""
 import logging
 import math
 
 import pytest
 
-from pom.hinge.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, DEFAULT_TIMEOUT, EXPLAIN_MAX_TOKENS,
+from pom.scoring.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, DEFAULT_TIMEOUT, EXPLAIN_MAX_TOKENS,
                                        USER_TEMPLATE, WARM_UP_FRAGMENT, ScorerModelClient, ScorerModelClientError,
                                        Explanation, score_from_probabilities, parse_written_score)
 

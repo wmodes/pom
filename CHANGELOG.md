@@ -212,6 +212,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Scorer prompt: the score is one digit, 0 to 9** (Wes). The scale now runs 0 to 9 in five two-digit buckets and
+  the model is asked to "Reply with a one digit number and nothing else" (was two decimals from 1.00 to 9.99); the
+  debug prompt asks for a single digit too. The old scale and output lines are kept as comments. The score itself
+  is unchanged in method: the probability-weighted average of the digits the model might say.
 - **The playground script prints scores to three significant figures** (`4.95`, `0.990`), so scores under 1 keep
   their detail.
 - **The probability-weighted score stays** (a whole-digit score was tried for an afternoon and reverted at Wes's

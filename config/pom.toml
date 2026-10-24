@@ -84,21 +84,31 @@ agreement, or plans and logistics.
 Score how strong the interesting content is. Strong content is vivid,
 specific, surprising, or deeply felt. One strong thing can score high.
 
-Score on a scale, from 1.00 to 9.99:
-1.00-1.99  not interesting: no interesting content
-2.00-3.99  slightly interesting: faint content
-4.00-5.99  interesting: clear content
-6.00-7.99  very interesting: strong content
-8.00-9.99  extremely interesting: intense content
+Score on a scale, from 0 to 9:
+0-1 not interesting: no interesting content
+2-3  slightly interesting: faint content
+4-5  interesting: clear content
+6-7  very interesting: strong content
+8-9  extremely interesting: intense content
 """
+
+# old scale
+# Score on a scale, from 1.00 to 9.99:
+# 1.00-1.99  not interesting: no interesting content
+# 2.00-3.99  slightly interesting: faint content
+# 4.00-5.99  interesting: clear content
+# 6.00-7.99  very interesting: strong content
+# 8.00-9.99  extremely interesting: intense content
 
 prompt_output = """
-Reply with a single number with two decimal places from 1.00 to 9.99 and nothing else.
+Reply with a one digit number and nothing else.
 """
 
+# Reply with a single number with two decimal places from # 1.00 to 9.99 and nothing else.
+
 prompt_output_debug = """
-Output the score as a single number with two decimal places from 1.00 to 9.99 | the sentence | what content you found that earned that score as a comma-separated list. Example:
-6.00 | I'm going to cut out your heart. | vivid, anger, threat, danger, death
+Output the score as a single digit | the sentence | what content you found that earned that score as a comma-separated list. Example:
+6 | I'm going to cut out your heart. | vivid, anger, threat, danger, death
 """
 
 

@@ -4,6 +4,8 @@ The words this project uses, so that code, docs, prompts and conversation all me
 Use these terms; propose a new one before using it. Terms marked † were added by Claude for Wes to
 confirm.
 
+A term that names a model always ends in *model*: oracle model, scorer model.
+
 ## The project
 
 - **The Printer** †: the whole installation, an IBM Wheelwriter 1000 driven by a Raspberry Pi, which
@@ -15,19 +17,20 @@ confirm.
 
 - **segment**: whisper's raw output, using whisper's own name for it.
 - **fragment**: one piece of a split segment, usually a sentence; the thing that gets scored.
-- **ambient caption** †: whisper's guess at a sound in the room, like `(dog barks)` or `[Music]`.
-  Never scored; kept as context for the voice.
+- **ambient caption**: whisper's guess at a sound in the room, like `(dog barks)` or `[Music]`.
+  Never scored; kept as context for the oracle model.
 - **lyrics** †: sung words whisper marks with music symbols. They are words, so they are scored.
 
 ## Scoring and triggering: choosing what to respond to
 
 - **score**: the process of assigning a value to each incoming fragment, and the value itself
-  (1.00 to 9.99). The Scorer does it with a small language model.
-- **scoring model** †: the small language model that scores fragments (Qwen3-4B for now); not the
-  voice.
-- **fragment_filter**: the check in front of the Scorer that gives fragments with no content words
-  (such as "or not.") the lowest score without asking the model.
-- **fallback** †: the rough word-based score used when the scoring model does not reply.
+  (1.00 to 9.99). The scorer does it, mostly with the scorer model.
+- **scorer**: the component that scores fragments: the fragment_filter, then the scorer model,
+  with the fallback if it doesn't reply.
+- **scorer model**: the small language model that scores fragments (Qwen3-4B for now).
+- **fragment_filter**: the check in front of the scorer model that gives fragments with no content
+  words (such as "or not.") the lowest score without asking the scorer model.
+- **fallback**: the rough word-based score used when the scorer model does not reply.
 - **avg_convo_floor** †: the line below which scores are ignored and do not feed avg_convo_interest;
   for now a fixed fraction of the score range.
 - **avg_convo_interest** †: a decaying moving average of the scores above the floor; how
@@ -36,28 +39,29 @@ confirm.
   for the Printer to respond.
 - **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.
 
-## Corpus: the material the voice draws on
+## Corpus: the material the oracle model draws on
 
-- **corpus**: the material from which the language model draws example material for its output.
+- **corpus**: the material exemplars are drawn from.
 - **register** †: one kind of writing in the corpus (the 14 registers include `nonsense`).
 - **source** †: one text in the corpus, such as Alice's Adventures in Wonderland.
 - **chunk**: one piece of the prepared corpus (made by the chunker); exemplars are drawn from
   chunks.
-- **exemplar**: a chunk drawn at random for one portent, as an example of voice.
-- **weights**: values we assign to scale things proportionally, such as how often each register
-  and source is drawn.
+- **exemplar**: a chunk drawn by weight for one portent, as an example of style.
+- **draw weights**: values we assign to scale things proportionally, such as how often each
+  register and source is drawn. Not to be confused with a model's weights.
 
 ## Writing: from hinge to portent
 
-- **voice** †: the language model that writes the portent from the hinge and the exemplars.
-- **portent**: the output of the language model that is ultimately typed.
+- **oracle model**: the medium language model that writes the portent from the hinge and the
+  exemplars.
+- **portent**: the oracle model's output; what gets typed.
 
 ## Where the code does not match yet †
 
 These names predate the lexicon. Each rename is Wes's decision.
 
 - **`InterestClient`** and the word "interest" in it describe scoring.
-- The Scorer calls the fragment_filter just the *filter* (`is_filtered`, and `filter` as a score's
+- The scorer calls the fragment_filter just the *filter* (`is_filtered`, and `filter` as a score's
   source).
 - The hearing-debug **`Segmenter`** cuts *audio* by loudness before whisper runs; it does not
   produce segments in whisper's sense.

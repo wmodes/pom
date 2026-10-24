@@ -25,7 +25,7 @@ ROOT = os.path.join(HERE, "..", "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "src"))    # scripts may import pom
 
 from pom.config import Config  # noqa: E402
-from pom.corpus import ChunkStore, Sampler, Weights  # noqa: E402
+from pom.corpus import ChunkStore, DrawWeights, Sampler  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 
@@ -68,7 +68,7 @@ def main():
     config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
     configure_logging(config.log_level if args.verbose else "WARNING")
     store = ChunkStore.load(os.path.join(ROOT, "corpus", "chunks"))
-    sampler = Sampler(store, Weights.from_file(args.weights), random.Random(args.seed),
+    sampler = Sampler(store, DrawWeights.from_file(args.weights), random.Random(args.seed),
                       samples=config.samples)
     if not sampler.ready:
         sys.exit("nothing to draw from; see the messages above")

@@ -22,7 +22,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
-from pom.corpus import ChunkStore, Sampler, Weights  # noqa: E402
+from pom.corpus import ChunkStore, DrawWeights, Sampler  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(HERE, "..", "..", "..", "corpus")
@@ -36,7 +36,7 @@ def main():
 
     configure_logging("WARNING")
     store = ChunkStore.load(os.path.join(CORPUS, "chunks"))
-    sampler = Sampler(store, Weights.from_file(args.weights))
+    sampler = Sampler(store, DrawWeights.from_file(args.weights))
     if not sampler.ready:
         sys.exit("nothing to draw from; see the messages above")
     shares = sampler.register_shares()

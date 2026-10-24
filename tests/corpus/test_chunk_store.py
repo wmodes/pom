@@ -5,7 +5,7 @@ file or record is skipped or repaired and recorded in a FaultRecorder. In strict
 dev tools, the same problems raise. Most bad-input cases are tested both ways.
 
 Most tests build a tiny corpus in a temp folder. The last one loads the committed chunks and
-hands the layout to Weights, which is how the two modules are meant to meet.
+hands the layout to DrawWeights, which is how the two modules are meant to meet.
 """
 import dataclasses
 import json
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from pom.corpus import Chunk, ChunkError, ChunkStore, Weights
+from pom.corpus import Chunk, ChunkError, ChunkStore, DrawWeights
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -414,10 +414,10 @@ def test_strict_from_chunks_rejects_duplicates():
                                 Chunk("a#0", "a", "news", "Three four", 2)], strict=True)
 
 
-# --- Meeting Weights, and the committed corpus -----------------------------------------
+# --- Meeting DrawWeights, and the committed corpus -----------------------------------------
 
 def test_layout_feeds_weights_check(corpus):
-    weights = Weights.from_dict({"registers": {"news": {"sources": {"ads": 1, "obits": 1}},
+    weights = DrawWeights.from_dict({"registers": {"news": {"sources": {"ads": 1, "obits": 1}},
                                                 "poetry": {"sources": {"dickinson": 1}}}})
     assert weights.check(ChunkStore.load(corpus).layout()).ok
 
@@ -431,5 +431,5 @@ def test_real_chunks_load_and_agree_with_the_real_weights_file():
     folders = sorted(f.name for f in (REPO / "corpus" / "chunks").iterdir() if f.is_dir())
     assert store.registers() == folders      # every register folder loaded, however many there are
     assert all(chunk.words <= 150 for chunk in store)
-    weights = Weights.from_file(REPO / "corpus" / "chunks" / "weights.json", strict=True)
+    weights = DrawWeights.from_file(REPO / "corpus" / "chunks" / "weights.json", strict=True)
     assert weights.check(store.layout()).ok

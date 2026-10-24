@@ -18,7 +18,7 @@ summarized below.
 ## Where things stand
 
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
-  now with a `[scorer]` section), the corpus module (`Weights`, `ChunkStore`, `Sampler`), the
+  now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `Sampler`), the
   `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter and fallback), the
   `InterestClient` (asks llama-server for a sentence's score) and the `Scorer` (filter, model,
   fallback, circuit breaker).
@@ -79,7 +79,7 @@ src/pom/
   log_setup.py         built   stdout logging, debug flag, per-module override, local log file
   config.py            built   shared settings, layered (env > local file > file > defaults)
   corpus/
-    weights.py         built   weights.json: register shares, source weights, defaults, drift checks
+    draw_weights.py    built   weights.json: register shares, source weights, defaults, drift checks
     chunk_store.py     built   reads corpus/chunks/*.jsonl into immutable Chunk objects
     sampler.py         built   weighted random draws; 3 to 5 chunks per pull; no repeats in a pull
   listening/

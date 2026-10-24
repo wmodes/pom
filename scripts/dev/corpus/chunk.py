@@ -42,7 +42,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
-from pom.corpus import Weights  # noqa: E402  (scripts may import the package, never the reverse)
+from pom.corpus import DrawWeights  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "corpus")
@@ -205,7 +205,7 @@ def build(limit, minimum):
 
 def target_shares(records, weights_path):
     """Returns each register's normalized target share; drift in weights.json is logged."""
-    weights = Weights.from_file(weights_path)
+    weights = DrawWeights.from_file(weights_path)
     layout = {}
     for source, rs in records.items():
         if rs:

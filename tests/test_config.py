@@ -155,10 +155,10 @@ def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
 
 def test_config_samples_plug_straight_into_the_sampler():
     import random
-    from pom.corpus import Chunk, ChunkStore, Sampler, Weights
+    from pom.corpus import Chunk, ChunkStore, DrawWeights, Sampler
     config = Config.load(environ={"POM_SAMPLES_MIN": "2", "POM_SAMPLES_MAX": "2"})
     store = ChunkStore.from_chunks([Chunk(f"a#{i}", "a", "red", f"Chunk {i}", 2) for i in range(9)])
-    sampler = Sampler(store, Weights.from_dict({}), random.Random(1), samples=config.samples)
+    sampler = Sampler(store, DrawWeights.from_dict({}), random.Random(1), samples=config.samples)
     assert len(sampler.draw()) == 2
 
 

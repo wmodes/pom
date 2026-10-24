@@ -24,8 +24,8 @@ def clean_logger():
 def test_writes_pom_log_lines_to_the_stream_without_a_timestamp():
     stream = io.StringIO()
     configure_logging("INFO", stream)
-    logging.getLogger("pom.corpus.weights").warning("bad weight")
-    assert stream.getvalue() == "WARNING pom.corpus.weights: bad weight\n"
+    logging.getLogger("pom.corpus.draw_weights").warning("bad weight")
+    assert stream.getvalue() == "WARNING pom.corpus.draw_weights: bad weight\n"
 
 
 def test_level_filters_lower_messages():
@@ -180,9 +180,9 @@ def test_local_logs_off_writes_no_file_and_makes_no_folder(tmp_path):
 def test_local_logs_writes_the_log_to_a_file_as_well_as_the_stream(tmp_path):
     folder, stream = tmp_path / "logs", io.StringIO()
     configure_logging("INFO", stream, local_logs=True, log_dir=folder)
-    logging.getLogger("pom.corpus.weights").warning("bad weight")
-    assert "WARNING pom.corpus.weights: bad weight" in stream.getvalue()
-    assert "WARNING pom.corpus.weights: bad weight" in read_log(folder)
+    logging.getLogger("pom.corpus.draw_weights").warning("bad weight")
+    assert "WARNING pom.corpus.draw_weights: bad weight" in stream.getvalue()
+    assert "WARNING pom.corpus.draw_weights: bad weight" in read_log(folder)
 
 
 def test_the_file_has_timestamps_but_the_stream_does_not(tmp_path):

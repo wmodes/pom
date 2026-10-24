@@ -23,7 +23,7 @@ Design decisions, and why:
     probability from the others. If every share is zero the registers count 1.0 each, since
     drawing nothing is worse than drawing evenly.
   * The module never prints. Each problem is recorded in a FaultRecorder and also logged through the
-    standard `logging` module (logger `pom.corpus.weights`), which reaches journald once the
+    standard `logging` module (logger `pom.corpus.draw_weights`), which reaches journald once the
     entry point has configured logging.
 """
 import json
@@ -40,14 +40,14 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 
-class WeightsError(ValueError):
+class DrawWeightsError(ValueError):
     """Raised for any weights problem, but only in strict mode (development and tests)."""
 
 
-class Weights:
+class DrawWeights:
     """Register shares and per-source weights, with defaults and validation.
 
-    Build one with `Weights.from_file` or `Weights.from_dict`, then ask it for shares and
+    Build one with `DrawWeights.from_file` or `DrawWeights.from_dict`, then ask it for shares and
     weights. `report` holds whatever was recovered from while reading; `check` compares the
     weights with the corpus layout and returns its own report.
     """
@@ -73,11 +73,11 @@ class Weights:
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_file(cls, path, strict: bool = False) -> "Weights":
+    def from_file(cls, path, strict: bool = False) -> "DrawWeights":
         """Reads a weights file.
 
         A missing, unreadable or invalid file gives all-default weights and a warning, so the
-        oracle still runs. With strict=True it raises WeightsError instead.
+        oracle still runs. With strict=True it raises DrawWeightsError instead.
         """
         report = _new_report(strict)
         path = Path(path)
@@ -92,7 +92,7 @@ class Weights:
         return cls._parse(document, report, strict)
 
     @classmethod
-    def from_dict(cls, document, strict: bool = False) -> "Weights":
+    def from_dict(cls, document, strict: bool = False) -> "DrawWeights":
         """Reads an already-parsed weights document, recovering from anything wrong in it.
 
         Keys starting with an underscore (such as `_about`) are notes and are ignored.
@@ -100,7 +100,7 @@ class Weights:
         return cls._parse(document, _new_report(strict), strict)
 
     @classmethod
-    def _parse(cls, document, report: FaultRecorder, strict: bool) -> "Weights":
+    def _parse(cls, document, report: FaultRecorder, strict: bool) -> "DrawWeights":
         """Walks the document, keeping what is valid and reporting what is not."""
         shares, weights, listed_under = {}, {}, {}
         if not isinstance(document, dict):
@@ -212,8 +212,8 @@ class Weights:
 
 
 def _new_report(strict: bool) -> FaultRecorder:
-    """A FaultRecorder that raises WeightsError in strict mode; otherwise it collects and logs."""
-    return FaultRecorder(strict=strict, error=WeightsError, logger=_log)
+    """A FaultRecorder that raises DrawWeightsError in strict mode; otherwise it collects and logs."""
+    return FaultRecorder(strict=strict, error=DrawWeightsError, logger=_log)
 
 
 def _number(value, label: str, report: FaultRecorder) -> float:

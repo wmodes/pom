@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from pom.corpus import Chunk, ChunkStore, Sampler, SamplerError, Weights
+from pom.corpus import Chunk, ChunkStore, DrawWeights, Sampler, SamplerError
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -30,7 +30,7 @@ def make_store(layout):
 
 def weights_for(**registers):
     """weights_for(red={"share": 1, "sources": {"a": 0.5}}, ...)"""
-    return Weights.from_dict({"registers": registers})
+    return DrawWeights.from_dict({"registers": registers})
 
 
 def tiles(**extra):
@@ -121,7 +121,7 @@ def test_a_register_whose_sources_all_weigh_zero_is_skipped_with_a_warning():
 # --- Nothing to draw -------------------------------------------------------------------
 
 def test_an_empty_store_is_critical_and_draws_nothing_without_raising():
-    sampler = Sampler(ChunkStore.from_chunks([]), Weights.from_dict({}))
+    sampler = Sampler(ChunkStore.from_chunks([]), DrawWeights.from_dict({}))
     assert not sampler.ready and sampler.report.has_critical
     assert any("nothing to draw from" in m for m in sampler.report.criticals)
     assert sampler.draw(5) == [] and sampler.draw() == []
@@ -137,7 +137,7 @@ def test_when_every_weight_is_zero_it_is_critical_and_draws_nothing():
 
 
 def test_when_every_share_is_zero_the_registers_count_equally_instead():
-    """Weights rescues an all-zero share set, so there is still something to say."""
+    """DrawWeights rescues an all-zero share set, so there is still something to say."""
     store = make_store({"red": {"r": 5}, "blue": {"b": 5}})
     sampler = Sampler(store, weights_for(red={"share": 0}, blue={"share": 0}))
     assert sampler.ready
@@ -393,7 +393,7 @@ def test_the_range_choice_is_repeatable_with_a_seed():
 
 def test_strict_raises_for_an_empty_store():
     with pytest.raises(SamplerError, match="nothing to draw from"):
-        Sampler(ChunkStore.from_chunks([]), Weights.from_dict({}), strict=True)
+        Sampler(ChunkStore.from_chunks([]), DrawWeights.from_dict({}), strict=True)
 
 
 def test_strict_raises_when_every_weight_is_zero():
@@ -444,7 +444,7 @@ def test_building_logs_a_summary_and_problems(caplog):
 
 def test_an_empty_store_logs_a_critical_line(caplog):
     with caplog.at_level(logging.INFO, logger="pom.corpus.sampler"):
-        Sampler(ChunkStore.from_chunks([]), Weights.from_dict({}))
+        Sampler(ChunkStore.from_chunks([]), DrawWeights.from_dict({}))
     assert any(r.levelno == logging.CRITICAL and "nothing to draw from" in r.message
                for r in caplog.records)
 
@@ -483,7 +483,7 @@ def test_draws_are_not_logged_when_the_module_flag_is_off(caplog):
 def test_the_real_corpus_builds_cleanly_and_balances_the_registers():
     chunks = REPO / "corpus" / "chunks"
     store = ChunkStore.load(chunks, strict=True)
-    weights = Weights.from_file(chunks / "weights.json", strict=True)
+    weights = DrawWeights.from_file(chunks / "weights.json", strict=True)
     sampler = Sampler(store, weights, random.Random(51), strict=True)
     assert sampler.report.ok and sampler.check_report.ok
     assert sum(sampler.register_shares().values()) == pytest.approx(1.0)

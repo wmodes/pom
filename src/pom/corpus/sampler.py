@@ -8,7 +8,7 @@ never impossible. Nothing is chosen category-first.
 
     chance(chunk) = register_share * source_weight / register_total
 
-where register_share is the register's normalized share (from Weights), source_weight is the
+where register_share is the register's normalized share (from DrawWeights), source_weight is the
 chunk's source weight, and register_total is the sum of source_weight over the register's chunks.
 Drawing a register by its share and then a chunk within it by source weight, on every draw, gives
 exactly the same odds; this class does it with one cumulative table instead.
@@ -56,7 +56,7 @@ import random
 from typing import Optional, Sequence
 
 from pom.corpus.chunk_store import Chunk, ChunkStore
-from pom.corpus.weights import Weights
+from pom.corpus.draw_weights import DrawWeights
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
@@ -75,17 +75,17 @@ class Sampler:
 
     Attributes:
         report: Problems found while building the odds (an empty corpus, a register with nothing
-            drawable). `check_report` holds what `Weights.check` found about the layout.
+            drawable). `check_report` holds what `DrawWeights.check` found about the layout.
     """
 
-    def __init__(self, store: ChunkStore, weights: Weights,
+    def __init__(self, store: ChunkStore, draw_weights: DrawWeights,
                  rng: Optional[random.Random] = None, strict: bool = False,
                  samples: Sequence[int] = DEFAULT_SAMPLES):
         """Builds the draw odds from the store and the weights.
 
         Args:
             store: The chunks to draw from.
-            weights: Register shares and source weights.
+            draw_weights: Register shares and source weights.
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
             strict: Raise SamplerError on any problem instead of recording it.
@@ -94,13 +94,13 @@ class Sampler:
         self._rng = rng if rng is not None else random.Random()
         self.report = FaultRecorder(strict=strict, error=SamplerError, logger=_log)
         self._samples = self._valid_samples(samples)
-        self.check_report = weights.check(store.layout())   # logs any drift; the odds still work
+        self.check_report = draw_weights.check(store.layout())   # logs any drift; the odds still work
         self._chunks: list[Chunk] = []
         self._probability: list[float] = []
         self._cumulative: list[float] = []
         self._shares: dict[str, float] = {}
         self._counts: dict[str, int] = {}
-        self._build(store, weights)
+        self._build(store, draw_weights)
 
     def _valid_samples(self, samples) -> tuple[int, int]:
         """A usable (fewest, most) pair: whole numbers of at least 1, in order.
@@ -124,14 +124,14 @@ class Sampler:
 
     # --- Building the odds ----------------------------------------------------------
 
-    def _build(self, store: ChunkStore, weights: Weights) -> None:
+    def _build(self, store: ChunkStore, draw_weights: DrawWeights) -> None:
         """Computes every chunk's chance of being drawn and the cumulative table."""
         if len(store) == 0:
             self.report.critical("nothing to draw from: the store has no chunks")
             return
         totals = {}      # register -> sum of source weights over its chunks
         for register in store.registers():
-            totals[register] = sum(weights.source_weight(c.source) for c in store.chunks(register))
+            totals[register] = sum(draw_weights.source_weight(c.source) for c in store.chunks(register))
         drawable = []
         for register in store.registers():
             if totals[register] > 0:
@@ -142,11 +142,11 @@ class Sampler:
         if not drawable:
             self.report.critical("nothing to draw from: no chunk has a positive weight")
             return
-        self._shares = weights.shares_for(drawable)
+        self._shares = draw_weights.shares_for(drawable)
         running = 0.0
         for register in drawable:
             for chunk in store.chunks(register):
-                chance = (self._shares[register] * weights.source_weight(chunk.source)
+                chance = (self._shares[register] * draw_weights.source_weight(chunk.source)
                           / totals[register])
                 if chance <= 0:
                     continue          # a zero-share register or a zero-weight source

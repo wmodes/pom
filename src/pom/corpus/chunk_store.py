@@ -6,7 +6,7 @@ scripts/dev/corpus/chunk.py, one JSON object per line, one file per source:
     corpus/chunks/<register>/<source>.jsonl
 
 This module reads those files and answers questions about them. It does not decide how likely a
-chunk is to be drawn (that is the Weights and the Sampler) and it never writes anything.
+chunk is to be drawn (that is the DrawWeights and the Sampler) and it never writes anything.
 
 Design decisions, and why:
   * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
@@ -16,7 +16,7 @@ Design decisions, and why:
     and says so. `strict=True` raises instead, for tests and dev tools.
   * Where a record disagrees with where it lives, the location wins. The files are generated, so
     a record claiming another register or source is drift; trusting the folder and file name keeps
-    the layout that Weights checks against exactly what is on disk.
+    the layout that DrawWeights checks against exactly what is on disk.
   * Chunks are immutable. Nothing downstream should be able to edit the corpus by accident.
   * Loading is eager. The corpus is about 15 MB of text, which is nothing next to the Pi's 16 GB,
     and doing the work at startup keeps the session itself free of file reads.
@@ -131,7 +131,7 @@ class ChunkStore:
         return sorted(self._tree.get(register, {}))
 
     def layout(self) -> dict[str, list[str]]:
-        """Register -> its sources. This is what `Weights.check` compares its file against."""
+        """Register -> its sources. This is what `DrawWeights.check` compares its file against."""
         return {register: self.sources(register) for register in self.registers()}
 
     def chunks(self, register: str, source: Optional[str] = None) -> tuple[Chunk, ...]:

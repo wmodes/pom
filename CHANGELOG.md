@@ -205,6 +205,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`Weights` is now `DrawWeights`** (`src/pom/corpus/draw_weights.py`; `WeightsError` is `DrawWeightsError`), and
+  the Sampler's `weights` argument is `draw_weights`. The module's log name is now `pom.corpus.draw_weights`. The
+  data file stays `corpus/chunks/weights.json`. Tests moved to `tests/corpus/test_draw_weights.py`. No behavior
+  changed.
 - **`logs.py` is now `log_setup.py`** (`src/pom/log_setup.py`), named for what it does: it sets up logging once
   and hands each module its logger. Tests moved to `tests/test_log_setup.py`. No behavior changed.
 - **`WordTools` is now `WordTagger`** (`src/pom/hinge/word_tagger.py`; `analyze()` is `tag()`, `Word.content` is

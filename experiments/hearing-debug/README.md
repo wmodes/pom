@@ -16,9 +16,10 @@ account of why: the content it found that earned the score. Each score also goes
 `ConvoInterestTracker`, which keeps the room's average interest, and a sentence that stands out from that
 average is marked `<-- would trigger`. There is no fixed threshold: the bar moves with the room.
 
-At the end of each line a note says where the score stands, for example `[interest 4.31, bar 4.74]` (the
-room's average interest after this score, and the score the sentence had to reach), `[warming up 3/10; ...]`
-(not enough scores have counted yet for anything to trigger), or `[below the floor, ignored]`. The settings
+Every line ends with a note that says where the score stands, for example `[interest 4.31 -> 4.52, bar 4.74]`:
+the room's average interest the sentence was judged against, the average after it was added, and the score it
+had to reach (10% above the first number). `[warming up 3/10; ...]` means not enough scores have counted yet for
+anything to trigger, and `[below the floor, ignored; interest 4.31, unchanged]` means the score did not count. The settings
 are in the `[trigger]` section of `config/pom.toml`, and the startup banner prints the ones in force.
 Reloading the config restarts the average, because a changed prompt changes what a score means. The `r`
 command re-runs sentences without counting them again.

@@ -225,6 +225,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
   is marked `<-- would trigger`, and each line ends with a note: the average and the bar, a warm-up count, or
   `below the floor, ignored`. The `--threshold` option is gone; the startup banner prints the trigger settings.
   Reloading the config restarts the average, and `r` re-runs do not count a sentence twice.
+  Every line carries the note, and it shows the average the sentence was judged against and the average after it
+  (`interest 2.45 -> 2.73, bar 2.69`); ignored and unscored lines show the unchanged average.
 - **Trigger settings renamed and re-based (Wes).** `floor_fraction` is `floor_ignore_fraction` (clearer: the bottom
   fraction of the score range that is ignored). `interest_weight` is replaced by `interest_half_life`, in scores:
   how many more scores it takes for an old score's pull on avg_convo_interest to halve (10, which works out to

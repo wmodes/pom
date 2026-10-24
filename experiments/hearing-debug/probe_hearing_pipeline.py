@@ -530,12 +530,14 @@ class Pipeline:
         """
         tracker, min_scores = self.brain.tracker, self.brain.trigger.min_scores
         with self.tracker_lock:
-            bar = tracker.trigger_level
+            before, bar = tracker.avg_convo_interest, tracker.trigger_level
             effect = tracker.record(score)
-            interest, counted = tracker.avg_convo_interest, tracker.counted
+            after, counted = tracker.avg_convo_interest, tracker.counted
         if effect is ScoreEffect.IGNORED:
-            return "" if score is None else "   [below the floor, ignored]"
-        detail = f"interest {interest:.2f}" + (f", bar {bar:.2f}" if bar is not None else "")
+            why = "no score" if score is None else "below the floor, ignored"
+            return f"   [{why}; interest {before:.2f}, unchanged]" if before is not None else f"   [{why}; no average yet]"
+        interest = f"interest {after:.2f}" if before is None else f"interest {before:.2f} -> {after:.2f}"
+        detail = interest + (f", bar {bar:.2f}" if bar is not None else "")
         if counted <= min_scores:                  # this score came before the trigger was allowed to fire
             return f"   [warming up {counted}/{min_scores}; {detail}]"
         return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [{detail}]"

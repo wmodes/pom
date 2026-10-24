@@ -114,9 +114,8 @@ not run it as a service. It is a development tool, used on purpose.
 - **Whisper reloads its model for every utterance** here, as in the Pi benchmark. The real system will keep
   it resident.
 - **The number and the reasons come from the same output.** Your `prompt_output_debug` asks for the score, the
-  sentence and the content found in a single answer. The score shown is read from the probabilities of that
-  answer's first token (the way the one-token scorer reads its own), and the reasons are the rest of the same
-  output. Under each result it prints what the model wrote as its score and how long the run took. The reasons
+  sentence and the content found in a single answer. The score shown is the digit that answer starts with, and
+  the reasons are the rest of the same output. Under each result it prints how long the run took. The reasons
   are written after the number, so they are a story the model tells about it, not a readout of its insides; the
   one-run design guarantees only that the number and the story belong together. The real Printer will use the
   one-token scorer, so the debug prompt's score can differ a little from what the Printer would give.

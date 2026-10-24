@@ -20,10 +20,9 @@ a phrase means ("the couch ate my dog" is not "the dog ate my couch"), so we tri
   `config/pom.toml` each run; the sentences are `BENCHMARK` in `probe_interest_scorer.py` (written by Wes),
   or any file passed with `--file` (`suite.txt` is a 20-line test suite). The prompt the 2026-10-22 bake-off
   used is saved next to its results (`results/bakeoff-2026-10-22/PROMPT.txt`).
-- **The score** is the expected value of the digit the model starts its reply with, read from the
-  model's probabilities (one generated token), so it is continuous and repeatable. The bake-off prompt asked
-  for a two-decimal number and only that first digit's probabilities were used; the Printer's prompt now asks
-  for a single digit, 0 to 9.
+- **The score** in the bake-off was the expected value of the digit the model starts its reply with, read from
+  the model's probabilities (one generated token), so it was continuous and repeatable. The Printer no longer
+  does that: its prompt asks for a single digit, 0 to 9, and the score is that digit, a whole number.
 - Models run in llama.cpp (`llama-server`), Q4_K_M, one at a time on the Mac.
 
 ## What we learned

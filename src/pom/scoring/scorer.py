@@ -2,10 +2,9 @@
 
 A fragment goes in (normally a whole sentence, from the SegmentFragmenter); a `ScoredFragment` comes out,
 the fragment plus a score and where the score came from. Scores run from 0 (nothing to hold on to)
-to 9 (extremely interesting), as the probability-weighted value of the single digit the scorer model
-answers with, so they fall anywhere in between (6.35). They are relative, not absolute: ordinary talk
-scores 1 to 3 and even striking sentences often stop short of 9, so whatever uses them should work
-from ranks and gaps, not a fixed high threshold.
+to 9 (extremely interesting): the single digit the scorer model answers with, a whole number. They
+are relative, not absolute: ordinary talk scores 1 to 3 and even striking sentences often stop short
+of 9, so whatever uses them should work from the room's recent scores, not a fixed high threshold.
 
 THREE KINDS OF RESULT, recorded in `ScoredFragment.scored_by`:
   * MODEL:    the scorer model scored it (through the ScorerModelClient). The normal case.

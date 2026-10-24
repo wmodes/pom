@@ -67,7 +67,6 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
 from pom.scoring import ScorerModelClient, Scorer, WordTagger        # noqa: E402
-from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
 
 SAMPLE_RATE = 16000
@@ -466,8 +465,8 @@ class Display:
     def sentence(self, number: int, score: Optional[float], source: str, text: str,
                  previous: Optional[float] = None) -> None:
         mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
-        was = f"   (was {previous:.2f})" if previous is not None else ""
-        shown = f"{score:5.2f}" if score is not None else "  -  "          # None: the scorer model gave no score
+        was = f"   (was {previous:.0f})" if previous is not None else ""
+        shown = f"{score:3.0f}" if score is not None else "  -"            # None: the scorer model gave no score
         self.line(f"  #{number:<3} {shown}  {source:<15} {text}{was}{mark}")
 
     def pending(self, number: int, text: str) -> None:
@@ -477,14 +476,11 @@ class Display:
     def result(self, number: int, score: Optional[float], run, seconds: float, text: str,
                previous: Optional[float] = None) -> None:
         """One debug run: the score and the reasons, which came out of the same output."""
-        shown = f"{score:5.2f}" if score is not None else "  ?  "
+        shown = f"{score:3.0f}" if score is not None else "  ?"
         mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
-        was = f"   (was {previous:.2f})" if previous is not None else ""
+        was = f"   (was {previous:.0f})" if previous is not None else ""
         self.line(f"  #{number:<3} {shown}  debug    {text}{was}{mark}")
-        wrote = parse_written_score(run.text)
-        foot = f"{seconds:.1f} s; score from this run's first-token probabilities"
-        if wrote is not None:
-            foot += f", it wrote {wrote:.2f}"
+        foot = f"{seconds:.1f} s"
         wrapped = textwrap.fill(run.text, width=96, initial_indent="        says: ", subsequent_indent=" " * 14)
         self.line(f"{wrapped}\n        ({foot})")
 
@@ -641,7 +637,7 @@ class Pipeline:
             if run is None:
                 self.display.line(f"  #{number:<3} (no result: {'; '.join(client.report.lines()[-1:]) or 'no reply'})")
                 continue
-            score = run.score if run.score is not None else parse_written_score(run.text)
+            score = run.score
             for entry in self.history:
                 if entry.number == number:
                     entry.score, entry.source = score, "debug"

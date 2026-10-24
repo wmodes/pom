@@ -203,7 +203,7 @@ llama.cpp setup scripts.
   steered by a rate governor; paper guards: quiet timeout about 10 min, ceilings about 12 an hour
   and 60 a day (proposed values).
 - **The Scorer is a small local LLM (decided 2026-10-22, replacing the plan below).** One sentence
-  per request, no context, score read from the digit probabilities, so a sentence scores the same
+  per request, no context, score is the digit the model answers with, so a sentence scores the same
   whatever came before it. Batching and shown-context both made scores depend on order and neighbors
   and were rejected. Qwen3-4B (Q4_K_M) is the current choice; Llama-3.2-3B is the faster alternative.
   The prompt (in config eventually) keeps the definition of "interesting" separate from the meaning of

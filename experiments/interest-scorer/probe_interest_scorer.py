@@ -4,9 +4,9 @@
 Part of experiments/interest-scorer, a formative experiment that settled how the Scorer works. It
 is not part of the Printer (see the README in this folder). By default it sends each line to a
 running llama-server on its own and asks for a single digit, 0-9, with the prompt in config/pom.toml
-(the same prompt the Printer uses). It reads the probabilities of the digits with the Printer's own
-reader (pom.scoring), so the score is continuous, repeatable, cannot be moved by the other lines,
-and costs one generated token. With --context the earlier lines are also shown as "what was
+(the same prompt the Printer uses). The score is the digit the model answers with, read by the
+Printer's own reader (pom.scoring), so it is a whole number, repeatable, cannot be moved by the
+other lines, and costs one generated token. With --context the earlier lines are also shown as "what was
 said just before". With --batch it instead sends all the lines in one numbered list and reads back
 a decimal score per row; that is quicker to write but the scores shift with the order and the
 neighbors. Each mode prints the scores and how long the calls took.
@@ -37,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                              # noqa: E402
-from pom.scoring.scorer_model_client import USER_TEMPLATE, score_from_probabilities   # noqa: E402
+from pom.scoring.scorer_model_client import USER_TEMPLATE, parse_written_score   # noqa: E402
 
 # DEFAULT_PROMPT = (
     # "You listen to people talking in a room. Rate how 'interesting' one line of what you overheard "
@@ -192,7 +192,7 @@ BENCHMARK = [
 
 
 def rate(url: str, prompt: str, line: str, context: list[str]) -> tuple[float, float]:
-    """Returns (score 0-9, seconds taken) for one line, with optional prior lines. Scored as the Printer scores."""
+    """Returns (digit 0-9, seconds taken) for one line, with optional prior lines. Scored as the Printer scores."""
     heard = ""
     if context:
         heard = "Overheard just before:\n" + "\n".join(f"- {c}" for c in context) + "\n\n"
@@ -201,7 +201,7 @@ def rate(url: str, prompt: str, line: str, context: list[str]) -> tuple[float, f
             {"role": "system", "content": prompt},
             {"role": "user", "content": heard + USER_TEMPLATE.format(fragment_text=line)},
         ],
-        "max_tokens": 1, "temperature": 0, "logprobs": True, "top_logprobs": 20,
+        "max_tokens": 1, "temperature": 0,
         "chat_template_kwargs": {"enable_thinking": False},
     }
     request = urllib.request.Request(url, json.dumps(body).encode(),
@@ -210,7 +210,7 @@ def rate(url: str, prompt: str, line: str, context: list[str]) -> tuple[float, f
     with urllib.request.urlopen(request, timeout=120) as response:
         data = json.load(response)
     seconds = time.perf_counter() - start
-    score = score_from_probabilities(data)
+    score = parse_written_score(data["choices"][0]["message"]["content"])
     return (float("nan") if score is None else score), seconds
 
 
@@ -305,11 +305,11 @@ def main() -> None:
             sys.exit(f"cannot reach the server on port {args.port}: {error}")
         results.append((score, line))
         times.append(seconds)
-        print(f"{score:5.2f}  {seconds * 1000:6.0f} ms  {line}")
+        print(f"{score:2.0f}  {seconds * 1000:6.0f} ms  {line}")
     print(f"\nmean {sum(times) / len(times) * 1000:.0f} ms, slowest {max(times) * 1000:.0f} ms")
     print("\nbest first:")
     for score, line in sorted(results, key=lambda r: -r[0] if r[0] == r[0] else 0):
-        print(f"{score:5.2f}  {line}")
+        print(f"{score:2.0f}  {line}")
 
 
 if __name__ == "__main__":

@@ -24,7 +24,10 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 ## Scoring and triggering: choosing what to respond to
 
 - **score**: the process of assigning a value to each incoming fragment, and the value itself
-  (a whole number, 0 to 9). The scorer does it, mostly with the scorer model.
+  (0 to 9, anywhere in between). The scorer does it, mostly with the scorer model. The model answers with
+  one digit but is rarely certain, so the score is the average of the digits it might say, each weighted by
+  how likely the model thinks it is: 75% sure of 6 and 25% sure of 7 scores 6.25. A model that is certain
+  scores a whole number.
 - **scorer**: the component that scores fragments: the fragment_filter, then the scorer model,
   with a fragment left unscored if the scorer model doesn't reply.
 - **scorer model**: the small language model that scores fragments (Qwen3-4B for now).

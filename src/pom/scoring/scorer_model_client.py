@@ -5,12 +5,16 @@ model (the scorer model, served by llama.cpp's `llama-server`) to score each one
 only the conversation with that server: one fragment in, one number out, or None if no number could
 be had. It knows nothing about fragments or filtering; the Scorer does that.
 
-HOW THE SCORE IS READ. The model is asked to reply with a single digit, 0 to 9, and only one token
-is generated, so the score is that digit, a whole number. It is repeatable (no sampling, temperature
-0) and cheap (one generated token, and no request for the model's odds). A reply that is not a single
-digit (words, a decimal, two digits) is not a score. This is the method the interest-scorer experiment
-settled on (experiments/interest-scorer/README.md), and the request is built exactly as the
-experiment built it, so scores here match the saved results.
+HOW THE SCORE IS READ. The model is asked to reply with a single digit, 0 to 9, and only that first
+token is generated. But the model does not just pick a digit: for that one token it gives every digit a
+probability (say 75% for 6 and 25% for 7). The score is the average of the digits weighted by those
+probabilities (the expected value), here 6.25. A model that is certain gives a whole number. That makes
+the score continuous (no ties between fragments), repeatable (no sampling, temperature 0), and cheap
+(one generated token). Probabilities of tokens that are not digits are left out and the digits rescaled
+to add up to 100%. Decimals written by a small model cluster on a few values, so the model is not asked
+for them. This is the method the interest-scorer experiment settled on
+(experiments/interest-scorer/README.md), and the request is built exactly as the experiment built it, so
+scores here match the saved results.
 
 ONE FRAGMENT PER REQUEST, NO CONTEXT. The model is never shown any other fragment. Batching several
 fragments, or showing earlier ones as context, made a fragment's score depend on its neighbors and
@@ -30,9 +34,9 @@ Design decisions, and why:
     uses the standard library, so there is nothing to install.
   * `explain` is the debug view's request: the same fragment and the same system message plus the
     debug output instructions, but this time the model writes a reply (its score and the content that
-    earned it). It is ONE run: the score is the digit the reply starts with, as `score` reads it, and
-    the written reasons are the rest of that same output, so the number and the explanation belong
-    together. (The reasons are still written after the number, so they are a
+    earned it). It is ONE run: the score is read from the probabilities of the reply's first token, exactly
+    as `score` reads it, and the written reasons are the rest of that same output, so the number and
+    the explanation belong together. (The reasons are still written after the number, so they are a
     story the model tells about it, not a readout of its insides.) Writing words is slow on a small
     machine, so it has its own, longer timeout. It is for watching how the model reads speech while
     refining the prompt, not for the running Printer.
@@ -40,6 +44,7 @@ Design decisions, and why:
     seconds measured on the Pi), so the entry point should call `warm_up` at startup.
 """
 import json
+import math
 import re
 import time
 import urllib.request
@@ -72,14 +77,37 @@ def _http_post(url: str, body: dict, timeout: float) -> dict:
         return json.load(response)
 
 
+def score_from_probabilities(reply) -> Optional[float]:
+    """The expected value of the digit 0 to 9 the model starts its reply with, or None.
+
+    Reads the probabilities of the first generated token from an OpenAI-style reply that asked for
+    logprobs. Tokens that are not a single digit 0 to 9 are ignored (a model that starts with words
+    spreads its probability over them, and what is left is still the digit's relative weight); if no
+    digit appears at all the reply cannot be scored. Anything malformed gives None.
+    """
+    try:
+        candidates = reply["choices"][0]["logprobs"]["content"][0]["top_logprobs"]
+        weights = {}
+        for candidate in candidates:
+            token = candidate["token"].strip()
+            if len(token) == 1 and token in "0123456789":
+                weights[int(token)] = weights.get(int(token), 0.0) + math.exp(candidate["logprob"])
+    except (KeyError, IndexError, TypeError, AttributeError, ValueError, OverflowError):
+        return None
+    total = sum(weights.values())
+    if total <= 0:
+        return None
+    return sum(digit * weight for digit, weight in weights.items()) / total
+
+
 @dataclass(frozen=True, slots=True)
 class Explanation:
-    """One debug run of the model: what it wrote, and the score (the digit the reply starts with).
+    """One debug run of the model: what it wrote, and the score its first token's probabilities give.
 
     Attributes:
         text: The written reply (by default the score, the fragment and the content that earned the score).
-        score: The digit the reply starts with, as `ScorerModelClient.score` reads it, or None if the
-            reply did not begin with a single digit.
+        score: The expected value of the first token's digit, as `ScorerModelClient.score` reads it, or None if
+            the reply did not begin with a digit.
     """
     text: str
     score: Optional[float]
@@ -91,7 +119,7 @@ def parse_written_score(reply) -> Optional[float]:
     A debug reply looks like "7 | a striking image | vivid, death"; only the leading digit is read.
     A longer number ("85") or a decimal ("7.5") is not a digit and gives None.
     """
-    found = re.match(r"\s*(\d)(?!\d)(?!\.\d)", reply) if isinstance(reply, str) else None
+    found = re.match(r"\s*(\d)(?![\d.])", reply) if isinstance(reply, str) else None
     return float(found.group(1)) if found else None
 
 
@@ -152,7 +180,7 @@ class ScorerModelClient:
         return self._usable and bool(self._explain_prompt)
 
     def score(self, fragment_text: str) -> Optional[float]:
-        """The digit the model answers with for one fragment (0 to 9), or None if it gave none.
+        """The model's interest score for one fragment (0 to 9), or None if it got none.
 
         None means no score could be had; the reason is in `report`. Never raises (except in
         strict mode).
@@ -162,7 +190,7 @@ class ScorerModelClient:
         body = {
             "messages": [{"role": "system", "content": self._prompt},
                          {"role": "user", "content": USER_TEMPLATE.format(fragment_text=fragment_text.strip())}],
-            "max_tokens": 1, "temperature": 0,
+            "max_tokens": 1, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},      # Qwen3 thinks otherwise; others ignore it
         }
         started = time.perf_counter()
@@ -174,14 +202,11 @@ class ScorerModelClient:
                              f"the fragment will go unscored")
             return None
         self.last_seconds = time.perf_counter() - started
-        try:
-            value = parse_written_score(reply["choices"][0]["message"]["content"])
-        except (KeyError, IndexError, TypeError):
-            value = None
+        value = score_from_probabilities(reply)
         if value is None:
             self.report.warn("the scorer model's reply held no score; the fragment will go unscored")
             return None
-        _log.debug("scored a fragment of %d characters: %d in %.0f ms",
+        _log.debug("scored a fragment of %d characters: %.2f in %.0f ms",
                    len(fragment_text), value, self.last_seconds * 1000)
         return value
 
@@ -205,7 +230,7 @@ class ScorerModelClient:
         body = {
             "messages": [{"role": "system", "content": self._explain_prompt},
                          {"role": "user", "content": USER_TEMPLATE.format(fragment_text=fragment_text.strip())}],
-            "max_tokens": EXPLAIN_MAX_TOKENS, "temperature": 0,
+            "max_tokens": EXPLAIN_MAX_TOKENS, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},
         }
         started = time.perf_counter()
@@ -218,4 +243,4 @@ class ScorerModelClient:
             return None
         self.last_seconds = time.perf_counter() - started
         _log.debug("explained a fragment of %d characters in %.0f ms", len(fragment_text), self.last_seconds * 1000)
-        return Explanation(text, parse_written_score(text)) if text else None
+        return Explanation(text, score_from_probabilities(reply)) if text else None

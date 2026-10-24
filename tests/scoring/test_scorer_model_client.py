@@ -1,29 +1,28 @@
 """Tests for pom.scoring.scorer_model_client: scoring one fragment through a fake llama-server."""
 import logging
+import math
 
 import pytest
 
 from pom.scoring.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, DEFAULT_TIMEOUT, EXPLAIN_MAX_TOKENS,
                                        USER_TEMPLATE, WARM_UP_FRAGMENT, ScorerModelClient, ScorerModelClientError,
-                                       Explanation, parse_written_score)
+                                       Explanation, score_from_probabilities, parse_written_score)
 
 URL = "http://127.0.0.1:8098/v1/chat/completions"
 PROMPT = "You score how interesting a fragment is."
 
 
-def reply(text):
-    """A llama-server style reply that holds this text."""
-    return {"choices": [{"message": {"role": "assistant", "content": text}}]}
-
-
-NOT_GIVEN = object()      # so a test can hand FakePost None as a (bad) reply
+def reply(*candidates):
+    """A llama-server style reply whose first token has these (token, probability) candidates."""
+    return {"choices": [{"logprobs": {"content": [{"top_logprobs": [
+        {"token": token, "logprob": math.log(p)} for token, p in candidates]}]}}]}
 
 
 class FakePost:
     """Records every request and returns canned replies (or raises)."""
 
-    def __init__(self, result=NOT_GIVEN):
-        self.result = reply("7") if result is NOT_GIVEN else result
+    def __init__(self, result=None):
+        self.result = result if result is not None else reply(("7", 1.0))
         self.calls = []
 
     def __call__(self, url, body, timeout):
@@ -38,24 +37,51 @@ def client(post=None, **options):
     return ScorerModelClient(URL, PROMPT, post=post or FakePost(), **options)
 
 
-class TestReadingTheDigit:
-    @pytest.mark.parametrize("text,expected", [("7", 7.0), ("0", 0.0), ("9", 9.0), (" 5", 5.0), ("5\n", 5.0), ("7.", 7.0)])
-    def test_the_digit_the_model_wrote_is_the_score(self, text, expected):
-        assert client(FakePost(reply(text))).score("a fragment") == pytest.approx(expected)
+class TestExpectedDigit:
+    def test_a_certain_digit_is_that_digit(self):
+        assert score_from_probabilities(reply(("7", 1.0))) == pytest.approx(7.0)
 
-    @pytest.mark.parametrize("text", ["7.5", "7.89", "85", "10", "01", "Sorry", "The fragment is dull.", "-4", "", "   "])
-    def test_anything_but_a_single_digit_is_not_a_score(self, text):
-        c = client(FakePost(reply(text)))
-        assert c.score("a fragment") is None and len(c.report.warnings) == 1
+    def test_probabilities_weight_the_digits(self):
+        assert score_from_probabilities(reply(("2", 0.5), ("8", 0.5))) == pytest.approx(5.0)
 
-    @pytest.mark.parametrize("bad", [None, {}, [], "text", {"choices": []}, {"choices": [{}]}, {"choices": [{"message": {}}]},
-                                     {"choices": [{"message": {"content": None}}]}, {"choices": [{"message": {"content": 7}}]}])
-    def test_malformed_replies_are_not_a_score(self, bad):
-        c = client(FakePost(bad))
-        assert c.score("a fragment") is None and len(c.report.warnings) == 1
+    def test_unequal_weights(self):
+        assert score_from_probabilities(reply(("2", 0.75), ("6", 0.25))) == pytest.approx(3.0)
+
+    def test_weights_are_normalised_over_the_digits_found(self):
+        assert score_from_probabilities(reply(("4", 0.2), ("8", 0.2), ("The", 0.6))) == pytest.approx(6.0)
+
+    def test_whitespace_around_a_digit_is_ignored(self):
+        assert score_from_probabilities(reply((" 5", 0.5), ("5 ", 0.5))) == pytest.approx(5.0)
+
+    def test_the_same_digit_in_two_spellings_adds_up(self):
+        assert score_from_probabilities(reply(("3", 0.25), (" 3", 0.25), ("9", 0.5))) == pytest.approx(6.0)
+
+    def test_zero_counts_as_a_digit(self):
+        assert score_from_probabilities(reply(("0", 0.5), ("8", 0.5))) == pytest.approx(4.0)
+        assert score_from_probabilities(reply(("0", 1.0))) == pytest.approx(0.0)
+
+    def test_longer_numbers_are_not_digits(self):
+        assert score_from_probabilities(reply(("10", 0.4), ("85", 0.4), ("5", 0.2))) == pytest.approx(5.0)
+
+    def test_two_digit_tokens_that_are_inside_the_digit_string_are_not_digits(self):
+        assert score_from_probabilities(reply(("01", 0.3), ("12", 0.3), ("89", 0.2), ("5", 0.2))) == pytest.approx(5.0)
+
+    def test_no_digit_gives_none(self):
+        assert score_from_probabilities(reply(("The", 0.9), ("Sure", 0.1))) is None
+
+    @pytest.mark.parametrize("bad", [None, {}, [], "text", {"choices": []},
+                                     {"choices": [{}]}, {"choices": [{"logprobs": None}]},
+                                     {"choices": [{"logprobs": {"content": []}}]},
+                                     {"choices": [{"logprobs": {"content": [{"top_logprobs": [{"token": 5}]}]}}]},
+                                     {"choices": [{"logprobs": {"content": [{"top_logprobs": [{"token": "5", "logprob": "x"}]}]}}]}])
+    def test_malformed_replies_give_none(self, bad):
+        assert score_from_probabilities(bad) is None
 
 
 class TestScore:
+    def test_returns_the_score_from_the_probabilities(self):
+        assert client(FakePost(reply(("4", 0.5), ("6", 0.5)))).score("a fragment") == pytest.approx(5.0)
+
     def test_request_is_built_as_the_experiment_built_it(self):
         post = FakePost()
         client(post, timeout=9.0).score("  The lamp hums.  ")
@@ -65,7 +91,7 @@ class TestScore:
                                     {"role": "user", "content": USER_TEMPLATE.format(fragment_text="The lamp hums.")}]
         assert USER_TEMPLATE == "Rate this line: {fragment_text}"
         assert body["max_tokens"] == 1 and body["temperature"] == 0
-        assert "logprobs" not in body and "top_logprobs" not in body      # the digit is read from the reply text
+        assert body["logprobs"] is True and body["top_logprobs"] == 20
         assert body["chat_template_kwargs"] == {"enable_thinking": False}
 
     def test_one_request_per_sentence_with_no_other_text(self):
@@ -106,7 +132,7 @@ class TestRecovery:
             assert client(FakePost(error)).score("hello") is None
 
     def test_a_reply_without_a_digit_gives_none_and_a_warning(self):
-        c = client(FakePost(reply("Sorry")))
+        c = client(FakePost(reply(("Sorry", 1.0))))
         assert c.score("hello") is None
         assert len(c.report.warnings) == 1
 
@@ -114,14 +140,14 @@ class TestRecovery:
         post = FakePost(OSError("down"))
         c = client(post)
         assert c.score("one") is None
-        post.result = reply("3")
+        post.result = reply(("3", 1.0))
         assert c.score("two") == pytest.approx(3.0)
 
     def test_strict_mode_raises(self):
         with pytest.raises(ScorerModelClientError):
             client(FakePost(OSError("down")), strict=True).score("hello")
         with pytest.raises(ScorerModelClientError):
-            client(FakePost(reply("Sorry")), strict=True).score("hello")
+            client(FakePost(reply(("Sorry", 1.0))), strict=True).score("hello")
 
     def test_nothing_said_in_the_room_reaches_a_report_or_log(self, caplog):
         secret = "my secret fragment about the funeral"
@@ -186,31 +212,40 @@ class TestWarmUp:
 EXPLAIN_PROMPT = "You score a fragment and say why."
 
 
-def explainer(text="7 | a vivid image | death", **options):
-    post = FakePost(reply(text))
+def written(text, first_token=None):
+    """A llama-server style reply that holds written text, and (if given) the first token's candidates."""
+    choice = {"message": {"role": "assistant", "content": text}}
+    if first_token is not None:
+        choice["logprobs"] = {"content": [{"top_logprobs": [
+            {"token": token, "logprob": math.log(p)} for token, p in first_token]}]}
+    return {"choices": [choice]}
+
+
+def explainer(text="7.89, a vivid image, a death", **options):
+    post = FakePost(written(text))
     return ScorerModelClient(URL, PROMPT, post=post, explain_prompt=EXPLAIN_PROMPT, **options), post
 
 
 class TestExplain:
     def test_returns_the_written_reply(self):
-        c, _ = explainer("  7 | a vivid image | death \n")
-        assert c.explain("The lamp hums.").text == "7 | a vivid image | death"
+        c, _ = explainer("  7.89, a vivid image, a death \n")
+        assert c.explain("The lamp hums.").text == "7.89, a vivid image, a death"
 
-    def test_the_score_is_the_digit_the_reply_starts_with(self):
+    def test_the_score_comes_from_the_same_run_as_the_words(self):
         c, post = explainer()
-        post.result = reply("6 | The lamp hums. | image")
+        post.result = written("6.00 | The lamp hums. | image", first_token=[("5", 0.5), ("7", 0.5)])
         result = c.explain("The lamp hums.")
-        assert result == Explanation("6 | The lamp hums. | image", 6.0)
+        assert result == Explanation("6.00 | The lamp hums. | image", pytest.approx(6.0))
         assert len(post.calls) == 1                          # one request gave both
 
-    def test_a_reply_that_does_not_start_with_a_digit_gives_text_but_no_score(self):
-        c, post = explainer()
-        post.result = reply("The fragment is dull.")
-        assert c.explain("hello there") == Explanation("The fragment is dull.", None)
-
-    def test_a_decimal_is_text_but_no_score(self):
+    def test_with_no_probabilities_in_the_reply_there_is_text_but_no_score(self):
         c, _ = explainer("6.00 | words")
         assert c.explain("The lamp hums.") == Explanation("6.00 | words", None)
+
+    def test_a_first_token_that_is_not_a_digit_gives_text_but_no_score(self):
+        c, post = explainer()
+        post.result = written("The fragment is dull.", first_token=[("The", 0.9), ("This", 0.1)])
+        assert c.explain("hello there").score is None
 
     def test_request_uses_the_explain_prompt_and_asks_for_words(self):
         c, post = explainer(explain_timeout=33.0)
@@ -220,11 +255,11 @@ class TestExplain:
         assert body["messages"] == [{"role": "system", "content": EXPLAIN_PROMPT},
                                     {"role": "user", "content": USER_TEMPLATE.format(fragment_text="The lamp hums.")}]
         assert body["max_tokens"] == EXPLAIN_MAX_TOKENS and body["temperature"] == 0
-        assert "logprobs" not in body and "top_logprobs" not in body
+        assert body["logprobs"] is True and body["top_logprobs"] == 20          # for the score from the same run
         assert body["chat_template_kwargs"] == {"enable_thinking": False}
 
     def test_the_explain_prompt_is_stripped_but_otherwise_sent_whole(self):
-        post = FakePost(reply("7.0"))
+        post = FakePost(written("7.0"))
         ScorerModelClient(URL, PROMPT, post=post, explain_prompt="\n  Line one.\nLine two.\n\n").explain("hello there")
         assert post.calls[0][1]["messages"][0]["content"] == "Line one.\nLine two."
 
@@ -240,7 +275,7 @@ class TestExplain:
         assert post.calls[0][2] == DEFAULT_EXPLAIN_TIMEOUT
 
     def test_without_a_explain_prompt_it_does_nothing(self):
-        post = FakePost(reply("7.0"))
+        post = FakePost(written("7.0"))
         c = ScorerModelClient(URL, PROMPT, post=post)
         assert not c.can_explain and c.explain("hello there") is None and post.calls == []
 
@@ -259,7 +294,7 @@ class TestExplain:
         assert c.last_seconds is not None
 
     @pytest.mark.parametrize("bad", [None, {}, {"choices": []}, {"choices": [{}]}, {"choices": [{"message": {}}]},
-                                     {"choices": [{"message": {"content": None}}]}, reply("   ")])
+                                     {"choices": [{"message": {"content": None}}]}, written("   ")])
     def test_a_reply_without_text_gives_none(self, bad):
         c, _ = explainer()
         c._post = FakePost(bad)
@@ -281,18 +316,18 @@ class TestExplain:
         c = ScorerModelClient(URL, PROMPT, post=FakePost(OSError(f"failed on {secret}")), explain_prompt=EXPLAIN_PROMPT)
         with caplog.at_level(logging.DEBUG):
             c.explain(secret)
-            explainer("7 | a funeral")[0].explain(secret)
+            explainer("7.0, a funeral")[0].explain(secret)
         assert all("funeral" not in w for w in c.report.warnings)
         assert "funeral" not in caplog.text
 
 
 class TestParseWrittenScore:
     @pytest.mark.parametrize("text,expected", [("7 | a vivid image | death", 7.0), ("  3", 3.0), ("0 | nothing", 0.0),
-                                               ("9, extremely", 9.0), ("5 because", 5.0), ("7.", 7.0)])
+                                               ("9, extremely", 9.0), ("5 because", 5.0)])
     def test_the_leading_digit_is_read(self, text, expected):
         assert parse_written_score(text) == pytest.approx(expected)
 
-    @pytest.mark.parametrize("text", ["", "a vivid image, 7", "Score: 7", "7.89, a vivid image", "7.5", "10", "85 | two digits",
+    @pytest.mark.parametrize("text", ["", "a vivid image, 7", "Score: 7", "7.89, a vivid image", "7.", "10", "85 | two digits",
                                       "12, odd", None, 7, "-4"])
     def test_anything_else_is_none(self, text):
         assert parse_written_score(text) is None

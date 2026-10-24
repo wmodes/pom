@@ -205,12 +205,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
-- **The score is the digit the scorer model writes** (Wes's call, reversing the probability-weighted score of the
-  bake-off). The request is one token and no longer asks for the model's odds (`logprobs`); `ScorerModelClient.score`
-  returns that digit as a whole number, 0 to 9 (`score_from_probabilities` is removed), and `explain`'s score is the
-  digit its reply starts with. A trailing period after the digit is accepted ("7."); a decimal or two digits is
-  not a score. The playground script and the hearing-debug view print whole digits. Mutation-checked. On Wes's
-  20-sentence suite 10 of 20 scores fall in Wes's ranges.
+- **The probability-weighted score stays** (a whole-digit score was tried for an afternoon and reverted at Wes's
+  request). Its explanation is now written down in plain words in the lexicon and in `scorer_model_client.py`: the
+  score averages the digits the model might say, weighted by how likely it thinks each is.
 - **The interest-scorer playground script now uses the Printer's own prompt and reader.** `probe_interest_scorer.py`
   reads its prompt from `config/pom.toml` each run (`--config` picks another file, `--prompt-file` overrides it),
   prints which prompt it used, and reads the digits and wraps each line with the code in `pom.scoring`, so it can

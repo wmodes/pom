@@ -220,6 +220,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`trigger_fraction` is now 0.20** (Wes, after watching a live session): in the pasted session, 0.10 marked 19 of 43
+  counted sentences as would-trigger and 0.20 marks 13. The built-in default moves with it, so a bad value falls back
+  to 0.20.
 - **Hearing-debug uses the ConvoInterestTracker instead of a fixed threshold.** Every score goes to the real
   tracker; a sentence that stands out from the room's average interest (by `trigger_fraction`, after `min_scores`)
   is marked `<-- would trigger`, and each line ends with a note: the average and the bar, a warm-up count, or

@@ -48,7 +48,7 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   interesting the room's talk has been lately. The first such score becomes the average; after that each
   new one pulls it a little toward itself, and an old score's pull halves after `interest_half_life` more
   scores (10). Old talk fades by count, not by time.
-- **trigger** †: the moment a score is at least `trigger_fraction` above avg_convo_interest (0.10, so 10%
+- **trigger** †: the moment a score is at least `trigger_fraction` above avg_convo_interest (0.20, so 20%
   above), once `min_scores` scores (10) have counted. The score is compared with the average as it stood
   before that score was added. Then the Printer responds.
 - **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.

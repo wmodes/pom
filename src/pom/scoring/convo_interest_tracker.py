@@ -14,7 +14,7 @@ Each score goes in through `record`, and the tracker answers what it did with it
     influence halves after that many more scores (10, to begin with, which makes each new score move
     the average about 6.7% of the way). It is None until a score has counted.
   * The trigger: a score triggers when it is at least `trigger_fraction` above the current
-    avg_convo_interest (0.10 means 10% above), once `min_scores` scores have counted. The score is
+    avg_convo_interest (0.20 means 20% above), once `min_scores` scores have counted. The score is
     compared with the average as it stood BEFORE that score was added, so a fragment is judged against
     the room as it was before it was said. A triggering score is then added to the average like any other.
 
@@ -41,7 +41,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 DEFAULT_FLOOR_IGNORE_FRACTION = 0.05
-DEFAULT_TRIGGER_FRACTION = 0.10
+DEFAULT_TRIGGER_FRACTION = 0.20
 DEFAULT_INTEREST_HALF_LIFE = 10.0     # in scores
 DEFAULT_MIN_SCORES = 10
 DEFAULT_SCORE_RANGE = (0.0, 9.0)       # the digits 0 to 9 the scorer model is asked to answer with
@@ -78,7 +78,7 @@ class ConvoInterestTracker:
         """Args:
             floor_ignore_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
             trigger_fraction: How far above avg_convo_interest a score must be to trigger, 0 or more
-                (0.10 is 10% above).
+                (0.20 is 20% above).
             interest_half_life: How many more scores it takes for a score's influence on
                 avg_convo_interest to halve, above 0 (10 means about 10 scores of memory).
             min_scores: How many scores must have counted before the trigger may fire, a whole number

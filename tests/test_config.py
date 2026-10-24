@@ -434,7 +434,7 @@ def test_the_trigger_defaults_match_the_trackers_defaults():
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(0.05, 0.10, 10.0, 10)
+    assert TriggerSettings() == TriggerSettings(0.05, 0.20, 10.0, 10)
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):

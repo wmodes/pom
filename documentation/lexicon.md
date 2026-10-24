@@ -31,6 +31,10 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **fragment_filter**: the check in front of the scorer model that gives fragments with no content
   words (such as "or not.") the lowest score without asking the scorer model.
 - **fallback**: the rough word-based score used when the scorer model does not reply.
+- **word tagger** †: the component that labels each word of a fragment as a name, number, filler,
+  stopword or content word. The fragment_filter and the fallback use its labels.
+- **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
+  content words skips the scorer model.
 - **avg_convo_floor** †: the line below which scores are ignored and do not feed avg_convo_interest;
   for now a fixed fraction of the score range.
 - **avg_convo_interest** †: a decaying moving average of the scores above the floor; how
@@ -49,6 +53,12 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **exemplar**: a chunk drawn by weight for one portent, as an example of style.
 - **draw weights**: values we assign to scale things proportionally, such as how often each
   register and source is drawn. Not to be confused with a model's weights.
+
+## Keeping going: faults
+
+- **fault** †: a problem a module recovered from and recorded instead of crashing.
+- **fault recorder** †: the component that keeps a module's faults (WARNING means recovered,
+  CRITICAL means the module cannot do its job). The Printer never stops because of a fault.
 
 ## Writing: from hinge to portent
 

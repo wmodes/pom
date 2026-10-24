@@ -1,15 +1,15 @@
 """The ScorerModelClient: asks the scorer model how interesting one fragment is.
 
 The Scorer decides which overheard fragments are worth responding to by asking a small language
-model (the scorer model, served by llama.cpp's `llama-server`) to score each one. This module is only the conversation with
-that server: one fragment in, one number out, or None if no number could be had. It knows nothing
-about fragments or filtering; the Scorer does that.
+model (the scorer model, served by llama.cpp's `llama-server`) to score each one. This module is
+only the conversation with that server: one fragment in, one number out, or None if no number could
+be had. It knows nothing about fragments or filtering; the Scorer does that.
 
-HOW THE SCORE IS READ. The model is asked to reply with a number, but only its first token is
-generated, and the score is read from the probabilities of the digits 1 to 9 in that one token (the
-expected value of the digit). That makes it continuous (no ties between fragments), repeatable (no
-sampling, temperature 0), and cheap (one generated token). Written decimals from a small model
-cluster on a few values, so they are not used. This is the method the interest-scorer experiment
+HOW THE SCORE IS READ. The model is asked to reply with a single digit, 0 to 9, and only that
+first token is generated. The score is read from the probabilities of the digits 0 to 9 in that one
+token (the expected value of the digit). That makes it continuous (no ties between fragments),
+repeatable (no sampling, temperature 0), and cheap (one generated token). Decimals written by a small
+model cluster on a few values, so the model is not asked for them. This is the method the interest-scorer experiment
 settled on (experiments/interest-scorer/README.md), and the request is built exactly as the
 experiment built it, so scores here match the saved results.
 
@@ -75,10 +75,10 @@ def _http_post(url: str, body: dict, timeout: float) -> dict:
 
 
 def score_from_probabilities(reply) -> Optional[float]:
-    """The expected value of the digit 1 to 9 the model starts its reply with, or None.
+    """The expected value of the digit 0 to 9 the model starts its reply with, or None.
 
     Reads the probabilities of the first generated token from an OpenAI-style reply that asked for
-    logprobs. Tokens that are not a single digit 1 to 9 are ignored (a model that starts with words
+    logprobs. Tokens that are not a single digit 0 to 9 are ignored (a model that starts with words
     spreads its probability over them, and what is left is still the digit's relative weight); if no
     digit appears at all the reply cannot be scored. Anything malformed gives None.
     """
@@ -87,7 +87,7 @@ def score_from_probabilities(reply) -> Optional[float]:
         weights = {}
         for candidate in candidates:
             token = candidate["token"].strip()
-            if len(token) == 1 and token in "123456789":
+            if len(token) == 1 and token in "0123456789":
                 weights[int(token)] = weights.get(int(token), 0.0) + math.exp(candidate["logprob"])
     except (KeyError, IndexError, TypeError, AttributeError, ValueError, OverflowError):
         return None
@@ -111,15 +111,13 @@ class Explanation:
 
 
 def parse_written_score(reply) -> Optional[float]:
-    """The number a debug reply starts with (1.00 to 9.99), or None.
+    """The single digit (0 to 9) a debug reply starts with, or None.
 
-    A debug reply looks like "7.89, a striking image, a death"; only the leading number is read.
+    A debug reply looks like "7 | a striking image | vivid, death"; only the leading digit is read.
+    A longer number ("85") or a decimal ("7.5") is not a digit and gives None.
     """
-    found = re.match(r"\s*(\d+(?:\.\d+)?)", reply) if isinstance(reply, str) else None
-    if found is None:
-        return None
-    value = float(found.group(1))
-    return value if 1.0 <= value <= 9.99 else None
+    found = re.match(r"\s*(\d)(?![\d.])", reply) if isinstance(reply, str) else None
+    return float(found.group(1)) if found else None
 
 
 class ScorerModelClient:
@@ -179,7 +177,7 @@ class ScorerModelClient:
         return self._usable and bool(self._explain_prompt)
 
     def score(self, fragment_text: str) -> Optional[float]:
-        """The model's interest score for one fragment (about 1 to 9.99), or None if it got none.
+        """The model's interest score for one fragment (0 to 9), or None if it got none.
 
         None means no score could be had; the reason is in `report`. Never raises (except in
         strict mode).

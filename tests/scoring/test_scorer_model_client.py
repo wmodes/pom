@@ -56,8 +56,15 @@ class TestExpectedDigit:
     def test_the_same_digit_in_two_spellings_adds_up(self):
         assert score_from_probabilities(reply(("3", 0.25), (" 3", 0.25), ("9", 0.5))) == pytest.approx(6.0)
 
-    def test_zero_and_longer_numbers_are_not_digits(self):
-        assert score_from_probabilities(reply(("0", 0.5), ("10", 0.4), ("5", 0.1))) == pytest.approx(5.0)
+    def test_zero_counts_as_a_digit(self):
+        assert score_from_probabilities(reply(("0", 0.5), ("8", 0.5))) == pytest.approx(4.0)
+        assert score_from_probabilities(reply(("0", 1.0))) == pytest.approx(0.0)
+
+    def test_longer_numbers_are_not_digits(self):
+        assert score_from_probabilities(reply(("10", 0.4), ("85", 0.4), ("5", 0.2))) == pytest.approx(5.0)
+
+    def test_two_digit_tokens_that_are_inside_the_digit_string_are_not_digits(self):
+        assert score_from_probabilities(reply(("01", 0.3), ("12", 0.3), ("89", 0.2), ("5", 0.2))) == pytest.approx(5.0)
 
     def test_no_digit_gives_none(self):
         assert score_from_probabilities(reply(("The", 0.9), ("Sure", 0.1))) is None
@@ -315,11 +322,12 @@ class TestExplain:
 
 
 class TestParseWrittenScore:
-    @pytest.mark.parametrize("text,expected", [("7.89, a vivid image", 7.89), ("  3", 3.0), ("1.00", 1.0),
-                                               ("9.99, extremely", 9.99), ("5.5 because", 5.5)])
-    def test_the_leading_number_is_read(self, text, expected):
+    @pytest.mark.parametrize("text,expected", [("7 | a vivid image | death", 7.0), ("  3", 3.0), ("0 | nothing", 0.0),
+                                               ("9, extremely", 9.0), ("5 because", 5.0)])
+    def test_the_leading_digit_is_read(self, text, expected):
         assert parse_written_score(text) == pytest.approx(expected)
 
-    @pytest.mark.parametrize("text", ["", "a vivid image, 7.89", "Score: 7", "0.5", "10", "12.3, odd", None, 7, "-4"])
+    @pytest.mark.parametrize("text", ["", "a vivid image, 7", "Score: 7", "7.89, a vivid image", "7.", "10", "85 | two digits",
+                                      "12, odd", None, 7, "-4"])
     def test_anything_else_is_none(self, text):
         assert parse_written_score(text) is None

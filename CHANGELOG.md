@@ -205,6 +205,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The score is read from one digit, 0 to 9.** The scorer model is asked for a single digit (your prompt), and
+  the score is the probability-weighted value of the digits 0 to 9 in that first token, so it runs 0.0 to 9.0.
+  The digit 0 now counts (it was ignored, which skewed scores up when the model said 0). The debug view's written
+  score is read as a single digit, and a decimal or two-digit answer is no longer a score. Mutation-checked.
 - **Config keys follow the lexicon.** `samples_min` and `samples_max` are `exemplars_min` and `exemplars_max`
   (environment: `POM_EXEMPLARS_MIN` and `POM_EXEMPLARS_MAX`, was `POM_SAMPLES_MIN`/`MAX`), `Config.samples` is
   `Config.exemplar_range`, and `[scorer] floor` is `fragment_filter_score` (`ScorerSettings.fragment_filter_score`).

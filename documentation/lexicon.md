@@ -24,12 +24,12 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 ## Scoring and triggering: choosing what to respond to
 
 - **score**: the process of assigning a value to each incoming fragment, and the value itself
-  (1.00 to 9.99). The scorer does it, mostly with the scorer model.
+  (0 to 9, anywhere in between). The scorer does it, mostly with the scorer model.
 - **scorer**: the component that scores fragments: the fragment_filter, then the scorer model,
   with a fragment left unscored if the scorer model doesn't reply.
 - **scorer model**: the small language model that scores fragments (Qwen3-4B for now).
 - **fragment_filter**: the check in front of the scorer model that gives fragments with no content
-  words (such as "or not.") the lowest score without asking the scorer model.
+  words (such as "or not.") a fixed low score, `fragment_filter_score`, without asking the scorer model.
 - **unscored** †: a fragment the scorer model gave no score; its score is None. The trigger and
   avg_convo_interest leave it out.
 - **fallback**: shelved, unused: a rough word-based score once used when the scorer model did not

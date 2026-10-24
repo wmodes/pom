@@ -1,10 +1,11 @@
 """The Scorer: gives each overheard fragment an interest score, so the Trigger can pick a hinge.
 
 A fragment goes in (normally a whole sentence, from the SegmentFragmenter); a `ScoredFragment` comes out,
-the fragment plus a score and where the score came from. Scores run from about 1 (nothing to hold
-on to) to about 9.99 (extremely interesting). They are relative, not absolute: on the experiment's
-sample the best sentence scored only about 8, and ordinary talk 2 to 3, so whatever uses them
-should work from ranks and gaps, not a fixed high threshold.
+the fragment plus a score and where the score came from. Scores run from 0 (nothing to hold on to)
+to 9 (extremely interesting), as the probability-weighted value of the single digit the scorer model
+answers with, so they fall anywhere in between (6.35). They are relative, not absolute: ordinary talk
+scores 1 to 3 and even striking sentences often stop short of 9, so whatever uses them should work
+from ranks and gaps, not a fixed high threshold.
 
 THREE KINDS OF RESULT, recorded in `ScoredFragment.scored_by`:
   * MODEL:    the scorer model scored it (through the ScorerModelClient). The normal case.
@@ -69,7 +70,7 @@ class ScoredFragment:
 
     Attributes:
         fragment: The fragment that was scored.
-        score: About 1 (dull) to 9.99 (extremely interesting), or None if the fragment could not
+        score: 0 (dull) to 9 (extremely interesting), or None if the fragment could not
             be scored (scored_by UNSCORED). Check for None before using it as a number.
         scored_by: Whether the scorer model made the score, the fragment_filter did, or it is unscored.
     """

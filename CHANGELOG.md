@@ -220,6 +220,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Trigger settings renamed and re-based (Wes).** `floor_fraction` is `floor_ignore_fraction` (clearer: the bottom
+  fraction of the score range that is ignored). `interest_weight` is replaced by `interest_half_life`, in scores:
+  how many more scores it takes for an old score's pull on avg_convo_interest to halve (10, which works out to
+  each score moving the average about 6.7% of the way; `weight = 1 - 0.5 ** (1 / half_life)`, shown as
+  `ConvoInterestTracker.interest_weight`). `min_scores` now defaults to 10, the same as the half-life, so the
+  average has its first full memory before anything can trigger. An old key in a local file warns as unknown.
 - **Scorer prompt: the score is one digit, 0 to 9** (Wes). The scale now runs 0 to 9 in five two-digit buckets and
   the model is asked to "Reply with a one digit number and nothing else" (was two decimals from 1.00 to 9.99); the
   debug prompt asks for a single digit too. The old scale and output lines are kept as comments. The score itself

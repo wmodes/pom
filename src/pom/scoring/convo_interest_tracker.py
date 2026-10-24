@@ -5,12 +5,14 @@ when a fragment stands out from that. In a dull room a 5 can stand out; in a liv
 Each score goes in through `record`, and the tracker answers what it did with it.
 
   * avg_convo_floor: the line below which a score is ignored. It never feeds avg_convo_interest and can
-    never trigger. It is a fixed fraction of the possible score range, from `floor_fraction` (5% to begin
+    never trigger. It is a fixed fraction of the possible score range, from `floor_ignore_fraction` (5% to begin
     with): on the 0 to 9 scale, 0.05 gives 0.45. A fixed fraction, not a fraction of avg_convo_interest,
     because each would then depend on the other and could send the other off.
   * avg_convo_interest: a decaying moving average of the scores at or above the floor. The first such
-    score becomes the average; after that each new one moves it `interest_weight` of the way toward
-    itself (0.1 means 10%), so old talk fades without a clock. It is None until a score has counted.
+    score becomes the average; after that each new one moves it part of the way toward itself, so old
+    talk fades without a clock. How fast is set as a half-life, `interest_half_life`, in scores: a score's
+    influence halves after that many more scores (10, to begin with, which makes each new score move
+    the average about 6.7% of the way). It is None until a score has counted.
   * The trigger: a score triggers when it is at least `trigger_fraction` above the current
     avg_convo_interest (0.10 means 10% above), once `min_scores` scores have counted. The score is
     compared with the average as it stood BEFORE that score was added, so a fragment is judged against
@@ -38,10 +40,10 @@ from pom.log_setup import get_logger
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_FLOOR_FRACTION = 0.05
+DEFAULT_FLOOR_IGNORE_FRACTION = 0.05
 DEFAULT_TRIGGER_FRACTION = 0.10
-DEFAULT_INTEREST_WEIGHT = 0.1
-DEFAULT_MIN_SCORES = 5
+DEFAULT_INTEREST_HALF_LIFE = 10.0     # in scores
+DEFAULT_MIN_SCORES = 10
 DEFAULT_SCORE_RANGE = (0.0, 9.0)       # the digits 0 to 9 the scorer model is asked to answer with
 
 
@@ -63,20 +65,22 @@ class ConvoInterestTracker:
         report: Problems met (a bad setting replaced by its default).
         avg_convo_floor: The score below which scores are ignored.
         avg_convo_interest: The decaying average of the scores at or above the floor, or None.
+        interest_weight: How far each counted score moves the average toward itself (worked out from
+            the half-life).
         trigger_level: The score a new score must reach to trigger, or None before any score counted.
         counted: How many scores have counted so far.
     """
 
-    def __init__(self, floor_fraction: float = DEFAULT_FLOOR_FRACTION,
+    def __init__(self, floor_ignore_fraction: float = DEFAULT_FLOOR_IGNORE_FRACTION,
                  trigger_fraction: float = DEFAULT_TRIGGER_FRACTION,
-                 interest_weight: float = DEFAULT_INTEREST_WEIGHT, min_scores: int = DEFAULT_MIN_SCORES,
+                 interest_half_life: float = DEFAULT_INTEREST_HALF_LIFE, min_scores: int = DEFAULT_MIN_SCORES,
                  score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: bool = False):
         """Args:
-            floor_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
+            floor_ignore_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
             trigger_fraction: How far above avg_convo_interest a score must be to trigger, 0 or more
                 (0.10 is 10% above).
-            interest_weight: How far each counted score moves avg_convo_interest toward itself, above 0
-                and up to 1 (0.1 is 10% of the way).
+            interest_half_life: How many more scores it takes for a score's influence on
+                avg_convo_interest to halve, above 0 (10 means about 10 scores of memory).
             min_scores: How many scores must have counted before the trigger may fire, a whole number
                 of at least 1.
             score_range: (lowest, highest) possible score. The lowest must be below the highest.
@@ -84,10 +88,10 @@ class ConvoInterestTracker:
         """
         self.report = FaultRecorder(strict=strict, error=ConvoInterestTrackerError, logger=_log)
         low, high = self._valid_range(score_range)
-        fraction = self._valid_fraction(floor_fraction)
+        fraction = self._valid_fraction(floor_ignore_fraction)
         self._floor = low + fraction * (high - low)
         self._trigger_fraction = self._valid_trigger_fraction(trigger_fraction)
-        self._weight = self._valid_weight(interest_weight)
+        self._weight = 1.0 - 0.5 ** (1.0 / self._valid_half_life(interest_half_life))
         self._min_scores = self._valid_min_scores(min_scores)
         self._interest: Optional[float] = None
         self._counted = 0
@@ -99,9 +103,9 @@ class ConvoInterestTracker:
         """A number from 0 up to (not including) 1, or the default with a warning."""
         if self._is_number(value) and 0.0 <= value < 1.0:
             return float(value)
-        self.report.warn(f"floor_fraction must be a number from 0 up to but not including 1, got {value!r}; "
-                         f"using {DEFAULT_FLOOR_FRACTION:g}")
-        return DEFAULT_FLOOR_FRACTION
+        self.report.warn(f"floor_ignore_fraction must be a number from 0 up to but not including 1, got {value!r}; "
+                         f"using {DEFAULT_FLOOR_IGNORE_FRACTION:g}")
+        return DEFAULT_FLOOR_IGNORE_FRACTION
 
     def _valid_trigger_fraction(self, value) -> float:
         """A number of 0 or more, or the default with a warning."""
@@ -111,13 +115,13 @@ class ConvoInterestTracker:
                          f"using {DEFAULT_TRIGGER_FRACTION:g}")
         return DEFAULT_TRIGGER_FRACTION
 
-    def _valid_weight(self, value) -> float:
-        """A number above 0 and up to 1, or the default with a warning."""
-        if self._is_number(value) and 0.0 < value <= 1.0:
+    def _valid_half_life(self, value) -> float:
+        """A number above 0, or the default with a warning."""
+        if self._is_number(value) and value > 0.0:
             return float(value)
-        self.report.warn(f"interest_weight must be a number above 0 and up to 1, got {value!r}; "
-                         f"using {DEFAULT_INTEREST_WEIGHT:g}")
-        return DEFAULT_INTEREST_WEIGHT
+        self.report.warn(f"interest_half_life must be a number above 0, got {value!r}; "
+                         f"using {DEFAULT_INTEREST_HALF_LIFE:g}")
+        return DEFAULT_INTEREST_HALF_LIFE
 
     def _valid_min_scores(self, value) -> int:
         """A whole number of at least 1, or the default with a warning."""
@@ -155,6 +159,11 @@ class ConvoInterestTracker:
     def avg_convo_interest(self) -> Optional[float]:
         """The decaying average of the scores at or above the floor, or None before any has counted."""
         return self._interest
+
+    @property
+    def interest_weight(self) -> float:
+        """How far each counted score moves the average toward itself, worked out from the half-life."""
+        return self._weight
 
     @property
     def trigger_level(self) -> Optional[float]:

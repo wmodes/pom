@@ -17,11 +17,11 @@ of being threaded through by hand. Today there are five:
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
                entry point builds the ScorerModelClient and Scorer from `config.scorer`. Environment:
                POM_SCORER_URL.
-    [trigger]  A section (see TriggerSettings): when the Printer responds. `floor_fraction` is how far
+    [trigger]  A section (see TriggerSettings): when the Printer responds. `floor_ignore_fraction` is how far
                up the score range the floor sits (0.05, so 0.45 on the 0 to 9 scale; scores below it are
-               ignored), `interest_weight` how far each score moves the room's average interest toward
-               itself (0.1), `trigger_fraction` how far above that average a score must be to trigger
-               (0.10), and `min_scores` how many scores must count first (5). The entry point builds
+               ignored), `interest_half_life` how many scores it takes for an old score's pull on the room's
+               average interest to halve (10), `trigger_fraction` how far above that average a score
+               must be to trigger (0.10), and `min_scores` how many scores must count first (10). The entry point builds
                the ConvoInterestTracker from `config.trigger`.
 
 Where values come from, highest priority first:
@@ -59,8 +59,8 @@ _FALSE = {"0", "false", "no", "off"}
 _KEYS = {"strict", "debug", "log_level", "local_logs", "exemplars_min", "exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
-         "scorer.retry_seconds", "trigger.floor_fraction", "trigger.trigger_fraction",
-         "trigger.interest_weight", "trigger.min_scores"}
+         "scorer.retry_seconds", "trigger.floor_ignore_fraction", "trigger.trigger_fraction",
+         "trigger.interest_half_life", "trigger.min_scores"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -68,10 +68,10 @@ DEFAULT_SCORER_FRAGMENT_FILTER_SCORE = 1.0
 DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3
 DEFAULT_SCORER_RETRY_SECONDS = 30.0
-DEFAULT_TRIGGER_FLOOR_FRACTION = 0.05
+DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION = 0.05
 DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.10
-DEFAULT_TRIGGER_INTEREST_WEIGHT = 0.1
-DEFAULT_TRIGGER_MIN_SCORES = 5
+DEFAULT_TRIGGER_INTEREST_HALF_LIFE = 10.0
+DEFAULT_TRIGGER_MIN_SCORES = 10
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -123,18 +123,18 @@ class TriggerSettings:
     """The `[trigger]` section: when the Printer responds.
 
     Attributes:
-        floor_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
+        floor_ignore_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
             Scores below the floor are ignored.
         trigger_fraction: How far above the room's average interest a score must be to trigger, 0 or more
             (0.10 is 10% above).
-        interest_weight: How far each counted score moves the average toward itself, above 0 and up to 1
-            (0.1 is 10% of the way).
+        interest_half_life: How many more scores it takes for a score's pull on the average to halve, above 0
+            (10 is about ten scores of memory).
         min_scores: How many scores must have counted before the trigger may fire, a whole number of at
             least 1.
     """
-    floor_fraction: float = DEFAULT_TRIGGER_FLOOR_FRACTION
+    floor_ignore_fraction: float = DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION
     trigger_fraction: float = DEFAULT_TRIGGER_TRIGGER_FRACTION
-    interest_weight: float = DEFAULT_TRIGGER_INTEREST_WEIGHT
+    interest_half_life: float = DEFAULT_TRIGGER_INTEREST_HALF_LIFE
     min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
 
 
@@ -236,12 +236,12 @@ class Config:
                                 scorer_min_content, scorer_failure_limit, scorer_retry, scorer_output,
                                 scorer_output_debug)
         trigger = TriggerSettings(
-            _fraction(values.get("trigger.floor_fraction", DEFAULT_TRIGGER_FLOOR_FRACTION),
-                      "trigger.floor_fraction", DEFAULT_TRIGGER_FLOOR_FRACTION, report),
+            _fraction(values.get("trigger.floor_ignore_fraction", DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION),
+                      "trigger.floor_ignore_fraction", DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION, report),
             _number(values.get("trigger.trigger_fraction", DEFAULT_TRIGGER_TRIGGER_FRACTION),
                     "trigger.trigger_fraction", DEFAULT_TRIGGER_TRIGGER_FRACTION, 0.0, report),
-            _weight(values.get("trigger.interest_weight", DEFAULT_TRIGGER_INTEREST_WEIGHT),
-                    "trigger.interest_weight", DEFAULT_TRIGGER_INTEREST_WEIGHT, report),
+            _positive(values.get("trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE),
+                      "trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE, report),
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
                    "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 1, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger)
@@ -325,11 +325,11 @@ def _fraction(value, label: str, default: float, report: FaultRecorder) -> float
     return default
 
 
-def _weight(value, label: str, default: float, report: FaultRecorder) -> float:
-    """A number above 0 and up to 1 (an int or float, not a boolean); otherwise the default."""
-    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value <= 1.0:
+def _positive(value, label: str, default: float, report: FaultRecorder) -> float:
+    """A number above 0 (an int or float, not a boolean, and not infinity); otherwise the default."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value < float("inf"):
         return float(value)
-    report.warn(f"{label} must be a number above 0 and up to 1, got {value!r}; using {default:g}")
+    report.warn(f"{label} must be a number above 0, got {value!r}; using {default:g}")
     return default
 
 

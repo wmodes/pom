@@ -42,13 +42,14 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
 - **avg_convo_floor** †: the line below which scores are ignored and do not feed avg_convo_interest;
-  a fixed fraction of the score range, `floor_fraction` (5% to begin with, so 0.45 on the 0 to 9 scale).
+  a fixed fraction of the score range, `floor_ignore_fraction` (5% to begin with, so 0.45 on the 0 to 9 scale).
   A score at the floor counts; an unscored fragment never does.
 - **avg_convo_interest** †: a decaying moving average of the scores at or above the floor; how
-  interesting the room's talk has been lately. The first such score becomes the average; each later one
-  moves it `interest_weight` of the way toward itself (0.1, so 10%). Old talk fades by count, not by time.
+  interesting the room's talk has been lately. The first such score becomes the average; after that each
+  new one pulls it a little toward itself, and an old score's pull halves after `interest_half_life` more
+  scores (10). Old talk fades by count, not by time.
 - **trigger** †: the moment a score is at least `trigger_fraction` above avg_convo_interest (0.10, so 10%
-  above), once `min_scores` scores (5) have counted. The score is compared with the average as it stood
+  above), once `min_scores` scores (10) have counted. The score is compared with the average as it stood
   before that score was added. Then the Printer responds.
 - **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.
 

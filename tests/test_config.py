@@ -5,7 +5,7 @@ import pytest
 
 from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
-                        DEFAULT_TRIGGER_FLOOR_FRACTION, Config, ScorerSettings, TriggerSettings)
+                        DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION, Config, ScorerSettings, TriggerSettings)
 
 
 def write(tmp_path, text):
@@ -423,36 +423,36 @@ def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
 
 def test_the_trigger_defaults_are_five_percent_and_quiet():
     config = Config.load(environ={})
-    assert config.trigger == TriggerSettings() and config.trigger.floor_fraction == 0.05 and config.report.ok
+    assert config.trigger == TriggerSettings() and config.trigger.floor_ignore_fraction == 0.05 and config.report.ok
 
 
 def test_the_trigger_defaults_match_the_trackers_defaults():
     from pom.scoring import convo_interest_tracker as tracker
-    assert DEFAULT_TRIGGER_FLOOR_FRACTION == tracker.DEFAULT_FLOOR_FRACTION
-    assert TriggerSettings() == TriggerSettings(tracker.DEFAULT_FLOOR_FRACTION, tracker.DEFAULT_TRIGGER_FRACTION,
-                                                tracker.DEFAULT_INTEREST_WEIGHT, tracker.DEFAULT_MIN_SCORES)
+    assert DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION == tracker.DEFAULT_FLOOR_IGNORE_FRACTION
+    assert TriggerSettings() == TriggerSettings(tracker.DEFAULT_FLOOR_IGNORE_FRACTION, tracker.DEFAULT_TRIGGER_FRACTION,
+                                                tracker.DEFAULT_INTEREST_HALF_LIFE, tracker.DEFAULT_MIN_SCORES)
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(0.05, 0.10, 0.1, 5)
+    assert TriggerSettings() == TriggerSettings(0.05, 0.10, 10.0, 10)
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
-    text = "[trigger]\nfloor_fraction = 0.1\ntrigger_fraction = 0.25\ninterest_weight = 0.3\nmin_scores = 8\n"
+    text = "[trigger]\nfloor_ignore_fraction = 0.1\ntrigger_fraction = 0.25\ninterest_half_life = 12\nmin_scores = 8\n"
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(0.1, 0.25, 0.3, 8) and config.report.ok
+    assert config.trigger == TriggerSettings(0.1, 0.25, 12.0, 8) and config.report.ok
 
 
 def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
-    text = "[trigger]\nfloor_fraction = 0\ntrigger_fraction = 0\ninterest_weight = 1\nmin_scores = 1\n"
+    text = "[trigger]\nfloor_ignore_fraction = 0\ntrigger_fraction = 0\ninterest_half_life = 0.5\nmin_scores = 1\n"
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(0.0, 0.0, 1.0, 1) and config.report.ok
+    assert config.trigger == TriggerSettings(0.0, 0.0, 0.5, 1) and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
     ("trigger_fraction", "-0.1"), ("trigger_fraction", '"0.1"'), ("trigger_fraction", "true"), ("trigger_fraction", "[0.1]"),
-    ("interest_weight", "0"), ("interest_weight", "-0.1"), ("interest_weight", "1.5"), ("interest_weight", '"0.1"'),
-    ("interest_weight", "true"), ("interest_weight", "false"),
+    ("interest_half_life", "0"), ("interest_half_life", "-1"), ("interest_half_life", '"10"'), ("interest_half_life", "true"),
+    ("interest_half_life", "false"), ("interest_half_life", "inf"), ("interest_half_life", "nan"),
     ("min_scores", "0"), ("min_scores", "-1"), ("min_scores", "2.5"), ("min_scores", '"5"'), ("min_scores", "true")])
 def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
@@ -460,21 +460,21 @@ def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, val
     assert len(config.report.warnings) == 1 and f"trigger.{key}" in config.report.warnings[0]
 
 
-def test_the_floor_fraction_is_read_from_the_section(tmp_path):
-    config = Config.load(write(tmp_path, "[trigger]\nfloor_fraction = 0.1\n"), environ={})
+def test_the_floor_ignore_fraction_is_read_from_the_section(tmp_path):
+    config = Config.load(write(tmp_path, "[trigger]\nfloor_ignore_fraction = 0.1\n"), environ={})
     assert config.trigger == TriggerSettings(0.1) and config.report.ok
 
 
-def test_a_floor_fraction_of_zero_is_allowed(tmp_path):
-    config = Config.load(write(tmp_path, "[trigger]\nfloor_fraction = 0\n"), environ={})
-    assert config.trigger.floor_fraction == 0.0 and config.report.ok
+def test_a_floor_ignore_fraction_of_zero_is_allowed(tmp_path):
+    config = Config.load(write(tmp_path, "[trigger]\nfloor_ignore_fraction = 0\n"), environ={})
+    assert config.trigger.floor_ignore_fraction == 0.0 and config.report.ok
 
 
 @pytest.mark.parametrize("value", ["-0.1", "1", "1.5", '"0.05"', "true", "false", "[0.05]", "nan", "inf"])
-def test_a_bad_floor_fraction_means_the_default_with_a_warning(tmp_path, value):
-    config = Config.load(write(tmp_path, f"[trigger]\nfloor_fraction = {value}\n"), environ={})
+def test_a_bad_floor_ignore_fraction_means_the_default_with_a_warning(tmp_path, value):
+    config = Config.load(write(tmp_path, f"[trigger]\nfloor_ignore_fraction = {value}\n"), environ={})
     assert config.trigger == TriggerSettings()
-    assert len(config.report.warnings) == 1 and "trigger.floor_fraction" in config.report.warnings[0]
+    assert len(config.report.warnings) == 1 and "trigger.floor_ignore_fraction" in config.report.warnings[0]
 
 
 def test_an_unknown_trigger_key_is_warned_about(tmp_path):
@@ -483,16 +483,16 @@ def test_an_unknown_trigger_key_is_warned_about(tmp_path):
 
 
 def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
-    main = write(tmp_path, "[trigger]\nfloor_fraction = 0.1\n")
-    (tmp_path / "pom.local.toml").write_text("[trigger]\nfloor_fraction = 0.2\n", encoding="utf-8")
-    assert Config.load(main, environ={}).trigger.floor_fraction == 0.2
+    main = write(tmp_path, "[trigger]\nfloor_ignore_fraction = 0.1\n")
+    (tmp_path / "pom.local.toml").write_text("[trigger]\nfloor_ignore_fraction = 0.2\n", encoding="utf-8")
+    assert Config.load(main, environ={}).trigger.floor_ignore_fraction == 0.2
 
 
 def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
     from pom.scoring.convo_interest_tracker import ConvoInterestTracker, ScoreEffect
-    text = "[trigger]\nfloor_fraction = 0.1\ntrigger_fraction = 0.5\ninterest_weight = 1\nmin_scores = 2\n"
+    text = "[trigger]\nfloor_ignore_fraction = 0.1\ntrigger_fraction = 0.5\ninterest_half_life = 1\nmin_scores = 2\n"
     settings = Config.load(write(tmp_path, text), environ={}).trigger
-    tracker = ConvoInterestTracker(settings.floor_fraction, settings.trigger_fraction, settings.interest_weight,
+    tracker = ConvoInterestTracker(settings.floor_ignore_fraction, settings.trigger_fraction, settings.interest_half_life,
                                    settings.min_scores)
     assert tracker.avg_convo_floor == pytest.approx(0.9) and tracker.report.ok
     assert [tracker.record(score) for score in (4, 4, 4, 4)] == [ScoreEffect.COUNTED] * 4   # the average sits at 4

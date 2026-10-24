@@ -24,7 +24,7 @@ confirm.
 
 - **score**: the process of assigning a value to each incoming chunk, and the value itself
   (1.00 to 9.99). The Scorer does it with a small language model.
-- **filter** †: the check in front of the Scorer that gives chunks with no content words (such as
+- **chunk_filter**: the check in front of the Scorer that gives chunks with no content words (such as
   "or not.") the lowest score without asking the model.
 - **fallback** †: the rough word-based score used when the model does not answer.
 - **avg_convo_floor** †: the line below which scores are ignored and do not feed the heat; for now
@@ -58,3 +58,4 @@ These names predate the lexicon. Each rename is Wes's decision.
   produce segments in whisper's sense.
 - **`InterestClient`** and the word "interest" describe scoring.
 - Older docs say **pronouncement** for portent.
+- The Scorer calls the chunk_filter just the *filter* (`is_filtered`, and `filter` as a score's source).

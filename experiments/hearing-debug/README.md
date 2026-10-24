@@ -66,13 +66,15 @@ cd experiments/hearing-debug
 ./probe_hearing_run.sh --wav ~/pom/data/recordings/work/some-clip.wav    # or replay a 16 kHz mono recording
 ```
 
-`probe_hearing_run.sh` sets the microphone gain, starts the language model (from `~/pom/data/models`), runs
-the pipeline on the live config (or `config/pom.toml` if there is none) and stops the model when you quit. Useful options (all passed through): `--model small.en` for a bigger whisper
-model, `--no-explain` for **fast mode** (each sentence scored at once by the Printer's
+`probe_hearing_run.sh` sets the microphone gain, starts a whisper-server (whisper.cpp's own server, model kept
+loaded, with its Silero voice detection on) and the language model (from `~/pom/data/models`), runs the pipeline on
+the live config (or `config/pom.toml` if there is none) and stops both servers when you quit. Useful options:
+`--model small.en` for a bigger whisper model (and `--whisper-threads`, `--vad-threshold`, which go to the
+whisper-server), `--no-explain` for **fast mode** (each sentence scored at once by the Printer's
 one-token scorer, no reasons, much lighter on the CPU), `--margin-db 4` if music or noise is masking speech, `--speed 0` to play a recording as fast as possible.
 
-To try it on the Mac against a recording, set `POM_SCORER_URL` to a running llama-server and use `--wav`;
-see the header of `probe_hearing_pipeline.py`.
+To try it on the Mac against a recording, start a whisper-server (the header of `probe_hearing_pipeline.py` has
+the command), set `POM_SCORER_URL` to a running llama-server, and use `--wav`.
 
 ## How the prompts travel (git, no copying)
 
@@ -92,9 +94,9 @@ of a few seconds between saving and the Pi seeing the change.
 
 ## What it keeps
 
-Nothing. What is heard is printed to the terminal and nowhere else: the audio is cut into a temporary file
-in memory (`/dev/shm`) and deleted as soon as whisper has read it, the last few sentences stay in memory for
-the `r` command, and the model server's log goes to memory. Do not redirect the output to a file, and do
+Nothing. What is heard is printed to the terminal and nowhere else: the audio goes to the whisper-server from
+memory and never touches a disk, the last few sentences stay in memory for the `r` command, and the servers'
+logs go to memory (`/dev/shm`) and hold request details, not words. Do not redirect the output to a file, and do
 not run it as a service. It is a development tool, used on purpose.
 
 ## Things to know
@@ -120,8 +122,12 @@ not run it as a service. It is a development tool, used on purpose.
   than something said, and as hinge candidates they only gave the scorer a caption word to react to. They are kept as a
   short list of recent ambient sounds, ready to go into the voice's prompt later as context. Whisper's "nothing here" markers (`[BLANK_AUDIO]`, `[silence]`, `(silence)`, `[no audio]`) are dropped
   entirely, and when whisper has said an audio was silent the second pass is not run.
-- **Whisper reloads its model for every utterance** here, as in the Pi benchmark. The real system will keep
-  it resident.
+- **Whisper runs as a server** (`whisper-server`), so its model stays loaded between utterances; the pipeline sends
+  each utterance to it over HTTP, from memory. Measured on the Pi, with matched settings, that saves about 15 to
+  30% of each call; most of the Pi's cost per call is whisper encoding a padded 30-second window whatever the length
+  of the audio, which is why fewer, longer calls are cheaper per second of audio. The server has a known bug (see
+  `whisper_server_client.py`): `verbose_json` with voice detection on crashes it when the audio holds no speech, so
+  timestamps are requested as SRT.
 - **The number and the reasons come from the same output.** Your `prompt_output_debug` asks for the score, the
   sentence and the content found in a single answer. The score shown is read from the probabilities of that
   answer's first token (the way the one-token scorer reads its own), and the reasons are the rest of the same
@@ -136,7 +142,8 @@ not run it as a service. It is a development tool, used on purpose.
 - `probe_hearing_run.sh`: on the Pi; microphone gain, language model, pipeline.
 - `probe_hearing_tune.sh`: on the Mac; `start`, `watch`, `sync`, `stop`. Delivers prompt edits through git.
 - `probe_hearing_follow_tuning.sh`: on the Pi (used by `probe_hearing_run.sh`); follows the tuning branch with `git fetch`.
-- `probe_whisper_segments.py`: offline test (no microphone, no model server) of letting whisper's own voice detection
+- `whisper_server_client.py`: a small client for whisper-server, shared by the tools in this folder.
+- `probe_whisper_segments.py`: offline test (no microphone, no language model) of letting whisper's own voice detection
   find the cut points instead of the energy chunker, on a recording. See the next section.
 
 ## Finding the cut points: the energy chunker against whisper's own voice detection
@@ -145,7 +152,7 @@ The energy chunker in `probe_hearing_pipeline.py` ends an utterance after 0.7 s 
 fluctuating noise (street, music, a hookah) that pause never comes: on a 90 s attic recording 34 to 55% of the frames
 counted as speech even in the stretches where nobody spoke, so every utterance ran to the 20 s cap and was cut by the
 clock, in the middle of a thought. `probe_whisper_segments.py recording.wav` replays a recording through the alternative:
-a rolling buffer handed to `whisper-cli --vad` every 10 s, keeping the segments whisper finished, joining a segment that
+a rolling buffer handed to a whisper-server (with its voice detection on) every 10 s, keeping the segments whisper finished, joining a segment that
 does not end like a sentence to the next, starting each round a little before the last kept segment's end, and splitting
 segments into sentences with the Printer's own `SegmentFragmenter`. It compares the result with whisper reading the whole
 file at once. Findings so far: on the attic recording, whisper found no speech in the noise-only stretches and cut at

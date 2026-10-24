@@ -227,6 +227,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Hearing-debug talks to a whisper-server instead of running `whisper-cli` for every utterance** (Wes's call). The
+  Transcriber and the new playground (`probe_whisper_segments.py`) share `whisper_server_client.py`: audio goes to the
+  server from memory, so no audio file is written at all (the stale-slice cleanup from the previous change is no longer
+  needed and is gone), whisper's voice detection is on for each request and off for the lyrics-and-captions second
+  pass, and `probe_hearing_run.sh` starts and stops the server beside llama-server (`--model`, `--whisper-threads` and
+  `--vad-threshold` now go to it). Measured on the Pi with matched settings the server saves about 15 to 30% per call.
+  Found on the way: `verbose_json` with voice detection on crashes the 1.9.5 server when the audio has no speech, so
+  timestamps are asked for as SRT. The pipeline also reports a dead server once and tells you how to start one.
 - **`trigger_fraction` is now 0.25** (Wes, after a second live session): across the two pasted sessions 0.25 marks 11 of
   43 and 12 of 23 counted sentences (0.10 marked 19 of 43 and 13 of 23). The built-in default moves with it.
 - **`trigger_fraction` is now 0.20** (Wes, after watching a live session): in the pasted session, 0.10 marked 19 of 43

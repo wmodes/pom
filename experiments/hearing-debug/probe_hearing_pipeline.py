@@ -31,12 +31,11 @@ Usage:
 While running, type: r (re-score the recent sentences), ? (help), q (quit).
 
 Needs, besides Python 3.11 and the `pom` package (the repo's src/ is found automatically): arecord for
-the microphone, whisper.cpp's whisper-cli with a model (WHISPER_DIR, WHISPER_CLI, WHISPER_MODEL_FILE; see
-the README), and a running llama-server at the config's [scorer] url (probe_hearing_run.sh starts one).
-Everything else is the standard library.
+the microphone, a running whisper-server (whisper.cpp's own server, with its voice detection on; its address
+is --whisper-url or POM_WHISPER_URL) and a running llama-server at the config's [scorer] url.
+probe_hearing_run.sh starts both on the Pi. Everything else is the standard library.
 """
 import argparse
-import atexit
 import array
 import collections
 import hashlib
@@ -47,7 +46,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import textwrap
 import threading
 import time
@@ -69,6 +67,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
+from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
 from pom.scoring import ConvoInterestTracker, ScoreEffect, ScorerModelClient, Scorer, WordTagger   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
@@ -284,95 +283,42 @@ class WavSource:
 # --- Words ------------------------------------------------------------------------------------
 
 class Transcriber:
-    """Turns an utterance into text with whisper.cpp's whisper-cli, using whisper's own voice detection.
+    """Turns an utterance into text with whisper.cpp's whisper-server, using whisper's own voice detection.
 
-    Whether something is speech is decided by whisper's built-in Silero VAD (`--vad`), the intended tool,
-    not by a threshold of mine. With it, whisper only sees the speech, so it stops inventing words for
-    silence and noise ("You", "I'm sorry") and hears quiet speech better.
+    Whether something is speech is decided by whisper's built-in Silero VAD, the intended tool, not by a
+    threshold of mine. With it, whisper only sees the speech, so it stops inventing words for silence and
+    noise ("You", "I'm sorry") and hears quiet speech better. The server keeps the models loaded, and the
+    audio goes to it from memory, so no audio file is ever written to disk.
 
     The VAD is a speech detector and treats singing, and most other sounds, as not speech. The Printer is
     meant to react to what it hears, so when pass 1 (VAD on) finds no speech, pass 2 runs whisper without
     the VAD and keeps only what whisper itself marks as a non-speech sound: song lyrics between music
     symbols and captions like "(dog barks)". Plain text from that pass is where whisper hallucinates, so it
     is thrown away.
+
+    Attributes:
+        client: The WhisperServerClient (its `error` says why the last request failed, or None).
     """
 
-    VAD_MODEL = "ggml-silero-v6.2.0.bin"
-
-    def __init__(self, model: str, threads: int, use_vad: bool = True, vad_threshold: float = 0.5,
-                 sounds: bool = True):
-        root = Path(os.environ.get("WHISPER_DIR", ROOT / "data" / "tools" / "whisper.cpp"))
-        candidates = [os.environ.get("WHISPER_CLI"), str(root / "build" / "bin" / "whisper-cli"),
-                      shutil.which("whisper-cli")]
-        self._cli = next((c for c in candidates if c and Path(c).exists()), None)
-        models = [os.environ.get("WHISPER_MODEL_FILE"), str(root / "models" / f"ggml-{model}.bin"),
-                  str(ROOT / "data" / "whisper" / f"ggml-{model}.bin")]
-        self._model = next((m for m in models if m and Path(m).exists()), None)
-        if not self._cli or not self._model:
-            sys.exit(f"whisper not found (cli: {self._cli}, model: {self._model}); set WHISPER_DIR, "
-                     f"WHISPER_CLI or WHISPER_MODEL_FILE (see the README)")
-        vads = [os.environ.get("WHISPER_VAD_MODEL"), str(root / "models" / self.VAD_MODEL),
-                str(ROOT / "data" / "whisper" / self.VAD_MODEL)]
-        self._vad = next((v for v in vads if v and Path(v).exists()), None) if use_vad else None
-        self.note = ""
-        if use_vad and not self._vad:
-            self.note = "no VAD model found (scripts/setup/setup-whisper.sh fetches it); transcribing without it"
-        self._vad_threshold = vad_threshold
-        self._sounds = sounds and self._vad is not None          # pass 2 only makes sense after a VAD pass 1
-        self._threads = threads
-        # Audio slices live in a folder of their own in memory-backed storage (where there is any). A run that is
-        # stopped while whisper is working cannot delete its slice, so anything left by an earlier run is cleared
-        # here, and the folder is emptied again on the way out.
-        base = "/dev/shm" if os.access("/dev/shm", os.W_OK) else tempfile.gettempdir()
-        self._scratch = os.path.join(base, "hearing-debug-audio")
-        os.makedirs(self._scratch, mode=0o700, exist_ok=True)
-        self.clear_scratch()
-        atexit.register(self.clear_scratch)
-
-    def clear_scratch(self) -> None:
-        """Deletes every audio slice in the scratch folder (there should be none between utterances)."""
-        for name in os.listdir(self._scratch):
-            if name.endswith(".wav"):
-                try:
-                    os.unlink(os.path.join(self._scratch, name))
-                except OSError:
-                    pass
+    def __init__(self, url: str, use_vad: bool = True, sounds: bool = True):
+        self.client = WhisperServerClient(url)
+        self._vad = use_vad
+        self._sounds = sounds and use_vad                 # pass 2 only makes sense after a VAD pass 1
 
     @property
     def vad_in_use(self) -> bool:
-        return self._vad is not None
+        return self._vad
 
     def transcribe(self, pcm: bytes) -> "WhisperText":
-        """What whisper heard in an utterance: words for the Scorer, and ambient captions kept apart.
-
-        The audio file is in memory-backed storage and is deleted as soon as whisper has read it.
-        """
-        handle = tempfile.NamedTemporaryFile(suffix=".wav", dir=self._scratch, delete=False)
-        try:
-            with wave.open(handle, "wb") as wav:
-                wav.setnchannels(1)
-                wav.setsampwidth(2)
-                wav.setframerate(SAMPLE_RATE)
-                wav.writeframes(pcm)
-            raw = self._run(handle.name, vad=self._vad is not None)
-            heard = split_whisper(raw)
-            if heard.words or heard.ambient:
-                return heard
-            if self._sounds and not raw.strip():          # the VAD found no speech at all; if whisper said "silence" it is
-                # Without the VAD, plain text is where whisper invents words, so only lyrics and captions are kept.
-                return split_whisper(self._run(handle.name, vad=False), plain_text=False)
+        """What whisper heard in an utterance: words for the Scorer, and ambient captions kept apart."""
+        raw = self.client.text(pcm, vad=self._vad)
+        heard = split_whisper(raw)
+        if heard.words or heard.ambient or self.client.error:
             return heard
-        except subprocess.TimeoutExpired:
-            return WhisperText("", [], "")
-        finally:
-            handle.close()
-            os.unlink(handle.name)
-
-    def _run(self, path: str, vad: bool) -> str:
-        command = [self._cli, "-m", self._model, "-f", path, "-t", str(self._threads), "-nt"]
-        if vad:
-            command += ["--vad", "-vm", self._vad, "-vt", str(self._vad_threshold)]
-        return subprocess.run(command, capture_output=True, text=True, timeout=180).stdout
+        if self._sounds and not raw.strip():              # the VAD found no speech at all; if whisper said "silence" it is
+            # Without the VAD, plain text is where whisper invents words, so only lyrics and captions are kept.
+            return split_whisper(self.client.text(pcm, vad=False), plain_text=False)
+        return heard
 
 
 # Whisper's own way of saying "there is nothing here". They carry no information, so they are not used at all.
@@ -524,8 +470,7 @@ class Heard:
 class Pipeline:
     def __init__(self, args, brain: Brain, display: Display):
         self.args, self.brain, self.display = args, brain, display
-        self.transcriber = Transcriber(args.model, args.whisper_threads, use_vad=args.vad,
-                                       vad_threshold=args.vad_threshold, sounds=args.sounds)
+        self.transcriber = Transcriber(args.whisper_url, use_vad=args.vad, sounds=args.sounds)
         self.fragmenter = SegmentFragmenter(max_words=40)
         self.utterances = queue.Queue(maxsize=6)
         self.run_queue = queue.Queue(maxsize=40)                     # sentences waiting for their debug run (cheap to hold)
@@ -538,6 +483,7 @@ class Pipeline:
         self.interactive = sys.stdin.isatty()                        # someone can type r, e, l, q
         self.stop = threading.Event()
         self.tracker_lock = threading.Lock()                         # two threads hand scores to the tracker
+        self.whisper_down = False                                    # so a dead whisper-server is reported once, not every time
 
     def standing(self, score: Optional[float]) -> str:
         """Hands one score to the tracker and describes where it stands, for the end of its line.
@@ -561,7 +507,7 @@ class Pipeline:
 
     @staticmethod
     def vad_note(args) -> Optional[str]:
-        """A sentence if the VAD is switched off, else None (the Transcriber reports a missing VAD model itself)."""
+        """A sentence if the VAD is switched off, else None."""
         return None if args.vad else "VAD off"
 
     # capture and cutting
@@ -626,6 +572,10 @@ class Pipeline:
         started = time.perf_counter()
         heard = self.transcriber.transcribe(normalize_pcm(utterance.pcm))
         took = time.perf_counter() - started
+        failed = self.transcriber.client.error
+        if failed and not self.whisper_down:
+            self.display.line(f"\n[{self.display.stamp()}] the whisper-server did not answer ({failed}); this audio was not heard")
+        self.whisper_down = bool(failed)
         if heard.ambient and heard.ambient != self.last_ambient:
             self.last_ambient = heard.ambient
             self.ambient.extend(heard.ambient)
@@ -731,11 +681,10 @@ def main() -> None:
     parser.add_argument("--wav", help="replay this 16 kHz mono recording instead of listening")
     parser.add_argument("--speed", type=float, default=1.0, help="replay speed (0 = as fast as possible)")
     parser.add_argument("--device", default="plughw:0,0", help="the arecord capture device")
-    parser.add_argument("--model", default="base.en", help="the whisper model (base.en or small.en)")
-    parser.add_argument("--whisper-threads", type=int, default=4)
+    parser.add_argument("--whisper-url", default=os.environ.get("POM_WHISPER_URL", "http://127.0.0.1:8110"),
+                        help="the whisper-server's address (default: POM_WHISPER_URL, else http://127.0.0.1:8110)")
     parser.add_argument("--no-vad", dest="vad", action="store_false",
                         help="do not use whisper's built-in voice-activity detection (it is what stops invented words)")
-    parser.add_argument("--vad-threshold", type=float, default=0.5, help="how sure the VAD must be that it is speech")
     parser.add_argument("--no-sounds", dest="sounds", action="store_false",
                         help="skip the second pass that keeps song lyrics and sound captions the VAD ignores")
     parser.add_argument("--no-explain", dest="explain", action="store_false",
@@ -753,13 +702,13 @@ def main() -> None:
     display = Display()
     display.line("hearing-debug: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     display.line(f"  {brain.refresh() or 'config loaded'}  [{brain.fingerprint()}]")
-    display.line(f"  scorer at {brain.settings.url}; whisper {args.model}; "
+    display.line(f"  scorer at {brain.settings.url}; whisper-server at {args.whisper_url}; "
                  f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
     trigger = brain.trigger
     display.line(f"  trigger: ignore scores below {brain.tracker.avg_convo_floor:.2f}; mark a score {trigger.trigger_fraction:.0%} "
                  f"above the room's average interest (which covers about the last {trigger.interest_half_life:g} scores); "
                  f"nothing is marked until {trigger.min_scores} scores have counted")
-    display.line(f"  hearing: whisper {args.model}, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
+    display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")
     display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (fragments will go unscored)'}")
@@ -767,8 +716,9 @@ def main() -> None:
         display.line("  (no prompt_output_debug in the config, so there are no explanations)")
 
     pipeline = Pipeline(args, brain, display)
-    if pipeline.transcriber.note:
-        display.line(f"  ({pipeline.transcriber.note})")
+    if not pipeline.transcriber.client.ping():
+        sys.exit(f"the whisper-server is not answering at {args.whisper_url}. probe_hearing_run.sh starts it on the Pi; "
+                 f"on its own: whisper-server -m ggml-base.en.bin --vad -vm ggml-silero-v6.2.0.bin --port 8110")
     source = WavSource(args.wav, args.speed) if args.wav else MicSource(args.device)
     threads = [threading.Thread(target=pipeline.listen, args=(source,), daemon=True),
                threading.Thread(target=pipeline.transcribe_and_score, daemon=True),

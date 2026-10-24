@@ -27,8 +27,7 @@ Design decisions, and why:
     Conductor reads `result.ready` and decides how to degrade (keep listening, stay quiet, say so in
     the log). `strict=True` raises StartupError at the first failed step, for tests and dev tools.
   * A step is critical or not. A failed critical step (no microphone, no corpus) is a CRITICAL fault and
-    makes `ready` false; a failed optional step (the Scorer's server, which has a fallback) is a
-    WARNING and the Printer carries on.
+    makes `ready` false; a failed optional step is a WARNING and the Printer carries on.
   * A step may also be skipped: it does not apply here (a Pi-only step on the Mac) or is not written
     yet. Skipping is not a problem and is never reported as one.
   * Steps are objects with a `run` method, so each is testable alone and any can be replaced or reordered
@@ -185,7 +184,7 @@ def planned_steps() -> list:
         PlannedStep("transcriber", "whisper's binary or server and model are present and answering",
                     critical=True),
         PlannedStep("scorer-server", "the Scorer's llama-server answers on the configured address "
-                    "(start it if config says to); the Scorer has a fallback, so this is not critical"),
+                    "(start it if config says to); without it every fragment goes unscored"),
         PlannedStep("scorer-warm-up", "Scorer.warm_up(): the first request loads the model into memory "
                     "and takes 12 to 28 s on the Pi, so do it before the first real sentence"),
         PlannedStep("voice-model", "the voice model's server answers; without a voice nothing can be "

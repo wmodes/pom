@@ -463,10 +463,12 @@ class Display:
     def stamp(self) -> str:
         return time.strftime("%H:%M:%S")
 
-    def sentence(self, number: int, score: float, source: str, text: str, previous: Optional[float] = None) -> None:
-        mark = f"   <-- would trigger (>= {self.threshold:g})" if score >= self.threshold else ""
+    def sentence(self, number: int, score: Optional[float], source: str, text: str,
+                 previous: Optional[float] = None) -> None:
+        mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
         was = f"   (was {previous:.2f})" if previous is not None else ""
-        self.line(f"  #{number:<3} {score:5.2f}  {source:<8} {text}{was}{mark}")
+        shown = f"{score:5.2f}" if score is not None else "  -  "          # None: the scorer model gave no score
+        self.line(f"  #{number:<3} {shown}  {source:<8} {text}{was}{mark}")
 
     def pending(self, number: int, text: str) -> None:
         """A sentence that has been heard and is waiting for its one debug run."""
@@ -709,7 +711,7 @@ def main() -> None:
     display.line(f"  hearing: whisper {args.model}, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")
-    display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (scores will be fallback)'}")
+    display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (fragments will go unscored)'}")
     if args.explain and not brain.client.can_interpret:
         display.line("  (no prompt_output_debug in the config, so there are no interpretations)")
 

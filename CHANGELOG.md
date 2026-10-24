@@ -205,6 +205,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Scorer no longer guesses a score when the scorer model does not answer.** The word-counting fallback
+  (arbitrary, hard-coded numbers, never approved) is moved to `src/pom/hinge/fallback_scorer.py`, unused and
+  documented with its weaknesses, so it can be deleted or revived; it has its own tests in
+  `tests/hinge/test_fallback_scorer.py`. A fragment the model cannot score now comes back with `score=None`
+  and source `UNSCORED` (replacing `FALLBACK`), and `ranked()` puts it last. The hearing-debug view shows it
+  as `-`. The circuit breaker is unchanged. Mutation-checked.
 - **`Weights` is now `DrawWeights`** (`src/pom/corpus/draw_weights.py`; `WeightsError` is `DrawWeightsError`), and
   the Sampler's `weights` argument is `draw_weights`. The module's log name is now `pom.corpus.draw_weights`. The
   data file stays `corpus/chunks/weights.json`. Tests moved to `tests/corpus/test_draw_weights.py`. No behavior

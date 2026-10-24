@@ -3,7 +3,7 @@
 The Scorer decides which overheard sentences are worth answering by asking a small language model
 (served by llama.cpp's `llama-server`) to score each one. This module is only the conversation with
 that server: one sentence in, one number out, or None if no number could be had. It knows nothing
-about fragments, filtering or fallbacks; the Scorer does that.
+about fragments or filtering; the Scorer does that.
 
 HOW THE SCORE IS READ. The model is asked to reply with a number, but only its first token is
 generated, and the score is read from the probabilities of the digits 1 to 9 in that one token (the
@@ -181,7 +181,7 @@ class InterestClient:
     def score(self, sentence: str) -> Optional[float]:
         """The model's interest score for one sentence (about 1 to 9.99), or None if it got none.
 
-        None means the caller should fall back; the reason is in `report`. Never raises (except in
+        None means no score could be had; the reason is in `report`. Never raises (except in
         strict mode).
         """
         if not self._usable or not isinstance(sentence, str) or not sentence.strip():
@@ -198,12 +198,12 @@ class InterestClient:
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
             self.report.warn(f"the scorer model did not answer ({type(error).__name__}); "
-                             f"the caller will fall back")
+                             f"the fragment will go unscored")
             return None
         self.last_seconds = time.perf_counter() - started
         value = expected_digit(reply)
         if value is None:
-            self.report.warn("the scorer model's reply held no score; the caller will fall back")
+            self.report.warn("the scorer model's reply held no score; the fragment will go unscored")
             return None
         _log.debug("scored a sentence of %d characters: %.2f in %.0f ms",
                    len(sentence), value, self.last_seconds * 1000)

@@ -46,7 +46,7 @@ samples_max = 5
 # Where the model answers. The entry point starts llama-server on this port.
 url = "http://127.0.0.1:8098/v1/chat/completions"
 
-# Seconds to wait for one score before giving up on that sentence (the word-tool fallback is used).
+# Seconds to wait for one score before giving up on that sentence (it is left unscored).
 timeout = 15
 
 # Sentences with fewer than this many content words (not filler, stopwords or numbers) are not sent
@@ -54,8 +54,8 @@ timeout = 15
 min_content_words = 1
 floor = 1.0
 
-# If the model fails this many times in a row, leave it alone for retry_seconds, scoring with the
-# word-tool fallback meanwhile, then try it again.
+# If the model fails this many times in a row, leave it alone for retry_seconds, leaving fragments
+# unscored meanwhile, then try it again.
 failure_limit = 3
 retry_seconds = 30
 

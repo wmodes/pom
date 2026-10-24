@@ -73,7 +73,7 @@ class ScorerSettings:
         url: The llama-server chat-completions address.
         timeout: Seconds to wait for one score.
         prompt_scoring: What "interesting" means and what the numbers mean, from the config file.
-            Empty means none was set, and the Scorer then runs on its word-tool fallback alone.
+            Empty means none was set, and the Scorer then leaves every fragment unscored.
         floor: The score given to fragments the filter keeps from the model.
         min_content_words: Fragments with fewer content words skip the model (0 = never skip).
         failure_limit: Model failures in a row that make the Scorer leave the model alone.

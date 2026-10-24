@@ -1,10 +1,10 @@
-"""Tests for pom.hinge.scorer: filter, model, fallback and circuit breaker, with fakes throughout."""
+"""Tests for pom.hinge.scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
 import logging
 
 import pytest
 
 from pom.hinge.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FLOOR, DEFAULT_RETRY_SECONDS,
-                              FALLBACK_CEILING, ScoredFragment, Scorer, ScorerError, Source)
+                              ScoredFragment, Scorer, ScorerError, Source)
 from pom.hinge.word_tagger import WordTagger
 from pom.listening.fragmenter import Fragment, Kind
 
@@ -107,7 +107,7 @@ class TestModel:
         scorer = make()
         scorer.score_text("The lamp hums.")
         scorer.score_text("Yeah okay")
-        assert scorer.counts() == {"model": 1, "filter": 1, "fallback": 0}
+        assert scorer.counts() == {"model": 1, "filter": 1, "unscored": 0}
 
 
 class TestFilter:
@@ -170,53 +170,45 @@ class TestIsFiltered:
         scorer = make(client)
         scorer.is_filtered("The lamp hums.")
         scorer.is_filtered("Yeah, okay.")
-        assert client.calls == [] and scorer.counts() == {"model": 0, "filter": 0, "fallback": 0}
+        assert client.calls == [] and scorer.counts() == {"model": 0, "filter": 0, "unscored": 0}
 
 
-class TestFallback:
+class TestUnscored:
     def scorer_without_model(self, **options):
         return make(FakeClient(None), failure_limit=100, **options)
 
-    def test_no_score_from_the_model_gives_a_fallback_score(self):
+    def test_no_score_from_the_model_gives_no_score(self):
         result = self.scorer_without_model().score_text("The lamp hums.")
-        assert result.source is Source.FALLBACK
-        assert result.score == pytest.approx(DEFAULT_FLOOR + 2 * 0.35)
+        assert result.source is Source.UNSCORED and result.score is None
 
-    def test_more_content_words_score_higher(self):
+    def test_the_unscored_result_still_carries_the_fragment(self):
+        f = fragment("The lamp hums.", at=4.0)
+        result = self.scorer_without_model().score(f)
+        assert result.fragment is f and result.text == "The lamp hums."
+
+    def test_the_filter_still_comes_first(self):
+        result = self.scorer_without_model().score_text("Yeah, okay.")
+        assert (result.score, result.source) == (DEFAULT_FLOOR, Source.FILTER)
+
+    def test_ranked_puts_unscored_fragments_last(self):
+        class Sometimes(FakeClient):
+            def score(self, text):
+                return {"My dog met Karen.": 8.0, "The lamp hums.": None, "A door in the basement.": 4.0}[text]
+
+        ranked = make(Sometimes(), failure_limit=100).ranked(
+            [fragment(t) for t in ("The lamp hums.", "A door in the basement.", "My dog met Karen.")])
+        assert [r.text for r in ranked] == ["My dog met Karen.", "A door in the basement.", "The lamp hums."]
+        assert ranked[-1].score is None
+
+    def test_ranked_keeps_unscored_last_even_against_a_zero_score(self):
+        scorer = make(FakeClient(None), failure_limit=100, floor=0.0)      # a filtered fragment scores 0.0
+        ranked = scorer.ranked([fragment("The lamp hums."), fragment("Yeah, okay.")])
+        assert [r.text for r in ranked] == ["Yeah, okay.", "The lamp hums."]
+
+    def test_unscored_fragments_are_counted(self):
         scorer = self.scorer_without_model()
-        short = scorer.score_text("The lamp hums.").score
-        longer = scorer.score_text("The old brass lamp hums softly tonight.").score
-        assert longer > short
-
-    def test_names_numbers_and_questions_add_a_little(self):
-        scorer = self.scorer_without_model()
-        plain = scorer.score_text("My dog met them.").score
-        assert scorer.score_text("My dog met Karen.").score == pytest.approx(plain + 0.8)
-        assert scorer.score_text("I paid 40 dollars.").score == pytest.approx(DEFAULT_FLOOR + 2 * 0.35 + 0.4)
-        assert scorer.score_text("The lamp hums?").score == pytest.approx(DEFAULT_FLOOR + 2 * 0.35 + 0.4)
-
-    def test_only_so_many_content_words_names_and_numbers_count(self):
-        scorer = self.scorer_without_model()
-        ten = scorer.score_text("alpha beta gamma delta epsilon zeta eta theta iota kappa").score
-        twelve = scorer.score_text("alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu").score
-        assert twelve == pytest.approx(ten) and ten == pytest.approx(DEFAULT_FLOOR + 10 * 0.35)
-        two_names = scorer.score_text("My dog met Karen Bob.").score
-        three_names = scorer.score_text("My dog met Karen Bob Alice.").score
-        assert three_names == pytest.approx(two_names + 0.35)         # the new word counts, not a third name
-        two_numbers = scorer.score_text("Buy lamps 4 5.").score
-        three_numbers = scorer.score_text("Buy lamps 4 5 6.").score
-        assert three_numbers == pytest.approx(two_numbers)
-
-    def test_the_fallback_is_capped(self):
-        text = "Karen Bob saw 4 5 old brass lamps humming softly tonight inside many dusty rooms?"
-        assert self.scorer_without_model().score_text(text).score == FALLBACK_CEILING
-
-    def test_the_fallback_still_filters_filler_first(self):
-        assert self.scorer_without_model().score_text("Yeah, okay.").source is Source.FILTER
-
-    def test_the_floor_is_the_fallbacks_base(self):
-        assert (self.scorer_without_model(floor=2.0).score_text("The lamp hums.").score
-                == pytest.approx(2.0 + 0.7))
+        scorer.score_text("The lamp hums.")
+        assert scorer.counts() == {"model": 0, "filter": 0, "unscored": 1}
 
 
 class TestCircuitBreaker:
@@ -237,7 +229,7 @@ class TestCircuitBreaker:
         assert scorer.degraded and len(scorer.report.warnings) == 1
         calls = len(client.calls)
         for _ in range(10):
-            assert scorer.score_text("The lamp hums.").source is Source.FALLBACK
+            assert scorer.score_text("The lamp hums.").source is Source.UNSCORED
         assert len(client.calls) == calls
 
     def test_after_the_wait_one_attempt_is_made(self):
@@ -291,7 +283,7 @@ class TestCircuitBreaker:
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
         assert scorer.score_text("Yeah, okay.").score == 1.0                    # the floor
-        assert scorer.score_text("Lamp.").source is Source.FALLBACK             # one content word is enough
+        assert scorer.score_text("Lamp.").source is Source.UNSCORED             # one content word is enough
         scorer.score_text("Lamp.")
         assert not scorer.degraded                                              # two failures: still closed
         scorer.score_text("Lamp.")
@@ -329,10 +321,10 @@ class TestCircuitBreaker:
 
 
 class TestUnavailableModel:
-    def test_the_model_is_never_asked_and_everything_gets_a_fallback(self):
+    def test_the_model_is_never_asked_and_everything_goes_unscored(self):
         client = FakeClient(available=False)
         scorer = make(client)
-        assert scorer.score_text("The lamp hums.").source is Source.FALLBACK
+        assert scorer.score_text("The lamp hums.").source is Source.UNSCORED
         assert client.calls == [] and scorer.degraded
         assert len(scorer.report.warnings) == 1                 # said once, at construction
 

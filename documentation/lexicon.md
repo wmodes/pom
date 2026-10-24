@@ -26,13 +26,16 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **score**: the process of assigning a value to each incoming fragment, and the value itself
   (1.00 to 9.99). The scorer does it, mostly with the scorer model.
 - **scorer**: the component that scores fragments: the fragment_filter, then the scorer model,
-  with the fallback if it doesn't reply.
+  with a fragment left unscored if the scorer model doesn't reply.
 - **scorer model**: the small language model that scores fragments (Qwen3-4B for now).
 - **fragment_filter**: the check in front of the scorer model that gives fragments with no content
   words (such as "or not.") the lowest score without asking the scorer model.
-- **fallback**: the rough word-based score used when the scorer model does not reply.
+- **unscored** †: a fragment the scorer model gave no score; its score is None. The trigger and
+  avg_convo_interest leave it out.
+- **fallback**: shelved, unused: a rough word-based score once used when the scorer model did not
+  reply (`fallback_scorer.py`).
 - **word tagger** †: the component that labels each word of a fragment as a name, number, filler,
-  stopword or content word. The fragment_filter and the fallback use its labels.
+  stopword or content word. The fragment_filter uses its labels.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
 - **avg_convo_floor** †: the line below which scores are ignored and do not feed avg_convo_interest;

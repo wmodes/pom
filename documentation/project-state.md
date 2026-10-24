@@ -19,9 +19,9 @@ summarized below.
 
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
   now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `Sampler`), the
-  `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter and fallback), the
+  `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter), the
   `InterestClient` (asks llama-server for a sentence's score) and the `Scorer` (filter, model,
-  fallback, circuit breaker).
+  circuit breaker; a fragment the model cannot score is left unscored).
 - **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
   a time, no context. See `experiments/interest-scorer/README.md` and the decisions below. The
   Scorer module is built; what remains is a playground script and the entry point that builds it
@@ -207,8 +207,8 @@ llama.cpp setup scripts.
   the numbers, with no persona. Scores run low and relative (top about 6 to 8), so the trigger must
   work from rank and gaps, not a fixed high threshold; the hinge picker's temperature does this.
   Fragments become **whole sentences** (the Fragmenter gets a config setting for which levels it
-  emits; clauses and phrases stay available). The word tagger stays as a filter and a fallback if
-  the model is down. Evidence, rules and results: `experiments/interest-scorer/`.
+  emits; clauses and phrases stay available). The word tagger stays as the filter. The
+  word-counting fallback is shelved, unused, in `hinge/fallback_scorer.py`. Evidence, rules and results: `experiments/interest-scorer/`.
 - **Pi timing done** (`experiments/pi-benchmark/`, 2026-10-22): with whisper running flat out on shared
   cores, Qwen3-4B scores a sentence in a median 2.3 s (p95 3.2 s; 4.3 s in the harshest sustained case)
   and Llama-3.2-3B in 1.4 s; both use about 3 GB, peak 72 °C, no throttling. Whisper slows about 2.3

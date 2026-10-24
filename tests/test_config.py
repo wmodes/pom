@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FLOOR, DEFAULT_SCORER_MIN_CONTENT_WORDS,
+from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL, Config,
                         ScorerSettings)
 
@@ -107,59 +107,59 @@ def test_the_committed_sample_config_is_clean_and_safe_for_the_pi(tmp_path):
 
 def test_samples_default_to_three_to_five():
     config = Config.load(environ={})
-    assert config.samples == (3, 5) and config.report.ok
+    assert config.exemplar_range == (3, 5) and config.report.ok
 
 
 def test_the_defaults_match_the_exemplar_selectors_defaults():
     """Config and ExemplarSelector each carry the default (neither imports the other), so keep them equal."""
     from pom.corpus.exemplar_selector import DEFAULT_EXEMPLAR_RANGE
-    from pom.config import DEFAULT_SAMPLES as CONFIG_DEFAULT
+    from pom.config import DEFAULT_EXEMPLAR_RANGE as CONFIG_DEFAULT
     assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
 
 
 def test_samples_are_read_from_the_file_and_the_environment(tmp_path):
-    path = write(tmp_path, "samples_min = 2\nsamples_max = 4\n")
-    assert Config.load(path, environ={}).samples == (2, 4)
-    assert Config.load(path, environ={"POM_SAMPLES_MIN": "1", "POM_SAMPLES_MAX": "6"}).samples == (1, 6)
-    assert Config.load(environ={"POM_SAMPLES_MAX": "8"}).samples == (3, 8)
+    path = write(tmp_path, "exemplars_min = 2\nexemplars_max = 4\n")
+    assert Config.load(path, environ={}).exemplar_range == (2, 4)
+    assert Config.load(path, environ={"POM_EXEMPLARS_MIN": "1", "POM_EXEMPLARS_MAX": "6"}).exemplar_range == (1, 6)
+    assert Config.load(environ={"POM_EXEMPLARS_MAX": "8"}).exemplar_range == (3, 8)
 
 
 def test_one_end_alone_can_be_set(tmp_path):
-    assert Config.load(write(tmp_path, "samples_max = 9\n"), environ={}).samples == (3, 9)
-    assert Config.load(write(tmp_path, "samples_min = 2\n"), environ={}).samples == (2, 5)
+    assert Config.load(write(tmp_path, "exemplars_max = 9\n"), environ={}).exemplar_range == (3, 9)
+    assert Config.load(write(tmp_path, "exemplars_min = 2\n"), environ={}).exemplar_range == (2, 5)
 
 
 @pytest.mark.parametrize("value", ["0", "-2", "2.5", "true", '"many"', '""'])
 def test_a_bad_samples_value_in_the_file_means_the_default_with_a_warning(tmp_path, value):
-    config = Config.load(write(tmp_path, f"samples_max = {value}\n"), environ={})
-    assert config.samples == (3, 5)
-    assert any("samples_max must be a whole number" in w for w in config.report.warnings)
+    config = Config.load(write(tmp_path, f"exemplars_max = {value}\n"), environ={})
+    assert config.exemplar_range == (3, 5)
+    assert any("exemplars_max must be a whole number" in w for w in config.report.warnings)
 
 
 @pytest.mark.parametrize("text", ["0", "-1", "2.5", "many", "", "true"])
 def test_a_bad_samples_value_in_the_environment_means_the_default_with_a_warning(text):
-    config = Config.load(environ={"POM_SAMPLES_MIN": text})
-    assert config.samples == (3, 5)
-    assert any("POM_SAMPLES_MIN" in w for w in config.report.warnings)
+    config = Config.load(environ={"POM_EXEMPLARS_MIN": text})
+    assert config.exemplar_range == (3, 5)
+    assert any("POM_EXEMPLARS_MIN" in w for w in config.report.warnings)
 
 
 def test_a_reversed_pair_is_swapped_with_a_warning(tmp_path):
-    config = Config.load(write(tmp_path, "samples_min = 7\nsamples_max = 2\n"), environ={})
-    assert config.samples == (2, 7)
-    assert any("more than samples_max" in w for w in config.report.warnings)
+    config = Config.load(write(tmp_path, "exemplars_min = 7\nexemplars_max = 2\n"), environ={})
+    assert config.exemplar_range == (2, 7)
+    assert any("more than exemplars_max" in w for w in config.report.warnings)
 
 
 def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
-    assert Config.load(write(tmp_path, 'samples_min = "2"\n'), environ={}).samples == (2, 5)
+    assert Config.load(write(tmp_path, 'exemplars_min = "2"\n'), environ={}).exemplar_range == (2, 5)
 
 
 def test_config_samples_plug_straight_into_the_sampler():
     import random
     from pom.corpus import Chunk, ChunkStore, DrawWeights, ExemplarSelector
-    config = Config.load(environ={"POM_SAMPLES_MIN": "2", "POM_SAMPLES_MAX": "2"})
+    config = Config.load(environ={"POM_EXEMPLARS_MIN": "2", "POM_EXEMPLARS_MAX": "2"})
     store = ChunkStore.from_chunks([Chunk(f"a#{i}", "a", "red", f"Chunk {i}", 2) for i in range(9)])
     selector = ExemplarSelector(store, DrawWeights.from_dict({}), random.Random(1),
-                                exemplar_range=config.samples)
+                                exemplar_range=config.exemplar_range)
     assert len(selector.draw()) == 2
 
 
@@ -282,7 +282,7 @@ def test_scorer_defaults_when_nothing_is_set():
     config = Config.load(environ={})
     assert config.scorer == ScorerSettings() and config.report.ok
     assert config.scorer.url == "http://127.0.0.1:8098/v1/chat/completions"
-    assert (config.scorer.timeout, config.scorer.floor, config.scorer.min_content_words,
+    assert (config.scorer.timeout, config.scorer.fragment_filter_score, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (15.0, 1.0, 1, 3, 30.0)
     assert config.scorer.prompt_scoring == "" and config.scorer.prompt_output == ""
     assert config.scorer.prompt_output_debug == "" and config.scorer.prompt == "" and config.scorer.prompt_debug == ""
@@ -291,7 +291,7 @@ def test_scorer_defaults_when_nothing_is_set():
 def test_the_scorer_defaults_match_the_scorers_own():
     from pom.scoring import scorer, scorer_model_client
     assert DEFAULT_SCORER_TIMEOUT == scorer_model_client.DEFAULT_TIMEOUT
-    assert DEFAULT_SCORER_FLOOR == scorer.DEFAULT_FRAGMENT_FILTER_SCORE
+    assert DEFAULT_SCORER_FRAGMENT_FILTER_SCORE == scorer.DEFAULT_FRAGMENT_FILTER_SCORE
     assert DEFAULT_SCORER_MIN_CONTENT_WORDS == scorer.DEFAULT_MIN_CONTENT_WORDS
     assert DEFAULT_SCORER_FAILURE_LIMIT == scorer.DEFAULT_FAILURE_LIMIT
     assert DEFAULT_SCORER_RETRY_SECONDS == scorer.DEFAULT_RETRY_SECONDS
@@ -299,7 +299,7 @@ def test_the_scorer_defaults_match_the_scorers_own():
 
 
 def test_scorer_values_are_read_from_the_section(tmp_path):
-    text = ('[scorer]\nurl = "http://10.0.0.5:9000/v1/chat/completions"\ntimeout = 4\nfloor = 2\n'
+    text = ('[scorer]\nurl = "http://10.0.0.5:9000/v1/chat/completions"\ntimeout = 4\nfragment_filter_score = 2\n'
             'min_content_words = 0\nfailure_limit = 5\nretry_seconds = 12.5\nprompt_scoring = "Score it."\n'
             'prompt_output = "Reply with a number."\nprompt_output_debug = "Reply with a number and why."\n')
     scorer = Config.load(write(tmp_path, text), environ={}).scorer
@@ -321,7 +321,9 @@ def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
 
 @pytest.mark.parametrize("key,value", [
     ("url", "5"), ("url", "true"), ("timeout", '"slow"'), ("timeout", "0"), ("timeout", "-3"), ("timeout", "true"),
-    ("prompt_scoring", "5"), ("prompt_scoring", "[1, 2]"), ("prompt_output", "5"), ("prompt_output_debug", "true"), ("floor", "-1"), ("floor", '"x"'), ("floor", "true"),
+    ("prompt_scoring", "5"), ("prompt_scoring", "[1, 2]"), ("prompt_output", "5"), ("prompt_output_debug", "true"), 
+    ("fragment_filter_score", "-1"), ("fragment_filter_score", '"x"'), ("fragment_filter_score", "true"),
+   
     ("min_content_words", "-1"), ("min_content_words", "1.5"), ("min_content_words", "true"),
     ("failure_limit", "0"), ("failure_limit", "2.5"), ("failure_limit", '"3"'),
     ("retry_seconds", "-5"), ("retry_seconds", '"soon"')])
@@ -332,10 +334,10 @@ def test_a_bad_scorer_value_means_the_default_with_a_warning(tmp_path, key, valu
 
 
 def test_the_smallest_allowed_scorer_values_are_accepted(tmp_path):
-    text = "[scorer]\ntimeout = 0.1\nfloor = 0\nmin_content_words = 0\nfailure_limit = 1\nretry_seconds = 0\n"
+    text = "[scorer]\ntimeout = 0.1\nfragment_filter_score = 0\nmin_content_words = 0\nfailure_limit = 1\nretry_seconds = 0\n"
     config = Config.load(write(tmp_path, text), environ={})
     assert config.report.ok
-    assert (config.scorer.timeout, config.scorer.floor, config.scorer.min_content_words,
+    assert (config.scorer.timeout, config.scorer.fragment_filter_score, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (0.1, 0.0, 0, 1, 0.0)
 
 
@@ -378,14 +380,14 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
     from pom.scoring.scorer_model_client import ScorerModelClient
     from pom.scoring.scorer import ScoredBy, Scorer
     from pom.scoring.word_tagger import WordTagger
-    config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfloor = 2\nfailure_limit = 2\n'), environ={})
+    config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfragment_filter_score = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
     client = ScorerModelClient(settings.url, settings.prompt, settings.timeout,
                             post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
                                 {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
     scorer = Scorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
                                       stopwords={"the"}),
-                    fragment_filter_score=settings.floor, min_content_words=settings.min_content_words,
+                    fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     assert client.available and scorer.report.ok
     assert scorer.score_text("The lamp hums.").score == 6.0

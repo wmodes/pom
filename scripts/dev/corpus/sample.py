@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Play with the ExemplarSelector: print pulls of random chunks, or measure the long-run register shares.
 
-It builds the real ExemplarSelector from corpus/chunks/, corpus/chunks/weights.json and the sample range in
+It builds the real ExemplarSelector from corpus/chunks/, corpus/chunks/weights.json and the exemplar range in
 config/pom.toml (plus config/pom.local.toml), so what you see is what the oracle's exemplar draw
 will do. Try a different weights file with --weights to see the effect before editing the real one.
 
@@ -69,7 +69,7 @@ def main():
     configure_logging(config.log_level if args.verbose else "WARNING")
     store = ChunkStore.load(os.path.join(ROOT, "corpus", "chunks"))
     selector = ExemplarSelector(store, DrawWeights.from_file(args.weights), random.Random(args.seed),
-                      exemplar_range=config.samples)
+                      exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     if args.stats is not None:

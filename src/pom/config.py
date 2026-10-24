@@ -9,18 +9,18 @@ of being threaded through by hand. Today there are five:
                its own `DEBUG = ...` line (see pom/log_setup.py).
     log_level  How much the service logs to stdout (and so to journald).
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
-    samples_min, samples_max
+    exemplars_min, exemplars_max
                How many corpus chunks go into each pull of exemplars (3 and 5 by default). The
-               entry point passes `config.samples` to the ExemplarSelector, which never reads Config.
+               entry point passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
-               that defines "interesting" and the score scale, the floor score, how many content
+               that defines "interesting" and the score scale, the fragment_filter's score, how many content
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
                entry point builds the ScorerModelClient and Scorer from `config.scorer`. Environment:
                POM_SCORER_URL.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
-       0/false/no/off), POM_LOG_LEVEL, and POM_SAMPLES_MIN / POM_SAMPLES_MAX (whole numbers).
+       0/false/no/off), POM_LOG_LEVEL, and POM_EXEMPLARS_MIN / POM_EXEMPLARS_MAX (whole numbers).
        These suit a systemd unit (`Environment=POM_LOG_LEVEL=DEBUG`).
     2. A per-machine override file next to the main one (config/pom.local.toml), optional and
        gitignored. Use it on the Mac to keep debug logging on without touching what the Pi gets.
@@ -50,14 +50,14 @@ DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "debug", "log_level", "local_logs", "samples_min", "samples_max",
+_KEYS = {"strict", "debug", "log_level", "local_logs", "exemplars_min", "exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
-         "scorer.prompt_output_debug", "scorer.floor", "scorer.min_content_words", "scorer.failure_limit",
+         "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds"}
-DEFAULT_SAMPLES = (3, 5)
+DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
-DEFAULT_SCORER_FLOOR = 1.0
+DEFAULT_SCORER_FRAGMENT_FILTER_SCORE = 1.0
 DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3
 DEFAULT_SCORER_RETRY_SECONDS = 30.0
@@ -74,7 +74,7 @@ class ScorerSettings:
         timeout: Seconds to wait for one score.
         prompt_scoring: What "interesting" means and what the numbers mean, from the config file.
             Empty means none was set, and the Scorer then leaves every fragment unscored.
-        floor: The score given to fragments the filter keeps from the model.
+        fragment_filter_score: The score given to fragments the fragment_filter keeps from the model.
         min_content_words: Fragments with fewer content words skip the model (0 = never skip).
         failure_limit: Model failures in a row that make the Scorer leave the model alone.
         retry_seconds: How long it leaves the model alone before trying again.
@@ -89,7 +89,7 @@ class ScorerSettings:
     url: str = DEFAULT_SCORER_URL
     timeout: float = DEFAULT_SCORER_TIMEOUT
     prompt_scoring: str = ""
-    floor: float = DEFAULT_SCORER_FLOOR
+    fragment_filter_score: float = DEFAULT_SCORER_FRAGMENT_FILTER_SCORE
     min_content_words: int = DEFAULT_SCORER_MIN_CONTENT_WORDS
     failure_limit: int = DEFAULT_SCORER_FAILURE_LIMIT
     retry_seconds: float = DEFAULT_SCORER_RETRY_SECONDS
@@ -115,20 +115,20 @@ class Config:
         debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         local_logs: Also write the log to a local file (development only).
-        samples: (fewest, most) chunks per pull of exemplars, for the ExemplarSelector.
+        exemplar_range: (fewest, most) chunks per pull of exemplars, for the ExemplarSelector.
         scorer: The `[scorer]` section, as a ScorerSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
                  report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
-                 samples: tuple = DEFAULT_SAMPLES, scorer: Optional[ScorerSettings] = None):
+                 exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
-        self.samples = tuple(samples)
+        self.exemplar_range = tuple(exemplar_range)
         self.log_level = log_level
         self.report = report if report is not None else FaultRecorder(logger=_log)
 
@@ -155,8 +155,10 @@ class Config:
         strict = _bool(values.get("strict", False), "strict", report)
         debug = _bool(values.get("debug", False), "debug", report)
         local_logs = _bool(values.get("local_logs", False), "local_logs", report)
-        low = _count(values.get("samples_min", DEFAULT_SAMPLES[0]), "samples_min", DEFAULT_SAMPLES[0], report)
-        high = _count(values.get("samples_max", DEFAULT_SAMPLES[1]), "samples_max", DEFAULT_SAMPLES[1], report)
+        low = _count(values.get("exemplars_min", DEFAULT_EXEMPLAR_RANGE[0]), "exemplars_min",
+                     DEFAULT_EXEMPLAR_RANGE[0], report)
+        high = _count(values.get("exemplars_max", DEFAULT_EXEMPLAR_RANGE[1]), "exemplars_max",
+                      DEFAULT_EXEMPLAR_RANGE[1], report)
         log_level = _level(values.get("log_level", "INFO"), "log_level", report)
         scorer_url = _text(values.get("scorer.url", DEFAULT_SCORER_URL), "scorer.url", DEFAULT_SCORER_URL, report)
         scorer_timeout = _number(values.get("scorer.timeout", DEFAULT_SCORER_TIMEOUT), "scorer.timeout",
@@ -167,8 +169,9 @@ class Config:
                                     "scorer.prompt_output_debug", "", report)
         if scorer_prompt.strip() and not scorer_output.strip():
             report.warn("scorer.prompt_output is empty, so the model is not told how to reply")
-        scorer_floor = _number(values.get("scorer.floor", DEFAULT_SCORER_FLOOR), "scorer.floor",
-                               DEFAULT_SCORER_FLOOR, 0.0, report)
+        scorer_fragment_filter_score = _number(
+            values.get("scorer.fragment_filter_score", DEFAULT_SCORER_FRAGMENT_FILTER_SCORE),
+            "scorer.fragment_filter_score", DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, 0.0, report)
         scorer_min_content = _whole(values.get("scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS),
                                     "scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS, 0, report)
         scorer_failure_limit = _whole(values.get("scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT),
@@ -182,19 +185,22 @@ class Config:
             debug = _bool(environ["POM_DEBUG"], "POM_DEBUG", report)
         if "POM_LOCAL_LOGS" in environ:
             local_logs = _bool(environ["POM_LOCAL_LOGS"], "POM_LOCAL_LOGS", report)
-        if "POM_SAMPLES_MIN" in environ:
-            low = _count(environ["POM_SAMPLES_MIN"], "POM_SAMPLES_MIN", DEFAULT_SAMPLES[0], report)
-        if "POM_SAMPLES_MAX" in environ:
-            high = _count(environ["POM_SAMPLES_MAX"], "POM_SAMPLES_MAX", DEFAULT_SAMPLES[1], report)
+        if "POM_EXEMPLARS_MIN" in environ:
+            low = _count(environ["POM_EXEMPLARS_MIN"], "POM_EXEMPLARS_MIN",
+                         DEFAULT_EXEMPLAR_RANGE[0], report)
+        if "POM_EXEMPLARS_MAX" in environ:
+            high = _count(environ["POM_EXEMPLARS_MAX"], "POM_EXEMPLARS_MAX",
+                          DEFAULT_EXEMPLAR_RANGE[1], report)
         if low > high:
-            report.warn(f"samples_min ({low}) is more than samples_max ({high}); swapping them")
+            report.warn(f"exemplars_min ({low}) is more than exemplars_max ({high}); swapping them")
             low, high = high, low
         if "POM_LOG_LEVEL" in environ:
             log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)
         if "POM_SCORER_URL" in environ:
             scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, report)
-        scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_floor, scorer_min_content,
-                                scorer_failure_limit, scorer_retry, scorer_output, scorer_output_debug)
+        scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_fragment_filter_score,
+                                scorer_min_content, scorer_failure_limit, scorer_retry, scorer_output,
+                                scorer_output_debug)
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer)
 
 

@@ -428,14 +428,14 @@ class Brain:
         settings = config.scorer
         client = ScorerModelClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
                                 explain_prompt=settings.prompt_debug)
-        self.scorer = Scorer(client, self._word_tagger, fragment_filter_score=settings.floor, min_content_words=settings.min_content_words,
+        self.scorer = Scorer(client, self._word_tagger, fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings = client, settings
         problems = config.report.lines() + client.report.lines()
         note = "; ".join(problems)
         if first:
             return f"config loaded{(' (problems: ' + note + ')') if note else ''}"
-        changed = [name for name in ("prompt_scoring", "prompt_output", "prompt_output_debug", "url", "floor",
+        changed = [name for name in ("prompt_scoring", "prompt_output", "prompt_output_debug", "url", "fragment_filter_score",
                                      "min_content_words")
                    if getattr(before, name) != getattr(settings, name)]
         return (f"config reloaded: {', '.join(changed) if changed else 'no scorer setting changed'}"

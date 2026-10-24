@@ -1,7 +1,7 @@
 # Settings shared by the whole project. Every key is optional; an unknown key or a bad value is
 # logged and ignored, never fatal. Environment variables override this file:
 #   POM_STRICT=1   POM_DEBUG=1   POM_LOCAL_LOGS=1   POM_LOG_LEVEL=DEBUG
-#   POM_SAMPLES_MIN=3   POM_SAMPLES_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
+#   POM_EXEMPLARS_MIN=3   POM_EXEMPLARS_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
 #
 # The file is divided by the part of the Printer each setting affects. (TOML needs the settings
 # without a [section] to come first, so GLOBAL and ORACLE sit at the top.)
@@ -31,10 +31,10 @@ local_logs = false
 # ORACLE: exemplars drawn from the corpus
 # ================================================
 
-# How many corpus chunks go into each pull of exemplars: a random number from samples_min to
-# samples_max, inclusive. Both must be whole numbers of at least 1.
-samples_min = 3
-samples_max = 5
+# How many corpus chunks go into each pull of exemplars: a random number from exemplars_min to
+# exemplars_max, inclusive. Both must be whole numbers of at least 1.
+exemplars_min = 3
+exemplars_max = 5
 
 
 # ================================================
@@ -50,9 +50,9 @@ url = "http://127.0.0.1:8098/v1/chat/completions"
 timeout = 15
 
 # Sentences with fewer than this many content words (not filler, stopwords or numbers) are not sent
-# to the model; they get the floor score. 0 sends everything.
+# to the model; they get fragment_filter_score. 0 sends everything.
 min_content_words = 1
-floor = 1.0
+fragment_filter_score = 1.0
 
 # If the model fails this many times in a row, leave it alone for retry_seconds, leaving fragments
 # unscored meanwhile, then try it again.

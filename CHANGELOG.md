@@ -205,6 +205,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Config keys follow the lexicon.** `samples_min` and `samples_max` are `exemplars_min` and `exemplars_max`
+  (environment: `POM_EXEMPLARS_MIN` and `POM_EXEMPLARS_MAX`, was `POM_SAMPLES_MIN`/`MAX`), `Config.samples` is
+  `Config.exemplar_range`, and `[scorer] floor` is `fragment_filter_score` (`ScorerSettings.fragment_filter_score`).
+  An old key in a local file now warns as unknown and is ignored. No behavior changed.
 - **The `hinge/` package is now `scoring/`** (`src/pom/scoring/`, tests in `tests/scoring/`): it scores
   fragments, and the hinge is only the fragment the trigger will choose. Import paths and module log names
   changed from `pom.hinge...` to `pom.scoring...`. No behavior changed.

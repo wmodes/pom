@@ -45,10 +45,10 @@ summarized below.
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
-  (for example `ExemplarSelector(exemplar_range=config.samples)`). Anything a person might tune (system messages,
+  (for example `ExemplarSelector(exemplar_range=config.exemplar_range)`). Anything a person might tune (system messages,
   thresholds, counts) goes in config, so all the user-serviceable parts are in one place.
 - Config layers, highest priority first: environment variables (`POM_STRICT`, `POM_DEBUG`,
-  `POM_LOCAL_LOGS`, `POM_LOG_LEVEL`, `POM_SAMPLES_MIN/MAX`), the gitignored `config/pom.local.toml`
+  `POM_LOCAL_LOGS`, `POM_LOG_LEVEL`, `POM_EXEMPLARS_MIN/MAX`), the gitignored `config/pom.local.toml`
   (this machine only; currently sets DEBUG logging and `local_logs`), the committed `config/pom.toml`
   (the quiet defaults the Pi runs with), built-in defaults. Every setting is validated leniently:
   a bad value means the default plus a warning.

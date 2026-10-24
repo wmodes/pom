@@ -164,7 +164,7 @@ def test_a_clean_file_logs_no_warnings(caplog):
 @pytest.fixture
 def module_debug():
     """Lets a test force this module's debug flag, and restores 'follow the project' after."""
-    from pom.logs import get_logger
+    from pom.log_setup import get_logger
     yield lambda flag: get_logger("pom.corpus.weights", flag)
     get_logger("pom.corpus.weights", None)
 

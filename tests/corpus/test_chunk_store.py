@@ -330,7 +330,7 @@ def test_an_empty_in_memory_store_is_critical():
 
 
 def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(corpus, caplog):
-    from pom.logs import get_logger
+    from pom.log_setup import get_logger
     get_logger("pom.corpus.chunk_store", True)
     try:
         with caplog.at_level(logging.DEBUG, logger="pom.corpus.chunk_store"):
@@ -344,7 +344,7 @@ def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(corpus, caplog
 
 
 def test_per_file_detail_is_hidden_when_the_module_flag_is_off(corpus, caplog):
-    from pom.logs import get_logger
+    from pom.log_setup import get_logger
     get_logger("pom.corpus.chunk_store", False)
     try:
         with caplog.at_level(logging.DEBUG):   # root only: naming the logger would reset its level

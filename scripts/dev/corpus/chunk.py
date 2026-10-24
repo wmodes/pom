@@ -43,7 +43,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 from pom.corpus import Weights  # noqa: E402  (scripts may import the package, never the reverse)
-from pom.logs import configure_logging  # noqa: E402
+from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "corpus")
 READY = os.path.join(CORPUS, "ready")

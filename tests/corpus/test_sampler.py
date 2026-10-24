@@ -450,7 +450,7 @@ def test_an_empty_store_logs_a_critical_line(caplog):
 
 
 def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
-    from pom.logs import get_logger
+    from pom.log_setup import get_logger
     store, weights = tiles()
     get_logger("pom.corpus.sampler", True)
     try:
@@ -464,7 +464,7 @@ def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
 
 
 def test_draws_are_not_logged_when_the_module_flag_is_off(caplog):
-    from pom.logs import get_logger
+    from pom.log_setup import get_logger
     store, weights = tiles()
     get_logger("pom.corpus.sampler", False)
     try:

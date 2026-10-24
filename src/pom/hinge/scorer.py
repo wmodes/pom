@@ -40,7 +40,7 @@ from typing import Callable, Iterable, Optional
 
 from pom.hinge.word_tagger import WordTagger
 from pom.listening.fragmenter import Fragment, Kind
-from pom.logs import get_logger
+from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

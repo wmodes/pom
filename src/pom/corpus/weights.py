@@ -31,7 +31,7 @@ import math
 from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
-from pom.logs import get_logger
+from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
 DEFAULT_WEIGHT = 1.0

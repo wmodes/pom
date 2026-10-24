@@ -23,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
 from pom.corpus import ChunkStore, Sampler, Weights  # noqa: E402
-from pom.logs import configure_logging  # noqa: E402
+from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(HERE, "..", "..", "..", "corpus")
 PULL = 5      # the pull size used for the "all alike" column

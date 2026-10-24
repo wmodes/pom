@@ -57,7 +57,7 @@ from typing import Optional, Sequence
 
 from pom.corpus.chunk_store import Chunk, ChunkStore
 from pom.corpus.weights import Weights
-from pom.logs import get_logger
+from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

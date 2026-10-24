@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from pom.logs import get_logger
+from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

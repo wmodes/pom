@@ -6,7 +6,7 @@ of being threaded through by hand. Today there are five:
     strict     Development and testing only. Every problem a module would recover from is raised
                instead, so a typo is loud while you work. Never set in the gallery.
     debug      Show every module's DEBUG log lines. A single module can override this flag with
-               its own `DEBUG = ...` line (see pom/logs.py).
+               its own `DEBUG = ...` line (see pom/log_setup.py).
     log_level  How much the service logs to stdout (and so to journald).
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
     samples_min, samples_max
@@ -43,7 +43,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional
 
-from pom.logs import get_logger
+from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
 DEFAULT_PATH = Path("config") / "pom.toml"

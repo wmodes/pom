@@ -9,7 +9,7 @@ person can fix it later. Nothing is raised at the point of the problem.
 LOGGING: a FaultRecorder can be given a logger, and then every fault is also logged the moment it is
 recorded (WARNING for warnings, CRITICAL for criticals). The service's stdout goes to journald,
 so `journalctl -u pom` shows these without any caller having to remember to print them.
-Modules never configure logging themselves; the entry point does that once (pom.logs).
+Modules never configure logging themselves; the entry point does that once (pom.log_setup).
 
 Two severities:
   * WARNING:  recovered. The module carried on with a default or skipped something.

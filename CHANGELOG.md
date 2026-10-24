@@ -205,6 +205,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`logs.py` is now `log_setup.py`** (`src/pom/log_setup.py`), named for what it does: it sets up logging once
+  and hands each module its logger. Tests moved to `tests/test_log_setup.py`. No behavior changed.
 - **`WordTools` is now `WordTagger`** (`src/pom/hinge/word_tagger.py`; `analyze()` is `tag()`, `Word.content` is
   `Word.is_content`, `WordToolsError` is `WordTaggerError`), and the Scorer's `words` argument is `word_tagger`.
   Tests moved to `tests/hinge/test_word_tagger.py`. No behavior changed.

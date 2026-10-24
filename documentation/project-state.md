@@ -76,7 +76,7 @@ summarized below.
 ```
 src/pom/
   fault_recorder.py    built   faults as data (WARNING / CRITICAL, strict mode, cap, logging)
-  logs.py              built   stdout logging, debug flag, per-module override, local log file
+  log_setup.py         built   stdout logging, debug flag, per-module override, local log file
   config.py            built   shared settings, layered (env > local file > file > defaults)
   corpus/
     weights.py         built   weights.json: register shares, source weights, defaults, drift checks

@@ -204,6 +204,8 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Changed
 
+- **`config/pom.toml` is divided into labeled sections** (GLOBAL, ORACLE, SCORER), one banner per part of
+  the Printer the settings affect. Comments only; no setting changed.
 - **Scorer prompt: dropped "Most sentences are ordinary and score below 5."** (Wes). That line was an absolute
   expectation about the scale; the scoring prompt now only describes the scale.
 - **Scorer prompt split into three parts** in `config/pom.toml`: `prompt_scoring` (what counts as

@@ -2,6 +2,14 @@
 # logged and ignored, never fatal. Environment variables override this file:
 #   POM_STRICT=1   POM_DEBUG=1   POM_LOCAL_LOGS=1   POM_LOG_LEVEL=DEBUG
 #   POM_SAMPLES_MIN=3   POM_SAMPLES_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
+#
+# The file is divided by the part of the Printer each setting affects. (TOML needs the settings
+# without a [section] to come first, so GLOBAL and ORACLE sit at the top.)
+
+
+# =================================================================================================
+# GLOBAL: affects the whole project
+# =================================================================================================
 
 # Development and testing only: raise on every problem a module would otherwise recover from, so
 # a typo is loud while you work. Leave false in the gallery.
@@ -18,10 +26,20 @@ log_level = "INFO"
 # false on the Pi, where journald (journalctl -u pom) already keeps the log.
 local_logs = false
 
+
+# =================================================================================================
+# ORACLE: the exemplars drawn from the corpus for each pronouncement
+# =================================================================================================
+
 # How many corpus chunks go into each pull of exemplars: a random number from samples_min to
 # samples_max, inclusive. Both must be whole numbers of at least 1.
 samples_min = 3
 samples_max = 5
+
+
+# =================================================================================================
+# SCORER: decides how interesting each overheard sentence is
+# =================================================================================================
 
 # The Scorer: how it reaches the local language model (a llama-server) and what it asks it.
 [scorer]

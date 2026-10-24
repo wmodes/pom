@@ -63,12 +63,15 @@ Each message is one sentence that someone said out loud in a room. Score how
 A sentence is not interesting when it is ordinary talk, including greetings, filler, 
 agreement, or plans and logistics.
 
+Score how strong the interesting content is. Strong content is vivid,
+specific, surprising, or deeply felt. One strong thing can score high.
+
 Score on a scale, from 1.00 to 9.99:
 1.00-1.99  not interesting: no interesting content
-2.00-3.99  slightly interesting: little interesting content
-4.00-5.99  interesting: some interesting content
-6.00-7.99  very interesting: more interesting content
-8.00-9.99  extremely interesting: lots of interesting content 
+2.00-3.99  slightly interesting: faint content
+4.00-5.99  interesting: clear content
+6.00-7.99  very interesting: strong content
+8.00-9.99  extremely interesting: intense content
 """
 
 prompt_output = """

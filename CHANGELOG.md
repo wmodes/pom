@@ -3,8 +3,7 @@
 All notable changes to the Printer of Mysteries project are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Nothing has been
-released yet, so everything is under Unreleased; the first named version is planned for the
-December 18 session. Update this file in the same commit as the change it describes.
+released yet, so everything is under Unreleased. Update this file in the same commit as the change it describes.
 
 ## [Unreleased]
 

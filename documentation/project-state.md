@@ -10,8 +10,7 @@ trust the code and fix this file.
 The **Printer of Mysteries**: an IBM Wheelwriter 1000 typewriter, driven by a Raspberry Pi 5 (16 GB,
 hostname `pom1`), that eavesdrops on a room and every so often types a tangential, lyrical
 pronouncement. People can also type to it. Fully local: no cloud at run time. Its in-world home is
-the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study CS-0027), and a
-public **Observation Session** is planned for **December 18**, when the stronger of two voices runs.
+the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study CS-0027).
 
 The full design notes are Wes's own document (not in this repo); the decisions that matter are
 summarized below.
@@ -121,7 +120,7 @@ register exemplars (Track A).
 - *Track B, personality voice* (weeks): a base model, LoRA fine-tuned on the corpus plus hinge pairs
   so it cannot speak outside its registers, run with an almost empty prompt (just the hinge). Training
   runs on the Mac (M4 Max, 64 GB, with MLX), never on the Pi.
-- Bake-off: the same hinges to both voices, compared side by side. The stronger runs on Dec 18;
+- Bake-off: the same hinges to both voices, compared side by side. The stronger runs;
   the other stays as backup, one config change away.
 
 **Output** is usually 15 to 50 words, occasionally up to 150 (typing speed is about 16 characters a

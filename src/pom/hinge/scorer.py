@@ -6,10 +6,10 @@ on to) to about 9.99 (extremely interesting). They are relative, not absolute: o
 sample the best sentence scored only about 8, and ordinary talk 2 to 3, so whatever uses them
 should work from ranks and gaps, not a fixed high threshold.
 
-THREE KINDS OF RESULT, recorded in `ScoredFragment.source`:
+THREE KINDS OF RESULT, recorded in `ScoredFragment.scored_by`:
   * MODEL:    the scorer model scored it (through the ScorerModelClient). The normal case.
-  * FILTER:   the fragment has no content words (it is all filler, stopwords or numbers, like
-              "Yeah, okay."), so the model is not asked and it gets the floor score. This saves a
+  * FRAGMENT_FILTER: the fragment has no content words (it is all filler, stopwords or numbers, like
+              "Yeah, okay."), so the model is not asked and it gets the fragment_filter's score. This saves a
               model call on talk that cannot be interesting. The word tagger decides.
   * UNSCORED: the scorer model gave no score, so the score is None. Nothing downstream may treat
               it as a number: the Trigger and avg_convo_interest leave it out. The scorer model
@@ -30,7 +30,7 @@ Design decisions, and why:
   * One fragment at a time, no context, so a fragment scores the same whatever came before it. Any
     memory of what was heard recently (repeats, fading) belongs to the pool the Trigger keeps, not here.
   * Fragment text is never logged or put in a report; logs hold scores, sources and counts.
-  * The settings (floor, how many content words are needed, breaker numbers) are passed in by the
+  * The settings (the fragment_filter's score, how many content words are needed, breaker numbers) are passed in by the
     entry point from Config; this module never reads Config.
 """
 import time
@@ -46,7 +46,7 @@ from pom.fault_recorder import FaultRecorder
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_FLOOR = 1.0
+DEFAULT_FRAGMENT_FILTER_SCORE = 1.0
 DEFAULT_MIN_CONTENT_WORDS = 1
 DEFAULT_FAILURE_LIMIT = 3
 DEFAULT_RETRY_SECONDS = 30.0
@@ -56,10 +56,10 @@ class ScorerError(ValueError):
     """Raised for any scorer problem, but only in strict mode (development and tests)."""
 
 
-class Source(Enum):
-    """Where a score came from."""
+class ScoredBy(Enum):
+    """What made a fragment's score (or left it without one)."""
     MODEL = "model"
-    FILTER = "filter"
+    FRAGMENT_FILTER = "fragment_filter"
     UNSCORED = "unscored"
 
 
@@ -70,12 +70,12 @@ class ScoredFragment:
     Attributes:
         fragment: The fragment that was scored.
         score: About 1 (dull) to 9.99 (extremely interesting), or None if the fragment could not
-            be scored (source UNSCORED). Check for None before using it as a number.
-        source: Whether the model made the score, the filter did, or it is unscored.
+            be scored (scored_by UNSCORED). Check for None before using it as a number.
+        scored_by: Whether the scorer model made the score, the fragment_filter did, or it is unscored.
     """
     fragment: Fragment
     score: Optional[float]
-    source: Source
+    scored_by: ScoredBy
 
     @property
     def text(self) -> str:
@@ -90,7 +90,7 @@ class Scorer:
         report: Problems met (settings corrected, model unavailable, breaker opened).
     """
 
-    def __init__(self, scorer_model_client, word_tagger: WordTagger, floor: float = DEFAULT_FLOOR,
+    def __init__(self, scorer_model_client, word_tagger: WordTagger, fragment_filter_score: float = DEFAULT_FRAGMENT_FILTER_SCORE,
                  min_content_words: int = DEFAULT_MIN_CONTENT_WORDS,
                  failure_limit: int = DEFAULT_FAILURE_LIMIT,
                  retry_seconds: float = DEFAULT_RETRY_SECONDS,
@@ -98,7 +98,7 @@ class Scorer:
         """Args:
             scorer_model_client: A ScorerModelClient (anything with score(text), warm_up() and available).
             word_tagger: The WordTagger that tags each word of a fragment.
-            floor: The score for a fragment the filter keeps from the model.
+            fragment_filter_score: The score for a fragment the fragment_filter keeps from the model.
             min_content_words: Fragments with fewer content words skip the model (0 = never skip).
             failure_limit: Model failures in a row that open the circuit breaker.
             retry_seconds: How long the breaker stays open before the model gets another try.
@@ -108,13 +108,14 @@ class Scorer:
         self.report = FaultRecorder(strict=strict, error=ScorerError, logger=_log)
         self._scorer_model_client, self._word_tagger, self._clock = (
             scorer_model_client, word_tagger, clock)
-        self._floor = self._number(floor, "floor", DEFAULT_FLOOR, minimum=0.0)
+        self._fragment_filter_score = self._number(fragment_filter_score, "fragment_filter_score",
+                                                      DEFAULT_FRAGMENT_FILTER_SCORE, minimum=0.0)
         self._min_content = self._whole(min_content_words, "min_content_words", DEFAULT_MIN_CONTENT_WORDS, minimum=0)
         self._failure_limit = self._whole(failure_limit, "failure_limit", DEFAULT_FAILURE_LIMIT, minimum=1)
         self._retry_seconds = self._number(retry_seconds, "retry_seconds", DEFAULT_RETRY_SECONDS, minimum=0.0)
         self._failures = 0
         self._reopen_at: Optional[float] = None       # None while the breaker is closed
-        self._counts = {source: 0 for source in Source}
+        self._counts = {scored_by: 0 for scored_by in ScoredBy}
         if not scorer_model_client.available:
             self.report.warn("the scorer model is not available (see the client's report); every "
                              "fragment that passes the filter will go unscored")
@@ -138,19 +139,19 @@ class Scorer:
     # --- Scoring --------------------------------------------------------------------
 
     def score(self, fragment: Fragment) -> ScoredFragment:
-        """Scores one fragment. Always returns a result; see `source` for how it was made."""
+        """Scores one fragment. Always returns a result; see `scored_by` for how it was made."""
         content = [word for word in self._word_tagger.tag(fragment.text) if word.is_content]
         if self._skips_model(fragment.text, content):
-            return self._result(fragment, self._floor, Source.FILTER)
+            return self._result(fragment, self._fragment_filter_score, ScoredBy.FRAGMENT_FILTER)
         if self._model_allowed():
             value = self._scorer_model_client.score(fragment.text)
             if value is not None:
                 self._model_worked()
-                return self._result(fragment, value, Source.MODEL)
+                return self._result(fragment, value, ScoredBy.MODEL)
             self._model_failed()
-        return self._result(fragment, None, Source.UNSCORED)
+        return self._result(fragment, None, ScoredBy.UNSCORED)
 
-    def is_filtered(self, text: str) -> bool:
+    def is_fragment_filtered(self, text: str) -> bool:
         """True if this text would skip the model (empty, or too few content words), without scoring it."""
         return self._skips_model(text, [word for word in self._word_tagger.tag(text) if word.is_content])
 
@@ -183,14 +184,14 @@ class Scorer:
         return not self._model_allowed()
 
     def counts(self) -> dict:
-        """How many fragments each source has scored so far (counts only, never text)."""
-        return {source.value: number for source, number in self._counts.items()}
+        """How many fragments each kind of result has had so far (counts only, never text)."""
+        return {scored_by.value: number for scored_by, number in self._counts.items()}
 
-    def _result(self, fragment, value, source) -> ScoredFragment:
-        self._counts[source] += 1
+    def _result(self, fragment, value, scored_by) -> ScoredFragment:
+        self._counts[scored_by] += 1
         _log.debug("scored a fragment of %d words: %s (%s)", fragment.words,
-                   "no score" if value is None else f"{value:.2f}", source.value)
-        return ScoredFragment(fragment, None if value is None else float(value), source)
+                   "no score" if value is None else f"{value:.2f}", scored_by.value)
+        return ScoredFragment(fragment, None if value is None else float(value), scored_by)
 
     # --- The circuit breaker --------------------------------------------------------
 

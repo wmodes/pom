@@ -3,8 +3,8 @@ import logging
 
 import pytest
 
-from pom.hinge.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FLOOR, DEFAULT_RETRY_SECONDS,
-                              ScoredFragment, Scorer, ScorerError, Source)
+from pom.hinge.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FRAGMENT_FILTER_SCORE,
+                              DEFAULT_RETRY_SECONDS, ScoredBy, ScoredFragment, Scorer, ScorerError)
 from pom.hinge.word_tagger import WordTagger
 from pom.listening.fragmenter import Fragment, Kind
 
@@ -68,7 +68,7 @@ class TestModel:
     def test_a_sentence_with_content_goes_to_the_model(self):
         client = FakeClient(7.25)
         result = make(client).score(fragment("The lamp hums."))
-        assert (result.score, result.source) == (7.25, Source.MODEL)
+        assert (result.score, result.scored_by) == (7.25, ScoredBy.MODEL)
         assert client.calls == ["The lamp hums."]
 
     def test_the_result_carries_the_fragment(self):
@@ -107,70 +107,70 @@ class TestModel:
         scorer = make()
         scorer.score_text("The lamp hums.")
         scorer.score_text("Yeah okay")
-        assert scorer.counts() == {"model": 1, "filter": 1, "unscored": 0}
+        assert scorer.counts() == {"model": 1, "fragment_filter": 1, "unscored": 0}
 
 
 class TestFilter:
     def test_all_filler_is_not_sent_to_the_model(self):
         client = FakeClient()
         result = make(client).score_text("Yeah, okay.")
-        assert (result.score, result.source) == (DEFAULT_FLOOR, Source.FILTER)
+        assert (result.score, result.scored_by) == (DEFAULT_FRAGMENT_FILTER_SCORE, ScoredBy.FRAGMENT_FILTER)
         assert client.calls == []
 
     def test_only_stopwords_and_numbers_is_filtered(self):
         client = FakeClient()
-        assert make(client).score_text("It is the 40.").source is Source.FILTER
+        assert make(client).score_text("It is the 40.").scored_by is ScoredBy.FRAGMENT_FILTER
         assert client.calls == []
 
     def test_empty_text_is_filtered_and_is_not_a_failure(self):
         client = FakeClient(None)
         scorer = make(client, failure_limit=1)
         for text in ("", "   ", "..."):
-            assert scorer.score_text(text).source is Source.FILTER
+            assert scorer.score_text(text).scored_by is ScoredBy.FRAGMENT_FILTER
         assert client.calls == [] and not scorer.degraded
 
     def test_the_floor_is_configurable(self):
-        assert make(floor=2.5).score_text("Yeah, okay.").score == 2.5
+        assert make(fragment_filter_score=2.5).score_text("Yeah, okay.").score == 2.5
 
     def test_min_content_words_raises_the_bar(self):
         client = FakeClient()
         scorer = make(client, min_content_words=2)
-        assert scorer.score_text("Lamp.").source is Source.FILTER
-        assert scorer.score_text("The lamp hums.").source is Source.MODEL
+        assert scorer.score_text("Lamp.").scored_by is ScoredBy.FRAGMENT_FILTER
+        assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL
 
     def test_zero_min_content_words_never_filters_text(self):
         client = FakeClient()
         scorer = make(client, min_content_words=0)
-        assert scorer.score_text("Yeah, okay.").source is Source.MODEL
-        assert scorer.score_text("").source is Source.FILTER          # nothing to ask about
+        assert scorer.score_text("Yeah, okay.").scored_by is ScoredBy.MODEL
+        assert scorer.score_text("").scored_by is ScoredBy.FRAGMENT_FILTER          # nothing to ask about
         assert client.calls == ["Yeah, okay."]
 
 
 class TestIsFiltered:
     def test_filler_and_empty_text_are_filtered(self):
         scorer = make()
-        assert scorer.is_filtered("Yeah, okay.") and scorer.is_filtered("") and scorer.is_filtered("   ")
+        assert scorer.is_fragment_filtered("Yeah, okay.") and scorer.is_fragment_filtered("") and scorer.is_fragment_filtered("   ")
 
     def test_text_with_content_is_not(self):
-        assert not make().is_filtered("The lamp hums.")
+        assert not make().is_fragment_filtered("The lamp hums.")
 
     def test_it_follows_min_content_words(self):
-        assert make(min_content_words=2).is_filtered("Lamp.")
-        assert not make(min_content_words=2).is_filtered("The lamp hums.")
-        assert not make(min_content_words=0).is_filtered("Yeah, okay.")
-        assert make(min_content_words=0).is_filtered("")
+        assert make(min_content_words=2).is_fragment_filtered("Lamp.")
+        assert not make(min_content_words=2).is_fragment_filtered("The lamp hums.")
+        assert not make(min_content_words=0).is_fragment_filtered("Yeah, okay.")
+        assert make(min_content_words=0).is_fragment_filtered("")
 
     def test_it_agrees_with_what_scoring_does(self):
         scorer = make()
         for text in ("Yeah, okay.", "The lamp hums.", "", "It is the 40.", "Lamp."):
-            assert scorer.is_filtered(text) == (scorer.score_text(text).source is Source.FILTER)
+            assert scorer.is_fragment_filtered(text) == (scorer.score_text(text).scored_by is ScoredBy.FRAGMENT_FILTER)
 
     def test_asking_never_calls_the_model_or_counts(self):
         client = FakeClient()
         scorer = make(client)
-        scorer.is_filtered("The lamp hums.")
-        scorer.is_filtered("Yeah, okay.")
-        assert client.calls == [] and scorer.counts() == {"model": 0, "filter": 0, "unscored": 0}
+        scorer.is_fragment_filtered("The lamp hums.")
+        scorer.is_fragment_filtered("Yeah, okay.")
+        assert client.calls == [] and scorer.counts() == {"model": 0, "fragment_filter": 0, "unscored": 0}
 
 
 class TestUnscored:
@@ -179,7 +179,7 @@ class TestUnscored:
 
     def test_no_score_from_the_model_gives_no_score(self):
         result = self.scorer_without_model().score_text("The lamp hums.")
-        assert result.source is Source.UNSCORED and result.score is None
+        assert result.scored_by is ScoredBy.UNSCORED and result.score is None
 
     def test_the_unscored_result_still_carries_the_fragment(self):
         f = fragment("The lamp hums.", at=4.0)
@@ -188,7 +188,7 @@ class TestUnscored:
 
     def test_the_filter_still_comes_first(self):
         result = self.scorer_without_model().score_text("Yeah, okay.")
-        assert (result.score, result.source) == (DEFAULT_FLOOR, Source.FILTER)
+        assert (result.score, result.scored_by) == (DEFAULT_FRAGMENT_FILTER_SCORE, ScoredBy.FRAGMENT_FILTER)
 
     def test_ranked_puts_unscored_fragments_last(self):
         class Sometimes(FakeClient):
@@ -201,14 +201,14 @@ class TestUnscored:
         assert ranked[-1].score is None
 
     def test_ranked_keeps_unscored_last_even_against_a_zero_score(self):
-        scorer = make(FakeClient(None), failure_limit=100, floor=0.0)      # a filtered fragment scores 0.0
+        scorer = make(FakeClient(None), failure_limit=100, fragment_filter_score=0.0)      # a filtered fragment scores 0.0
         ranked = scorer.ranked([fragment("The lamp hums."), fragment("Yeah, okay.")])
         assert [r.text for r in ranked] == ["Yeah, okay.", "The lamp hums."]
 
     def test_unscored_fragments_are_counted(self):
         scorer = self.scorer_without_model()
         scorer.score_text("The lamp hums.")
-        assert scorer.counts() == {"model": 0, "filter": 0, "unscored": 1}
+        assert scorer.counts() == {"model": 0, "fragment_filter": 0, "unscored": 1}
 
 
 class TestCircuitBreaker:
@@ -229,7 +229,7 @@ class TestCircuitBreaker:
         assert scorer.degraded and len(scorer.report.warnings) == 1
         calls = len(client.calls)
         for _ in range(10):
-            assert scorer.score_text("The lamp hums.").source is Source.UNSCORED
+            assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.UNSCORED
         assert len(client.calls) == calls
 
     def test_after_the_wait_one_attempt_is_made(self):
@@ -263,9 +263,9 @@ class TestCircuitBreaker:
             scorer.score_text("The lamp hums.")
         client.value = 6.0
         clock.now += DEFAULT_RETRY_SECONDS
-        assert scorer.score_text("The lamp hums.").source is Source.MODEL
+        assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL
         assert not scorer.degraded
-        assert scorer.score_text("The lamp hums.").source is Source.MODEL
+        assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL
 
     def test_recovery_is_announced_once(self, caplog):
         client, clock = FakeClient(None), Clock()
@@ -283,7 +283,7 @@ class TestCircuitBreaker:
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
         assert scorer.score_text("Yeah, okay.").score == 1.0                    # the floor
-        assert scorer.score_text("Lamp.").source is Source.UNSCORED             # one content word is enough
+        assert scorer.score_text("Lamp.").scored_by is ScoredBy.UNSCORED             # one content word is enough
         scorer.score_text("Lamp.")
         assert not scorer.degraded                                              # two failures: still closed
         scorer.score_text("Lamp.")
@@ -324,7 +324,7 @@ class TestUnavailableModel:
     def test_the_model_is_never_asked_and_everything_goes_unscored(self):
         client = FakeClient(available=False)
         scorer = make(client)
-        assert scorer.score_text("The lamp hums.").source is Source.UNSCORED
+        assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.UNSCORED
         assert client.calls == [] and scorer.degraded
         assert len(scorer.report.warnings) == 1                 # said once, at construction
 
@@ -343,14 +343,15 @@ class TestWarmUp:
 
 
 class TestSettings:
-    @pytest.mark.parametrize("name,bad", [("floor", -1), ("floor", "x"), ("floor", True), ("floor", None),
+    @pytest.mark.parametrize("name,bad", [("fragment_filter_score", -1), ("fragment_filter_score", "x"),
+                                          ("fragment_filter_score", True), ("fragment_filter_score", None),
                                           ("min_content_words", -1), ("min_content_words", 1.5),
                                           ("min_content_words", True), ("failure_limit", 0),
                                           ("failure_limit", 2.5), ("retry_seconds", -5), ("retry_seconds", "soon")])
     def test_bad_settings_fall_back_with_a_warning(self, name, bad):
         scorer = make(**{name: bad})
         assert len(scorer.report.warnings) == 1
-        assert scorer.score_text("The lamp hums.").source is Source.MODEL     # still works
+        assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL     # still works
 
     def test_defaults_are_quiet(self):
         assert make().report.ok

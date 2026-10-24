@@ -291,7 +291,7 @@ def test_scorer_defaults_when_nothing_is_set():
 def test_the_scorer_defaults_match_the_scorers_own():
     from pom.hinge import scorer, scorer_model_client
     assert DEFAULT_SCORER_TIMEOUT == scorer_model_client.DEFAULT_TIMEOUT
-    assert DEFAULT_SCORER_FLOOR == scorer.DEFAULT_FLOOR
+    assert DEFAULT_SCORER_FLOOR == scorer.DEFAULT_FRAGMENT_FILTER_SCORE
     assert DEFAULT_SCORER_MIN_CONTENT_WORDS == scorer.DEFAULT_MIN_CONTENT_WORDS
     assert DEFAULT_SCORER_FAILURE_LIMIT == scorer.DEFAULT_FAILURE_LIMIT
     assert DEFAULT_SCORER_RETRY_SECONDS == scorer.DEFAULT_RETRY_SECONDS
@@ -376,7 +376,7 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
 
 def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
     from pom.hinge.scorer_model_client import ScorerModelClient
-    from pom.hinge.scorer import Scorer, Source
+    from pom.hinge.scorer import ScoredBy, Scorer
     from pom.hinge.word_tagger import WordTagger
     config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfloor = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
@@ -385,11 +385,11 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
                                 {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
     scorer = Scorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
                                       stopwords={"the"}),
-                    floor=settings.floor, min_content_words=settings.min_content_words,
+                    fragment_filter_score=settings.floor, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     assert client.available and scorer.report.ok
     assert scorer.score_text("The lamp hums.").score == 6.0
-    assert scorer.score_text("The").source is Source.FILTER and scorer.score_text("The").score == 2.0
+    assert scorer.score_text("The").scored_by is ScoredBy.FRAGMENT_FILTER and scorer.score_text("The").score == 2.0
 
 
 def test_the_scoring_prompt_is_the_scoring_part_plus_the_output_part(tmp_path):

@@ -205,6 +205,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Scorer vocabulary now follows the lexicon.** `Source` is `ScoredBy` (values `MODEL`, `FRAGMENT_FILTER`,
+  `UNSCORED`; the strings are `model`, `fragment_filter`, `unscored`), `ScoredFragment.source` is `.scored_by`,
+  `is_filtered()` is `is_fragment_filtered()`, and the Scorer's `floor` argument is `fragment_filter_score`
+  (`DEFAULT_FRAGMENT_FILTER_SCORE`). The `scorer.floor` config key keeps its name until the config keys are
+  renamed. The counts and the hearing-debug view say `fragment_filter` where they said `filter`.
 - **`InterestClient` is now `ScorerModelClient`** (`src/pom/hinge/scorer_model_client.py`; `InterestClientError` is
   `ScorerModelClientError`). Its debug request is now `explain()` (was `interpret()`; `can_explain`,
   `Explanation`, `explain_prompt`, `explain_timeout`, `EXPLAIN_MAX_TOKENS`), `expected_digit()` is

@@ -428,7 +428,7 @@ class Brain:
         settings = config.scorer
         client = ScorerModelClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
                                 explain_prompt=settings.prompt_debug)
-        self.scorer = Scorer(client, self._word_tagger, floor=settings.floor, min_content_words=settings.min_content_words,
+        self.scorer = Scorer(client, self._word_tagger, fragment_filter_score=settings.floor, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings = client, settings
         problems = config.report.lines() + client.report.lines()
@@ -468,7 +468,7 @@ class Display:
         mark = f"   <-- would trigger (>= {self.threshold:g})" if score is not None and score >= self.threshold else ""
         was = f"   (was {previous:.2f})" if previous is not None else ""
         shown = f"{score:5.2f}" if score is not None else "  -  "          # None: the scorer model gave no score
-        self.line(f"  #{number:<3} {shown}  {source:<8} {text}{was}{mark}")
+        self.line(f"  #{number:<3} {shown}  {source:<15} {text}{was}{mark}")
 
     def pending(self, number: int, text: str) -> None:
         """A sentence that has been heard and is waiting for its one debug run."""
@@ -600,7 +600,7 @@ class Pipeline:
                 continue
             self.count += 1
             number = self.count
-            if self.debug_mode() and not self.brain.scorer.is_filtered(fragment.text):
+            if self.debug_mode() and not self.brain.scorer.is_fragment_filtered(fragment.text):
                 # ONE request per sentence: the score and the reasons both come out of it.
                 self.history.append(Heard(number, fragment.text, None, "waiting"))
                 self.display.pending(number, fragment.text)
@@ -608,8 +608,8 @@ class Pipeline:
             else:
                 # Fast mode, or a sentence the filter keeps from the model: the Printer's one-token score, straight away.
                 scored = self.brain.scorer.score(fragment)
-                self.history.append(Heard(number, fragment.text, scored.score, scored.source.value))
-                self.display.sentence(number, scored.score, scored.source.value, fragment.text)
+                self.history.append(Heard(number, fragment.text, scored.score, scored.scored_by.value))
+                self.display.sentence(number, scored.score, scored.scored_by.value, fragment.text)
 
     def debug_mode(self) -> bool:
         """True if each sentence gets one debug run (score and reasons together) instead of the one-token score."""
@@ -654,12 +654,12 @@ class Pipeline:
         self.display.line(f"\n[{self.display.stamp()}] re-scoring the last {len(self.history)} sentences "
                           f"with [{self.brain.fingerprint()}]" + (f" ({changed})" if changed else ""))
         for item in list(self.history):
-            if self.debug_mode() and not self.brain.scorer.is_filtered(item.text):
+            if self.debug_mode() and not self.brain.scorer.is_fragment_filtered(item.text):
                 self._queue_run(item.number, item.text, previous=item.score)
             else:
                 scored = self.brain.scorer.score_text(item.text)
-                self.display.sentence(item.number, scored.score, scored.source.value, item.text, previous=item.score)
-                item.score, item.source = scored.score, scored.source.value
+                self.display.sentence(item.number, scored.score, scored.scored_by.value, item.text, previous=item.score)
+                item.score, item.source = scored.score, scored.scored_by.value
 
     def commands(self) -> None:
         for line in sys.stdin:

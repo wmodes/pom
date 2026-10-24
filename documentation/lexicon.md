@@ -73,8 +73,6 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 
 These names predate the lexicon. Each rename is Wes's decision.
 
-- The scorer calls the fragment_filter just the *filter* (`is_filtered`, and `filter` as a score's
-  source).
 - The hearing-debug **`Segmenter`** cuts *audio* by loudness before whisper runs; it does not
   produce segments in whisper's sense.
 - Older docs say **pronouncement** for portent, and a few say **chunk** for fragments.

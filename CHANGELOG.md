@@ -10,6 +10,8 @@ December 18 session. Update this file in the same commit as the change it descri
 
 ### Added
 
+- **`documentation/lexicon.md`**: the project's vocabulary (segment, chunk, score, hinge, corpus, weights,
+  portent, experiments, and terms awaiting confirmation), plus the code names that do not match it yet.
 - **Changelog.** This file, in Keep a Changelog format.
 - **Logging, a debug flag, and shared config.** The service's stdout goes to journald, so
   problems are logged there. `src/pom/logs.py` sets up stdout logging once (no timestamp, since

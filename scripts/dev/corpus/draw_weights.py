@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Print the draw odds the Sampler will use, so a weights.json edit can be checked at a glance.
+"""Print the draw odds the ExemplarSelector will use, so a weights.json edit can be checked at a glance.
 
-The oracle draws a few exemplar chunks at random. The corpus is lopsided, so the Sampler weights
+The oracle draws a few exemplar chunks at random. The corpus is lopsided, so the ExemplarSelector weights
 every chunk to give each register its target share over many draws (see
-src/pom/corpus/sampler.py for the math). This script builds the real Sampler from corpus/chunks/
-and corpus/chunks/weights.json and reports, per register, its target share, its chunk count, how
+src/pom/corpus/exemplar_selector.py for the math). This script builds the real ExemplarSelector from
+corpus/chunks/ and corpus/chunks/weights.json and reports, per register, its target share, its chunk count, how
 much likelier an average chunk of that register is than in a flat draw, and the chance that one
 pull of five comes entirely from that register.
 
@@ -22,7 +22,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
-from pom.corpus import ChunkStore, DrawWeights, Sampler  # noqa: E402
+from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(HERE, "..", "..", "..", "corpus")
@@ -36,10 +36,10 @@ def main():
 
     configure_logging("WARNING")
     store = ChunkStore.load(os.path.join(CORPUS, "chunks"))
-    sampler = Sampler(store, DrawWeights.from_file(args.weights))
-    if not sampler.ready:
+    selector = ExemplarSelector(store, DrawWeights.from_file(args.weights))
+    if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
-    shares = sampler.register_shares()
+    shares = selector.register_shares()
     total = sum(store.count(r) for r in shares)
 
     print(f"{len(store.layout()) and sum(len(s) for s in store.layout().values())} sources, "

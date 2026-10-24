@@ -2,7 +2,7 @@
 
 This module owns one file, corpus/chunks/weights.json, and nothing else. It parses the file,
 applies the defaults, normalizes register shares, and checks the file against what is actually
-in the corpus. It does not draw anything (that is the Sampler's job) and it does not read
+in the corpus. It does not draw anything (that is the ExemplarSelector's job) and it does not read
 chunks (that is the ChunkStore's job), so it can be tested with nothing but a small JSON file.
 
 The file is a tree that mirrors the folders in chunks/:

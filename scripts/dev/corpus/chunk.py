@@ -19,7 +19,7 @@ Rules, in order:
 
 A chunk holds only facts about itself (source, register, text). How likely it is to be
 drawn depends on the whole corpus and on the weights in chunks/weights.json, so that is
-computed at load time by the Sampler (src/pom/corpus) and never stored here: adding one utterance, or
+computed at load time by the ExemplarSelector (src/pom/corpus) and never stored here: adding one utterance, or
 changing a weight, touches no chunk file.
 
 Output is deterministic: one JSONL file per source under corpus/chunks/<register>/<id>.jsonl.

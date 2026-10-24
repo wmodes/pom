@@ -110,11 +110,11 @@ def test_samples_default_to_three_to_five():
     assert config.samples == (3, 5) and config.report.ok
 
 
-def test_the_defaults_match_the_samplers_defaults():
-    """Config and Sampler each carry the default (neither imports the other), so keep them equal."""
-    from pom.corpus.sampler import DEFAULT_SAMPLES
+def test_the_defaults_match_the_exemplar_selectors_defaults():
+    """Config and ExemplarSelector each carry the default (neither imports the other), so keep them equal."""
+    from pom.corpus.exemplar_selector import DEFAULT_EXEMPLAR_RANGE
     from pom.config import DEFAULT_SAMPLES as CONFIG_DEFAULT
-    assert CONFIG_DEFAULT == DEFAULT_SAMPLES
+    assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
 
 
 def test_samples_are_read_from_the_file_and_the_environment(tmp_path):
@@ -155,11 +155,12 @@ def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
 
 def test_config_samples_plug_straight_into_the_sampler():
     import random
-    from pom.corpus import Chunk, ChunkStore, DrawWeights, Sampler
+    from pom.corpus import Chunk, ChunkStore, DrawWeights, ExemplarSelector
     config = Config.load(environ={"POM_SAMPLES_MIN": "2", "POM_SAMPLES_MAX": "2"})
     store = ChunkStore.from_chunks([Chunk(f"a#{i}", "a", "red", f"Chunk {i}", 2) for i in range(9)])
-    sampler = Sampler(store, DrawWeights.from_dict({}), random.Random(1), samples=config.samples)
-    assert len(sampler.draw()) == 2
+    selector = ExemplarSelector(store, DrawWeights.from_dict({}), random.Random(1),
+                                exemplar_range=config.samples)
+    assert len(selector.draw()) == 2
 
 
 # --- The per-machine override file ----------------------------------------------------

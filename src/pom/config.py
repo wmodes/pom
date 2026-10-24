@@ -11,7 +11,7 @@ of being threaded through by hand. Today there are five:
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
     samples_min, samples_max
                How many corpus chunks go into each pull of exemplars (3 and 5 by default). The
-               entry point passes `config.samples` to the Sampler; the Sampler never reads Config.
+               entry point passes `config.samples` to the ExemplarSelector, which never reads Config.
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
                that defines "interesting" and the score scale, the floor score, how many content
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
@@ -115,7 +115,7 @@ class Config:
         debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         local_logs: Also write the log to a local file (development only).
-        samples: (fewest, most) chunks per pull of exemplars, for the Sampler.
+        samples: (fewest, most) chunks per pull of exemplars, for the ExemplarSelector.
         scorer: The `[scorer]` section, as a ScorerSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """

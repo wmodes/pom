@@ -176,7 +176,7 @@ def planned_steps() -> list:
     return [
         PlannedStep("config-report", "log what the config loader had to correct (config.report)"),
         PlannedStep("data-check", "the corpus chunks, weights.json and the NLTK data are present; the "
-                    "Sampler cannot draw without chunks", critical=True),
+                    "ExemplarSelector cannot draw without chunks", critical=True),
         PlannedStep("mic-gain", "set the microphone's capture gain from config (24 of 30 worked on the "
                     "ATR4697-USB); Pi only, and it resets on every reboot"),
         PlannedStep("audio-device", "a capture device exists; without ears there is nothing to do",

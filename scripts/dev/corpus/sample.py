@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Play with the Sampler: print pulls of random chunks, or measure the long-run register shares.
+"""Play with the ExemplarSelector: print pulls of random chunks, or measure the long-run register shares.
 
-It builds the real Sampler from corpus/chunks/, corpus/chunks/weights.json and the sample range in
+It builds the real ExemplarSelector from corpus/chunks/, corpus/chunks/weights.json and the sample range in
 config/pom.toml (plus config/pom.local.toml), so what you see is what the oracle's exemplar draw
 will do. Try a different weights file with --weights to see the effect before editing the real one.
 
@@ -25,14 +25,14 @@ ROOT = os.path.join(HERE, "..", "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "src"))    # scripts may import pom
 
 from pom.config import Config  # noqa: E402
-from pom.corpus import ChunkStore, DrawWeights, Sampler  # noqa: E402
+from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 
-def show_pulls(sampler, pulls, count):
+def show_pulls(selector, pulls, count):
     """Prints each pull: a header, then every chunk with its register and source."""
     for number in range(1, pulls + 1):
-        chunks = sampler.draw(count)
+        chunks = selector.draw(count)
         print(f"--- pull {number}: {len(chunks)} chunk(s)")
         for chunk in chunks:
             print(f"[{chunk.register} / {chunk.source}]")
@@ -40,13 +40,13 @@ def show_pulls(sampler, pulls, count):
             print()
 
 
-def show_stats(sampler, pulls, count):
+def show_stats(selector, pulls, count):
     """Draws many pulls without printing them, then compares each register's share to its target."""
     for _ in range(pulls):
-        sampler.draw(count)
-    counts = sampler.draw_counts()
+        selector.draw(count)
+    counts = selector.draw_counts()
     total = sum(counts.values())
-    shares = sampler.register_shares()
+    shares = selector.register_shares()
     print(f"{pulls} pulls, {total} chunks drawn\n")
     print(f"{'register':<14}{'target':>8}{'drawn':>9}{'actual':>9}")
     for register in sorted(shares, key=lambda r: -shares[r]):
@@ -68,14 +68,14 @@ def main():
     config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
     configure_logging(config.log_level if args.verbose else "WARNING")
     store = ChunkStore.load(os.path.join(ROOT, "corpus", "chunks"))
-    sampler = Sampler(store, DrawWeights.from_file(args.weights), random.Random(args.seed),
-                      samples=config.samples)
-    if not sampler.ready:
+    selector = ExemplarSelector(store, DrawWeights.from_file(args.weights), random.Random(args.seed),
+                      exemplar_range=config.samples)
+    if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     if args.stats is not None:
-        show_stats(sampler, args.stats, args.count)
+        show_stats(selector, args.stats, args.count)
     else:
-        show_pulls(sampler, args.pulls, args.count)
+        show_pulls(selector, args.pulls, args.count)
 
 
 if __name__ == "__main__":

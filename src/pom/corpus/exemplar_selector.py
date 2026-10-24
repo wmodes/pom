@@ -1,7 +1,7 @@
-"""The Sampler: draws chunks at random, weighted so each register gets its target share over time.
+"""The ExemplarSelector: draws chunks at random, weighted so each register gets its target share over time.
 
 The oracle shows the model a few random exemplar chunks. The corpus is lopsided (one register has
-30,000 chunks, another 400), so a plain random pick would swamp the small registers. The Sampler
+30,000 chunks, another 400), so a plain random pick would swamp the small registers. The ExemplarSelector
 gives every chunk its own chance of being drawn, so that over many draws each register gets its
 target share, while any combination of draws stays possible: five obituaries in a row is rare,
 never impossible. Nothing is chosen category-first.
@@ -13,7 +13,7 @@ chunk's source weight, and register_total is the sum of source_weight over the r
 Drawing a register by its share and then a chunk within it by source weight, on every draw, gives
 exactly the same odds; this class does it with one cumulative table instead.
 
-These odds are computed from the corpus as it stands, once, when the Sampler is built. They are
+These odds are computed from the corpus as it stands, once, when the ExemplarSelector is built. They are
 never stored: a chunk's chance depends on its register's total, so adding a chunk changes only
 its own register's numbers, and rebuilding takes a few milliseconds.
 
@@ -35,18 +35,18 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A register whose sources all weigh 0
     is skipped with a warning and the others renormalize. If nothing at all can be drawn that is
     CRITICAL: `draw` returns an empty list and the Conductor decides what to do. Asking for more
-    chunks than exist returns fewer. `strict=True` raises SamplerError instead, for tests and dev
+    chunks than exist returns fewer. `strict=True` raises ExemplarSelectorError instead, for tests and dev
     tools.
   * One pull never repeats a chunk. Drawing without repeats keeps the odds proportional to the
     weights among the chunks still available.
   * How many chunks a pull holds is a range, (3, 5) by default, passed in by whoever builds the
-    Sampler (the entry point takes it from Config; this module never reads Config itself).
+    ExemplarSelector (the entry point takes it from Config; this module never reads Config itself).
     `draw()` with no argument picks a count in that range with the same random generator, so a
     seeded run is repeatable; `draw(n)` overrides it. A bad range falls back to (3, 5) with a
     warning, and a reversed one is swapped.
   * The random generator is injected, so a test (or a debugging session) can seed it and get the
     same draws every time.
-  * The Sampler counts draws per register. That is how you notice a register coming up too often
+  * The ExemplarSelector counts draws per register. That is how you notice a register coming up too often
     and decide to adjust a share; the counts hold no text, so they are safe to log.
   * Chunks with zero chance (a zero source weight, or a zero-share register) are left out of the
     table entirely, so they can never be drawn.
@@ -63,14 +63,14 @@ from pom.fault_recorder import FaultRecorder
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_SAMPLES = (3, 5)
+DEFAULT_EXEMPLAR_RANGE = (3, 5)
 
 
-class SamplerError(ValueError):
-    """Raised for any sampler problem, but only in strict mode (development and tests)."""
+class ExemplarSelectorError(ValueError):
+    """Raised for any selector problem, but only in strict mode (development and tests)."""
 
 
-class Sampler:
+class ExemplarSelector:
     """Draws weighted random chunks from a ChunkStore.
 
     Attributes:
@@ -80,7 +80,7 @@ class Sampler:
 
     def __init__(self, store: ChunkStore, draw_weights: DrawWeights,
                  rng: Optional[random.Random] = None, strict: bool = False,
-                 samples: Sequence[int] = DEFAULT_SAMPLES):
+                 exemplar_range: Sequence[int] = DEFAULT_EXEMPLAR_RANGE):
         """Builds the draw odds from the store and the weights.
 
         Args:
@@ -88,12 +88,12 @@ class Sampler:
             draw_weights: Register shares and source weights.
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
-            strict: Raise SamplerError on any problem instead of recording it.
-            samples: The (fewest, most) chunks `draw()` returns when not told how many.
+            strict: Raise ExemplarSelectorError on any problem instead of recording it.
+            exemplar_range: The (fewest, most) chunks `draw()` returns when not told how many.
         """
         self._rng = rng if rng is not None else random.Random()
-        self.report = FaultRecorder(strict=strict, error=SamplerError, logger=_log)
-        self._samples = self._valid_samples(samples)
+        self.report = FaultRecorder(strict=strict, error=ExemplarSelectorError, logger=_log)
+        self._exemplar_range = self._valid_exemplar_range(exemplar_range)
         self.check_report = draw_weights.check(store.layout())   # logs any drift; the odds still work
         self._chunks: list[Chunk] = []
         self._probability: list[float] = []
@@ -102,7 +102,7 @@ class Sampler:
         self._counts: dict[str, int] = {}
         self._build(store, draw_weights)
 
-    def _valid_samples(self, samples) -> tuple[int, int]:
+    def _valid_exemplar_range(self, exemplar_range) -> tuple[int, int]:
         """A usable (fewest, most) pair: whole numbers of at least 1, in order.
 
         Anything else is reported and replaced by the default; a reversed pair is swapped.
@@ -110,15 +110,15 @@ class Sampler:
         def whole(value):
             return isinstance(value, int) and not isinstance(value, bool) and value >= 1
         try:
-            low, high = samples
+            low, high = exemplar_range
         except (TypeError, ValueError):
             low = high = None
         if not (whole(low) and whole(high)):
-            self.report.warn(f"samples must be two whole numbers of at least 1, got {samples!r}; "
-                             f"using {DEFAULT_SAMPLES}")
-            return DEFAULT_SAMPLES
+            self.report.warn(f"exemplar_range must be two whole numbers of at least 1, "
+                             f"got {exemplar_range!r}; using {DEFAULT_EXEMPLAR_RANGE}")
+            return DEFAULT_EXEMPLAR_RANGE
         if low > high:
-            self.report.warn(f"samples ({low}, {high}) is backwards; using ({high}, {low})")
+            self.report.warn(f"exemplar_range ({low}, {high}) is backwards; using ({high}, {low})")
             low, high = high, low
         return (low, high)
 
@@ -158,7 +158,7 @@ class Sampler:
         if not self._chunks:
             self.report.critical("nothing to draw from: no chunk has a positive chance")
             return
-        _log.info("sampler ready: %d drawable chunk(s) in %d register(s)",
+        _log.info("selector ready: %d drawable chunk(s) in %d register(s)",
                   len(self._chunks), len(drawable))
         _log.debug("register shares: %s",
                    ", ".join(f"{r}={s:.3f}" for r, s in sorted(self._shares.items())))
@@ -166,9 +166,9 @@ class Sampler:
     # --- Questions ------------------------------------------------------------------
 
     @property
-    def sample_range(self) -> tuple[int, int]:
+    def exemplar_range(self) -> tuple[int, int]:
         """The (fewest, most) chunks a no-argument `draw()` returns."""
-        return self._samples
+        return self._exemplar_range
 
     @property
     def ready(self) -> bool:
@@ -207,7 +207,7 @@ class Sampler:
         """Draws chunks at random by weight, never repeating one within the pull.
 
         Args:
-            count: How many chunks. None (the default) picks a number in `sample_range`, which
+            count: How many chunks. None (the default) picks a number in `exemplar_range`, which
                 is what the oracle normally does. Zero or less gives an empty list.
 
         Returns:
@@ -215,7 +215,7 @@ class Sampler:
             chunks do not exist; empty if there is nothing to draw (see `report`).
         """
         if count is None:
-            count = self._rng.randint(*self._samples)
+            count = self._rng.randint(*self._exemplar_range)
         wanted = min(max(int(count), 0), len(self._chunks))
         if wanted == 0:
             return []

@@ -6,7 +6,7 @@ scripts/dev/corpus/chunk.py, one JSON object per line, one file per source:
     corpus/chunks/<register>/<source>.jsonl
 
 This module reads those files and answers questions about them. It does not decide how likely a
-chunk is to be drawn (that is the DrawWeights and the Sampler) and it never writes anything.
+chunk is to be drawn (that is the DrawWeights and the ExemplarSelector) and it never writes anything.
 
 Design decisions, and why:
   * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
@@ -22,7 +22,7 @@ Design decisions, and why:
     and doing the work at startup keeps the session itself free of file reads.
   * FaultRecorder messages name the file and line, because the files are generated and a person has to
     find the bad record.
-  * Order is deterministic (sorted registers, sources, then file order), so a seeded sampler
+  * Order is deterministic (sorted registers, sources, then file order), so a seeded selector
     gives the same draws on every machine.
   * The folder may hold other files (weights.json). Only `<register>/<source>.jsonl` are read.
 """

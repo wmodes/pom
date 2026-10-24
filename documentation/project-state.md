@@ -18,7 +18,7 @@ summarized below.
 ## Where things stand
 
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
-  now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `Sampler`), the
+  now with a `[scorer]` section), the corpus module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`), the
   `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter), the
   `InterestClient` (asks llama-server for a sentence's score) and the `Scorer` (filter, model,
   circuit breaker; a fragment the model cannot score is left unscored).
@@ -45,7 +45,7 @@ summarized below.
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
-  (for example `Sampler(samples=config.samples)`). Anything a person might tune (system messages,
+  (for example `ExemplarSelector(exemplar_range=config.samples)`). Anything a person might tune (system messages,
   thresholds, counts) goes in config, so all the user-serviceable parts are in one place.
 - Config layers, highest priority first: environment variables (`POM_STRICT`, `POM_DEBUG`,
   `POM_LOCAL_LOGS`, `POM_LOG_LEVEL`, `POM_SAMPLES_MIN/MAX`), the gitignored `config/pom.local.toml`
@@ -81,7 +81,7 @@ src/pom/
   corpus/
     draw_weights.py    built   weights.json: register shares, source weights, defaults, drift checks
     chunk_store.py     built   reads corpus/chunks/*.jsonl into immutable Chunk objects
-    sampler.py         built   weighted random draws; 3 to 5 chunks per pull; no repeats in a pull
+    exemplar_selector.py built weighted random draws; 3 to 5 chunks per pull; no repeats in a pull
   listening/
     fragmenter.py      built   transcript text -> sentence / clause / phrase fragments, all levels
     (audio source, transcriber [whisper.cpp], room energy: planned)
@@ -116,7 +116,7 @@ register exemplars (Track A).
 **Two voices behind one interface**, chosen by config:
 - *Track A, insurance voice* (days): a stock instruct model with a persona prompt ("never break
   character", let the hinge in sideways, don't answer it), plus exemplars: 3 to 5 chunks drawn by the
-  Sampler (random, never matched to the hinge) and a few curated hinge pairs.
+  ExemplarSelector (random, never matched to the hinge) and a few curated hinge pairs.
 - *Track B, personality voice* (weeks): a base model, LoRA fine-tuned on the corpus plus hinge pairs
   so it cannot speak outside its registers, run with an almost empty prompt (just the hinge). Training
   runs on the Mac (M4 Max, 64 GB, with MLX), never on the Pi.
@@ -158,7 +158,7 @@ by default share the draws equally.
   no source yet (telegrams, memos, modern classifieds and obituaries, US federal text such as IRS and
   NASA), Doyle's *History of Spiritualism*, I Ching hexagrams 32 to 64, the rest of Psalms and Isaiah.
 - Sampling note: chunks are not remembered across pulls. A simulation showed repeats are negligible
-  over an evening (0.1%) and only matter over months (the Sampler docstring has the numbers); a
+  over an evening (0.1%) and only matter over months (the ExemplarSelector docstring has the numbers); a
   recency decay was prototyped and deliberately left out.
 
 ## How to work here
@@ -168,7 +168,7 @@ by default share the draws equally.
 /Users/wmodes/dev/envs/pom/bin/python
 
 python -m pytest -q                                     # all tests (use PYTHONDONTWRITEBYTECODE=1)
-python scripts/dev/corpus/sample.py --pulls 3           # play with the Sampler (--stats N for shares)
+python scripts/dev/corpus/sample.py --pulls 3           # play with the ExemplarSelector (--stats N for shares)
 python scripts/dev/listening/fragment.py "Hi, there."   # play with the Fragmenter
 python scripts/dev/corpus/audit.py                      # artifact rates per ready/ file
 python scripts/dev/corpus/chunk.py                      # regenerate corpus/chunks/
@@ -276,7 +276,7 @@ llama.cpp setup scripts.
 2. **Fragmenter setting** for which levels to emit (sentences only by default).
 3. **Hinge picker**: weighted random pick from the top candidates, with a temperature.
 4. **Prompt builder**: persona and system messages come from config; it draws exemplars from the
-   Sampler. Config will need multi-line strings and probably sections.
+   ExemplarSelector. Config will need multi-line strings and probably sections.
 5. **Voice interface and model runner** (llama.cpp), Track A first; then the bake-off harness, hinge
    pairs, Track B training.
 6. Listening adapters (audio, whisper.cpp, room energy), the Output side, the Conductor, then run it

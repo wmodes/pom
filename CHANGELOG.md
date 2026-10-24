@@ -205,6 +205,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`Sampler` is now `ExemplarSelector`** (`src/pom/corpus/exemplar_selector.py`; `SamplerError` is
+  `ExemplarSelectorError`, `sample_range` is `exemplar_range`, its `samples` argument is `exemplar_range`, and
+  its default is `DEFAULT_EXEMPLAR_RANGE`). The warning text says "exemplar_range" where it said "samples".
+  `Config.samples` and the `samples_min`/`samples_max` keys are unchanged until the config keys are renamed.
+  Tests moved to `tests/corpus/test_exemplar_selector.py`.
 - **The Scorer no longer guesses a score when the scorer model does not answer.** The word-counting fallback
   (arbitrary, hard-coded numbers, never approved) is moved to `src/pom/hinge/fallback_scorer.py`, unused and
   documented with its weaknesses, so it can be deleted or revived; it has its own tests in

@@ -338,6 +338,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Fixed
 
+- **Hearing-debug no longer leaves audio behind when it is stopped mid-transcription.** Two leftover `tmp*.wav` slices
+  of room audio were found in the Pi's `/dev/shm` (removed). The Transcriber now keeps its slices in a folder of its own
+  (`hearing-debug-audio`), clears anything a killed run left at startup, and empties it on exit.
 - **Hearing-debug passes each sentence to the model as soon as whisper produces it.** The wait for a quiet room
   never ended in a room that is never quiet, so results sat at "waiting" forever. Removed the machinery built around
   it (`--explain-quiet`, the `e` command, the audio quiet-time tracking) and two comparison flags nobody had asked

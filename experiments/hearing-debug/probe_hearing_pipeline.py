@@ -19,7 +19,7 @@ terminal: it re-scores the last few sentences with the current prompts and shows
 
 WHAT IT KEEPS. This prints what the room says to YOUR TERMINAL and keeps nothing: audio is cut into a
 temporary file in memory-backed storage (/dev/shm where there is one) and deleted as soon as whisper
-has read it, the last few sentences sit in memory for the `r` command, and nothing is written to a log.
+has read it (a slice left by a run that was stopped mid-transcription is cleared at the next start), the last few sentences sit in memory for the `r` command, and nothing is written to a log.
 Do not redirect its output to a file, and do not run it as a service. The Printer's own rule is that no
 transcript of the room is kept; this is a development tool used on purpose, by someone who knows.
 
@@ -36,6 +36,7 @@ the README), and a running llama-server at the config's [scorer] url (probe_hear
 Everything else is the standard library.
 """
 import argparse
+import atexit
 import array
 import collections
 import hashlib
@@ -319,7 +320,23 @@ class Transcriber:
         self._vad_threshold = vad_threshold
         self._sounds = sounds and self._vad is not None          # pass 2 only makes sense after a VAD pass 1
         self._threads = threads
-        self._scratch = "/dev/shm" if os.access("/dev/shm", os.W_OK) else tempfile.gettempdir()
+        # Audio slices live in a folder of their own in memory-backed storage (where there is any). A run that is
+        # stopped while whisper is working cannot delete its slice, so anything left by an earlier run is cleared
+        # here, and the folder is emptied again on the way out.
+        base = "/dev/shm" if os.access("/dev/shm", os.W_OK) else tempfile.gettempdir()
+        self._scratch = os.path.join(base, "hearing-debug-audio")
+        os.makedirs(self._scratch, mode=0o700, exist_ok=True)
+        self.clear_scratch()
+        atexit.register(self.clear_scratch)
+
+    def clear_scratch(self) -> None:
+        """Deletes every audio slice in the scratch folder (there should be none between utterances)."""
+        for name in os.listdir(self._scratch):
+            if name.endswith(".wav"):
+                try:
+                    os.unlink(os.path.join(self._scratch, name))
+                except OSError:
+                    pass
 
     @property
     def vad_in_use(self) -> bool:

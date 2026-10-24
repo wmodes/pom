@@ -426,9 +426,38 @@ def test_the_trigger_defaults_are_five_percent_and_quiet():
     assert config.trigger == TriggerSettings() and config.trigger.floor_fraction == 0.05 and config.report.ok
 
 
-def test_the_trigger_default_matches_the_trackers_default():
-    from pom.scoring.convo_interest_tracker import DEFAULT_FLOOR_FRACTION
-    assert DEFAULT_TRIGGER_FLOOR_FRACTION == DEFAULT_FLOOR_FRACTION
+def test_the_trigger_defaults_match_the_trackers_defaults():
+    from pom.scoring import convo_interest_tracker as tracker
+    assert DEFAULT_TRIGGER_FLOOR_FRACTION == tracker.DEFAULT_FLOOR_FRACTION
+    assert TriggerSettings() == TriggerSettings(tracker.DEFAULT_FLOOR_FRACTION, tracker.DEFAULT_TRIGGER_FRACTION,
+                                                tracker.DEFAULT_INTEREST_WEIGHT, tracker.DEFAULT_MIN_SCORES)
+
+
+def test_the_starting_trigger_values():
+    assert TriggerSettings() == TriggerSettings(0.05, 0.10, 0.1, 5)
+
+
+def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
+    text = "[trigger]\nfloor_fraction = 0.1\ntrigger_fraction = 0.25\ninterest_weight = 0.3\nmin_scores = 8\n"
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.trigger == TriggerSettings(0.1, 0.25, 0.3, 8) and config.report.ok
+
+
+def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
+    text = "[trigger]\nfloor_fraction = 0\ntrigger_fraction = 0\ninterest_weight = 1\nmin_scores = 1\n"
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.trigger == TriggerSettings(0.0, 0.0, 1.0, 1) and config.report.ok
+
+
+@pytest.mark.parametrize("key,value", [
+    ("trigger_fraction", "-0.1"), ("trigger_fraction", '"0.1"'), ("trigger_fraction", "true"), ("trigger_fraction", "[0.1]"),
+    ("interest_weight", "0"), ("interest_weight", "-0.1"), ("interest_weight", "1.5"), ("interest_weight", '"0.1"'),
+    ("interest_weight", "true"), ("interest_weight", "false"),
+    ("min_scores", "0"), ("min_scores", "-1"), ("min_scores", "2.5"), ("min_scores", '"5"'), ("min_scores", "true")])
+def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
+    config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
+    assert config.trigger == TriggerSettings()
+    assert len(config.report.warnings) == 1 and f"trigger.{key}" in config.report.warnings[0]
 
 
 def test_the_floor_fraction_is_read_from_the_section(tmp_path):
@@ -459,8 +488,13 @@ def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
     assert Config.load(main, environ={}).trigger.floor_fraction == 0.2
 
 
-def test_the_trigger_setting_plugs_into_the_tracker(tmp_path):
-    from pom.scoring.convo_interest_tracker import ConvoInterestTracker
-    config = Config.load(write(tmp_path, "[trigger]\nfloor_fraction = 0.1\n"), environ={})
-    tracker = ConvoInterestTracker(config.trigger.floor_fraction)
+def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
+    from pom.scoring.convo_interest_tracker import ConvoInterestTracker, ScoreEffect
+    text = "[trigger]\nfloor_fraction = 0.1\ntrigger_fraction = 0.5\ninterest_weight = 1\nmin_scores = 2\n"
+    settings = Config.load(write(tmp_path, text), environ={}).trigger
+    tracker = ConvoInterestTracker(settings.floor_fraction, settings.trigger_fraction, settings.interest_weight,
+                                   settings.min_scores)
     assert tracker.avg_convo_floor == pytest.approx(0.9) and tracker.report.ok
+    assert [tracker.record(score) for score in (4, 4, 4, 4)] == [ScoreEffect.COUNTED] * 4   # the average sits at 4
+    assert tracker.trigger_level == pytest.approx(6.0)         # 4 * 1.5
+    assert tracker.record(6.0) is ScoreEffect.TRIGGERED

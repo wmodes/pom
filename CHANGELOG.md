@@ -9,6 +9,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **ConvoInterestTracker, step two: avg_convo_interest and the trigger.** `record(score)` takes in one score and
+  says what happened to it (`ScoreEffect`: ignored, counted or triggered). Scores at or above the floor feed
+  `avg_convo_interest`, a decaying moving average (the first becomes the average, each later one moves it
+  `interest_weight` of the way toward itself). A score triggers when it is at least `trigger_fraction` above the
+  average as it stood before that score was added, once `min_scores` have counted. Four settings in `[trigger]`:
+  `floor_fraction` 0.05, `trigger_fraction` 0.10, `interest_weight` 0.1, `min_scores` 5. 112 tracker tests, mutation-
+  checked. Not wired into anything yet; the hearing-debug view is next. Filtered fragments still score
+  `fragment_filter_score` = 1.0, above the floor, until it is set to 0.
 - **ConvoInterestTracker, step one: the floor** (`src/pom/scoring/convo_interest_tracker.py`, 46 tests in
   `tests/scoring/test_convo_interest_tracker.py`). `avg_convo_floor` is the score below which scores are ignored:
   a fixed fraction of the score range, `floor_fraction` (0.05, so 0.45 on the 0 to 9 scale), set in a new `[trigger]`

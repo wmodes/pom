@@ -205,6 +205,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The playground script prints scores to three significant figures** (`4.95`, `0.990`), so scores under 1 keep
+  their detail.
 - **The probability-weighted score stays** (a whole-digit score was tried for an afternoon and reverted at Wes's
   request). Its explanation is now written down in plain words in the lexicon and in `scorer_model_client.py`: the
   score averages the digits the model might say, weighted by how likely it thinks each is.

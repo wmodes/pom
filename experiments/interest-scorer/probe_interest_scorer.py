@@ -305,11 +305,11 @@ def main() -> None:
             sys.exit(f"cannot reach the server on port {args.port}: {error}")
         results.append((score, line))
         times.append(seconds)
-        print(f"{score:5.2f}  {seconds * 1000:6.0f} ms  {line}")
+        print(f"{score:#6.3g}  {seconds * 1000:6.0f} ms  {line}")
     print(f"\nmean {sum(times) / len(times) * 1000:.0f} ms, slowest {max(times) * 1000:.0f} ms")
     print("\nbest first:")
     for score, line in sorted(results, key=lambda r: -r[0] if r[0] == r[0] else 0):
-        print(f"{score:5.2f}  {line}")
+        print(f"{score:#6.3g}  {line}")
 
 
 if __name__ == "__main__":

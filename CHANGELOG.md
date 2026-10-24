@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **ConvoInterestTracker, step one: the floor** (`src/pom/scoring/convo_interest_tracker.py`, 46 tests in
+  `tests/scoring/test_convo_interest_tracker.py`). `avg_convo_floor` is the score below which scores are ignored:
+  a fixed fraction of the score range, `floor_fraction` (0.05, so 0.45 on the 0 to 9 scale), set in a new `[trigger]`
+  section of the config (`Config.trigger`, `TriggerSettings`). `is_above_floor(score)` counts a score at the floor
+  and ignores an unscored fragment or anything that is not a number. A bad setting falls back to the default with a
+  warning. avg_convo_interest, which averages the scores above the floor, comes next. Mutation-checked. Note: filtered
+  fragments still score `fragment_filter_score` = 1.0, above the floor, until Wes decides to set it to 0.
 - **`documentation/lexicon.md`**: the project's vocabulary (segment, chunk, score, hinge, corpus, weights,
   portent, experiments, and terms awaiting confirmation), plus the code names that do not match it yet.
 - **Changelog.** This file, in Keep a Changelog format.

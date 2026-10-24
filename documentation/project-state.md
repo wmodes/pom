@@ -90,7 +90,8 @@ src/pom/
     scorer_model_client.py built one fragment to the scorer model, one score (or an explanation) back
     scorer.py          built   fragment_filter, scorer model, circuit breaker; unscored if no answer
     fallback_scorer.py shelved word-counting stand-in for the scorer model; unused
-    (Trigger policy with avg_convo_floor and avg_convo_interest, Hinge picker: planned)
+    convo_interest_tracker.py built the floor (avg_convo_floor); avg_convo_interest is next
+    (Trigger, Hinge picker: planned)
   prompt/              planned Prompt builder (system messages come from config)
   voice/               planned Voice interface, Track A and Track B voices, model runner (llama.cpp)
   output/              planned reply selection, formatter, serial port wrapper (pauses listening)

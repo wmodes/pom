@@ -4,8 +4,8 @@ import logging
 import pytest
 
 from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
-                        DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL, Config,
-                        ScorerSettings)
+                        DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
+                        DEFAULT_TRIGGER_FLOOR_FRACTION, Config, ScorerSettings, TriggerSettings)
 
 
 def write(tmp_path, text):
@@ -417,3 +417,50 @@ def test_a_missing_output_part_is_warned_about_but_the_scoring_part_still_works(
 def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
     config = Config.load(write(tmp_path, '[scorer]\nprompt = "Score it."\n'), environ={})
     assert any("scorer.prompt" in w for w in config.report.warnings) and config.scorer.prompt == ""
+
+
+# --- The [trigger] section ---------------------------------------------------------------
+
+def test_the_trigger_defaults_are_five_percent_and_quiet():
+    config = Config.load(environ={})
+    assert config.trigger == TriggerSettings() and config.trigger.floor_fraction == 0.05 and config.report.ok
+
+
+def test_the_trigger_default_matches_the_trackers_default():
+    from pom.scoring.convo_interest_tracker import DEFAULT_FLOOR_FRACTION
+    assert DEFAULT_TRIGGER_FLOOR_FRACTION == DEFAULT_FLOOR_FRACTION
+
+
+def test_the_floor_fraction_is_read_from_the_section(tmp_path):
+    config = Config.load(write(tmp_path, "[trigger]\nfloor_fraction = 0.1\n"), environ={})
+    assert config.trigger == TriggerSettings(0.1) and config.report.ok
+
+
+def test_a_floor_fraction_of_zero_is_allowed(tmp_path):
+    config = Config.load(write(tmp_path, "[trigger]\nfloor_fraction = 0\n"), environ={})
+    assert config.trigger.floor_fraction == 0.0 and config.report.ok
+
+
+@pytest.mark.parametrize("value", ["-0.1", "1", "1.5", '"0.05"', "true", "false", "[0.05]", "nan", "inf"])
+def test_a_bad_floor_fraction_means_the_default_with_a_warning(tmp_path, value):
+    config = Config.load(write(tmp_path, f"[trigger]\nfloor_fraction = {value}\n"), environ={})
+    assert config.trigger == TriggerSettings()
+    assert len(config.report.warnings) == 1 and "trigger.floor_fraction" in config.report.warnings[0]
+
+
+def test_an_unknown_trigger_key_is_warned_about(tmp_path):
+    config = Config.load(write(tmp_path, "[trigger]\nfloor_fractoin = 0.1\n"), environ={})
+    assert any("trigger.floor_fractoin" in w for w in config.report.warnings) and config.trigger == TriggerSettings()
+
+
+def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
+    main = write(tmp_path, "[trigger]\nfloor_fraction = 0.1\n")
+    (tmp_path / "pom.local.toml").write_text("[trigger]\nfloor_fraction = 0.2\n", encoding="utf-8")
+    assert Config.load(main, environ={}).trigger.floor_fraction == 0.2
+
+
+def test_the_trigger_setting_plugs_into_the_tracker(tmp_path):
+    from pom.scoring.convo_interest_tracker import ConvoInterestTracker
+    config = Config.load(write(tmp_path, "[trigger]\nfloor_fraction = 0.1\n"), environ={})
+    tracker = ConvoInterestTracker(config.trigger.floor_fraction)
+    assert tracker.avg_convo_floor == pytest.approx(0.9) and tracker.report.ok

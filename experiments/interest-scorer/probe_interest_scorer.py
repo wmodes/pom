@@ -77,7 +77,7 @@ Do not skip any sentence. Write nothing else.
 """
 
 # One sentence per request, one token back. The score is read from the probabilities of the digits
-# 1-9 (see rate()), so it is continuous, repeatable, and cannot be moved by neighboring sentences.
+# 0-9 (see rate()), so it is continuous, repeatable, and cannot be moved by neighboring sentences.
 BENCHMARK = [
     # --- original 34 ---
     "Even in New York's most introductionless circles, people always introduce.",

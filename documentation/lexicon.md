@@ -42,7 +42,8 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
 - **avg_convo_floor** †: the line below which scores are ignored and do not feed avg_convo_interest;
-  for now a fixed fraction of the score range.
+  a fixed fraction of the score range, `floor_fraction` (5% to begin with, so 0.45 on the 0 to 9 scale).
+  A score at the floor counts; an unscored fragment never does.
 - **avg_convo_interest** †: a decaying moving average of the scores above the floor; how
   interesting the room's talk has been lately.
 - **trigger** †: the moment a score rises far enough above avg_convo_interest (by `trigger_pct`)

@@ -100,3 +100,15 @@ prompt_output_debug = """
 Output the score as a single number with two decimal places from 1.00 to 9.99 | the sentence | what content you found that earned that score as a comma-separated list. Example:
 6.00 | I'm going to cut out your heart. | vivid, anger, threat, danger, death
 """
+
+
+# ================================================
+# TRIGGER: when the Printer responds
+# ================================================
+
+# How far up the score range the floor sits, as a fraction: 0.05 is 5%, which is 0.45 on the 0 to 9
+# scale. A score below the floor is ignored: it does not count toward how interesting the room has
+# been, and it can never make the Printer respond. It is a fixed fraction of the range, not of the
+# room's average, so the floor and the average cannot push each other around. 0 turns the floor off.
+[trigger]
+floor_fraction = 0.05

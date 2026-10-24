@@ -21,7 +21,7 @@ of being threaded through by hand. Today there are five:
                up the score range the floor sits (0.05, so 0.45 on the 0 to 9 scale; scores below it are
                ignored), `interest_half_life` how many scores it takes for an old score's pull on the room's
                average interest to halve (10), `trigger_fraction` how far above that average a score
-               must be to trigger (0.20), and `min_scores` how many scores must count first (10). The entry point builds
+               must be to trigger (0.25), and `min_scores` how many scores must count first (10). The entry point builds
                the ConvoInterestTracker from `config.trigger`.
 
 Where values come from, highest priority first:
@@ -69,7 +69,7 @@ DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3
 DEFAULT_SCORER_RETRY_SECONDS = 30.0
 DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION = 0.05
-DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.20
+DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.25
 DEFAULT_TRIGGER_INTEREST_HALF_LIFE = 10.0
 DEFAULT_TRIGGER_MIN_SCORES = 10
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -126,7 +126,7 @@ class TriggerSettings:
         floor_ignore_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
             Scores below the floor are ignored.
         trigger_fraction: How far above the room's average interest a score must be to trigger, 0 or more
-            (0.20 is 20% above).
+            (0.25 is 25% above).
         interest_half_life: How many more scores it takes for a score's pull on the average to halve, above 0
             (10 is about ten scores of memory).
         min_scores: How many scores must have counted before the trigger may fire, a whole number of at

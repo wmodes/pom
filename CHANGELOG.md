@@ -220,6 +220,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`trigger_fraction` is now 0.25** (Wes, after a second live session): across the two pasted sessions 0.25 marks 11 of
+  43 and 12 of 23 counted sentences (0.10 marked 19 of 43 and 13 of 23). The built-in default moves with it.
 - **`trigger_fraction` is now 0.20** (Wes, after watching a live session): in the pasted session, 0.10 marked 19 of 43
   counted sentences as would-trigger and 0.20 marks 13. The built-in default moves with it, so a bad value falls back
   to 0.20.

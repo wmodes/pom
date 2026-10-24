@@ -130,10 +130,10 @@ floor_ignore_fraction = 0.05
 # above the floor count, not every sentence heard.
 interest_half_life = 10
 
-# How far above avg_convo_interest a score must be to make the Printer respond: 0.20 is 20% above. 0
-# responds to anything at or above the average. (0.10 marked 19 of 43 sentences in a live session; 0.20
-# marked 13.)
-trigger_fraction = 0.20
+# How far above avg_convo_interest a score must be to make the Printer respond: 0.25 is 25% above. 0
+# responds to anything at or above the average. (In two live sessions, 0.10 marked 19 of 43 and 13 of 23
+# counted sentences; 0.25 marked 11 of 43 and 12 of 23.)
+trigger_fraction = 0.25
 
 # How many scores must have counted (reached the floor) before the Printer may respond at all, so it
 # does not respond to the first thing it hears in an empty room. A whole number of at least 1; the same

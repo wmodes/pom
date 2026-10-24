@@ -102,7 +102,7 @@ def half_life_for(weight):
 
 def tracker(**options):
     """A tracker for the average and trigger tests: five scores must count (not the default ten) and the trigger is
-    10% above the average (not the default 20%), to keep the arithmetic short; any setting can be changed."""
+    10% above the average (not the default 25%), to keep the arithmetic short; any setting can be changed."""
     options.setdefault("min_scores", 5)
     options.setdefault("trigger_fraction", 0.10)
     return ConvoInterestTracker(**options)
@@ -114,7 +114,7 @@ def feed(t, *scores):
 
 class TestTheAverage:
     def test_the_defaults_are_the_starting_values(self):
-        assert (DEFAULT_TRIGGER_FRACTION, DEFAULT_INTEREST_HALF_LIFE, DEFAULT_MIN_SCORES) == (0.20, 10.0, 10)
+        assert (DEFAULT_TRIGGER_FRACTION, DEFAULT_INTEREST_HALF_LIFE, DEFAULT_MIN_SCORES) == (0.25, 10.0, 10)
 
     def test_the_weight_comes_from_the_half_life(self):
         assert ConvoInterestTracker(interest_half_life=10).interest_weight == pytest.approx(1 - 0.5 ** 0.1)
@@ -295,7 +295,7 @@ class TestBadTriggerSettings:
         t = tracker(trigger_fraction=bad)
         assert t.report.warnings and "trigger_fraction" in t.report.warnings[0] and len(t.report.warnings) == 1
         feed(t, 5, 5, 5, 5, 5)
-        assert t.trigger_level == pytest.approx(6.0)             # the default, 20% above 5
+        assert t.trigger_level == pytest.approx(6.25)            # the default, 25% above 5
 
     @pytest.mark.parametrize("bad", [0, -1, -0.5, "10", None, True, [10], float("nan"), float("inf")])
     def test_a_bad_half_life_means_the_default_with_a_warning(self, bad):

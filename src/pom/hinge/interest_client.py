@@ -21,7 +21,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or
     answering oddly gives None and a warning in `report`, never an exception. `strict=True` raises
     InterestClientError instead, for tests and dev tools.
-  * Sentence text is never logged and never put in a Report message: nothing that was said in the
+  * Sentence text is never logged and never put in a FaultRecorder message: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config
     and has no built-in prompt, so the words that define "interesting" live in one place, the
@@ -49,7 +49,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -143,7 +143,7 @@ class InterestClient:
                 does nothing.
             interpret_timeout: Seconds to wait for a written reply, which takes much longer than a score.
         """
-        self.report = Report(strict=strict, error=InterestClientError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=InterestClientError, logger=_log)
         self._url, self._prompt = url, (prompt or "").strip()
         self._timeout = (timeout if isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
                          and timeout > 0 else DEFAULT_TIMEOUT)

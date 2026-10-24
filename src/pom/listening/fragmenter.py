@@ -37,7 +37,7 @@ from enum import Enum
 from typing import Optional
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -101,7 +101,7 @@ class Fragmenter:
                 this size. A whole number of at least 1.
             strict: Raise FragmenterError on any problem instead of recording it.
         """
-        self.report = Report(strict=strict, error=FragmenterError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=FragmenterError, logger=_log)
         if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
             self._max_words = max_words
         else:

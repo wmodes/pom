@@ -41,9 +41,9 @@ summarized below.
   do one thing, plain data objects passed between them. Scripts in `scripts/` are standalone helpers;
   they may import `pom`, and `pom` never imports them.
 - **The Printer must never stop because of a typo or a recoverable fault** (a gallery cannot crash).
-  A problem a module can recover from is recovered from and recorded in a `pom.report.Report`
+  A problem a module can recover from is recovered from and recorded in a `pom.fault_recorder.FaultRecorder`
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
-  turns every issue into an exception, for tests and dev tools only.
+  turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
   (for example `Sampler(samples=config.samples)`). Anything a person might tune (system messages,
   thresholds, counts) goes in config, so all the user-serviceable parts are in one place.
@@ -75,7 +75,7 @@ summarized below.
 
 ```
 src/pom/
-  report.py            built   problems as data (WARNING / CRITICAL, strict mode, cap, logging)
+  fault_recorder.py    built   faults as data (WARNING / CRITICAL, strict mode, cap, logging)
   logs.py              built   stdout logging, debug flag, per-module override, local log file
   config.py            built   shared settings, layered (env > local file > file > defaults)
   corpus/

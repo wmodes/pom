@@ -10,7 +10,7 @@ chunk is to be drawn (that is the Weights and the Sampler) and it never writes a
 
 Design decisions, and why:
   * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
-    an unreadable file or a mismatched record is skipped or repaired and recorded in a Report (and
+    an unreadable file or a mismatched record is skipped or repaired and recorded in a FaultRecorder (and
     logged), never raised. One corrupt record must not cost the gallery its corpus. Only a store
     with no chunks at all is CRITICAL, and even then nothing is raised: the store is simply empty
     and says so. `strict=True` raises instead, for tests and dev tools.
@@ -20,7 +20,7 @@ Design decisions, and why:
   * Chunks are immutable. Nothing downstream should be able to edit the corpus by accident.
   * Loading is eager. The corpus is about 15 MB of text, which is nothing next to the Pi's 16 GB,
     and doing the work at startup keeps the session itself free of file reads.
-  * Report messages name the file and line, because the files are generated and a person has to
+  * FaultRecorder messages name the file and line, because the files are generated and a person has to
     find the bad record.
   * Order is deterministic (sorted registers, sources, then file order), so a seeded sampler
     gives the same draws on every machine.
@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -70,12 +70,12 @@ class ChunkStore:
     Build one with `ChunkStore.load` (from disk) or `ChunkStore.from_chunks` (in memory).
     """
 
-    def __init__(self, chunks: Iterable[Chunk], report: Optional[Report] = None,
+    def __init__(self, chunks: Iterable[Chunk], report: Optional[FaultRecorder] = None,
                  strict: bool = False):
         """Indexes the chunks. Use the `load` / `from_chunks` constructors.
 
         A chunk whose id was already seen is skipped and reported. A store with no chunks at all
-        records a CRITICAL issue (and raises ChunkError in strict mode).
+        records a CRITICAL fault (and raises ChunkError in strict mode).
         """
         self.report = report if report is not None else _new_report(strict)
         self._tree: dict[str, dict[str, list[Chunk]]] = {}
@@ -171,12 +171,12 @@ class ChunkStore:
             yield from self.chunks(register)
 
 
-def _new_report(strict: bool) -> Report:
-    """A Report that raises ChunkError in strict mode; otherwise it collects and logs."""
-    return Report(strict=strict, error=ChunkError, logger=_log)
+def _new_report(strict: bool) -> FaultRecorder:
+    """A FaultRecorder that raises ChunkError in strict mode; otherwise it collects and logs."""
+    return FaultRecorder(strict=strict, error=ChunkError, logger=_log)
 
 
-def _read_file(path: Path, register: str, source: str, report: Report) -> list[Chunk]:
+def _read_file(path: Path, register: str, source: str, report: FaultRecorder) -> list[Chunk]:
     """Parses one chunk file, repairing or skipping what is wrong and reporting each problem.
 
     The folder and file name are trusted over what a record claims.
@@ -228,7 +228,7 @@ def _read_file(path: Path, register: str, source: str, report: Report) -> list[C
     return chunks
 
 
-def _repeats(value, where: str, report: Report) -> int:
+def _repeats(value, where: str, report: FaultRecorder) -> int:
     """The repeat count; 1 (with a warning) if it is not a positive whole number."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
         return value

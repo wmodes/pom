@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from typing import Callable, Iterable, Optional
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -127,7 +127,7 @@ class WordTools:
                 NLTK's WordNet lemmatizer.
             stopwords: The stopword set. Default: NLTK's English list.
         """
-        self.report = Report(strict=strict, error=WordToolsError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=WordToolsError, logger=_log)
         self._fillers = {f.strip().lower() for f in fillers if str(f).strip()}
         self._phrase_fillers = sorted((f for f in self._fillers if " " in f), key=len, reverse=True)
         self._cache: dict = {}

@@ -44,7 +44,7 @@ from pathlib import Path
 from typing import Mapping, Optional
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
@@ -121,7 +121,7 @@ class Config:
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
-                 report: Optional[Report] = None, debug: bool = False, local_logs: bool = False,
+                 report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
                  samples: tuple = DEFAULT_SAMPLES, scorer: Optional[ScorerSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
@@ -130,7 +130,7 @@ class Config:
         self.local_logs = local_logs
         self.samples = tuple(samples)
         self.log_level = log_level
-        self.report = report if report is not None else Report(logger=_log)
+        self.report = report if report is not None else FaultRecorder(logger=_log)
 
     @classmethod
     def load(cls, path=None, environ: Optional[Mapping[str, str]] = None) -> "Config":
@@ -145,7 +145,7 @@ class Config:
             A Config. Any problem becomes a warning in `config.report`; this never raises.
         """
         environ = os.environ if environ is None else environ
-        report = Report(logger=_log)
+        report = FaultRecorder(logger=_log)
         values = {}
         if path is not None:
             path = Path(path)
@@ -198,7 +198,7 @@ class Config:
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer)
 
 
-def _read_file(path: Path, report: Report) -> dict:
+def _read_file(path: Path, report: FaultRecorder) -> dict:
     """The file's known top-level keys; {} if it is missing (fine) or bad (warned)."""
     if not path.exists():
         return {}
@@ -234,7 +234,7 @@ def _flatten(document: dict) -> dict:
     return flat
 
 
-def _bool(value, label: str, report: Report) -> bool:
+def _bool(value, label: str, report: FaultRecorder) -> bool:
     """A boolean from a TOML bool or an on/off style string; otherwise False with a warning."""
     if isinstance(value, bool):
         return value
@@ -247,7 +247,7 @@ def _bool(value, label: str, report: Report) -> bool:
     return False
 
 
-def _count(value, label: str, default: int, report: Report) -> int:
+def _count(value, label: str, default: int, report: FaultRecorder) -> int:
     """A whole number of at least 1 (a TOML integer or digits in a string); otherwise the default.
 
     Booleans and decimals are rejected, since `true` or `2.5` is almost certainly a typo.
@@ -260,7 +260,7 @@ def _count(value, label: str, default: int, report: Report) -> int:
     return default
 
 
-def _number(value, label: str, default: float, minimum: float, report: Report) -> float:
+def _number(value, label: str, default: float, minimum: float, report: FaultRecorder) -> float:
     """A number of at least `minimum` (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
         return float(value)
@@ -268,7 +268,7 @@ def _number(value, label: str, default: float, minimum: float, report: Report) -
     return default
 
 
-def _whole(value, label: str, default: int, minimum: int, report: Report) -> int:
+def _whole(value, label: str, default: int, minimum: int, report: FaultRecorder) -> int:
     """A whole number of at least `minimum` (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
         return value
@@ -276,7 +276,7 @@ def _whole(value, label: str, default: int, minimum: int, report: Report) -> int
     return default
 
 
-def _text(value, label: str, default: str, report: Report) -> str:
+def _text(value, label: str, default: str, report: FaultRecorder) -> str:
     """Text; anything else (a number, a list) is a mistake and gives the default."""
     if isinstance(value, str):
         return value
@@ -284,7 +284,7 @@ def _text(value, label: str, default: str, report: Report) -> str:
     return default
 
 
-def _level(value, label: str, report: Report) -> str:
+def _level(value, label: str, report: FaultRecorder) -> str:
     """A log level name, upper-cased; otherwise INFO with a warning."""
     text = str(value).strip().upper()
     if text in _LEVELS:

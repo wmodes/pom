@@ -26,7 +26,7 @@ Design decisions, and why:
     a failure; the remaining steps still run, and `run` returns a result rather than raising. The
     Conductor reads `result.ready` and decides how to degrade (keep listening, stay quiet, say so in
     the log). `strict=True` raises StartupError at the first failed step, for tests and dev tools.
-  * A step is critical or not. A failed critical step (no microphone, no corpus) is a CRITICAL issue and
+  * A step is critical or not. A failed critical step (no microphone, no corpus) is a CRITICAL fault and
     makes `ready` false; a failed optional step (the Scorer's server, which has a fallback) is a
     WARNING and the Printer carries on.
   * A step may also be skipped: it does not apply here (a Pi-only step on the Mac) or is not written
@@ -41,7 +41,7 @@ from enum import Enum
 from typing import Callable, Iterable
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -106,7 +106,7 @@ class StartupResult:
         report: The problems: a WARNING for a failed optional step, a CRITICAL for a failed critical one.
     """
     results: tuple
-    report: Report
+    report: FaultRecorder
 
     @property
     def ready(self) -> bool:
@@ -145,7 +145,7 @@ class Startup:
 
     def run(self) -> StartupResult:
         """Runs every step. Never raises (except in strict mode); a failed step does not stop the rest."""
-        report = Report(strict=self._strict, error=StartupError, logger=_log)
+        report = FaultRecorder(strict=self._strict, error=StartupError, logger=_log)
         results = []
         for step in self._steps:
             started = self._clock()
@@ -163,7 +163,7 @@ class Startup:
         return final
 
     @staticmethod
-    def _record(result: StepResult, report: Report) -> None:
+    def _record(result: StepResult, report: FaultRecorder) -> None:
         """Logs a step's result, and files a failure in the report at the right severity."""
         _log.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
                   f" ({result.note})" if result.note else "")

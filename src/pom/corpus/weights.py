@@ -12,7 +12,7 @@ The file is a tree that mirrors the folders in chunks/:
 Design decisions, and why:
   * Nothing here may stop the oracle. The file is edited by hand, so typos will happen; per the
     project principle (see pom/__init__.py) every problem is recovered from and recorded in a
-    Report, never raised. A bad number counts 1.0, a bad or unknown entry is skipped, a missing
+    FaultRecorder, never raised. A bad number counts 1.0, a bad or unknown entry is skipped, a missing
     or unreadable file means all defaults. `strict=True` raises instead, for tests and dev tools.
   * Anything not listed counts 1.0. The file is hand-edited and the corpus grows, so it will
     drift out of sync; an unlisted register or source must still work.
@@ -22,7 +22,7 @@ Design decisions, and why:
     can be written however is convenient (0.8, 1, 1) and a register with no chunks cannot steal
     probability from the others. If every share is zero the registers count 1.0 each, since
     drawing nothing is worse than drawing evenly.
-  * The module never prints. Each problem is recorded in a Report and also logged through the
+  * The module never prints. Each problem is recorded in a FaultRecorder and also logged through the
     standard `logging` module (logger `pom.corpus.weights`), which reaches journald once the
     entry point has configured logging.
 """
@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEFAULT_WEIGHT = 1.0
 _REGISTER_KEYS = {"share", "sources"}
@@ -53,7 +53,7 @@ class Weights:
     """
 
     def __init__(self, shares: Mapping[str, float], source_weights: Mapping[str, float],
-                 listed_under: Mapping[str, str], report: Optional[Report] = None,
+                 listed_under: Mapping[str, str], report: Optional[FaultRecorder] = None,
                  strict: bool = False):
         """Use the `from_*` constructors; this takes already-validated values.
 
@@ -100,7 +100,7 @@ class Weights:
         return cls._parse(document, _new_report(strict), strict)
 
     @classmethod
-    def _parse(cls, document, report: Report, strict: bool) -> "Weights":
+    def _parse(cls, document, report: FaultRecorder, strict: bool) -> "Weights":
         """Walks the document, keeping what is valid and reporting what is not."""
         shares, weights, listed_under = {}, {}, {}
         if not isinstance(document, dict):
@@ -174,14 +174,14 @@ class Weights:
 
     # --- Validation -----------------------------------------------------------------
 
-    def check(self, layout: Mapping[str, Iterable[str]]) -> Report:
+    def check(self, layout: Mapping[str, Iterable[str]]) -> FaultRecorder:
         """Compares the weights with the corpus layout.
 
         Args:
             layout: Register name -> the source ids that have chunks in it.
 
         Returns:
-            A new Report of everything that has drifted: weights listed for a register or
+            A new FaultRecorder of everything that has drifted: weights listed for a register or
             source with no chunks (harmless, but probably a typo), registers and sources the
             file does not mention (counted 1.0), and sources listed under a different register
             than the one their chunks live in. Strict mode raises on the first of these.
@@ -211,12 +211,12 @@ class Weights:
         return report
 
 
-def _new_report(strict: bool) -> Report:
-    """A Report that raises WeightsError in strict mode; otherwise it collects and logs."""
-    return Report(strict=strict, error=WeightsError, logger=_log)
+def _new_report(strict: bool) -> FaultRecorder:
+    """A FaultRecorder that raises WeightsError in strict mode; otherwise it collects and logs."""
+    return FaultRecorder(strict=strict, error=WeightsError, logger=_log)
 
 
-def _number(value, label: str, report: Report) -> float:
+def _number(value, label: str, report: FaultRecorder) -> float:
     """A finite, non-negative number; otherwise a warning and the default (1.0).
 
     Booleans and strings are rejected: `true` is almost certainly a typo, not a weight of 1.

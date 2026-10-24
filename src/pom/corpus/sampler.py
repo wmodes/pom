@@ -58,7 +58,7 @@ from typing import Optional, Sequence
 from pom.corpus.chunk_store import Chunk, ChunkStore
 from pom.corpus.weights import Weights
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -92,7 +92,7 @@ class Sampler:
             samples: The (fewest, most) chunks `draw()` returns when not told how many.
         """
         self._rng = rng if rng is not None else random.Random()
-        self.report = Report(strict=strict, error=SamplerError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=SamplerError, logger=_log)
         self._samples = self._valid_samples(samples)
         self.check_report = weights.check(store.layout())   # logs any drift; the odds still work
         self._chunks: list[Chunk] = []

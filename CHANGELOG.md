@@ -205,6 +205,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`Report` is now `FaultRecorder`** (`src/pom/fault_recorder.py`; `Issue` is `Fault`, `strict_report` is
+  `strict_fault_recorder`, and the `issues` property is `faults`), named for what it does under the project
+  lexicon. Modules keep calling their instance `report`. Tests moved to `tests/test_fault_recorder.py`.
+  No behavior changed, except that the cap message now says "faults" where it said "issues".
 - **`config/pom.toml` is divided into labeled sections** (GLOBAL, ORACLE, SCORER), one banner per part of
   the Printer the settings affect. Comments only; no setting changed.
 - **Scorer prompt: dropped "Most sentences are ordinary and score below 5."** (Wes). That line was an absolute

@@ -1,7 +1,7 @@
 """Tests for pom.corpus.weights: parsing, defaults, normalization and validation.
 
 The module follows the project principle that nothing may stop the oracle: in its default
-(lenient) mode every bad input recovers and is recorded in a Report. In strict mode, used by
+(lenient) mode every bad input recovers and is recorded in a FaultRecorder. In strict mode, used by
 tests and dev tools, the same inputs raise. Most bad-input cases are therefore tested both ways.
 
 Everything runs against tiny in-memory documents or temp files, except the last test, a smoke

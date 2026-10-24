@@ -41,7 +41,7 @@ from typing import Callable, Iterable, Optional
 from pom.hinge.words import WordTools
 from pom.listening.fragmenter import Fragment, Kind
 from pom.logs import get_logger
-from pom.report import Report
+from pom.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -115,7 +115,7 @@ class Scorer:
             clock: Returns seconds; injected so tests need not wait.
             strict: Raise ScorerError on any problem instead of recording it.
         """
-        self.report = Report(strict=strict, error=ScorerError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=ScorerError, logger=_log)
         self._client, self._words, self._clock = client, words, clock
         self._floor = self._number(floor, "floor", DEFAULT_FLOOR, minimum=0.0)
         self._min_content = self._whole(min_content_words, "min_content_words", DEFAULT_MIN_CONTENT_WORDS, minimum=0)

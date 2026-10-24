@@ -123,10 +123,11 @@ Output the score as a single digit | the sentence | what content you found that 
 [trigger]
 floor_ignore_fraction = 0.05
 
-# How many scores it takes for an old score's pull on the room's average interest (avg_convo_interest) to
-# halve: 10 means a sentence's influence is half gone after ten more scores, so the average remembers
-# about the last ten. Smaller follows the last few sentences; larger remembers more of the conversation.
-# Above 0. It counts only scores at or above the floor, not every sentence heard.
+# Every score at or above the floor nudges the room's average interest (avg_convo_interest) a little
+# toward itself, so the average is always up to date. This sets how big the nudge is, as a half-life in
+# scores: with 10, each new score moves the average about 7% of the way toward itself, and a sentence's
+# influence is half gone after ten more scores. Smaller follows the last few sentences; larger remembers
+# more of the conversation. Above 0. Only scores at or above the floor count, not every sentence heard.
 interest_half_life = 10
 
 # How far above avg_convo_interest a score must be to make the Printer respond: 0.10 is 10% above. 0

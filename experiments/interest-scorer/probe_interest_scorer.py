@@ -3,33 +3,41 @@
 
 Part of experiments/interest-scorer, a formative experiment that settled how the Scorer works. It
 is not part of the Printer (see the README in this folder). By default it sends each line to a
-running llama-server on its own and asks for a single digit, 1-9. It reads the probabilities of the
-digits instead of sampling, so the score is continuous, repeatable, cannot be moved by the other
-lines, and costs one generated token. With --context the earlier lines are also shown as "what was
+running llama-server on its own and asks for a single digit, 0-9, with the prompt in config/pom.toml
+(the same prompt the Printer uses). It reads the probabilities of the digits with the Printer's own
+reader (pom.scoring), so the score is continuous, repeatable, cannot be moved by the other lines,
+and costs one generated token. With --context the earlier lines are also shown as "what was
 said just before". With --batch it instead sends all the lines in one numbered list and reads back
 a decimal score per row; that is quicker to write but the scores shift with the order and the
 neighbors. Each mode prints the scores and how long the calls took.
 
 Start a server first, for example:
-    llama-server -hf unsloth/Qwen3-1.7B-GGUF:Q4_K_M --port 8091 --ctx-size 8192 --jinja
+    llama-server -hf unsloth/Qwen3-4B-GGUF:Q4_K_M --port 8091 --ctx-size 8192 --jinja
 
 Usage:
     probe_interest_scorer.py                  # built-in test lines
     probe_interest_scorer.py --file lines.txt # one line per row
     probe_interest_scorer.py --context        # also show each line the lines before it
     probe_interest_scorer.py --batch          # one request for the whole list (order-sensitive)
-    probe_interest_scorer.py --port 8091 --prompt-file my_prompt.txt
+    probe_interest_scorer.py --config other.toml        # prompts from another config file
+    probe_interest_scorer.py --port 8091 --prompt-file my_prompt.txt   # a prompt from a plain file
 
-The prompt is a plain file argument so it can be varied without editing this script. It uses only
-the standard library.
+By default the prompt is read from config/pom.toml each time the script runs, so editing the config
+is all it takes to try a change. The script prints which prompt it used. It is the one place in the
+experiments that imports the Printer's own scorer code, so what it measures is what the Printer does.
 """
 import argparse
 import json
-import math
 import re
 import sys
 import time
 import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+from pom.config import Config                                              # noqa: E402
+from pom.scoring.scorer_model_client import USER_TEMPLATE, score_from_probabilities   # noqa: E402
 
 # DEFAULT_PROMPT = (
     # "You listen to people talking in a room. Rate how 'interesting' one line of what you overheard "
@@ -70,37 +78,6 @@ Do not skip any sentence. Write nothing else.
 
 # One sentence per request, one token back. The score is read from the probabilities of the digits
 # 1-9 (see rate()), so it is continuous, repeatable, and cannot be moved by neighboring sentences.
-SINGLE_PROMPT = """
-You score how interesting a sentence is.
-
-Each message is one sentence that someone said out loud in a room. Score how
-*interesting* it is, defined as having one or more of the following content:
-
-- a vivid or physical image
-- an odd or specific detail, a name, or a number
-- a big human feeling: love, grief, fear, shame, desire
-- a confession, a secret, or a question
-- something at stake: danger, a consequence, a decision
-- gossip or a judgment about someone
-- something left open or unfinished, a mystery
-- a surprise, a contradiction, or something strange or absurd
-- death, spirits, bodies, animals, food, money, weather, or machines
-
-A sentence is not interesting when it is ordinary talk: greetings, filler, 
-agreement, plans and logistics, or vague statements.
-
-Score on a scale, from 1.00 to 9.99:
-1.00-1.99  not interesting: no interesting content
-2.00-3.99  slightly interesting: little interesting content
-4.00-5.99  interesting: some interesting content
-6.00-7.99  very interesting: more interesting content
-8.00-9.99  extremely interesting: lots of interesting content
-
-Most sentences are ordinary and score below 5. 
-
-Reply with a single number with two decimal places from 1.00 to 9.99 and nothing else.
-"""
-
 BENCHMARK = [
     # --- original 34 ---
     "Even in New York's most introductionless circles, people always introduce.",
@@ -215,14 +192,14 @@ BENCHMARK = [
 
 
 def rate(url: str, prompt: str, line: str, context: list[str]) -> tuple[float, float]:
-    """Returns (expected rating 1-9, seconds taken) for one line, with optional prior lines."""
+    """Returns (score 0-9, seconds taken) for one line, with optional prior lines. Scored as the Printer scores."""
     heard = ""
     if context:
         heard = "Overheard just before:\n" + "\n".join(f"- {c}" for c in context) + "\n\n"
     body = {
         "messages": [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": f"{heard}Rate this line: {line}"},
+            {"role": "user", "content": heard + USER_TEMPLATE.format(fragment_text=line)},
         ],
         "max_tokens": 1, "temperature": 0, "logprobs": True, "top_logprobs": 20,
         "chat_template_kwargs": {"enable_thinking": False},
@@ -233,16 +210,8 @@ def rate(url: str, prompt: str, line: str, context: list[str]) -> tuple[float, f
     with urllib.request.urlopen(request, timeout=120) as response:
         data = json.load(response)
     seconds = time.perf_counter() - start
-    top = data["choices"][0]["logprobs"]["content"][0]["top_logprobs"]
-    weights = {}
-    for entry in top:
-        token = entry["token"].strip()
-        if len(token) == 1 and token in "123456789":
-            weights[int(token)] = weights.get(int(token), 0.0) + math.exp(entry["logprob"])
-    total = sum(weights.values())
-    if total == 0:
-        return float("nan"), seconds
-    return sum(d * w for d, w in weights.items()) / total, seconds
+    score = score_from_probabilities(data)
+    return (float("nan") if score is None else score), seconds
 
 
 def rate_batch(url: str, prompt: str, lines: list[str]) -> tuple[list[float], float, str]:
@@ -282,7 +251,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--port", type=int, default=8091)
     parser.add_argument("--file", help="lines to rate, one per row (default: built-in set)")
-    parser.add_argument("--prompt-file", help="system prompt text (default: built-in)")
+    parser.add_argument("--config", default=str(ROOT / "config" / "pom.toml"),
+                        help="the config file whose prompt is used (default: config/pom.toml)")
+    parser.add_argument("--prompt-file", help="a system prompt from a plain file instead of the config's")
     parser.add_argument("--batch", action="store_true",
                         help="rate all the lines in one request and read decimal scores back "
                              "(scores then depend on order and neighbors); default is one line "
@@ -296,10 +267,17 @@ def main() -> None:
     if args.file:
         with open(args.file, encoding="utf-8") as handle:
             lines = [row.strip() for row in handle if row.strip()]
-    prompt = BATCH_PROMPT if args.batch else SINGLE_PROMPT
+    if args.batch:
+        prompt, where = BATCH_PROMPT, "the batch prompt built into this script"
+    else:
+        settings = Config.load(args.config).scorer
+        prompt, where = settings.prompt, f"{args.config} (prompt_scoring + prompt_output)"
+        if not prompt:
+            sys.exit(f"{args.config} has no prompt_scoring, so there is nothing to ask the model")
     if args.prompt_file:
         with open(args.prompt_file, encoding="utf-8") as handle:
-            prompt = handle.read().strip()
+            prompt, where = handle.read().strip(), args.prompt_file
+    print(f"prompt: {where}\n")
     url = f"http://127.0.0.1:{args.port}/v1/chat/completions"
 
     if args.batch:

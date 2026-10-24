@@ -205,6 +205,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The interest-scorer playground script now uses the Printer's own prompt and reader.** `probe_interest_scorer.py`
+  reads its prompt from `config/pom.toml` each run (`--config` picks another file, `--prompt-file` overrides it),
+  prints which prompt it used, and reads the digits and wraps each line with the code in `pom.scoring`, so it can
+  no longer drift from the Printer. The embedded copy of the old 1.00 to 9.99 prompt is gone (the bake-off's copy is
+  saved in `results/bakeoff-2026-10-22/PROMPT.txt`); batch mode keeps its own prompt. Added `suite.txt`, a 20-line
+  test suite (Wes's), to run with `--file`.
 - **The score is read from one digit, 0 to 9.** The scorer model is asked for a single digit (your prompt), and
   the score is the probability-weighted value of the digits 0 to 9 in that first token, so it runs 0.0 to 9.0.
   The digit 0 now counts (it was ignored, which skewed scores up when the model said 0). The debug view's written

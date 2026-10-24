@@ -286,6 +286,11 @@ llama.cpp setup scripts.
    dependencies only if they changed, check the new config before touching the running service, skip the restart
    for docs-only changes, then restart and show the startup "ready" line.
 7. Open: base model choice (4B class), the hinge-pair set, scorer design, threshold parameters.
+8. **Define "failing loudly"** (Wes, 2026-10-24). If the scorer model or the oracle model is down, the Printer
+   can never respond, and a line in the log is not loud when someone is switching a printer on. Decide what
+   loud means (a beep or bell, an email to Wes, something at the venue) and make the `scorer-server` and
+   oracle-model startup steps critical in that way. Today `scorer-server` is not critical and a fragment the
+   scorer model cannot score is left unscored.
 
 ## Gotchas
 

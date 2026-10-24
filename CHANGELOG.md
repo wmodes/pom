@@ -205,6 +205,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`WordTools` is now `WordTagger`** (`src/pom/hinge/word_tagger.py`; `analyze()` is `tag()`, `Word.content` is
+  `Word.is_content`, `WordToolsError` is `WordTaggerError`), and the Scorer's `words` argument is `word_tagger`.
+  Tests moved to `tests/hinge/test_word_tagger.py`. No behavior changed.
 - **`Report` is now `FaultRecorder`** (`src/pom/fault_recorder.py`; `Issue` is `Fault`, `strict_report` is
   `strict_fault_recorder`, and the `issues` property is `faults`), named for what it does under the project
   lexicon. Modules keep calling their instance `report`. Tests moved to `tests/test_fault_recorder.py`.

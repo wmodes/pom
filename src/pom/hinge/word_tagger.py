@@ -1,4 +1,4 @@
-"""Word tools: reading a fragment as words, with what each word is.
+"""The WordTagger: tags each word of a fragment with what it is.
 
 The Scorer rates a fragment by its words, not by the raw string, so it first needs each word's
 base form ("went" is "go"), its part of speech, and whether it carries any interest at all. This
@@ -21,7 +21,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). If the NLTK data is missing, the tools
     fall back to plain rules (no tags, lowercase as the lemma, a short built-in stopword list, a
     capitalized word that is not the first as a name) and say so in `report`, so the Scorer is
-    weaker but still works. `strict=True` raises WordToolsError instead, for tests and dev tools.
+    weaker but still works. `strict=True` raises WordTaggerError instead, for tests and dev tools.
   * The tagger, lemmatizer and stopword list can be passed in, so tests run with fakes and need no
     data. The defaults load the real ones.
   * Tokenizing is a simple pattern, not NLTK's tokenizer, so there is no extra data to fetch.
@@ -64,8 +64,8 @@ _TOKEN = re.compile(r"[A-Za-z0-9]+(?:['’.\-][A-Za-z0-9]+)*")
 _WORDNET_POS = {"N": "n", "V": "v", "J": "a", "R": "r"}
 
 
-class WordToolsError(ValueError):
-    """Raised for any word-tools problem, but only in strict mode (development and tests)."""
+class WordTaggerError(ValueError):
+    """Raised for any word-tagger problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +95,7 @@ class Word:
         return self.text.lower()
 
     @property
-    def content(self) -> bool:
+    def is_content(self) -> bool:
         """True if the word can carry interest: not a stopword, filler or number."""
         return not (self.is_stopword or self.is_filler or self.is_number)
 
@@ -105,7 +105,7 @@ class Word:
         return _WORDNET_POS.get(self.tag[:1]) if self.tag else None
 
 
-class WordTools:
+class WordTagger:
     """Turns text into `Word` objects.
 
     Attributes:
@@ -120,14 +120,14 @@ class WordTools:
             nltk_data: Folder holding the NLTK data (the project's data/nltk). None uses NLTK's
                 own search path.
             fillers: Words and short phrases that are spoken padding.
-            strict: Raise WordToolsError on any problem instead of recording it.
+            strict: Raise WordTaggerError on any problem instead of recording it.
             tagger: A function taking a list of words and returning (word, tag) pairs. Default:
                 NLTK's perceptron tagger.
             lemmatizer: A function (lowercase word, wordnet pos or None) -> base form. Default:
                 NLTK's WordNet lemmatizer.
             stopwords: The stopword set. Default: NLTK's English list.
         """
-        self.report = FaultRecorder(strict=strict, error=WordToolsError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=WordTaggerError, logger=_log)
         self._fillers = {f.strip().lower() for f in fillers if str(f).strip()}
         self._phrase_fillers = sorted((f for f in self._fillers if " " in f), key=len, reverse=True)
         self._cache: dict = {}
@@ -179,11 +179,11 @@ class WordTools:
 
     # --- Reading text ---------------------------------------------------------------
 
-    def analyze(self, text) -> list:
+    def tag(self, text) -> list:
         """Reads text as a list of Words, in order. Non-text or empty text gives an empty list."""
         if not isinstance(text, str):
             if text is not None:
-                self.report.warn(f"word tools expect text, got {type(text).__name__}; ignoring it")
+                self.report.warn(f"the word tagger expects text, got {type(text).__name__}; ignoring it")
             return []
         tokens = _TOKEN.findall(text)
         if not tokens:
@@ -207,7 +207,7 @@ class WordTools:
 
     def content_words(self, text) -> list:
         """Just the words of the text that can carry interest."""
-        return [word for word in self.analyze(text) if word.content]
+        return [word for word in self.tag(text) if word.is_content]
 
     def _tag(self, tokens: list) -> list:
         """Part-of-speech tags for the tokens, or empty strings if tagging is unavailable."""

@@ -19,7 +19,7 @@ summarized below.
 
 - **Built and tested** (609 tests, all passing): the shared plumbing (`report`, `logs`, `config`,
   now with a `[scorer]` section), the corpus module (`Weights`, `ChunkStore`, `Sampler`), the
-  `Fragmenter`, the word tools (`hinge/words.py`, the Scorer's pre-filter and fallback), the
+  `Fragmenter`, the word tagger (`hinge/word_tagger.py`, the Scorer's filter and fallback), the
   `InterestClient` (asks llama-server for a sentence's score) and the `Scorer` (filter, model,
   fallback, circuit breaker).
 - **Scorer design settled by an experiment** (2026-10-22): a small local LLM scores one sentence at
@@ -86,7 +86,7 @@ src/pom/
     fragmenter.py      built   transcript text -> sentence / clause / phrase fragments, all levels
     (audio source, transcriber [whisper.cpp], room energy: planned)
   hinge/
-    words.py           built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
+    word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
     (Scorer [small LLM, one sentence at a time], Trigger policy, Hinge picker: planned)
   prompt/              planned Prompt builder (system messages come from config)
   voice/               planned Voice interface, Track A and Track B voices, model runner (llama.cpp)
@@ -207,7 +207,7 @@ llama.cpp setup scripts.
   the numbers, with no persona. Scores run low and relative (top about 6 to 8), so the trigger must
   work from rank and gaps, not a fixed high threshold; the hinge picker's temperature does this.
   Fragments become **whole sentences** (the Fragmenter gets a config setting for which levels it
-  emits; clauses and phrases stay available). The word tools stay as a pre-filter and a fallback if
+  emits; clauses and phrases stay available). The word tagger stays as a filter and a fallback if
   the model is down. Evidence, rules and results: `experiments/interest-scorer/`.
 - **Pi timing done** (`experiments/pi-benchmark/`, 2026-10-22): with whisper running flat out on shared
   cores, Qwen3-4B scores a sentence in a median 2.3 s (p95 3.2 s; 4.3 s in the harshest sustained case)

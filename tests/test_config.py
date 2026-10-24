@@ -376,13 +376,13 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
 def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
     from pom.hinge.interest_client import InterestClient
     from pom.hinge.scorer import Scorer, Source
-    from pom.hinge.words import WordTools
+    from pom.hinge.word_tagger import WordTagger
     config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfloor = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
     client = InterestClient(settings.url, settings.prompt, settings.timeout,
                             post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
                                 {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
-    scorer = Scorer(client, WordTools(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
+    scorer = Scorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
                                       stopwords={"the"}),
                     floor=settings.floor, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)

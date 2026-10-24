@@ -66,7 +66,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
-from pom.hinge import InterestClient, Scorer, WordTools        # noqa: E402
+from pom.hinge import InterestClient, Scorer, WordTagger        # noqa: E402
 from pom.hinge.interest_client import parse_written_score      # noqa: E402
 from pom.listening.fragmenter import Fragmenter, Kind          # noqa: E402
 
@@ -404,8 +404,8 @@ def short_hash(text: str) -> str:
 class Brain:
     """The real Scorer and interest client, rebuilt whenever config/pom.toml changes."""
 
-    def __init__(self, config_path: Path, words: WordTools, score_timeout: float = 0.0):
-        self._path, self._words = config_path, words
+    def __init__(self, config_path: Path, word_tagger: WordTagger, score_timeout: float = 0.0):
+        self._path, self._word_tagger = config_path, word_tagger
         self._score_timeout = score_timeout        # at least this long to wait for a score (0 = as configured)
         self._mtime = None
         self.settings = None
@@ -428,7 +428,7 @@ class Brain:
         settings = config.scorer
         client = InterestClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
                                 debug_prompt=settings.prompt_debug)
-        self.scorer = Scorer(client, self._words, floor=settings.floor, min_content_words=settings.min_content_words,
+        self.scorer = Scorer(client, self._word_tagger, floor=settings.floor, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings = client, settings
         problems = config.report.lines() + client.report.lines()
@@ -699,7 +699,7 @@ def main() -> None:
     args = parser.parse_args()
 
     nltk_dir = ROOT / "data" / "nltk"
-    brain = Brain(Path(args.config), WordTools(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
+    brain = Brain(Path(args.config), WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                   score_timeout=args.score_timeout)
     display = Display(args.threshold)
     display.line("hearing-debug: what you say is shown here and kept nowhere. Do not redirect this output to a file.")

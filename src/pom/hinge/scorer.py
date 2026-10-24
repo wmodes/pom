@@ -10,8 +10,8 @@ THREE WAYS A SCORE IS MADE, recorded in `ScoredFragment.source`:
   * MODEL:    the language model scored it (through the InterestClient). The normal case.
   * FILTER:   the fragment has no content words (it is all filler, stopwords or numbers, like
               "Yeah, okay."), so the model is not asked and it gets the floor score. This saves a
-              model call on talk that cannot be interesting. The word tools decide.
-  * FALLBACK: the model gave no score, so a crude stand-in from the word tools is used instead.
+              model call on talk that cannot be interesting. The word tagger decides.
+  * FALLBACK: the model gave no score, so a crude stand-in from the word tagger is used instead.
               It leans on length and on names, numbers and questions, is capped below the model's
               usual top scores, and exists only so the Printer never stops. Do not rank a
               fallback score against a model score as if they meant the same thing; the source says
@@ -25,7 +25,7 @@ Design decisions, and why:
     failures in a row the model is left alone for `retry_seconds`, every fragment gets a fallback
     score meanwhile, then one fragment is allowed through to see whether the model is back. One
     success closes the breaker. The clock is injected, so tests need no waiting.
-  * The word tools are the pre-filter and the fallback; the model is the judge. They are separate
+  * The word tagger feeds the filter and the fallback; the model is the judge. They are separate
     objects passed in, so tests use fakes.
   * One fragment at a time, no context, so a fragment scores the same whatever came before it. Any
     memory of what was heard recently (repeats, fading) belongs to the pool the Trigger keeps, not here.
@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Iterable, Optional
 
-from pom.hinge.words import WordTools
+from pom.hinge.word_tagger import WordTagger
 from pom.listening.fragmenter import Fragment, Kind
 from pom.logs import get_logger
 from pom.fault_recorder import FaultRecorder
@@ -100,14 +100,14 @@ class Scorer:
         report: Problems met (settings corrected, model unavailable, breaker opened).
     """
 
-    def __init__(self, client, words: WordTools, floor: float = DEFAULT_FLOOR,
+    def __init__(self, client, word_tagger: WordTagger, floor: float = DEFAULT_FLOOR,
                  min_content_words: int = DEFAULT_MIN_CONTENT_WORDS,
                  failure_limit: int = DEFAULT_FAILURE_LIMIT,
                  retry_seconds: float = DEFAULT_RETRY_SECONDS,
                  clock: Callable[[], float] = time.monotonic, strict: bool = False):
         """Args:
             client: An InterestClient (anything with score(text), warm_up() and available).
-            words: The WordTools that read a fragment as words.
+            word_tagger: The WordTagger that tags each word of a fragment.
             floor: The score for a fragment the filter keeps from the model.
             min_content_words: Fragments with fewer content words skip the model (0 = never skip).
             failure_limit: Model failures in a row that open the circuit breaker.
@@ -116,7 +116,7 @@ class Scorer:
             strict: Raise ScorerError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=ScorerError, logger=_log)
-        self._client, self._words, self._clock = client, words, clock
+        self._client, self._word_tagger, self._clock = client, word_tagger, clock
         self._floor = self._number(floor, "floor", DEFAULT_FLOOR, minimum=0.0)
         self._min_content = self._whole(min_content_words, "min_content_words", DEFAULT_MIN_CONTENT_WORDS, minimum=0)
         self._failure_limit = self._whole(failure_limit, "failure_limit", DEFAULT_FAILURE_LIMIT, minimum=1)
@@ -148,8 +148,8 @@ class Scorer:
 
     def score(self, fragment: Fragment) -> ScoredFragment:
         """Scores one fragment. Always returns a result; see `source` for how it was made."""
-        words = self._words.analyze(fragment.text)
-        content = [word for word in words if word.content]
+        words = self._word_tagger.tag(fragment.text)
+        content = [word for word in words if word.is_content]
         if self._skips_model(fragment.text, content):
             return self._result(fragment, self._floor, Source.FILTER)
         if self._model_allowed():
@@ -162,7 +162,7 @@ class Scorer:
 
     def is_filtered(self, text: str) -> bool:
         """True if this text would skip the model (empty, or too few content words), without scoring it."""
-        return self._skips_model(text, [word for word in self._words.analyze(text) if word.content])
+        return self._skips_model(text, [word for word in self._word_tagger.tag(text) if word.is_content])
 
     def _skips_model(self, text: str, content: list) -> bool:
         """The filter rule, in one place: nothing to ask about, or fewer content words than the setting needs."""
@@ -225,7 +225,7 @@ class Scorer:
     # --- The fallback ---------------------------------------------------------------
 
     def _fallback_score(self, text, words, content) -> float:
-        """A crude stand-in score from the word tools, capped below the model's best scores."""
+        """A crude stand-in score from the word tagger, capped below the model's best scores."""
         names = sum(1 for word in words if word.is_name)
         numbers = sum(1 for word in words if word.is_number)
         value = (self._floor

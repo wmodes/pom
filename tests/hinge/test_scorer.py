@@ -5,7 +5,7 @@ import pytest
 
 from pom.hinge.scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_FLOOR, DEFAULT_RETRY_SECONDS,
                               FALLBACK_CEILING, ScoredFragment, Scorer, ScorerError, Source)
-from pom.hinge.words import WordTools
+from pom.hinge.word_tagger import WordTagger
 from pom.listening.fragmenter import Fragment, Kind
 
 STOP = {"the", "a", "my", "i", "you", "and", "is", "it", "to", "of", "me"}
@@ -25,7 +25,7 @@ def fake_tagger(tokens):
 
 
 def words():
-    return WordTools(tagger=fake_tagger, lemmatizer=lambda word, pos: word, stopwords=STOP)
+    return WordTagger(tagger=fake_tagger, lemmatizer=lambda word, pos: word, stopwords=STOP)
 
 
 class FakeClient:

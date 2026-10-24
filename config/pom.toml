@@ -7,9 +7,9 @@
 # without a [section] to come first, so GLOBAL and ORACLE sit at the top.)
 
 
-# =================================================================================================
+# ================================================
 # GLOBAL: affects the whole project
-# =================================================================================================
+# ================================================
 
 # Development and testing only: raise on every problem a module would otherwise recover from, so
 # a typo is loud while you work. Leave false in the gallery.
@@ -27,9 +27,9 @@ log_level = "INFO"
 local_logs = false
 
 
-# =================================================================================================
-# ORACLE: the exemplars drawn from the corpus for each pronouncement
-# =================================================================================================
+# ================================================
+# ORACLE: exemplars drawn from the corpus
+# ================================================
 
 # How many corpus chunks go into each pull of exemplars: a random number from samples_min to
 # samples_max, inclusive. Both must be whole numbers of at least 1.
@@ -37,9 +37,9 @@ samples_min = 3
 samples_max = 5
 
 
-# =================================================================================================
-# SCORER: decides how interesting each overheard sentence is
-# =================================================================================================
+# ================================================
+# SCORER: how interesting each sentence is
+# ================================================
 
 # The Scorer: how it reaches the local language model (a llama-server) and what it asks it.
 [scorer]

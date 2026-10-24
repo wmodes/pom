@@ -136,3 +136,20 @@ not run it as a service. It is a development tool, used on purpose.
 - `probe_hearing_run.sh`: on the Pi; microphone gain, language model, pipeline.
 - `probe_hearing_tune.sh`: on the Mac; `start`, `watch`, `sync`, `stop`. Delivers prompt edits through git.
 - `probe_hearing_follow_tuning.sh`: on the Pi (used by `probe_hearing_run.sh`); follows the tuning branch with `git fetch`.
+- `probe_whisper_segments.py`: offline test (no microphone, no model server) of letting whisper's own voice detection
+  find the cut points instead of the energy chunker, on a recording. See the next section.
+
+## Finding the cut points: the energy chunker against whisper's own voice detection
+
+The energy chunker in `probe_hearing_pipeline.py` ends an utterance after 0.7 s below a speech threshold. In a room with
+fluctuating noise (street, music, a hookah) that pause never comes: on a 90 s attic recording 34 to 55% of the frames
+counted as speech even in the stretches where nobody spoke, so every utterance ran to the 20 s cap and was cut by the
+clock, in the middle of a thought. `probe_whisper_segments.py recording.wav` replays a recording through the alternative:
+a rolling buffer handed to `whisper-cli --vad` every 10 s, keeping the segments whisper finished, joining a segment that
+does not end like a sentence to the next, starting each round a little before the last kept segment's end, and splitting
+segments into sentences with the Printer's own `SegmentFragmenter`. It compares the result with whisper reading the whole
+file at once. Findings so far: on the attic recording, whisper found no speech in the noise-only stretches and cut at
+speech pauses, with every sentence of the whole-file answer found and none broken; two defects turned up and are handled
+(a sentence split at a pause in the middle, and the next sentence's first syllables clipped because a segment's end can
+run late). Not handled yet: quiet speech, which whisper's voice detection misses without the level normalization the
+live pipeline applies per utterance.

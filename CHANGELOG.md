@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`experiments/hearing-debug/probe_whisper_segments.py`**: an offline test of letting whisper's own voice detection
+  find the cut points instead of the energy chunker, which in a noisy room cuts every utterance at the 20 s cap
+  (measured: 34 to 55% of frames counted as speech in the stretches of an attic recording where nobody spoke). A rolling
+  buffer goes to `whisper-cli --vad`; finished segments are kept, unfinished ones joined to the next, the buffer starts
+  a little before the last kept segment's end, and segments are split into sentences with the `SegmentFragmenter`. On the
+  attic recording it found every sentence of the whole-file answer with none broken; quiet speech still needs level
+  normalization. Not wired into the live pipeline.
 - **ConvoInterestTracker, step two: avg_convo_interest and the trigger.** `record(score)` takes in one score and
   says what happened to it (`ScoreEffect`: ignored, counted or triggered). Scores at or above the floor feed
   `avg_convo_interest`, a decaying moving average (the first becomes the average, each later one moves it

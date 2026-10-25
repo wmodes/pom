@@ -104,7 +104,7 @@ def read_pcm(path: str) -> bytes:
 
 
 def stream(whisper: Whisper, pcm: bytes, step: float, hold: float, max_buffer: float,
-           rewind: float = 0.4) -> Tuple[List[Segment], int]:
+           rewind: float = 0.0) -> Tuple[List[Segment], int]:
     """Replays the recording through the RollingCutter as a live stream would arrive. Returns (kept segments, forced)."""
     cutter = RollingCutter(whisper, step, hold, rewind, max_buffer)
     kept: List[Segment] = []
@@ -136,8 +136,8 @@ def main() -> None:
     parser.add_argument("--hold", type=float, default=2.0,
                         help="a segment is kept once it ends this many seconds before the buffer's end (default 2)")
     parser.add_argument("--max-buffer", type=float, default=30.0, help="longest buffer before a segment is forced out")
-    parser.add_argument("--rewind", type=float, default=0.4,
-                        help="the next buffer starts this many seconds before the last kept segment's end (default 0.4)")
+    parser.add_argument("--rewind", type=float, default=0.0,
+                        help="the next buffer starts this many seconds before the last kept segment's end (default 0, off; it re-hears the last word)")
     parser.add_argument("--server", help="the address of a whisper-server that is already running (default: start our own)")
     parser.add_argument("--model", default="base.en", help="the whisper model for our own server (default base.en)")
     parser.add_argument("--threads", type=int, default=4, help="threads for our own server")

@@ -11,9 +11,10 @@ What this adds around whisper, and why:
     buffer.
   * A segment that does not end like a sentence (no . ? or !) is joined to the one after it first, because
     whisper sometimes breaks at a pause in the middle of a sentence.
-  * The next round starts `rewind` seconds before the last kept segment's end, because whisper's segment ends
-    can run slightly late and would clip the next sentence's first syllables. Segments that end within that
-    stretch are the old ones heard again and are dropped.
+  * Optional, off by default (`rewind` 0): the next round starts `rewind` seconds before the last kept segment's
+    end, in case whisper's segment ends run slightly late and clip the next sentence's first syllables. Segments
+    that end within that stretch are the old ones heard again and are dropped. Live, it also re-heard the last word
+    of the previous segment as the start of the next ("yourself." twice), which is why it is off.
   * A buffer with no speech in it is trimmed to its last two seconds, so noise does not pile up.
   * A buffer that grows past `max_buffer` seconds without a finished segment is forced out, so one very long
     thought cannot stall everything.
@@ -51,7 +52,7 @@ class RollingCutter:
         forced: How many times a segment had to be forced out at the buffer limit.
     """
 
-    def __init__(self, client: WhisperServerClient, step: float = 5.0, hold: float = 2.0, rewind: float = 0.4,
+    def __init__(self, client: WhisperServerClient, step: float = 5.0, hold: float = 2.0, rewind: float = 0.0,
                  max_buffer: float = 30.0, vad: bool = True):
         self._client, self._step, self._hold, self._rewind = client, step, hold, rewind
         self._max_buffer, self._vad = max_buffer, vad

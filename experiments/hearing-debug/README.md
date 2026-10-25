@@ -156,14 +156,16 @@ fluctuating noise (street, music, a hookah) that pause never comes: on a 90 s at
 counted as speech even in the stretches where nobody spoke, so every utterance ran to the 20 s cap and was cut by the
 clock, in the middle of a thought. `probe_whisper_segments.py recording.wav` replays a recording through the alternative:
 a rolling buffer handed to a whisper-server (with its voice detection on) every `--step` seconds, keeping the segments whisper finished, joining a segment that
-does not end like a sentence to the next, starting each round a little before the last kept segment's end, and splitting
+does not end like a sentence to the next, and splitting
 segments into sentences with the Printer's own `SegmentFragmenter`. It compares the result with whisper reading the whole
 file at once. Findings so far: on the attic recording, whisper found no speech in the noise-only stretches and cut at
-speech pauses, with every sentence of the whole-file answer found and none broken; two defects turned up and are handled
-(a sentence split at a pause in the middle, and the next sentence's first syllables clipped because a segment's end can
-run late). Words of the whole-file reading that the rolling buffer also produced (5 s step), against the old energy
-cutter with level normalization: attic recording 94% against 87%; loud music near the microphone 86% against 90%;
-a quiet classroom recording 52% against 43%. Clear speech comes through well; quiet speech in a classroom loses
+speech pauses, with every sentence of the whole-file answer found and none broken; a sentence split at a pause in the middle
+is handled by joining it to the next segment. Whisper's segment ends can run late and might clip the next sentence's
+first syllables; `--rewind` (off by default) starts each round a little earlier to guard against that, but live it
+re-heard the last word of the previous segment as the start of the next, and on the recordings it kept no more words
+(it added extras). Words of the whole-file reading that the rolling buffer also produced (5 s step, no rewind),
+against the old energy cutter with level normalization: attic recording 93% against 87%; loud music near the
+microphone 90% against 90%; a quiet classroom recording 52% against 43%. Clear speech comes through well; quiet speech in a classroom loses
 about half of its words with either method, and the whole-file reading does better there because whisper has the
 earlier text for context. Sentence boundaries differ a little between steps, since whisper punctuates each window
 as it sees it. Giving whisper the recent text as a prompt was tried and was mixed (clear speech improved,

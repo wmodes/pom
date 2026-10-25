@@ -767,8 +767,8 @@ def main() -> None:
                         help="seconds of new audio between whisper runs (default 5; not used with --energy-cutter)")
     parser.add_argument("--hold", type=float, default=2.0,
                         help="a segment is kept once it ends this many seconds before the end of the audio (default 2)")
-    parser.add_argument("--rewind", type=float, default=0.4,
-                        help="each round starts this many seconds before the last kept segment's end (default 0.4)")
+    parser.add_argument("--rewind", type=float, default=0.0,
+                        help="each round starts this many seconds before the last kept segment's end (default 0, off; it re-hears the last word)")
     parser.add_argument("--margin-db", type=float, default=6.0,
                         help="with --energy-cutter: how far above the room noise counts as speech")
     args = parser.parse_args()

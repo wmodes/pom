@@ -230,11 +230,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 - **Hearing-debug lets whisper cut the audio; the energy cutter is behind `--energy-cutter`** (Wes's call). The new
   `RollingCutter` (`rolling_cutter.py`) hands whisper-server the audio since the last kept segment every 5 s with its
   own voice detection on, keeps the segments whisper finished (ending 2 s or more before the buffer's end), joins a
-  segment that does not end like a sentence to the next, and starts the next round 0.4 s before the last kept end.
-  `--step`, `--hold` and `--rewind` set these; `--margin-db` now applies to the energy cutter only. The playground
+  segment that does not end like a sentence to the next. `--rewind` (off, 0 s) would start each round that long before
+  the last kept end, to save a sentence's first syllables from a late segment end, but live it re-heard the last word
+  ("yourself.", "made it." came out twice). `--step`, `--hold` and `--rewind` set these; `--margin-db` now applies to the energy cutter only. The playground
   `probe_whisper_segments.py` uses the same class and the server, not `whisper-cli`. Word recall against whisper
-  reading the whole file, rolling against the energy cutter: attic 94% / 87%, loud music 86% / 90%, quiet classroom
-  52% / 43% (that recording loses about half its words either way). Prompting whisper with the recent text was
+  reading the whole file, rolling (rewind off) against the energy cutter: attic 93% / 87%, loud music 90% / 90%, quiet
+  classroom 52% / 43% (that recording loses about half its words either way). Prompting whisper with the recent text was
   tried and left out: mixed results.
 - **Hearing-debug talks to a whisper-server instead of running `whisper-cli` for every utterance** (Wes's call). The
   Transcriber and the new playground (`probe_whisper_segments.py`) share `whisper_server_client.py`: audio goes to the

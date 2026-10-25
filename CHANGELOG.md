@@ -227,6 +227,15 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Hearing-debug lets whisper cut the audio; the energy cutter is behind `--energy-cutter`** (Wes's call). The new
+  `RollingCutter` (`rolling_cutter.py`) hands whisper-server the audio since the last kept segment every 5 s with its
+  own voice detection on, keeps the segments whisper finished (ending 2 s or more before the buffer's end), joins a
+  segment that does not end like a sentence to the next, and starts the next round 0.4 s before the last kept end.
+  `--step`, `--hold` and `--rewind` set these; `--margin-db` now applies to the energy cutter only. The playground
+  `probe_whisper_segments.py` uses the same class and the server, not `whisper-cli`. Word recall against whisper
+  reading the whole file, rolling against the energy cutter: attic 94% / 87%, loud music 86% / 90%, quiet classroom
+  52% / 43% (that recording loses about half its words either way). Prompting whisper with the recent text was
+  tried and left out: mixed results.
 - **Hearing-debug talks to a whisper-server instead of running `whisper-cli` for every utterance** (Wes's call). The
   Transcriber and the new playground (`probe_whisper_segments.py`) share `whisper_server_client.py`: audio goes to the
   server from memory, so no audio file is written at all (the stale-slice cleanup from the previous change is no longer

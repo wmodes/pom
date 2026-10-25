@@ -46,10 +46,9 @@ from typing import List, Optional, Tuple
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.listening.segment_fragmenter import FragmentLevel, SegmentFragmenter    # noqa: E402
-from whisper_server_client import WhisperServerClient                              # noqa: E402  (next to this file)
+from rolling_cutter import BYTES_PER_SECOND, FINISHED, RollingCutter, join_unfinished   # noqa: E402  (next to this file)
+from whisper_server_client import SAMPLE_RATE, WhisperServerClient                   # noqa: E402  (next to this file)
 
-SAMPLE_RATE = 16000
-BYTES_PER_SECOND = SAMPLE_RATE * 2                     # 16-bit mono
 Segment = Tuple[float, float, str]                     # absolute start, absolute end, text
 
 
@@ -84,10 +83,14 @@ class Whisper:
             self._process.terminate()
             self._process.wait(timeout=10)
 
-    def segments(self, pcm: bytes, offset_s: float) -> List[Segment]:
+    @property
+    def error(self) -> Optional[str]:
+        return self.client.error
+
+    def segments(self, pcm: bytes, offset_s: float, vad: bool = True) -> List[Segment]:
         """Transcribes the audio; times are shifted by `offset_s` so they are positions in the whole recording."""
         started = time.perf_counter()
-        found = self.client.segments(pcm, offset_s)
+        found = self.client.segments(pcm, offset_s, vad=vad)
         self.seconds_spent += time.perf_counter() - started
         self.runs += 1
         return found
@@ -100,45 +103,18 @@ def read_pcm(path: str) -> bytes:
         return source.readframes(source.getnframes())
 
 
-FINISHED = re.compile(r"[.?!][\"')\]]*$")
-
-
-def join_unfinished(found: List[Segment], longest: float = 25.0) -> List[Segment]:
-    """Joins each segment that does not end like a sentence to the one after it (up to `longest` seconds)."""
-    out: List[Segment] = []
-    for begin, finish, text in found:
-        if out and not FINISHED.search(out[-1][2]) and finish - out[-1][0] <= longest:
-            out[-1] = (out[-1][0], finish, out[-1][2] + " " + text)
-        else:
-            out.append((begin, finish, text))
-    return out
-
-
 def stream(whisper: Whisper, pcm: bytes, step: float, hold: float, max_buffer: float,
-           rewind: float = 0.0) -> Tuple[List[Segment], int]:
-    """Replays the recording as a live system would hear it. Returns (kept segments, how many were forced)."""
-    total = len(pcm) / BYTES_PER_SECOND
-    kept, forced = [], 0
-    start, position, last_end = 0.0, step, 0.0
-    while True:
-        end = min(position, total)
-        final = end >= total
-        window = pcm[int(start * BYTES_PER_SECOND) // 2 * 2: int(end * BYTES_PER_SECOND) // 2 * 2]
-        found = join_unfinished(whisper.segments(window, start)) if end - start >= 1.0 else []
-        if not found:
-            start = max(start, end - 2.0)                    # only noise in the buffer: keep a short lead-in
-        else:
-            found = [s for s in found if s[1] > last_end + 0.2]       # drop what was already kept (heard again in the rewind)
-            done = [s for s in found if final or s[1] <= end - hold]
-            if not done and end - start >= max_buffer:       # one long thought: do not let the buffer grow forever
-                done, forced = found, forced + 1
-            kept.extend(done)
-            if done:
-                last_end = done[-1][1]
-                start = max(start, last_end - rewind)
-        if final:
-            return kept, forced
-        position += step
+           rewind: float = 0.4) -> Tuple[List[Segment], int]:
+    """Replays the recording through the RollingCutter as a live stream would arrive. Returns (kept segments, forced)."""
+    cutter = RollingCutter(whisper, step, hold, rewind, max_buffer)
+    kept: List[Segment] = []
+    size = int(step * BYTES_PER_SECOND) // 2 * 2
+    for index in range(0, len(pcm), size):
+        cutter.feed(pcm[index:index + size])
+        while cutter.due():
+            kept.extend(cutter.cut())
+    kept.extend(cutter.cut(final=True))
+    return kept, cutter.forced
 
 
 def sentences(segments: List[Segment], fragmenter: SegmentFragmenter) -> List[str]:

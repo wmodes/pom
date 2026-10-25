@@ -67,6 +67,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                  # noqa: E402
+from rolling_cutter import RollingCutter                         # noqa: E402  (next to this file)
 from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
 from pom.scoring import ConvoInterestTracker, ScoreEffect, ScorerModelClient, Scorer, WordTagger   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
@@ -479,7 +480,13 @@ class Pipeline:
         self.last_text = ""
         self.ambient = collections.deque(maxlen=6)                   # recent captions of the room, for the voice's prompt later
         self.last_ambient = []                                       # to show a caption once, not every time it repeats
-        self.segmenter = None                                        # set once listening starts
+        self.segmenter = None                                        # the energy cutter; set once listening starts (--energy-cutter only)
+        # By default whisper's own segment boundaries decide where the audio is cut (RollingCutter). The energy
+        # cutter, which cuts by loudness, is still here behind --energy-cutter for comparison.
+        self.cutter = None if args.energy_cutter else RollingCutter(
+            self.transcriber.client, step=args.step, hold=args.hold, rewind=args.rewind, vad=args.vad)
+        self.source_ended = threading.Event()
+        self.quiet_steps = 0                                         # whisper runs in a row that found no speech
         self.interactive = sys.stdin.isatty()                        # someone can type r, e, l, q
         self.stop = threading.Event()
         self.tracker_lock = threading.Lock()                         # two threads hand scores to the tracker
@@ -537,6 +544,61 @@ class Pipeline:
             source.close()
             self.utterances.put(None)
 
+    def listen_stream(self, source) -> None:
+        """Feeds the microphone (or a recording) into the RollingCutter; whisper decides where to cut."""
+        self.display.line("  Listening.")
+        try:
+            for frame in source.frames():
+                if self.stop.is_set():
+                    break
+                self.cutter.feed(frame)
+        finally:
+            source.close()
+            self.source_ended.set()
+
+    def stream_worker(self) -> None:
+        """Every few seconds of new audio, asks whisper for the segments it has finished and handles them."""
+        while not self.stop.is_set():
+            if self.cutter.due():
+                final = False
+            elif self.source_ended.is_set():
+                final = True
+            else:
+                time.sleep(0.2)
+                continue
+            try:
+                self._cut_and_hear(final)
+            except Exception as error:               # a surprise must not end the session
+                self.display.line(f"  (error handling the audio: {type(error).__name__})")
+            if final:
+                break
+        if not self.interactive:
+            self.run_queue.put(None)                     # nobody can type r later: finish up
+        if self.args.wav:
+            self.display.line("\n  (the recording is done; type r to re-score its sentences with the "
+                              "current prompts, q to quit)")
+
+    def _cut_and_hear(self, final: bool) -> None:
+        changed = self.brain.refresh()
+        if changed:
+            self.display.line(f"\n[{self.display.stamp()}] {changed}  [{self.brain.fingerprint()}]")
+        segments = self.cutter.cut(final=final)
+        took = self.cutter.took
+        self._note_whisper_failure()
+        for _, _, text in segments:
+            self._hear(split_whisper(text), f"{len(text.split())} words", "", took)
+        if segments:
+            self.quiet_steps = 0
+        elif self.args.sounds and self.args.vad and not self.whisper_down:
+            # Nothing the voice detection calls speech. Every few quiet rounds, listen once without it, for song
+            # lyrics and sound captions (plain text from this pass is where whisper invents words, so it is dropped).
+            self.quiet_steps += 1
+            if self.quiet_steps % 3 == 0:
+                started = time.perf_counter()
+                heard = split_whisper(self.transcriber.client.text(self.cutter.recent(10.0), vad=False), plain_text=False)
+                if heard.words or heard.ambient:
+                    self._hear(heard, "a sound", "", time.perf_counter() - started)
+
     def _offer(self, utterance: Utterance) -> None:
         try:
             self.utterances.put_nowait(utterance)
@@ -572,10 +634,18 @@ class Pipeline:
         started = time.perf_counter()
         heard = self.transcriber.transcribe(normalize_pcm(utterance.pcm))
         took = time.perf_counter() - started
+        self._note_whisper_failure()
+        self._hear(heard, f"{utterance.seconds:.1f} s", f", peak {utterance.peak_db:.0f} dB", took)
+
+    def _note_whisper_failure(self) -> None:
+        """Says once that the whisper-server is not answering, not every time."""
         failed = self.transcriber.client.error
         if failed and not self.whisper_down:
             self.display.line(f"\n[{self.display.stamp()}] the whisper-server did not answer ({failed}); this audio was not heard")
         self.whisper_down = bool(failed)
+
+    def _hear(self, heard: "WhisperText", size: str, extra: str, took: float) -> None:
+        """Shows what whisper heard, then scores each sentence of it and queues the explanations."""
         if heard.ambient and heard.ambient != self.last_ambient:
             self.last_ambient = heard.ambient
             self.ambient.extend(heard.ambient)
@@ -586,8 +656,7 @@ class Pipeline:
             return
         self.last_text = text
         label = "lyrics, not speech" if kind == "lyrics" else "speech"
-        self.display.line(f"\n[{self.display.stamp()}] heard {utterance.seconds:.1f} s ({label}, peak {utterance.peak_db:.0f} dB, "
-                          f"whisper {took:.1f} s): \"{text}\"")
+        self.display.line(f"\n[{self.display.stamp()}] heard {size} ({label}{extra}, whisper {took:.1f} s): \"{text}\"")
         for fragment in self.fragmenter.split(text):
             if fragment.level is not FragmentLevel.SENTENCE:
                 continue
@@ -668,7 +737,7 @@ class Pipeline:
                 self.run_queue.put(None)
                 break
             elif word == "l":
-                self.display.line(f"  levels: {self.segmenter.describe_levels() if self.segmenter else 'not listening yet'}")
+                self.display.line(f"  levels: {self.segmenter.describe_levels() if self.segmenter else 'only measured with --energy-cutter'}")
             elif word in ("?", "h", "help"):
                 self.display.line("  r = run the recent sentences again with the current prompts   "
                                   "l = show the room's levels   q = quit")
@@ -692,8 +761,16 @@ def main() -> None:
     parser.add_argument("--history", type=int, default=12, help="sentences kept in memory for the r command")
     parser.add_argument("--score-timeout", type=float, default=30.0,
                         help="seconds to wait for a score (at least; the config's value if larger)")
+    parser.add_argument("--energy-cutter", action="store_true",
+                        help="cut the audio by loudness (the old way) instead of by whisper's own segments")
+    parser.add_argument("--step", type=float, default=5.0,
+                        help="seconds of new audio between whisper runs (default 5; not used with --energy-cutter)")
+    parser.add_argument("--hold", type=float, default=2.0,
+                        help="a segment is kept once it ends this many seconds before the end of the audio (default 2)")
+    parser.add_argument("--rewind", type=float, default=0.4,
+                        help="each round starts this many seconds before the last kept segment's end (default 0.4)")
     parser.add_argument("--margin-db", type=float, default=6.0,
-                        help="how far above the room noise counts as speech (lower it if music or noise masks speech)")
+                        help="with --energy-cutter: how far above the room noise counts as speech")
     args = parser.parse_args()
 
     nltk_dir = ROOT / "data" / "nltk"
@@ -711,6 +788,8 @@ def main() -> None:
     display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")
+    display.line("  cutting the audio by loudness (--energy-cutter)" if args.energy_cutter else
+                 f"  cutting the audio by whisper's own segments: a whisper run every {args.step:g} s on a rolling buffer")
     display.line(f"  model warm-up: {'ready' if brain.scorer.warm_up() else 'NOT answering (fragments will go unscored)'}")
     if args.explain and not brain.client.can_explain:
         display.line("  (no prompt_output_debug in the config, so there are no explanations)")
@@ -720,9 +799,14 @@ def main() -> None:
         sys.exit(f"the whisper-server is not answering at {args.whisper_url}. probe_hearing_run.sh starts it on the Pi; "
                  f"on its own: whisper-server -m ggml-base.en.bin --vad -vm ggml-silero-v6.2.0.bin --port 8110")
     source = WavSource(args.wav, args.speed) if args.wav else MicSource(args.device)
-    threads = [threading.Thread(target=pipeline.listen, args=(source,), daemon=True),
-               threading.Thread(target=pipeline.transcribe_and_score, daemon=True),
-               threading.Thread(target=pipeline.debug_worker, daemon=True)]
+    if args.energy_cutter:
+        threads = [threading.Thread(target=pipeline.listen, args=(source,), daemon=True),
+                   threading.Thread(target=pipeline.transcribe_and_score, daemon=True),
+                   threading.Thread(target=pipeline.debug_worker, daemon=True)]
+    else:
+        threads = [threading.Thread(target=pipeline.listen_stream, args=(source,), daemon=True),
+                   threading.Thread(target=pipeline.stream_worker, daemon=True),
+                   threading.Thread(target=pipeline.debug_worker, daemon=True)]
     for thread in threads:
         thread.start()
     if args.explain and brain.client.can_explain:

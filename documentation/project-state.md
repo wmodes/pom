@@ -199,6 +199,9 @@ llama.cpp setup scripts.
 - **Segmenting:** a voice-activity detector cuts utterances at a pause of about 0.7 s, or at a 20 s
   maximum with about 2 s overlap (duplicates dropped); an energy-based detector with a slowly moving
   noise floor first, a library later if too crude; Whisper's own no-speech check is a second screen.
+  **Hearing-debug has since moved to whisper-driven cutting** (`experiments/hearing-debug/rolling_cutter.py`): the
+  energy detector never finds a pause in a room with bursty noise, so whisper's own voice detection and segments
+  decide, and the energy cutter is kept behind `--energy-cutter` for comparison. Not yet in `src/pom/`.
 - **Room activity** is seconds of accepted speech per minute (from the Transcriber), not loudness.
   Target rate: 0 when silent, about 4 prints an hour with a little talking, about 8 busy (config),
   steered by a rate governor; paper guards: quiet timeout about 10 min, ceilings about 12 an hour

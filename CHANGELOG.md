@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **Oracle playground** (`experiments/oracle-playground/probe_oracle.py`). Step four of the voice side. Type a hinge,
+  get a portent, using the real `PromptBuilder`, `OracleModelClient`, ExemplarSelector and the config's `oracle.prompt`
+  (read again before every hinge). It starts a llama-server for `--model` (a .gguf file or a Hugging Face name) on the
+  port in `oracle.url`, or uses a running one with `--server`. The random generator is reseeded from a sha256 of the
+  hinge, so the same hinge gets the same exemplars whichever model runs (`--seed N` to vary). Tried on the Mac with
+  Qwen3-8B and the placeholder prompt: the wiring works and the same hinge gave the same exemplars; the portents are
+  meaningless until the prompt is written.
 - **OracleModelClient** (`src/pom/voice/oracle_model_client.py`, 53 tests in `tests/voice/`, mutation-checked). Step
   three of the voice side. `portent(prompt)` sends the finished oracle prompt to the oracle model's llama-server as one
   user message, word for word, with `max_tokens` and `temperature` from the config (not temperature 0: the model
@@ -16,7 +23,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
   slow, or answers oddly or with nothing. Never raises outside strict mode. A portent cut off at `max_tokens` is
   returned and flagged in `last_cut_off`. Neither the prompt (it holds the hinge) nor the portent is logged. The
   transport is injected, so the tests need no server; the four lines of HTTP are the scorer client's, repeated here
-  so the two packages stay apart. The playground is next.
+  so the two packages stay apart.
 - **`[oracle]` section in the config** (`OracleSettings`, `Config.oracle`; 8 tests, mutation-checked). `url` (a second
   llama-server, port 8099), `timeout` (120 s), `max_tokens` (300), `temperature` (0.8) and `prompt`, the oracle prompt
   with `{exemplars}` and `{hinge}`. `config/pom.toml` has a PLACEHOLDER prompt for Wes to replace. The four numbers are

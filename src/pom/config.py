@@ -17,6 +17,10 @@ of being threaded through by hand. Today there are five:
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
                entry point builds the ScorerModelClient and Scorer from `config.scorer`. Environment:
                POM_SCORER_URL.
+    [oracle]   A section (see OracleSettings): the oracle model's address and timeout, the prompt it is
+               given (with `{exemplars}` and `{hinge}` marking where those go), and the two settings of each
+               request, `max_tokens` and `temperature`. The entry point builds the PromptBuilder and the
+               OracleModelClient from `config.oracle`.
     [trigger]  A section (see TriggerSettings): when the Printer responds. `floor_ignore_fraction` is how far
                up the score range the floor sits (0.05, so 0.45 on the 0 to 9 scale; scores below it are
                ignored), `interest_half_life` how many scores it takes for an old score's pull on the room's
@@ -59,7 +63,8 @@ _FALSE = {"0", "false", "no", "off"}
 _KEYS = {"strict", "debug", "log_level", "local_logs", "exemplars_min", "exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
-         "scorer.retry_seconds", "trigger.floor_ignore_fraction", "trigger.trigger_fraction",
+         "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
+         "oracle.temperature", "trigger.floor_ignore_fraction", "trigger.trigger_fraction",
          "trigger.interest_half_life", "trigger.min_scores"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
@@ -68,6 +73,10 @@ DEFAULT_SCORER_FRAGMENT_FILTER_SCORE = 1.0
 DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3
 DEFAULT_SCORER_RETRY_SECONDS = 30.0
+DEFAULT_ORACLE_URL = "http://127.0.0.1:8099/v1/chat/completions"
+DEFAULT_ORACLE_TIMEOUT = 120.0
+DEFAULT_ORACLE_MAX_TOKENS = 300
+DEFAULT_ORACLE_TEMPERATURE = 0.8
 DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION = 0.05
 DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.25
 DEFAULT_TRIGGER_INTEREST_HALF_LIFE = 10.0
@@ -119,6 +128,25 @@ class ScorerSettings:
 
 
 @dataclass(frozen=True)
+class OracleSettings:
+    """The `[oracle]` section: how the oracle model is reached and what it is asked.
+
+    Attributes:
+        url: The llama-server chat-completions address.
+        timeout: Seconds to wait for one portent. Writing is slow on the Pi, so this is long.
+        prompt: The text the model is given, with `{exemplars}` and `{hinge}` marking where those go.
+            Empty means none was set, and no portent can be asked for.
+        max_tokens: The most the model may write (a portent is 15 to 150 words; this stops a runaway).
+        temperature: How adventurous the model's word choice is; higher is more varied.
+    """
+    url: str = DEFAULT_ORACLE_URL
+    timeout: float = DEFAULT_ORACLE_TIMEOUT
+    prompt: str = ""
+    max_tokens: int = DEFAULT_ORACLE_MAX_TOKENS
+    temperature: float = DEFAULT_ORACLE_TEMPERATURE
+
+
+@dataclass(frozen=True)
 class TriggerSettings:
     """The `[trigger]` section: when the Printer responds.
 
@@ -148,6 +176,7 @@ class Config:
         local_logs: Also write the log to a local file (development only).
         exemplar_range: (fewest, most) chunks per pull of exemplars, for the ExemplarSelector.
         scorer: The `[scorer]` section, as a ScorerSettings.
+        oracle: The `[oracle]` section, as an OracleSettings.
         trigger: The `[trigger]` section, as a TriggerSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
@@ -155,9 +184,10 @@ class Config:
     def __init__(self, strict: bool = False, log_level: str = "INFO",
                  report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
-                 trigger: Optional[TriggerSettings] = None):
+                 trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
+        self.oracle = oracle if oracle is not None else OracleSettings()
         self.trigger = trigger if trigger is not None else TriggerSettings()
         self.strict = strict
         self.debug = debug
@@ -235,6 +265,15 @@ class Config:
         scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_fragment_filter_score,
                                 scorer_min_content, scorer_failure_limit, scorer_retry, scorer_output,
                                 scorer_output_debug)
+        oracle = OracleSettings(
+            _text(values.get("oracle.url", DEFAULT_ORACLE_URL), "oracle.url", DEFAULT_ORACLE_URL, report),
+            _number(values.get("oracle.timeout", DEFAULT_ORACLE_TIMEOUT), "oracle.timeout",
+                    DEFAULT_ORACLE_TIMEOUT, 0.1, report),
+            _text(values.get("oracle.prompt", ""), "oracle.prompt", "", report),
+            _whole(values.get("oracle.max_tokens", DEFAULT_ORACLE_MAX_TOKENS), "oracle.max_tokens",
+                   DEFAULT_ORACLE_MAX_TOKENS, 1, report),
+            _number(values.get("oracle.temperature", DEFAULT_ORACLE_TEMPERATURE), "oracle.temperature",
+                    DEFAULT_ORACLE_TEMPERATURE, 0.0, report))
         trigger = TriggerSettings(
             _fraction(values.get("trigger.floor_ignore_fraction", DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION),
                       "trigger.floor_ignore_fraction", DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION, report),
@@ -244,7 +283,7 @@ class Config:
                       "trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE, report),
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
                    "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 1, report))
-        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger)
+        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle)
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:

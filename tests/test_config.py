@@ -5,7 +5,7 @@ import pytest
 
 from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
-                        DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION, Config, ScorerSettings, TriggerSettings)
+                        DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION, Config, OracleSettings, ScorerSettings, TriggerSettings)
 
 
 def write(tmp_path, text):
@@ -498,3 +498,67 @@ def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
     assert [tracker.record(score) for score in (4, 4, 4, 4)] == [ScoreEffect.COUNTED] * 4   # the average sits at 4
     assert tracker.trigger_level == pytest.approx(6.0)         # 4 * 1.5
     assert tracker.record(6.0) is ScoreEffect.TRIGGERED
+
+
+# --- The [oracle] section --------------------------------------------------------------
+
+def test_oracle_defaults_when_nothing_is_set():
+    config = Config.load(environ={})
+    assert config.oracle == OracleSettings() and config.report.ok
+    assert config.oracle.url == "http://127.0.0.1:8099/v1/chat/completions"
+    assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (120.0, 300, 0.8)
+    assert config.oracle.prompt == ""
+
+
+def test_oracle_values_are_read_from_the_section(tmp_path):
+    text = ('[oracle]\nurl = "http://10.0.0.5:9100/v1/chat/completions"\ntimeout = 30\nprompt = "Speak. {hinge}"\n'
+            "max_tokens = 200\ntemperature = 1.1\n")
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.oracle == OracleSettings("http://10.0.0.5:9100/v1/chat/completions", 30.0, "Speak. {hinge}", 200, 1.1)
+    assert config.report.ok
+
+
+def test_a_multiline_oracle_prompt_keeps_its_line_breaks_and_braces(tmp_path):
+    text = '[oracle]\nprompt = """\nLine one.\n\n{exemplars}\n\nThey said: {hinge}\n"""\n'
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.oracle.prompt == "Line one.\n\n{exemplars}\n\nThey said: {hinge}\n" and config.report.ok
+
+
+@pytest.mark.parametrize("key,value", [
+    ("url", "5"), ("url", "true"), ("timeout", '"slow"'), ("timeout", "0"), ("timeout", "-3"), ("timeout", "true"),
+    ("prompt", "5"), ("prompt", "[1, 2]"), ("max_tokens", "0"), ("max_tokens", "2.5"), ("max_tokens", '"300"'),
+    ("max_tokens", "true"), ("temperature", "-0.1"), ("temperature", '"hot"'), ("temperature", "true")])
+def test_a_bad_oracle_value_means_the_default_with_a_warning(tmp_path, key, value):
+    config = Config.load(write(tmp_path, f"[oracle]\n{key} = {value}\n"), environ={})
+    assert config.oracle == OracleSettings()
+    assert len(config.report.warnings) == 1 and f"oracle.{key}" in config.report.warnings[0]
+
+
+def test_the_smallest_allowed_oracle_values_are_accepted(tmp_path):
+    config = Config.load(write(tmp_path, "[oracle]\ntimeout = 0.1\nmax_tokens = 1\ntemperature = 0\n"), environ={})
+    assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (0.1, 1, 0.0)
+    assert config.report.ok
+
+
+def test_an_unknown_oracle_key_is_warned_about(tmp_path):
+    config = Config.load(write(tmp_path, "[oracle]\npromt = 5\n"), environ={})
+    assert config.oracle == OracleSettings()
+    assert any("oracle.promt" in w for w in config.report.warnings)
+
+
+def test_the_local_file_overrides_one_oracle_key_and_keeps_the_rest(tmp_path):
+    write(tmp_path, '[oracle]\ntemperature = 0.5\nmax_tokens = 100\nprompt = "Main. {hinge}"\n')
+    (tmp_path / "pom.local.toml").write_text("[oracle]\ntemperature = 1.0\n", encoding="utf-8")
+    oracle = Config.load(tmp_path / "pom.toml", environ={}).oracle
+    assert (oracle.temperature, oracle.max_tokens, oracle.prompt) == (1.0, 100, "Main. {hinge}")
+
+
+def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accepts(tmp_path):
+    from pathlib import Path
+    from pom.prompt import PromptBuilder
+    sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
+    copy = tmp_path / "pom.toml"
+    copy.write_text(sample.read_text(encoding="utf-8"), encoding="utf-8")
+    config = Config.load(copy, environ={})
+    assert config.report.ok and config.oracle.prompt.strip()
+    assert PromptBuilder(config.oracle.prompt, selector=None).report.ok

@@ -9,6 +9,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`[oracle]` section in the config** (`OracleSettings`, `Config.oracle`; 8 tests, mutation-checked). `url` (a second
+  llama-server, port 8099), `timeout` (120 s), `max_tokens` (300), `temperature` (0.8) and `prompt`, the oracle prompt
+  with `{exemplars}` and `{hinge}`. `config/pom.toml` has a PLACEHOLDER prompt for Wes to replace. The four numbers are
+  my starting values (llama-server's own default temperature is 0.8; the rest are guesses sized for a 15 to 150 word
+  portent on the Pi).
 - **PromptBuilder** (`src/pom/prompt/prompt_builder.py`, 32 tests in `tests/prompt/`, mutation-checked). Step one of
   the voice side. It fills the oracle prompt (Wes's text, with `{exemplars}` and `{hinge}` marking the places) with
   exemplars drawn by the ExemplarSelector and the hinge (the fragment that triggered), and returns the text with the
@@ -16,7 +21,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
   plain text; the exemplars are only drawn if the prompt has a place for them; the hinge is never logged. A bad or
   missing prompt, an empty hinge, or nothing to draw is recorded and never raises (`strict=True` raises). To repeat
   a draw, give the selector a seeded `random.Random` and reseed it before each build (tested, with a seed taken
-  from the hinge). Not in the config or wired to anything yet; the oracle model client is next.
+  from the hinge). The oracle model client is next.
 - **`experiments/hearing-debug/probe_whisper_segments.py`**: an offline test of letting whisper's own voice detection
   find the cut points instead of the energy chunker, which in a noisy room cuts every utterance at the 20 s cap
   (measured: 34 to 55% of frames counted as speech in the stretches of an attic recording where nobody spoke). A rolling

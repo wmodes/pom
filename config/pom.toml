@@ -36,6 +36,32 @@ local_logs = false
 exemplars_min = 3
 exemplars_max = 5
 
+# The oracle model: how it is reached and what it is asked. The entry point starts a second llama-server
+# on this port, apart from the scorer's.
+[oracle]
+url = "http://127.0.0.1:8099/v1/chat/completions"
+
+# Seconds to wait for one portent before giving up. Writing is slow on the Pi.
+timeout = 120
+
+# The most the model may write for one portent, counted in tokens (about 3/4 of a word each). A portent
+# is 15 to 150 words; this only stops a runaway.
+max_tokens = 300
+
+# How adventurous the model's word choice is. 0 always takes the likeliest word; higher is more varied.
+temperature = 0.8
+
+# What the model is given. {exemplars} is replaced by a few corpus chunks drawn at random, and {hinge} by
+# the fragment that triggered, word for word. Nothing else is added, so everything the model needs to
+# be told goes here.
+prompt = """
+PLACEHOLDER: replace this with the oracle prompt.
+
+{exemplars}
+
+{hinge}
+"""
+
 
 # ================================================
 # SCORER: how interesting each sentence is

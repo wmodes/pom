@@ -94,7 +94,9 @@ src/pom/
     (Hinge picker, and the entry point that wires it all together: planned)
   prompt/
     prompt_builder.py  built   hinge + drawn exemplars into the oracle prompt from config
-  voice/               planned Voice interface, Track A and Track B voices, model runner (llama.cpp)
+  voice/
+    oracle_model_client.py built the finished oracle prompt to the oracle model's llama-server, one portent back
+    (Track A and Track B voices, bake-off harness: planned)
   output/              planned reply selection, formatter, serial port wrapper (pauses listening)
   input/               planned keyboard, same path as speech with a small score bonus
   conductor            planned the only module that knows the whole pipeline

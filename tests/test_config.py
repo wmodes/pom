@@ -510,6 +510,14 @@ def test_oracle_defaults_when_nothing_is_set():
     assert config.oracle.prompt == ""
 
 
+def test_the_oracle_defaults_match_the_oracle_clients_own():
+    from pom.config import DEFAULT_ORACLE_MAX_TOKENS, DEFAULT_ORACLE_TEMPERATURE, DEFAULT_ORACLE_TIMEOUT
+    from pom.voice import oracle_model_client
+    assert DEFAULT_ORACLE_TIMEOUT == oracle_model_client.DEFAULT_TIMEOUT
+    assert DEFAULT_ORACLE_MAX_TOKENS == oracle_model_client.DEFAULT_MAX_TOKENS
+    assert DEFAULT_ORACLE_TEMPERATURE == oracle_model_client.DEFAULT_TEMPERATURE
+
+
 def test_oracle_values_are_read_from_the_section(tmp_path):
     text = ('[oracle]\nurl = "http://10.0.0.5:9100/v1/chat/completions"\ntimeout = 30\nprompt = "Speak. {hinge}"\n'
             "max_tokens = 200\ntemperature = 1.1\n")

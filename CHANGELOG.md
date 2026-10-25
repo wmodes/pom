@@ -9,6 +9,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **OracleModelClient** (`src/pom/voice/oracle_model_client.py`, 53 tests in `tests/voice/`, mutation-checked). Step
+  three of the voice side. `portent(prompt)` sends the finished oracle prompt to the oracle model's llama-server as one
+  user message, word for word, with `max_tokens` and `temperature` from the config (not temperature 0: the model
+  chooses its words), and returns what it wrote, trimmed, or None with a warning in `report` if the server is down,
+  slow, or answers oddly or with nothing. Never raises outside strict mode. A portent cut off at `max_tokens` is
+  returned and flagged in `last_cut_off`. Neither the prompt (it holds the hinge) nor the portent is logged. The
+  transport is injected, so the tests need no server; the four lines of HTTP are the scorer client's, repeated here
+  so the two packages stay apart. The playground is next.
 - **`[oracle]` section in the config** (`OracleSettings`, `Config.oracle`; 8 tests, mutation-checked). `url` (a second
   llama-server, port 8099), `timeout` (120 s), `max_tokens` (300), `temperature` (0.8) and `prompt`, the oracle prompt
   with `{exemplars}` and `{hinge}`. `config/pom.toml` has a PLACEHOLDER prompt for Wes to replace. The four numbers are

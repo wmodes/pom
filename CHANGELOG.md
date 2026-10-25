@@ -9,6 +9,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **PromptBuilder** (`src/pom/prompt/prompt_builder.py`, 32 tests in `tests/prompt/`, mutation-checked). Step one of
+  the voice side. It fills the oracle prompt (Wes's text, with `{exemplars}` and `{hinge}` marking the places) with
+  exemplars drawn by the ExemplarSelector and the hinge (the fragment that triggered), and returns the text with the
+  chunks it used. Nothing else is added. Both places are filled in one pass, so braces in a chunk or a hinge stay
+  plain text; the exemplars are only drawn if the prompt has a place for them; the hinge is never logged. A bad or
+  missing prompt, an empty hinge, or nothing to draw is recorded and never raises (`strict=True` raises). To repeat
+  a draw, give the selector a seeded `random.Random` and reseed it before each build (tested, with a seed taken
+  from the hinge). Not in the config or wired to anything yet; the oracle model client is next.
 - **`experiments/hearing-debug/probe_whisper_segments.py`**: an offline test of letting whisper's own voice detection
   find the cut points instead of the energy chunker, which in a noisy room cuts every utterance at the 20 s cap
   (measured: 34 to 55% of frames counted as speech in the stretches of an attic recording where nobody spoke). A rolling

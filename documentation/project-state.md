@@ -92,7 +92,8 @@ src/pom/
     fallback_scorer.py shelved word-counting stand-in for the scorer model; unused
     convo_interest_tracker.py built avg_convo_floor, avg_convo_interest and the trigger test (used by hearing-debug)
     (Hinge picker, and the entry point that wires it all together: planned)
-  prompt/              planned Prompt builder (system messages come from config)
+  prompt/
+    prompt_builder.py  built   hinge + drawn exemplars into the oracle prompt from config (not in config yet)
   voice/               planned Voice interface, Track A and Track B voices, model runner (llama.cpp)
   output/              planned reply selection, formatter, serial port wrapper (pauses listening)
   input/               planned keyboard, same path as speech with a small score bonus

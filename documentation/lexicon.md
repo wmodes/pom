@@ -75,6 +75,10 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **oracle model**: the medium language model that writes the portent from the hinge and the
   exemplars.
 - **portent**: the oracle model's output; what gets typed.
+- **oracle prompt** †: the text the oracle model is given, written by Wes in the config (`oracle.prompt`), with
+  `{exemplars}` and `{hinge}` marking where those go.
+- **prompt builder** †: the component that fills the exemplars and the hinge into the oracle prompt
+  (`PromptBuilder`).
 
 ## Where the code does not match yet †
 

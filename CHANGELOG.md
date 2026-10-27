@@ -9,6 +9,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **Recording-time stamps in the hearing-debug replay** (`probe_hearing_pipeline.py`). With `--wav`, each "heard" line
+  is stamped with where in the recording the utterance ended (`+hh:mm:ss`, from the rolling cutter's own segment times)
+  instead of the wall clock, which means nothing when a recording is replayed faster than real time. Live listening
+  is unchanged. Needed to test a trigger that judges the room over minutes, not over a count of sentences.
 - **Pi oracle benchmark** (`experiments/pi-oracle-benchmark/`, 49 tests in `tests/pi_oracle_benchmark/`,
   mutation-checked). Times the 9B oracle model on the Pi with whisper (`base.en`) and the 4B scorer loaded but idle,
   against a baseline of the 9B alone, each from an emptied page cache: startup time (cold and restart), total seconds,

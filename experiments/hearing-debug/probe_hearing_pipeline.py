@@ -434,6 +434,13 @@ class Display:
     def stamp(self) -> str:
         return time.strftime("%H:%M:%S")
 
+    @staticmethod
+    def recording_stamp(seconds: float) -> str:
+        """A position in a replayed recording, as +hh:mm:ss. The wall clock means nothing when a recording is
+        replayed faster than real time, so a replay stamps what it hears with where in the recording it was."""
+        whole = int(seconds)
+        return f"+{whole // 3600:02d}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
+
     def sentence(self, number: int, score: Optional[float], source: str, text: str,
                  previous: Optional[float] = None, standing: str = "") -> None:
         was = f"   (was {previous:.2f})" if previous is not None else ""
@@ -585,8 +592,8 @@ class Pipeline:
         segments = self.cutter.cut(final=final)
         took = self.cutter.took
         self._note_whisper_failure()
-        for _, _, text in segments:
-            self._hear(split_whisper(text), f"{len(text.split())} words", "", took)
+        for _, end, text in segments:
+            self._hear(split_whisper(text), f"{len(text.split())} words", "", took, at=end)
         if segments:
             self.quiet_steps = 0
         elif self.args.sounds and self.args.vad and not self.whisper_down:
@@ -644,8 +651,12 @@ class Pipeline:
             self.display.line(f"\n[{self.display.stamp()}] the whisper-server did not answer ({failed}); this audio was not heard")
         self.whisper_down = bool(failed)
 
-    def _hear(self, heard: "WhisperText", size: str, extra: str, took: float) -> None:
-        """Shows what whisper heard, then scores each sentence of it and queues the explanations."""
+    def _hear(self, heard: "WhisperText", size: str, extra: str, took: float, at: Optional[float] = None) -> None:
+        """Shows what whisper heard, then scores each sentence of it and queues the explanations.
+
+        `at` is where in the audio stream the utterance ended, in seconds. A replayed recording (`--wav`) shows it
+        in place of the wall-clock time; live, the wall clock stays.
+        """
         if heard.ambient and heard.ambient != self.last_ambient:
             self.last_ambient = heard.ambient
             self.ambient.extend(heard.ambient)
@@ -656,7 +667,8 @@ class Pipeline:
             return
         self.last_text = text
         label = "lyrics, not speech" if kind == "lyrics" else "speech"
-        self.display.line(f"\n[{self.display.stamp()}] heard {size} ({label}{extra}, whisper {took:.1f} s): \"{text}\"")
+        stamp = self.display.recording_stamp(at) if self.args.wav and at is not None else self.display.stamp()
+        self.display.line(f"\n[{stamp}] heard {size} ({label}{extra}, whisper {took:.1f} s): \"{text}\"")
         for fragment in self.fragmenter.split(text):
             if fragment.level is not FragmentLevel.SENTENCE:
                 continue

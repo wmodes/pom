@@ -46,7 +46,7 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
 - **fence** †: the bar a score must be above to trigger: Q3 + `fence_multiple` x IQR of the window (Tukey's
   fence). Q3 is the score three quarters of the way up the window's scores, Q1 a quarter of the way up, and the
-  IQR (interquartile range) is Q3 minus Q1. `fence_multiple` is 1.0 to begin with.
+  IQR (interquartile range) is Q3 minus Q1. `fence_multiple` is 0.9 to begin with.
 - **trigger** †: the moment a score is above the fence, once the window holds `min_scores` scores and the
   cooldown is over. The score is compared with the fence as it stood before that score was added. Then the Printer
   responds.

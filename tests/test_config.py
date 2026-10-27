@@ -424,7 +424,7 @@ def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
 
 def test_the_trigger_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.trigger == TriggerSettings() and config.trigger.fence_multiple == 1.0 and config.report.ok
+    assert config.trigger == TriggerSettings() and config.trigger.fence_multiple == 0.9 and config.report.ok
 
 
 def test_the_trigger_defaults_match_the_trackers_defaults():
@@ -434,7 +434,7 @@ def test_the_trigger_defaults_match_the_trackers_defaults():
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(1.0, 300.0, 20, 60.0)
+    assert TriggerSettings() == TriggerSettings(0.9, 300.0, 20, 60.0)
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):

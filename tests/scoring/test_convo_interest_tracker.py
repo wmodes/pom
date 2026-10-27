@@ -11,9 +11,10 @@ from pom.scoring.convo_interest_tracker import (DEFAULT_COOLDOWN_SECONDS, DEFAUL
 
 
 def tracker(**options):
-    """A tracker for the tests: five scores make a window (not the default 20) and the window is 60 seconds, to keep
-    the arithmetic short, and there is no cooldown unless a test asks for one. The scores 1 to 5 have Q1 2, Q3 4 and
-    IQR 2, so the bar is 4 + 2 x fence_multiple."""
+    """A tracker for the tests: five scores make a window (not the default 20), the window is 60 seconds and the fence
+    multiple is 1, to keep the arithmetic short and independent of the shipped defaults, and there is no cooldown
+    unless a test asks for one. The scores 1 to 5 have Q1 2, Q3 4 and IQR 2, so the bar is 4 + 2 x fence_multiple."""
+    options.setdefault("fence_multiple", 1.0)
     options.setdefault("min_scores", 5)
     options.setdefault("window_seconds", 60)
     options.setdefault("cooldown_seconds", 0)
@@ -34,7 +35,7 @@ def warmed_up(**options):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_FENCE_MULTIPLE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (1.0, 300.0, 20, 60.0)
+        assert (DEFAULT_FENCE_MULTIPLE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (0.9, 300.0, 20, 60.0)
 
     def test_good_settings_are_quiet(self):
         assert ConvoInterestTracker().report.ok
@@ -50,10 +51,10 @@ class TestTheFence:
     def test_a_multiple_of_zero_puts_the_bar_at_the_upper_quartile(self):
         assert warmed_up(fence_multiple=0).trigger_level_at(5) == pytest.approx(4.0)
 
-    def test_the_default_multiple_is_one(self):
+    def test_the_default_multiple_is_nine_tenths(self):
         t = ConvoInterestTracker(min_scores=5)
         feed(t, [1, 2, 3, 4, 5])
-        assert t.trigger_level_at(5) == pytest.approx(6.0)
+        assert t.trigger_level_at(5) == pytest.approx(5.8)         # 4 + 0.9 x 2
 
     def test_a_score_must_be_above_the_bar_not_just_at_it(self):
         t = warmed_up()
@@ -297,7 +298,7 @@ class TestBadSettings:
         t = tracker(fence_multiple=bad)
         assert len(t.report.warnings) == 1 and "fence_multiple" in t.report.warnings[0]
         feed(t, [1, 2, 3, 4, 5])
-        assert t.trigger_level_at(5) == pytest.approx(6.0)             # the default of 1
+        assert t.trigger_level_at(5) == pytest.approx(5.8)             # the default of 0.9
 
     @pytest.mark.parametrize("bad", [0, -1, "60", None, True, [60], float("nan"), float("inf")])
     def test_a_bad_window_means_the_default_with_a_warning(self, bad):

@@ -298,6 +298,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`fence_multiple` is 0.9** (was 1.0, in the tracker, `Config` and `pom.toml`), chosen with the 60 s cooldown to
+  match the goal of about six portents an hour. Replayed on the four recorded meetings with the shipped settings:
+  29 triggers in 5.1 hours, 5.7 an hour, one every 10.6 minutes (3.4, 5.1, 7.4 and 7.1 an hour by meeting; shortest gap
+  62 s, median 3.3 minutes, longest 29 minutes). At a fifth of the talk the same settings give about 4 an hour. The
+  tracker's tests pin their own fence multiple, so they no longer depend on the shipped default.
 - **The trigger is Tukey's fence over the room's recent scores, and the floor and the running average are gone.**
   `ConvoInterestTracker` keeps the scores of the last `window_seconds` (300), or the last `min_scores` (20) if the room
   is so quiet that fewer were heard in that time, and a score triggers when it is above Q3 + `fence_multiple` (1.0) x

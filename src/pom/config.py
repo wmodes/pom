@@ -24,7 +24,7 @@ of being threaded through by hand. Today there are five:
                scores. `window_seconds` is how many seconds of recent scores the quartiles are drawn from (300, the last
                five minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
                last 20, and nothing triggers until it holds that many), and `fence_multiple` how many interquartile
-               ranges above the upper quartile a score must be to trigger (1.0), and `cooldown_seconds` how long after a
+               ranges above the upper quartile a score must be to trigger (0.9), and `cooldown_seconds` how long after a
                trigger the next may come (60; 0 for none). The entry point builds the
                ConvoInterestTracker from `config.trigger`.
 
@@ -77,7 +77,7 @@ DEFAULT_ORACLE_URL = "http://127.0.0.1:8099/v1/chat/completions"
 DEFAULT_ORACLE_TIMEOUT = 120.0
 DEFAULT_ORACLE_MAX_TOKENS = 300
 DEFAULT_ORACLE_TEMPERATURE = 0.8
-DEFAULT_TRIGGER_FENCE_MULTIPLE = 1.0
+DEFAULT_TRIGGER_FENCE_MULTIPLE = 0.9
 DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
 DEFAULT_TRIGGER_MIN_SCORES = 20
 DEFAULT_TRIGGER_COOLDOWN_SECONDS = 60.0

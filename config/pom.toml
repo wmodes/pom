@@ -118,8 +118,8 @@ Output the score as a single digit | the sentence | what content you found that 
 # How far above the upper quartile (Q3) a score must be to trigger, in IQRs. 0 puts the bar at Q3, so about the top
 # quarter of scores trigger; 1.5 is the textbook outlier line. 0 or more. Replayed on four recorded meetings (about
 # 835 sentences an hour) with no cooldown, 1.0 gave about 7 triggers an hour (one every nine minutes), 0.6 about 33
-# and 1.5 about 1; with the 60 s cooldown below, 1.0 gives about 4 and 0.9 about 6.
-fence_multiple = 1.0
+# and 1.5 about 1; with the 60 s cooldown below, 1.0 gives about 4 and 0.9 about 6 (one every ten or eleven minutes).
+fence_multiple = 0.9
 
 # How many seconds of recent scores the quartiles are drawn from: 300 is the last five minutes. It is a length of
 # time, not a count of scores, so a busy room and a quiet one both get "the last five minutes": 30 scores would be two

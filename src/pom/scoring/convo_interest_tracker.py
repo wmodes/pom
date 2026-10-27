@@ -14,7 +14,7 @@ The rule is Tukey's fence, the standard test for a value that stands out from a 
     scores and Q3 three quarters of the way up. The IQR (interquartile range) is Q3 minus Q1, the width of the
     middle half of the scores.
   * The bar: Q3 + `fence_multiple` x IQR. 0 puts the bar at Q3, so about the top quarter of scores clear it;
-    1.5 is the textbook outlier line, and 1.0 (to begin with) is a bar a lively room reaches rarely.
+    1.5 is the textbook outlier line, and 0.9 (to begin with) is a bar a lively room reaches rarely.
   * The trigger: a score triggers when it is ABOVE the bar, once the window holds `min_scores` scores. The
     score is compared with the bar as it stood BEFORE that score joined the window, so a sentence is judged
     against the room as it was before it was said. A triggering score then joins the window like any other.
@@ -50,7 +50,7 @@ from pom.log_setup import get_logger
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_FENCE_MULTIPLE = 1.0
+DEFAULT_FENCE_MULTIPLE = 0.9
 DEFAULT_WINDOW_SECONDS = 300.0
 DEFAULT_MIN_SCORES = 20
 DEFAULT_COOLDOWN_SECONDS = 60.0

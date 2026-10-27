@@ -434,7 +434,13 @@ def test_the_trigger_defaults_match_the_trackers_defaults():
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(0.05, 0.25, 10.0, 10, 300.0)
+    assert TriggerSettings() == TriggerSettings(0.05, 0.25, 10.0, 10, 300.0, 1.5)
+
+
+def test_the_fence_multiple_is_read_from_the_section_and_zero_is_allowed(tmp_path):
+    for text, wanted in ("1", 1.0), ("0", 0.0), ("2.5", 2.5):
+        config = Config.load(write(tmp_path, f"[trigger]\nfence_multiple = {text}\n"), environ={})
+        assert config.trigger.fence_multiple == wanted and config.report.ok
 
 
 def test_the_window_is_read_from_the_section(tmp_path):
@@ -460,7 +466,8 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("interest_half_life", "false"), ("interest_half_life", "inf"), ("interest_half_life", "nan"),
     ("min_scores", "0"), ("min_scores", "-1"), ("min_scores", "2.5"), ("min_scores", '"5"'), ("min_scores", "true"),
     ("window_seconds", "0"), ("window_seconds", "-1"), ("window_seconds", '"300"'), ("window_seconds", "true"),
-    ("window_seconds", "inf"), ("window_seconds", "nan")])
+    ("window_seconds", "inf"), ("window_seconds", "nan"),
+    ("fence_multiple", "-0.1"), ("fence_multiple", '"1.5"'), ("fence_multiple", "true"), ("fence_multiple", "[1.5]")])
 def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
     assert config.trigger == TriggerSettings()

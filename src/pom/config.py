@@ -26,7 +26,9 @@ of being threaded through by hand. Today there are five:
                average interest to halve (10), `trigger_fraction` how far above that average a score
                must be to trigger (0.25), and `min_scores` how many scores must count first (10). `window_seconds` is how
                many seconds of recent scores the room's level is judged from (300); the ConvoInterestTracker does not
-               use it yet, the offline time-window replay in the hearing experiments reads it. The entry point builds
+               use it yet, the offline time-window replay in the hearing experiments reads it. `fence_multiple` is how many
+               interquartile ranges above the recent scores' upper quartile a score must be to trigger under Tukey's fence
+               (1.5); it is read the same way and is not used by the tracker yet. The entry point builds
                the ConvoInterestTracker from `config.trigger`.
 
 Where values come from, highest priority first:
@@ -66,7 +68,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
          "oracle.temperature", "trigger.floor_ignore_fraction", "trigger.trigger_fraction",
-         "trigger.interest_half_life", "trigger.min_scores", "trigger.window_seconds"}
+         "trigger.interest_half_life", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -83,6 +85,7 @@ DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.25
 DEFAULT_TRIGGER_INTEREST_HALF_LIFE = 10.0
 DEFAULT_TRIGGER_MIN_SCORES = 10
 DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
+DEFAULT_TRIGGER_FENCE_MULTIPLE = 1.5
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -164,12 +167,16 @@ class TriggerSettings:
         window_seconds: How many seconds of recent scores the room's level is judged from, above 0 (300 is
             the last five minutes). Measured in time, not in scores, so it means the same in a busy room
             and a quiet one.
+        fence_multiple: How many interquartile ranges above the upper quartile of the recent scores a score
+            must be to trigger (Tukey's fence), 0 or more. 0 puts the bar at the upper quartile; 1.5 is the
+            textbook outlier line.
     """
     floor_ignore_fraction: float = DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION
     trigger_fraction: float = DEFAULT_TRIGGER_TRIGGER_FRACTION
     interest_half_life: float = DEFAULT_TRIGGER_INTEREST_HALF_LIFE
     min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
     window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
+    fence_multiple: float = DEFAULT_TRIGGER_FENCE_MULTIPLE
 
 
 class Config:
@@ -290,7 +297,9 @@ class Config:
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
                    "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 1, report),
             _positive(values.get("trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS),
-                      "trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS, report))
+                      "trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS, report),
+            _number(values.get("trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE),
+                    "trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE, 0.0, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle)
 
 

@@ -138,6 +138,12 @@ min_scores = 10
 # does not use it yet; the offline time-window replay in the hearing experiments reads it.
 window_seconds = 300
 
+# Tukey's fence: how far above the recent scores' upper quartile (Q3) a score must be to trigger, in
+# interquartile ranges (IQR, the width of the middle half of the scores). The bar is Q3 + fence_multiple x IQR.
+# 0 puts the bar at Q3, so about the top quarter of scores trigger; 1.5 is the textbook outlier line and triggers
+# rarely. 0 or more. The ConvoInterestTracker does not use it yet; the offline time-window replay reads it.
+fence_multiple = 1.5
+
 
 # ================================================
 # ORACLE: the model that writes the portent

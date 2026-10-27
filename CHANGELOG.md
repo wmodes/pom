@@ -9,6 +9,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`[trigger] fence_multiple`** (default 1.5; 5 new tests). For a bar set by Tukey's fence instead of the room's
+  average: how many interquartile ranges above the recent scores' upper quartile (Q3) a score must be to trigger, so
+  the bar is Q3 + `fence_multiple` x IQR. 0 puts it at Q3 (about the top quarter of scores); 1.5 is the textbook outlier
+  line. It takes over the job `trigger_fraction` does for the average-based bar, under a name that says what it is.
+  Read and validated by `Config` (0 or more, else the default with a warning); the ConvoInterestTracker does not use it
+  yet, and `trigger_fraction` and `interest_half_life` are untouched.
 - **`[trigger] window_seconds`** (default 300, the last five minutes; 7 new tests). How many seconds of recent scores
   the room's level is judged from, as a length of time, not a count of scores, so a busy room and a quiet one both get
   the same stretch. Read by `Config` and validated like the other trigger values (a number above 0, else the default

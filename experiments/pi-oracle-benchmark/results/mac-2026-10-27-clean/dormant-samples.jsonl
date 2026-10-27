@@ -1,0 +1,13 @@
+{"t": 1793112203.6, "rss_mb": {"oracle-9b": 5866.34375, "scorer-4b": 3110.6875, "whisper": 327.984375}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112204.7, "rss_mb": {"oracle-9b": 5975.1875, "scorer-4b": 3110.6875, "whisper": 327.640625}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112205.7, "rss_mb": {"oracle-9b": 5975.71875, "scorer-4b": 3110.6875, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112206.7, "rss_mb": {"oracle-9b": 6084.109375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112207.8, "rss_mb": {"oracle-9b": 6192.234375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112208.8, "rss_mb": {"oracle-9b": 6300.46875, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112209.8, "rss_mb": {"oracle-9b": 6409.84375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112210.8, "rss_mb": {"oracle-9b": 6523.859375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112211.8, "rss_mb": {"oracle-9b": 6523.859375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112212.9, "rss_mb": {"oracle-9b": 6635.921875, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112213.9, "rss_mb": {"oracle-9b": 6698.109375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112214.9, "rss_mb": {"oracle-9b": 6698.109375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}
+{"t": 1793112215.9, "rss_mb": {"oracle-9b": 6698.109375, "scorer-4b": 3110.15625, "whisper": 327.46875}, "mem_available_mb": null, "temp_c": null, "throttled": null}

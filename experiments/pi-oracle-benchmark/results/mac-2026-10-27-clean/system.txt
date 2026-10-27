@@ -1,4 +1,4 @@
-run: mac-2026-10-27  (Tue Oct 27 10:37:14 EDT 2026)
+run: mac-2026-10-27-clean  (Tue Oct 27 10:43:19 EDT 2026)
 Darwin MacBook-Pro-471.local 25.6.0 Darwin Kernel Version 25.6.0: Fri Jul 31 19:17:26 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6041 arm64
 threads per llama-server: 4  oracle context: 4096  phases: dormant alone  drop caches: 0
 oracle: /Users/wmodes/.cache/huggingface/hub/models--unsloth--Qwen3.5-9B-GGUF/snapshots/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf

@@ -1,0 +1,25 @@
+Pi oracle benchmark: mac-2026-10-27-clean
+
+Server startup (seconds until it answered /health):
+  dormant  scorer-4b (idle neighbour)      0.5 s
+  dormant  oracle-9b cold start            1.0 s
+  dormant  oracle-9b restart (file in memory)    1.0 s
+  alone    oracle-9b cold start            1.0 s
+  alone    oracle-9b restart (file in memory)    1.0 s
+
+Phase alone  (prompt 2e18faf0034e, corpus 25b0e1dc2cdb, commit a9d1b90)
+  portents made: 12 of 12; cut off at max_tokens: 0
+  total seconds: median 0.9, 95th percentile 2.5, slowest 2.5
+  seconds to first token (median): 0.3
+  prompt tokens (median): 212; writing speed (median): 68.5 tokens/s; words (median): 31
+  memory: peak per server {'oracle-9b': 6701} MB; least free n/a MB
+  hottest n/a C; throttling: n/a
+
+Phase dormant  (prompt 2e18faf0034e, corpus 25b0e1dc2cdb, commit a9d1b90)
+  portents made: 12 of 12; cut off at max_tokens: 0
+  total seconds: median 0.8, 95th percentile 2.4, slowest 2.4
+  seconds to first token (median): 0.3
+  prompt tokens (median): 212; writing speed (median): 68.7 tokens/s; words (median): 28
+  memory: peak per server {'oracle-9b': 6698, 'scorer-4b': 3111, 'whisper': 328} MB; least free n/a MB
+  hottest n/a C; throttling: n/a
+

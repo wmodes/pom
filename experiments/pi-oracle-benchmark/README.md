@@ -66,11 +66,13 @@ frozen prompt and corpus. If they differ, the Pi's checkout is not running the s
 
 ## Limits
 
-- **The Mac reference run** (`results/mac-2026-10-27/`, an M4 Max with 64 GB, all three models on the GPU, page cache
-  not emptied, so its "cold" load times are warm ones) is the no-memory-pressure baseline for the Pi. Both phases gave a
-  median 0.9 s a portent (2.4 s at the 95th percentile), 0.3 to 0.4 s to the first token and about 67 to 68 tokens a
-  second, so idle neighbours cost nothing measurable there. Memory in use at the peak: 6.6 GB for the 9B, 3.1 GB for the
-  4B and 0.26 GB for whisper, about 10 GB together, which is what the Pi's 16 GB has to hold. These are Mac numbers and
-  say nothing about the Pi's speed.
+- **The Mac reference run** (`results/mac-2026-10-27-clean/`, an M4 Max with 64 GB, all three models on the GPU, page
+  cache not emptied, so its "cold" load times are warm ones) is the no-memory-pressure baseline for the Pi. Both phases
+  gave a median of 0.8 to 0.9 s a portent (2.4 to 2.5 s at the 95th percentile), 0.3 s to the first token and about
+  68 to 69 tokens a second, so idle neighbours cost nothing measurable there. Memory in use at the peak: 6.7 GB for the
+  9B, 3.1 GB for the 4B and 0.33 GB for whisper, about 10 GB together, which is what the Pi's 16 GB has to hold. These
+  are Mac numbers and say nothing about the Pi's speed. A first run was thrown away because the playground's 9B was
+  being used on the same GPU (two portents ran at 38 tokens a second instead of 65 to 70); nothing else was running
+  for this one.
 - 12 portents is enough to see the size of the delay, not to separate small differences.
 - The scorer is warmed with one request, not run under load; it is dormant, as in the design.

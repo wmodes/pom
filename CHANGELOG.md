@@ -255,6 +255,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The oracle playground prints the exemplars two to a row** above the portent, each headed by its id and wrapped to
+  its column (`exemplar_columns`), so the exemplars the model was given can be checked at a glance.
 - **The oracle's settings are all in `[oracle]`, and the committed oracle prompt is Wes's.** `exemplars_min` and
   `exemplars_max` moved from the top of `config/pom.toml` into the section (`oracle.exemplars_min` and
   `oracle.exemplars_max`; the old top-level keys are now reported as unknown, and the `POM_EXEMPLARS_MIN`/`MAX`

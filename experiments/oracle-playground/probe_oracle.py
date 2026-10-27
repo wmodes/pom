@@ -30,10 +30,12 @@ import random
 import shutil
 import subprocess
 import sys
+import textwrap
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from itertools import zip_longest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -52,6 +54,25 @@ CONTEXT_SIZE = 4096
 def seed_for(hinge: str) -> int:
     """A seed taken from the hinge. sha256, not hash(): hash() is different in every run."""
     return int(hashlib.sha256(hinge.strip().encode("utf-8")).hexdigest()[:8], 16)
+
+
+def exemplar_columns(chunks, width: int) -> list:
+    """Lays the exemplars out two to a row, side by side, each headed by its id and wrapped to its column."""
+    column = max((width - 3) // 2, 20)
+
+    def cell(chunk) -> list:
+        lines = [chunk.id, "-" * min(len(chunk.id), column)]
+        for line in chunk.text.splitlines():                  # verse keeps its line breaks
+            lines += textwrap.wrap(line, column) or [""]
+        return lines
+
+    rows = []
+    for start in range(0, len(chunks), 2):
+        left = cell(chunks[start])
+        right = cell(chunks[start + 1]) if start + 1 < len(chunks) else []
+        rows += [f"{a:<{column}} | {b}".rstrip() for a, b in zip_longest(left, right, fillvalue="")]
+        rows.append("")
+    return rows
 
 
 def start_server(model: str, url: str) -> subprocess.Popen:
@@ -109,7 +130,7 @@ def main() -> None:
             rng.seed(args.seed if args.seed is not None else seed_for(hinge))
             prompt = builder.build(hinge)
             if prompt is not None:
-                print("exemplars: " + (", ".join(chunk.id for chunk in prompt.exemplars) or "none"))
+                print("\n".join(exemplar_columns(prompt.exemplars, shutil.get_terminal_size().columns)) or "exemplars: none")
                 portent = client.portent(prompt.text)
                 if portent is not None:
                     print(f"\n{portent}\n")

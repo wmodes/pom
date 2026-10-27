@@ -14,7 +14,7 @@ It starts a llama-server for the model on the port in `oracle.url` and stops it 
 
 - **The prompt** is read from the config again before every hinge, so edit it and type the hinge again.
 - **Same hinge, same exemplars.** The random generator is reseeded from a hash of the hinge, so two models
-  given the same hinge see the same exemplars (the ids are printed on the first line). `--seed N` gives other
+  given the same hinge see the same exemplars (they are printed above the portent, two to a row, each headed by its id). `--seed N` gives other
   exemplars for the same hinge.
 - It prints the portent, its length in words, and the time. If the model stopped at `max_tokens`, it says so.
 - Problems the modules recorded (a bad prompt, a server that did not answer) are printed after the portent.

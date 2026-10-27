@@ -1,0 +1,5 @@
+{"phase": "dormant", "what": "scorer-4b (idle neighbour)", "seconds": 4.6}
+{"phase": "dormant", "what": "oracle-9b cold start", "seconds": 4.0}
+{"phase": "dormant", "what": "oracle-9b restart (file in memory)", "seconds": 1.0}
+{"phase": "alone", "what": "oracle-9b cold start", "seconds": 1.0}
+{"phase": "alone", "what": "oracle-9b restart (file in memory)", "seconds": 1.0}

@@ -9,6 +9,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **Pi oracle benchmark** (`experiments/pi-oracle-benchmark/`, 49 tests in `tests/pi_oracle_benchmark/`,
+  mutation-checked). Times the 9B oracle model on the Pi with whisper (`base.en`) and the 4B scorer loaded but idle,
+  against a baseline of the 9B alone, each from an emptied page cache: startup time (cold and restart), total seconds,
+  seconds to the first token, writing speed, and memory, temperature and throttling once a second. It runs the real
+  `PromptBuilder` and `OracleModelClient` on 12 of the bake-off's own hinge-and-seed cells; only the client's `post` is
+  swapped for a streaming one. Counts and timings are kept, never the portents. Run once on the Mac as a reference
+  (median 0.9 s a portent, about 67 tokens a second, about 10 GB in use by the three models, no difference between the
+  two phases; the prompt and corpus fingerprints match the bake-off). Not yet run on the Pi.
 - **Oracle model bake-off** (`experiments/oracle-bakeoff/`, 41 tests in `tests/oracle_bakeoff/`, mutation-checked;
   `documentation/bakeoff-rubric.md` and `documentation/model-bakeoff.md`). Seven 8 to 9B models run through the real
   PromptBuilder and OracleModelClient under Wes's frozen prompt (temperature 0.3, one exemplar): 16 benchmark hinges

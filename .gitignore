@@ -8,6 +8,7 @@ CLAUDE.md
 
 # Recordings of real people and generated audio stay out of the repo
 samples/
+!corpus/samples/
 *.wav
 *.m4a
 *.mp3

@@ -1,0 +1,116 @@
+"""Wes's benchmark sentences for the Scorer: single sentences, some striking and some ordinary, grouped by comments.
+
+A copy of BENCHMARK from experiments/interest-scorer/probe_interest_scorer.py (copied 2026-10-27). The scripts in
+experiments/ still read the probe's list, so a change made here does not reach them.
+"""
+BENCHMARK = [
+    # --- original 34 ---
+    "Even in New York's most introductionless circles, people always introduce.",
+    "A small group of people who are to sit together anywhere.",
+    "Partners at dinner.",
+    "The guests at a house party.",
+    "Everyone at a small dinner or luncheon.",
+    "The four who are at the same bridge table.",
+    "Partners or fellow-players in any game.",
+    "All right what's going on here?",
+    "How are we supposed to experience this year?",
+    "Oh this is cool.",
+    "What if I beat your face in?",
+    "Oh my God, last night the dog ate my couch.",
+    "Well, that's better than the couch eating your dog.",
+    "I heard from friends, that though he's supposedly 'straight,' he gives the best blow job in the world.",
+    "I got off a bus in a random small town in Iowa to get a snack and my dad who haven't seen in 10 years happen to be standing there.",
+    "I found $100 bill in an old Radio I was working on.",
+    "I need to grade all the work my students have turned in.",
+    "I once got fired for having sex with my boss.",
+    "I would put a bullet in the heart of mine enemies.",
+    "Yesterday I was just talking to Neil about this.",
+    "Honestly, if this bullshit keeps up I'm going to be exercising my second amendment rights.",
+    "Have you read her recent book?",
+    "What the fuck?",
+    "I think my car is posessed.",
+    "I found a hundred dollar bill folded inside the dead man's radio, and it was still warm.",
+    "My mother's dog started barking in her voice about a week after the funeral.",
+    "Lightning hit the house in '98 and ever since, the toaster only burns my grandfather's initials.",
+    "I ate the whole wedding cake alone in the dark, crying about the nine thousand dollars.",
+    "I'm fucking pissed about this.",
+    "Did you get that website I texted you about?",
+    "I'm kind of social out and I need to get the fuck out of here.",
+    "I love you",
+    "These self-introductions, however, must never presumingly be made.",
+    "It would be in very bad taste for Alice to introduce herself to Mrs. Worldly if her sister knew her only slightly.",
+
+    # --- new: not interesting (logistics, filler, admin) ---
+    "Can you pass the salt?",
+    "I think it's in the other room.",
+    "We should head out by nine.",
+    "The parking around here is impossible.",
+    "Let me grab my charger.",
+    "I'll text you the address.",
+    "Is there a bathroom on this floor?",
+    "Hang on, my phone's buzzing.",
+    "Could somebody get the light?",
+    "What time is it?",
+    "Did you eat yet?",
+    "She's running about ten minutes late.",
+    "The wifi password's on the fridge.",
+    "We're out of napkins.",
+
+    # --- new: middle (one modest signal, mundane with a spark, flat emotion, mild oddity) ---
+    "There's a stain on the ceiling that looks like a face.",
+    "The cat won't stop staring at the corner.",
+    "I spent forty dollars on a single candle.",
+    "He never called me back.",
+    "I think the neighbors are fighting again.",
+    "The elevator smelled like pennies.",
+    "I can't remember if I locked the door.",
+    "My dad used to whistle the same three notes.",
+    "I found a tooth in the backyard.",
+    "The baby pointed at the empty chair and laughed.",
+    "There's a wasp nest under the back porch.",
+    "I keep smelling smoke but nobody else does.",
+    "The dog's been digging the same hole all week.",
+    "I think I bombed the interview.",
+    "The hallway light flickers when no one's near it.",
+    "My mom saved every birthday card she ever got.",
+    "I haven't spoken to my brother in two years.",
+    "There was a bird loose in the house this morning.",
+    "I lied to my therapist again today.",
+    "The house number across the street changed overnight.",
+    "She wore the same black dress to both funerals.",
+    "My grandmother kept her old teeth in a jar by the sink.",
+    "He left the party without saying goodbye to anyone.",
+    "My sister married a man she met at a funeral.",
+    "The candle went out on its own twice tonight.",
+    "I've started talking to the house when it's empty.",
+    "My father's watch stopped the day he died.",
+    "The dog growls at the top of the stairs every night.",
+    "I ate cereal for dinner three nights running.",
+    "I'm so tired of being the one who always calls.",
+
+    # --- new: probes for the known biases ---
+    "This is such bullshit.",                                             # heat, no content
+    "I swear to God I am going to lose it.",                              # heat/threat, no content
+    "I'm so lonely I could scream.",                                     # universal feeling, no noun
+    "I just feel empty most days.",                                      # flat feeling, no image
+    "One must never present oneself to a lady without a proper introduction.",  # etiquette prose, names-free
+    "Do you think she knew she was dying?",                              # open, charged question
+
+    # --- new: interesting (stacked signals: stakes, secret, death, image) ---
+    "I watched my father die and I felt nothing at all.",
+    "She's pregnant and she still hasn't told him.",
+    "I play his old voicemails when I can't sleep.",
+    "The surgeon left something inside me and nobody noticed for a year.",
+    "My wife doesn't know I lost the house.",
+    "He proposed in the hospital an hour before she died.",
+    "The river gave the body back in October.",
+    "I found my own name in the obituaries this morning.",
+    "We scattered her ashes and the wind blew them back in our faces.",
+    "The baby was born with a full set of teeth.",
+    "I can hear the people in the walls again.",
+    "My brother confessed to the fire on his deathbed.",
+    "I spent our entire savings on a woman I never met in person.",
+    "My mother called me by my dead sister's name until the day she died.",
+    "They buried her with the phone still ringing in the casket.",
+    "I keep a running list of everyone who has ever wronged me.",
+]

@@ -9,6 +9,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`corpus/samples/benchmark-lines.py`**: a copy of Wes's 100 benchmark sentences (`BENCHMARK` in
+  `experiments/interest-scorer/probe_interest_scorer.py`), checked to be identical and in the same order. They are
+  test inputs for the Scorer, not corpus material, so `corpus/samples/` has its own one-line README. The experiments
+  still read the probe's list, so the two copies can drift apart. `.gitignore` gets `!corpus/samples/`, because its
+  `samples/` rule (meant to keep recordings out) matched this folder too; `.wav` and `.m4a` files inside it are still
+  ignored.
 - **`documentation/pom_design_doc.md`**: the technical design notes, rewritten from Wes's first notes to match what is
   built, measured and decided. New or replaced since the first notes: the Scorer (a small local model, one sentence,
   no context, instead of word lists), the Trigger (Tukey's fence over a five-minute window with a 60 s cooldown, instead

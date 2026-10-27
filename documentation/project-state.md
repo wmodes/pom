@@ -12,8 +12,9 @@ hostname `pom1`), that eavesdrops on a room and every so often types a tangentia
 pronouncement. People can also type to it. Fully local: no cloud at run time. Its in-world home is
 the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study CS-0027).
 
-The full design notes are Wes's own document (not in this repo); the decisions that matter are
-summarized below.
+The design notes are in `documentation/pom_design_doc.md` (rewritten 2026-10-27). The decisions that matter are
+summarized below; where this file's older sections (the trigger, the Scorer plan, the two voices) differ from the design
+doc, the design doc is newer.
 
 ## Where things stand
 

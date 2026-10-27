@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`documentation/pom_design_doc.md`**: the technical design notes, rewritten from Wes's first notes to match what is
+  built, measured and decided. New or replaced since the first notes: the Scorer (a small local model, one sentence,
+  no context, instead of word lists), the Trigger (Tukey's fence over a five-minute window with a 60 s cooldown, instead
+  of a moving threshold and a rate governor), whisper-driven cutting and the three-way sort of whisper's output, the
+  oracle model and the bake-off (Qwen3.5-9B leads), half-duplex, the corpus (81 sources, 14 registers, about 72,000
+  chunks), and a status for every stage. It ends with a list of the open questions and a list of what changed.
+  `project-state.md` now points to it.
 - **`[trigger] cooldown_seconds`** (default 60; 0 turns it off; 20 new tests, mutation-checked: 30 of 31 caught, the
   survivor an equivalent mutant). After a trigger, a score above the bar is not marked until `cooldown_seconds` have
   passed since that trigger: it is a new `ScoreEffect.COOLING_DOWN`, still joins the window, and does not restart the

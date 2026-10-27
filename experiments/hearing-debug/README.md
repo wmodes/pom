@@ -73,6 +73,12 @@ the live config (or `config/pom.toml` if there is none) and stops both servers w
 whisper-server), `--no-explain` for **fast mode** (each sentence scored at once by the Printer's
 one-token scorer, no reasons, much lighter on the CPU), `--margin-db 4` if music or noise is masking speech, `--speed 0` to play a recording as fast as possible.
 
+**The known-good setup (Wes, 2026-10-27):** on the Pi, `./probe_hearing_run.sh --no-explain` with nothing else
+changed. That is whisper `base.en` (the script's default, so no `--model`), microphone gain 24 of 30, the default
+whisper threads (4) and voice-detection threshold (0.5), Silero VAD on, cutting by whisper's own segments (a run every
+5 s on a rolling buffer), and the Qwen3-4B scorer. Whisper was ready in about 1 s and the scorer in about 10 s. It
+is the only combination that has worked well in the room, and it is fragile, so change one thing at a time from here.
+
 To try it on the Mac against a recording, start a whisper-server (the header of `probe_hearing_pipeline.py` has
 the command), set `POM_SCORER_URL` to a running llama-server, and use `--wav`.
 

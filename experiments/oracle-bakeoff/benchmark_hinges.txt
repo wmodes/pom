@@ -1,0 +1,22 @@
+# The benchmark hinges: made-up first-person lines, typed by Wes (not overheard from anyone). One per line;
+# lines starting with # are skipped. The runner draws exemplars from the text of each hinge, so changing a
+# hinge changes its draws: treat this file as frozen once a bake-off has started.
+I spent forty dollars on a single candle.
+I found a tooth in the backyard.
+I watched my father die and I felt nothing at all.
+I think my car is posessed.
+The surgeon left something inside me and nobody noticed for a year.
+I can hear the people in the walls again.
+I spent our entire savings on a woman I never met in person.
+I keep a running list of everyone who has ever wronged me.
+# Eight more, picked on 2026-10-26 from the sample sentences in experiments/interest-scorer/probe_interest_scorer.py:
+# a random draw (random.Random(20261026).sample) of 8 from the sentences of its "interesting" and "middle" tiers that
+# were not already above.
+The baby pointed at the empty chair and laughed.
+I haven't spoken to my brother in two years.
+There's a wasp nest under the back porch.
+He proposed in the hospital an hour before she died.
+The dog growls at the top of the stairs every night.
+I can't remember if I locked the door.
+There's a stain on the ceiling that looks like a face.
+We scattered her ashes and the wind blew them back in our faces.

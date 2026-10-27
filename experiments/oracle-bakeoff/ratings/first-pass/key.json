@@ -1,0 +1,962 @@
+{
+ "r001": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r002": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r003": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r004": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r005": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r006": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r007": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r008": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r009": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r010": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r011": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r012": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r013": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r014": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r015": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r016": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r017": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r018": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r019": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r020": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r021": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r022": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r023": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r024": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r025": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r026": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r027": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r028": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r029": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r030": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r031": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r032": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r033": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r034": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r035": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r036": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r037": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r038": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r039": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r040": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r041": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r042": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r043": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r044": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r045": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r046": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r047": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r048": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r049": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r050": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r051": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r052": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r053": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r054": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r055": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r056": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r057": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r058": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r059": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r060": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r061": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r062": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r063": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r064": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r065": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r066": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r067": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r068": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r069": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r070": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r071": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r072": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r073": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r074": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r075": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r076": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r077": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r078": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r079": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r080": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r081": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r082": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r083": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r084": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r085": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r086": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r087": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r088": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r089": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r090": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r091": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r092": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r093": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r094": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r095": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r096": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r097": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r098": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r099": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r100": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r101": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r102": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r103": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r104": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r105": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r106": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r107": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r108": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r109": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r110": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r111": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r112": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r113": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r114": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r115": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r116": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r117": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r118": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r119": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r120": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r121": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r122": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r123": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r124": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r125": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r126": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r127": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r128": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r129": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r130": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r131": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r132": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r133": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r134": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r135": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r136": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r137": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r138": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r139": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r140": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r141": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r142": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r143": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r144": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r145": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r146": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r147": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r148": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r149": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r150": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r151": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r152": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r153": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r154": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r155": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r156": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r157": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r158": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r159": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r160": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r161": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r162": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r163": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r164": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r165": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r166": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r167": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r168": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r169": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r170": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r171": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r172": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r173": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r174": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r175": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r176": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r177": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r178": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r179": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r180": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r181": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r182": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r183": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r184": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r185": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r186": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r187": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r188": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r189": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r190": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r191": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r192": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ }
+}

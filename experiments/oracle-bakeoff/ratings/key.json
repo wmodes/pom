@@ -1,0 +1,5602 @@
+{
+ "r001": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r002": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r003": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r004": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r005": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r006": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r007": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r008": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r009": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r010": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r011": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r012": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r013": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r014": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r015": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r016": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r017": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r018": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r019": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r020": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r021": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r022": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r023": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r024": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r025": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r026": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r027": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r028": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r029": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r030": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r031": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r032": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r033": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r034": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r035": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r036": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r037": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r038": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r039": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r040": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r041": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r042": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r043": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r044": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r045": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r046": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r047": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r048": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r049": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r050": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r051": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r052": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r053": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r054": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r055": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r056": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r057": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r058": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r059": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r060": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r061": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r062": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r063": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r064": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r065": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r066": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r067": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r068": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r069": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r070": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r071": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ },
+ "r072": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r073": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r074": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r075": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r076": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r077": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r078": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r079": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r080": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r081": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r082": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r083": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r084": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r085": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r086": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r087": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r088": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r089": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r090": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r091": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r092": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r093": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r094": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r095": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r096": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r097": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r098": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r099": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r100": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r101": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r102": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r103": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r104": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r105": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r106": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r107": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r108": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r109": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r110": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r111": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r112": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r113": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r114": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r115": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r116": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r117": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r118": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r119": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r120": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r121": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r122": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r123": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r124": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r125": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r126": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r127": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r128": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r129": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r130": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r131": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r132": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r133": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r134": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r135": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r136": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r137": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r138": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r139": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r140": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r141": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r142": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r143": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r144": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r145": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r146": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r147": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r148": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r149": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r150": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ },
+ "r151": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r152": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r153": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r154": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r155": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r156": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r157": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r158": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r159": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r160": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r161": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r162": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r163": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r164": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r165": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r166": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r167": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r168": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r169": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r170": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r171": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r172": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r173": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r174": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r175": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r176": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r177": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r178": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r179": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r180": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r181": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r182": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r183": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r184": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r185": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r186": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r187": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r188": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r189": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r190": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r191": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r192": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r193": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r194": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r195": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r196": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r197": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r198": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r199": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r200": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r201": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r202": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r203": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r204": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r205": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r206": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r207": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r208": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r209": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r210": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r211": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r212": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r213": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r214": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r215": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r216": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r217": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r218": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r219": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r220": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r221": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r222": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r223": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r224": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r225": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r226": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r227": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r228": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r229": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r230": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r231": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r232": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r233": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r234": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r235": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r236": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r237": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r238": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r239": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r240": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r241": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r242": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r243": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r244": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r245": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r246": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r247": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r248": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r249": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r250": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r251": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r252": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r253": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r254": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r255": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r256": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r257": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r258": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r259": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r260": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r261": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r262": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r263": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r264": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r265": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r266": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r267": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r268": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r269": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r270": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r271": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r272": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r273": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r274": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r275": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r276": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r277": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r278": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r279": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r280": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r281": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r282": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r283": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r284": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r285": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r286": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r287": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r288": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r289": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r290": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r291": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r292": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r293": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r294": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r295": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r296": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r297": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r298": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r299": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r300": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r301": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r302": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r303": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r304": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r305": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r306": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r307": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r308": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r309": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r310": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r311": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r312": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r313": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r314": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r315": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r316": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r317": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r318": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r319": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r320": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r321": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r322": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r323": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r324": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r325": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r326": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r327": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r328": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r329": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r330": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r331": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r332": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r333": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ },
+ "r334": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r335": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r336": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r337": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r338": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r339": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r340": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r341": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r342": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r343": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r344": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r345": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r346": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r347": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r348": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r349": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r350": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r351": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r352": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r353": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r354": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r355": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r356": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r357": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r358": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r359": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r360": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r361": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r362": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r363": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r364": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r365": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r366": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r367": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r368": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r369": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r370": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r371": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r372": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r373": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r374": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r375": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r376": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r377": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r378": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r379": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r380": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r381": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r382": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r383": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r384": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r385": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r386": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r387": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r388": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r389": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r390": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r391": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r392": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r393": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r394": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r395": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r396": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r397": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r398": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r399": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r400": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r401": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r402": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r403": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r404": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r405": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r406": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r407": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r408": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r409": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r410": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r411": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r412": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r413": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r414": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r415": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r416": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r417": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r418": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r419": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r420": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r421": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r422": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r423": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r424": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r425": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r426": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r427": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r428": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r429": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r430": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r431": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r432": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r433": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r434": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r435": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r436": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r437": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r438": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r439": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r440": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r441": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r442": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r443": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r444": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r445": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r446": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r447": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r448": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r449": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ },
+ "r450": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r451": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r452": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r453": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r454": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r455": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r456": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r457": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 5
+ },
+ "r458": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r459": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r460": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r461": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r462": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r463": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r464": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r465": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r466": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r467": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r468": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r469": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r470": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r471": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r472": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r473": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r474": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r475": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r476": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r477": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r478": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r479": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r480": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r481": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r482": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r483": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r484": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r485": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r486": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r487": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r488": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r489": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r490": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r491": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r492": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r493": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r494": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r495": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r496": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r497": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r498": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r499": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r500": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r501": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r502": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r503": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r504": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r505": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r506": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r507": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r508": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r509": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r510": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r511": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r512": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r513": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r514": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r515": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r516": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r517": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r518": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r519": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r520": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r521": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r522": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r523": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 5
+ },
+ "r524": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r525": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r526": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r527": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r528": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r529": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r530": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 7
+ },
+ "r531": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r532": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 10
+ },
+ "r533": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r534": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r535": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r536": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 10
+ },
+ "r537": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r538": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r539": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r540": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r541": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r542": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r543": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r544": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r545": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r546": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r547": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r548": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r549": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r550": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r551": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r552": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r553": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r554": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r555": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r556": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r557": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r558": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r559": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r560": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r561": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r562": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r563": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r564": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r565": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r566": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r567": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r568": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r569": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r570": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r571": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r572": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r573": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r574": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r575": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r576": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r577": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r578": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r579": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r580": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r581": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r582": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r583": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 3
+ },
+ "r584": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r585": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r586": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r587": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r588": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r589": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r590": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r591": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r592": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r593": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r594": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r595": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r596": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r597": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r598": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r599": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r600": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r601": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r602": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r603": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r604": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r605": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r606": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r607": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r608": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r609": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r610": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r611": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r612": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r613": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r614": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r615": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r616": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r617": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r618": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r619": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r620": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r621": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r622": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 2
+ },
+ "r623": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r624": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r625": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r626": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r627": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r628": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r629": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r630": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r631": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r632": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r633": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r634": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r635": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r636": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r637": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r638": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r639": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r640": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r641": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r642": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r643": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r644": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r645": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r646": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r647": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r648": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r649": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r650": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r651": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r652": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r653": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r654": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r655": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r656": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r657": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r658": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r659": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r660": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r661": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r662": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r663": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r664": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r665": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r666": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r667": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r668": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r669": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r670": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r671": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r672": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r673": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r674": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r675": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r676": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r677": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r678": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r679": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r680": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r681": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 3
+ },
+ "r682": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r683": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r684": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r685": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r686": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r687": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r688": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r689": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r690": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r691": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r692": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r693": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r694": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r695": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r696": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r697": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r698": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r699": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r700": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r701": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r702": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r703": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r704": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r705": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r706": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r707": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 10
+ },
+ "r708": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r709": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r710": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r711": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r712": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r713": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r714": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r715": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r716": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r717": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r718": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r719": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r720": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r721": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r722": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r723": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r724": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r725": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r726": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r727": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r728": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r729": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r730": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r731": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r732": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r733": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r734": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r735": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r736": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r737": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r738": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r739": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r740": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r741": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r742": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r743": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r744": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r745": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r746": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r747": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r748": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r749": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r750": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r751": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r752": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r753": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r754": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r755": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r756": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r757": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r758": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 3
+ },
+ "r759": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r760": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r761": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r762": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r763": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 7
+ },
+ "r764": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r765": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r766": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r767": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r768": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r769": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r770": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r771": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r772": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r773": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r774": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r775": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r776": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r777": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r778": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 8
+ },
+ "r779": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r780": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r781": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r782": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r783": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r784": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r785": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r786": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 9
+ },
+ "r787": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r788": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r789": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 10
+ },
+ "r790": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r791": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r792": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r793": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r794": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r795": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 8
+ },
+ "r796": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r797": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r798": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 2
+ },
+ "r799": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r800": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r801": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r802": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r803": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r804": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 1
+ },
+ "r805": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r806": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r807": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r808": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r809": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r810": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r811": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r812": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r813": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r814": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r815": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 1
+ },
+ "r816": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r817": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r818": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r819": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r820": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r821": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r822": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r823": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r824": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r825": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r826": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r827": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r828": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 4
+ },
+ "r829": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 7
+ },
+ "r830": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r831": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r832": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 1
+ },
+ "r833": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r834": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ },
+ "r835": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 5
+ },
+ "r836": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r837": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r838": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r839": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 5
+ },
+ "r840": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r841": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r842": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r843": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 5
+ },
+ "r844": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 3
+ },
+ "r845": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r846": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r847": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r848": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r849": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 1
+ },
+ "r850": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 5
+ },
+ "r851": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 3
+ },
+ "r852": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r853": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r854": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r855": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r856": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r857": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r858": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r859": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r860": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r861": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 9
+ },
+ "r862": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r863": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r864": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r865": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 6
+ },
+ "r866": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r867": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r868": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 8
+ },
+ "r869": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r870": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r871": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r872": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r873": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r874": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r875": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r876": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 9
+ },
+ "r877": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r878": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 6
+ },
+ "r879": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r880": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 2
+ },
+ "r881": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r882": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 3
+ },
+ "r883": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 7
+ },
+ "r884": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 2
+ },
+ "r885": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r886": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 1
+ },
+ "r887": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r888": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r889": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r890": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r891": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 5
+ },
+ "r892": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r893": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r894": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r895": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r896": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r897": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r898": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r899": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r900": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r901": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r902": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r903": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r904": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r905": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r906": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r907": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r908": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r909": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 6
+ },
+ "r910": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r911": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r912": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r913": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r914": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r915": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r916": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r917": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r918": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r919": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r920": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r921": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r922": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r923": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r924": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r925": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 9
+ },
+ "r926": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 10
+ },
+ "r927": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 10
+ },
+ "r928": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ },
+ "r929": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 10
+ },
+ "r930": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 8
+ },
+ "r931": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r932": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r933": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r934": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r935": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r936": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r937": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r938": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 4
+ },
+ "r939": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r940": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 10
+ },
+ "r941": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r942": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 2
+ },
+ "r943": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r944": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 6
+ },
+ "r945": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r946": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r947": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 8
+ },
+ "r948": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r949": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 5
+ },
+ "r950": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r951": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r952": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 2
+ },
+ "r953": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 4
+ },
+ "r954": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r955": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r956": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 2
+ },
+ "r957": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r958": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r959": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 1
+ },
+ "r960": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 4
+ },
+ "r961": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r962": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r963": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r964": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 7
+ },
+ "r965": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 9
+ },
+ "r966": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 7
+ },
+ "r967": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 5
+ },
+ "r968": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r969": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r970": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 1
+ },
+ "r971": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 7
+ },
+ "r972": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r973": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r974": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 2
+ },
+ "r975": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 8
+ },
+ "r976": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r977": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 2
+ },
+ "r978": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 4
+ },
+ "r979": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r980": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 4
+ },
+ "r981": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r982": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r983": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 1
+ },
+ "r984": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 6
+ },
+ "r985": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 1
+ },
+ "r986": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r987": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 7
+ },
+ "r988": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 3
+ },
+ "r989": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r990": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 2
+ },
+ "r991": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r992": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 6
+ },
+ "r993": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 10
+ },
+ "r994": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r995": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r996": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r997": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r998": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r999": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r1000": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 5
+ },
+ "r1001": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 1
+ },
+ "r1002": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r1003": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 7
+ },
+ "r1004": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 9
+ },
+ "r1005": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r1006": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 6
+ },
+ "r1007": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 3
+ },
+ "r1008": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 4
+ },
+ "r1009": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r1010": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r1011": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 3
+ },
+ "r1012": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 8
+ },
+ "r1013": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r1014": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 1
+ },
+ "r1015": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 9
+ },
+ "r1016": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r1017": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 9
+ },
+ "r1018": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r1019": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 8
+ },
+ "r1020": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r1021": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r1022": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 2
+ },
+ "r1023": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 3
+ },
+ "r1024": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r1025": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 5
+ },
+ "r1026": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r1027": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 3
+ },
+ "r1028": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r1029": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 3
+ },
+ "r1030": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r1031": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r1032": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r1033": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 2
+ },
+ "r1034": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 7
+ },
+ "r1035": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 1
+ },
+ "r1036": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 6
+ },
+ "r1037": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 3
+ },
+ "r1038": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r1039": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r1040": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 4
+ },
+ "r1041": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 7
+ },
+ "r1042": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r1043": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r1044": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 10
+ },
+ "r1045": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 1
+ },
+ "r1046": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 3
+ },
+ "r1047": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 4
+ },
+ "r1048": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r1049": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 1
+ },
+ "r1050": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 6
+ },
+ "r1051": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r1052": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r1053": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 10
+ },
+ "r1054": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 8
+ },
+ "r1055": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r1056": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r1057": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 9
+ },
+ "r1058": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r1059": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r1060": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 10
+ },
+ "r1061": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r1062": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 8
+ },
+ "r1063": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r1064": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 4
+ },
+ "r1065": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 8
+ },
+ "r1066": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 4
+ },
+ "r1067": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 9
+ },
+ "r1068": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 4
+ },
+ "r1069": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r1070": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r1071": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 9
+ },
+ "r1072": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r1073": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 2
+ },
+ "r1074": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r1075": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "I found a tooth in the backyard.",
+  "draw": 8
+ },
+ "r1076": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 9
+ },
+ "r1077": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 5
+ },
+ "r1078": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 10
+ },
+ "r1079": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 6
+ },
+ "r1080": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 3
+ },
+ "r1081": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r1082": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r1083": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r1084": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 4
+ },
+ "r1085": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 2
+ },
+ "r1086": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 4
+ },
+ "r1087": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "I keep a running list of everyone who has ever wronged me.",
+  "draw": 9
+ },
+ "r1088": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 9
+ },
+ "r1089": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r1090": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 7
+ },
+ "r1091": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I watched my father die and I felt nothing at all.",
+  "draw": 6
+ },
+ "r1092": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 1
+ },
+ "r1093": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 3
+ },
+ "r1094": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 10
+ },
+ "r1095": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 7
+ },
+ "r1096": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 5
+ },
+ "r1097": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 7
+ },
+ "r1098": {
+  "label": "Ministral-8B-Instruct-2410-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 8
+ },
+ "r1099": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 5
+ },
+ "r1100": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "The surgeon left something inside me and nobody noticed for a year.",
+  "draw": 6
+ },
+ "r1101": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The dog growls at the top of the stairs every night.",
+  "draw": 6
+ },
+ "r1102": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 10
+ },
+ "r1103": {
+  "label": "gemma-2-9b-it-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 2
+ },
+ "r1104": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I spent forty dollars on a single candle.",
+  "draw": 10
+ },
+ "r1105": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I haven't spoken to my brother in two years.",
+  "draw": 4
+ },
+ "r1106": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 6
+ },
+ "r1107": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "We scattered her ashes and the wind blew them back in our faces.",
+  "draw": 8
+ },
+ "r1108": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 4
+ },
+ "r1109": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can hear the people in the walls again.",
+  "draw": 5
+ },
+ "r1110": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 6
+ },
+ "r1111": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "He proposed in the hospital an hour before she died.",
+  "draw": 7
+ },
+ "r1112": {
+  "label": "Llama-3.1-8B-Instruct-GGUF_Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 6
+ },
+ "r1113": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 5
+ },
+ "r1114": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I think my car is posessed.",
+  "draw": 8
+ },
+ "r1115": {
+  "label": "Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 8
+ },
+ "r1116": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "There's a wasp nest under the back porch.",
+  "draw": 9
+ },
+ "r1117": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "The baby pointed at the empty chair and laughed.",
+  "draw": 2
+ },
+ "r1118": {
+  "label": "Llama-3.1-8B-Stheno-v3.4-GGUF_Q4_K_M",
+  "hinge": "There's a stain on the ceiling that looks like a face.",
+  "draw": 1
+ },
+ "r1119": {
+  "label": "Qwen3-8B-Q4_K_M",
+  "hinge": "I can't remember if I locked the door.",
+  "draw": 7
+ },
+ "r1120": {
+  "label": "Qwen3.5-9B-GGUF_Q4_K_M",
+  "hinge": "I spent our entire savings on a woman I never met in person.",
+  "draw": 9
+ }
+}

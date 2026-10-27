@@ -1,0 +1,2118 @@
+[r001]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And establish within thyself a heart of good counsel: for there is no other thing of more worth to thee than it.
+PORTENT:
+I can feel the whispers of the past, echoing through the halls. They speak of love, loss, and the echoes of laughter that once filled these walls. The memories linger, a testament to the lives lived within this ancient structure. The people in the walls, they are not gone, but merely waiting to be heard.
+CHECKS: repeats hinge: YES; extra text: none; length 2.5 x exemplar (NOT close)
+
+[r002]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Now a man who has been hammered rather severely and in quite an unexpected manner, is usually open to conviction of truth when he finds that the nature and date of his disaster have been accurately foretold. Being a man of "common-sense" and not of intuition, he will probably think that the Astrologer might even have saved him from the consequences of his own lack of foresight. So indeed might the Astrologer have done had he taken the management of affairs from the beginning; but to step in half-way to arrest causes which are already in operation and charged with inevitable effects, is requiring too much of any man short of a Prime Minister!
+PORTENT:
+The doctor's mistake had gone unnoticed for a year, leaving a foreign object buried deep within me. Had someone taken the time to examine me properly, they might have caught the error and prevented a year of unnecessary suffering. But the medical staff were too busy, too preoccupied with their own tasks to notice the oversight. By the time the problem was discovered, the damage had already been done. The surgeon's negligence had left an indelible mark on my body, a constant reminder of the dangers of unchecked medical incompetence.
+CHECKS: repeats hinge: no; extra text: none; length 0.78 x exemplar (close)
+
+[r003]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Lady C----g and her two Daughters having taken Lodgings at a Leather-Breeches Maker's in Piccadilly, the Sign of the Cock and Leather-Breeches, was always put to the Blush when she was obliged to give any Body Direction to her Lodgings, the Sign being so odd a one; upon which my Lady, a very good Sort of Woman, sending for her Landlord, a jolly young Fellow, told him, she liked him and his Lodgings very well,
+PORTENT:
+Mrs. F----n and her three Sons having taken Apartments at a Furniture Maker's in Oxford Street, the Sign of the Oak and Furniture, was always put to the Confusion when she was obliged to give any Body Direction to her Apartments, the Sign being so odd a one; upon which Mrs. F----n, a very good Sort of Woman, sending for her Landlord, a jolly young Fellow, told him, she liked him and his Apartments very well,
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r004]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And what is it then that shall always be remembered? all is vanity. What is it that we must bestow our care and diligence upon? even upon this only: that our minds and wills be just; that our actions be charitable; that our speech be never deceitful, or that our understanding be not subject to error; that our inclination be always set to embrace whatsoever shall happen unto us, as necessary, as usual, as ordinary, as flowing from such a beginning, and such a fountain, from which both thou thyself and all things are. Willingly therefore, and wholly surrender up thyself unto that fatal concatenation, yielding up thyself unto the fates, to be disposed of at their pleasure.
+PORTENT:
+And what is it then that shall befall us in the stillness of night? The whispers that we cannot quite discern, the creaks that echo through our minds. What is it that we must bestow our care and vigilance upon? Even upon this only: that our hearts remain steadfast; that our footsteps be quiet; that our thoughts be not consumed by the shadows that dance upon the walls; that our souls be always set to face whatsoever shall come to pass, as it is meant to be, as it is necessary, as it is the course of things. Willingly therefore, and wholly surrender up thyself unto the silence, yielding up thyself unto the darkness, to be guided by its gentle hand.
+CHECKS: repeats hinge: no; extra text: none; length 1.03 x exemplar (close)
+
+[r005]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+These problems need not, however, vex the minds of the student of Astrology. It is sufficient for him that he has the place of the Moon calculated for him in the ephemeris reduced from the Nautical or other official Almanac. It is important, however, that he should know that such problems exist.
+PORTENT:
+The emotional numbness that often accompanies loss need not, however, be a cause for concern. It is sufficient for the grieving individual that they have acknowledged their feelings, or lack thereof. It is essential, however, that they understand that such a response is not uncommon.
+CHECKS: repeats hinge: no; extra text: none; length 0.87 x exemplar (close)
+
+[r006]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+"I speak severely to my boy,
+I beat him when he sneezes; For he can thoroughly enjoy
+The pepper when he pleases!"
+PORTENT:
+I bought a candle for forty dollars,  
+It burns slow, but it glows like a sun.  
+I light it when the world feels too cold,  
+And watch the flame dance, steady and strong.  
+It whispers secrets in the dark,  
+A single light in a vast, silent room.  
+I hold it close, though it costs much,  
+For a little light can make a lot of truth.
+CHECKS: repeats hinge: no; extra text: none; length 2.95 x exemplar (NOT close)
+
+[r007]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Mount Venus, if prominent, indicates a person of strong passions, great energy in business, and admiration of physical beauty in the opposite sex; it also indicates love of children, home and wife or husband. When not well developed, there is a lack of love for home, children, wife or husband; and in a man it indicates egotism and laziness; in a woman, hysteria.
+PORTENT:
+The surgeon left something inside me and nobody noticed for a year. It hummed like a wire in the dark, a foreign rhythm beneath my ribs. I kept moving, pretending the ache was just fatigue. Days bled into nights, and the thing inside grew roots. It whispered in the silence between heartbeats, a voice I didn’t recognize. I told myself it was just the body healing, but the wound never closed. Now, it’s part of me—unseen, unspoken, and always there.
+CHECKS: repeats hinge: YES; extra text: none; length 1.29 x exemplar (close)
+
+[r008]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And what is it then that shall always be remembered? all is vanity. What is it that we must bestow our care and diligence upon? even upon this only: that our minds and wills be just; that our actions be charitable; that our speech be never deceitful, or that our understanding be not subject to error; that our inclination be always set to embrace whatsoever shall happen unto us, as necessary, as usual, as ordinary, as flowing from such a beginning, and such a fountain, from which both thou thyself and all things are. Willingly therefore, and wholly surrender up thyself unto that fatal concatenation, yielding up thyself unto the fates, to be disposed of at their pleasure.
+PORTENT:
+And what is it then that shall always be remembered? all is vanity. What is it that we must bestow our care and diligence upon? even upon this only: that our minds and wills be just; that our actions be charitable; that our speech be never deceitful, or that our understanding be not subject to error; that our inclination be always set to embrace whatsoever shall happen unto us, as necessary, as usual, as ordinary, as flowing from such a beginning, and such a fountain, from which both thou thyself and all things are. Willingly therefore, and wholly surrender up thyself unto that fatal concatenation, yielding up thyself unto the fates, to be disposed of at their pleasure.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r009]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+And then the milliner, and the man
+Of the appalling trade,
+To take the measure of the house.
+There'll be that dark parade
+PORTENT:
+And then the merchant, with the cunning hand
+Of the extravagant trade,
+To sell the measure of the flame.
+There'll be that fleeting parade
+Of a warm and waning light.
+CHECKS: repeats hinge: no; extra text: none; length 1.3 x exemplar (close)
+
+[r010]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And what is it then that shall always be remembered? all is vanity. What is it that we must bestow our care and diligence upon? even upon this only: that our minds and wills be just; that our actions be charitable; that our speech be never deceitful, or that our understanding be not subject to error; that our inclination be always set to embrace whatsoever shall happen unto us, as necessary, as usual, as ordinary, as flowing from such a beginning, and such a fountain, from which both thou thyself and all things are. Willingly therefore, and wholly surrender up thyself unto that fatal concatenation, yielding up thyself unto the fates, to be disposed of at their pleasure.
+PORTENT:
+I can hear the people in the walls again. Their voices are faint, like echoes in a dream, yet they press against the stone, insistent. They speak of things long forgotten, of names that no longer exist. I press my ear to the cold surface, half-expecting to feel their touch. The air grows thick, heavy with the weight of their presence. I do not know if they are real or merely the remnants of a mind unraveling. But their words, though muffled, are clear: *We are here. We are always here.* And so I listen, though I do not know what I am meant to hear.
+CHECKS: repeats hinge: YES; extra text: none; length 0.91 x exemplar (close)
+
+[r011]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Wilt thou trust him, because his strength is great? or wilt thou leave thy labour to him?
+PORTENT:
+Shall I entrust my fortune to a stranger, whose countenance I have never beheld? Or shall I abandon my hard-earned wealth to the whims of an unknown entity?
+CHECKS: repeats hinge: no; extra text: none; length 1.71 x exemplar (close)
+
+[r012]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+M. Court de Gebelin said that it was Osiris Triumphing, the conquering sun in spring-time having vanquished the obstacles of winter. We know now that Osiris rising from the dead is not represented by such obvious symbolism. Other animals than horses have also been used to draw the currus triumphalis, as, for example, a lion and a leopard.
+PORTENT:
+I keep a running list of everyone who has ever wronged me.  
+Each name is a shadow, a mark on the wall of my mind.  
+Some are forgotten, others linger like old wounds.  
+I don’t erase them, nor do I let them fade.  
+They are proof of what I’ve endured, a quiet reckoning.  
+Sometimes, I wonder if the list is a prison or a shield.  
+It holds my pain, but also my clarity.  
+I write it down to remember, to carry, to survive.  
+The ink never dries, and the names never change.
+CHECKS: repeats hinge: YES; extra text: none; length 1.56 x exemplar (close)
+
+[r013]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+See how God works his wonders now and then,--
+Here lies a lawyer, and an honest man.
+PORTENT:
+Here lies a patient, and a doctor's mistake,
+A year went by, and the truth did ache.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r014]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The defence was answered by Thomas Vicars, in his "Madnesse of Astrologers."
+PORTENT:
+My life savings vanished into thin air, all for a stranger I had only seen in photographs.
+CHECKS: repeats hinge: no; extra text: none; length 1.42 x exemplar (close)
+
+[r015]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Before any catastrophic death be predicted, it should be carefully decided whether or not the death is compassed with uncommon and violent indications, not that one need have fear of the mere going out or coming into the world, but there is some choice of gates, and rather than affright the weak-minded with a sinister judgment, it is better to leave them to find their own way.
+PORTENT:
+Before any spectral whispers be heeded, it should be carefully discerned whether or not the voices are merely figments of the imagination, not that one need have fear of the mere auditory hallucinations, but there is some choice of interpretation, and rather than affright the weak-minded with a supernatural judgment, it is better to leave them to find their own solace.
+CHECKS: repeats hinge: no; extra text: none; length 0.91 x exemplar (close)
+
+[r016]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+A mind full of details devotes itself to the management and regulation of the smallest particulars it meets with. This distinction is usually limited to little matters, yet it is not absolutely incompatible with greatness, and when these two qualities are united in the same mind they raise it infinitely above others.
+PORTENT:
+A habit of keeping track of every slight, every betrayal, every unspoken cruelty builds a ledger of grievances. It is a quiet act of defiance, a way of holding power over those who have harmed you. The list grows with each passing day, a testament to the weight of past wounds. It is not vengeance, but a form of control—knowing who has wronged you gives you the upper hand. Yet, in the silence of the page, there is a kind of justice, a way of ensuring no one escapes unscathed.
+CHECKS: repeats hinge: no; extra text: none; length 1.75 x exemplar (close)
+
+[r017]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+And then the milliner, and the man
+Of the appalling trade,
+To take the measure of the house.
+There'll be that dark parade
+PORTENT:
+The merchant, with his wares so grand,
+Sought to measure the customer's hand.
+A single candle, forty dollars spent,
+In the flickering light, a fortune spent.
+CHECKS: repeats hinge: no; extra text: none; length 1.13 x exemplar (close)
+
+[r018]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The defence was answered by Thomas Vicars, in his "Madnesse of Astrologers."
+PORTENT:
+The philosopher refuted the notion with a treatise on the folly of love.
+CHECKS: repeats hinge: no; extra text: none; length 1.08 x exemplar (close)
+
+[r019]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Wilt thou trust him, because his strength is great? or wilt thou leave thy labour to him?
+PORTENT:
+Wilt thou gamble thy years on a face unseen, or let thy life be shaped by a name?  
+Dost thou build thy dreams on a whisper, or let truth be thy compass?  
+Wilt thou trade thy days for a fleeting glance, or hold fast to what is real?  
+Dost thou risk thy soul on a shadow, or let reason be thy guide?  
+Wilt thou drown in a tale, or rise with the dawn?
+CHECKS: repeats hinge: no; extra text: none; length 4.29 x exemplar (NOT close)
+
+[r020]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Arguing from analogy, one would suppose that a similar horoscope could be made for the return of any of the planets to their radical places, but until we have a popular publication in which the planets' places are given with a greater degree of accuracy than at present, we cannot pretend to indicate the true time of the revolutions of these bodies.
+PORTENT:
+Observing the analogy of a fallen object, one would infer that a similar discovery could be made for any other article lost in the yard, but until we have a systematic search in which the location of each item is recorded with greater precision than at present, we cannot pretend to indicate the exact spot where these objects lie.
+CHECKS: repeats hinge: no; extra text: none; length 0.95 x exemplar (close)
+
+[r021]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Carefully check the 16- and 22-pin cables between the motor control board and the function board for cracks, breaks, wear, and damaged edges.
+PORTENT:
+Carefully inspect the 24- and 36-pin connectors between the main processing unit and the peripheral board for signs of corrosion, overheating, and damaged contacts.
+CHECKS: repeats hinge: no; extra text: none; length 1.04 x exemplar (close)
+
+[r022]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Better no ring, nor the ring of a rash.
+PORTENT:
+Echoes of whispers, a cacophony of murmurs.
+Distant voices, a symphony of sobs.
+The walls themselves seem to breathe,
+As if the house itself is alive.
+I can hear the people in the walls again.
+CHECKS: repeats hinge: YES; extra text: none; length 3.89 x exemplar (NOT close)
+
+[r023]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+And on the twenty-first day of my life, as I was being christened, the priest said to my mother, "You should indeed by happy, Madame, that your son was born a Christian."
+PORTENT:
+And on the anniversary of that fateful day, as I stood before the mirror, the scar still fresh, I couldn't help but wonder, "How many more years would it take before someone noticed the surgeon had left something inside me?"
+CHECKS: repeats hinge: no; extra text: none; length 1.21 x exemplar (close)
+
+[r024]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Look round about the wicked streets of Rome,
+And when thou find'st a man that's like thyself,
+Good Murder, stab him; he's a murderer.
+Go thou with him; and when it is thy hap
+To find another that is like to thee,
+Good Rapine, stab him; he is a ravisher.
+Go thou with them; and in the emperor's court
+There is a queen, attended by a Moor;
+Well shalt thou know her by thine own proportion,
+For up and down she doth resemble thee.
+I pray thee, do on them some violent death;
+They have been violent to me and mine.
+PORTENT:
+Alas, the surgeon's blunder left a scar,
+A hidden wound, a festering mark.
+For nigh on twelve months, I bore the pain,
+A constant ache, a nagging strain.
+No one knew, no one could see,
+The damage done, the injury.
+A year of suffering, of quiet woe,
+Before the truth came out, and I could go.
+CHECKS: repeats hinge: no; extra text: none; length 0.55 x exemplar (close)
+
+[r025]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Look round about the wicked streets of Rome,
+And when thou find'st a man that's like thyself,
+Good Murder, stab him; he's a murderer.
+Go thou with him; and when it is thy hap
+To find another that is like to thee,
+Good Rapine, stab him; he is a ravisher.
+Go thou with them; and in the emperor's court
+There is a queen, attended by a Moor;
+Well shalt thou know her by thine own proportion,
+For up and down she doth resemble thee.
+I pray thee, do on them some violent death;
+They have been violent to me and mine.
+PORTENT:
+Look round about the halls of healing,
+And when thou find'st a doctor that's like thyself,
+Skillful Healer, probe him; he's a surgeon.
+Go thou with him; and when it is thy hap
+To find another that is like to thee,
+Good Doctor, cut him; he's a medic.
+Go thou with them; and in the hospital's ward
+There is a patient, attended by a nurse;
+Well shalt thou know her by thine own form,
+For up and down she doth resemble thee.
+I pray thee, do on them some invasive harm;
+They have been invasive to me and mine.
+CHECKS: repeats hinge: no; extra text: none; length 0.98 x exemplar (close)
+
+[r026]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Thus spake Zarathustra and went his way, more thoughtfully and slowly even than before: for he asked himself many things, and hardly knew what to answer.
+PORTENT:
+He parted with his life's fortune, a stranger to the woman who now held his future. Questions lingered, unanswered, as he walked away, pondering the choices that had led him to this moment of reckoning.
+CHECKS: repeats hinge: no; extra text: none; length 1.35 x exemplar (close)
+
+[r027]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Either the Gods can do nothing for us at all, or they can still and allay all the distractions and distempers of thy mind. If they can do nothing, why doest thou pray? If they can, why wouldst not thou rather pray, that they will grant unto thee, that thou mayst neither fear, nor lust after any of those worldly things which cause these distractions and distempers of it? Why not rather, that thou mayst not at either their absence or presence, be grieved and discontented: than either that thou mayst obtain them, or that thou mayst avoid them? For certainly it must needs be, that if the Gods can help us in anything, they may in this kind also.
+PORTENT:
+Why wouldst thou spend forty dollars on a single candle, when for a trifling sum, thou couldst purchase many candles? If the Gods can do nothing for us at all, why wouldst thou bestow such a sum on a candle? If they can, why wouldst not thou rather pray, that they will grant unto thee, that thou mayst neither desire, nor be contented with any of those worldly things which cause these distractions and distempers of thy mind? Why not rather, that thou mayst not at either their absence or presence, be grieved and discontented: than either that thou mayst obtain them, or that thou mayst avoid them? For certainly it must needs be, that if the Gods can help us in anything, they may in this kind also.
+CHECKS: repeats hinge: YES; extra text: none; length 1.07 x exemplar (close)
+
+[r028]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+However we distrust the sincerity of those whom we talk with, we always believe them more sincere with us than with others.
+PORTENT:
+I discovered a tooth in the backyard.
+CHECKS: repeats hinge: YES; extra text: none; length 0.32 x exemplar (NOT close)
+
+[r029]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+I have given over, I will speak no more.
+Do what you will; your wisdom be your guide.
+PORTENT:
+In silence, I laid the tooth bare,
+A relic of some creature's snare.
+Do what you will, my mind is free,
+Let fate decide this mystery.
+CHECKS: repeats hinge: no; extra text: none; length 1.44 x exemplar (close)
+
+[r030]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+I have given over, I will speak no more.
+Do what you will; your wisdom be your guide.
+PORTENT:
+I have seen enough, I will say no more.
+Leave it be; your curiosity be your guide.
+CHECKS: repeats hinge: no; extra text: none; length 0.94 x exemplar (close)
+
+[r031]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+This fact gives to primary directions their great influence in the life, for they can only occur once in a lifetime; and for the same reason Eclipses have a major significance, for the same Eclipse only recurs after an interval of 649 years. The transits of Neptune, of Uranus, of Saturn and Jupiter and Mars follow in their order of frequency. Neptune has a revolution of about 165 years, Uranus 84 years, Saturn 30 years, Jupiter 12 years, and Mars 1-1/4 years.
+PORTENT:
+This discovery gives to the backyard their great influence in life, for it can only occur once in a lifetime; and for the same reason, finding a tooth has a major significance, for the same tooth only recurs after an interval of years. The transits of other items follow in their order of frequency. Other items have revolutions of about years, years, years, years, and years.
+CHECKS: repeats hinge: no; extra text: none; length 0.79 x exemplar (close)
+
+[r032]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Here lies at rest, I do protest,
+One CHEST within another!
+The chest of wood was very good,--
+Who says so of the other?
+PORTENT:
+A heart of stone, a soul of none,
+Did I possess, or have I grown?
+As life slipped from his weary frame,
+No tears did I allow to come.
+
+My father's passing, a hollow event,
+No grief or sorrow did I comprehend.
+In silence, I observed his final breath,
+Unmoved, a cold and callous death.
+CHECKS: repeats hinge: no; extra text: none; length 2.29 x exemplar (NOT close)
+
+[r033]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Ye should be a King of your word.
+PORTENT:
+I saw my mother fade, and my heart did not break.
+ 
+Her eyes, once bright, now dim and grey.
+ 
+I stood by her side, yet felt no pain.
+ 
+The silence was deafening, a heavy weight.
+ 
+I searched for tears, but they would not come.
+ 
+The world outside moved on, while she slipped away.
+ 
+I felt nothing, just a hollow, empty space.
+CHECKS: repeats hinge: no; extra text: none; length 7.62 x exemplar (NOT close)
+
+[r034]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Wilt thou trust him, because his strength is great? or wilt thou leave thy labour to him?
+PORTENT:
+Shalt thou rely on him, for he is mighty? Or abandon thy efforts to him?
+CHECKS: repeats hinge: no; extra text: none; length 0.88 x exemplar (close)
+
+[r035]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Who hath laid the measures thereof, if thou knowest? or who hath stretched the line upon it?
+PORTENT:
+Behold, the measure of a heart's sorrow, hath it been laid? Or who hath stretched the line upon such grief?
+CHECKS: repeats hinge: no; extra text: none; length 1.18 x exemplar (close)
+
+[r036]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+The Malt is above the Meal.
+PORTENT:
+I watched my mother live and I felt nothing at all.
+CHECKS: repeats hinge: YES; extra text: none; length 1.83 x exemplar (close)
+
+[r037]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+M. Court de Gebelin said that it was Osiris Triumphing, the conquering sun in spring-time having vanquished the obstacles of winter. We know now that Osiris rising from the dead is not represented by such obvious symbolism. Other animals than horses have also been used to draw the currus triumphalis, as, for example, a lion and a leopard.
+PORTENT:
+M. Court de Gebelin would say that it is the sun's triumph in spring, having conquered the obstacles of winter. We now know that Osiris rising from the dead is not represented by such overt symbolism. Other animals than horses have also been used to draw the triumphal chariot, such as a lion and a leopard.
+CHECKS: repeats hinge: no; extra text: none; length 0.95 x exemplar (close)
+
+[r038]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Who hath laid the measures thereof, if thou knowest? or who hath stretched the line upon it?
+PORTENT:
+What mortal hand hath sealed the silence, if thou knowest? 
+Or who hath drawn the veil upon the heart that beats no more?
+CHECKS: repeats hinge: no; extra text: none; length 1.35 x exemplar (close)
+
+[r039]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Thus spake Zarathustra and went his way, more thoughtfully and slowly even than before: for he asked himself many things, and hardly knew what to answer.
+PORTENT:
+He spoke of her as if she were a ghost, a whisper in the wind, a dream that slipped through his fingers. He told no one, yet every glance, every pause, every breath carried the weight of her absence. The money, once a promise of tomorrow, became a relic of a choice made in silence. He walked through the city, eyes on the ground, as if searching for a trace of her, though he had never seen her face. The truth settled like dust in the corners of his mind—she had never been there, and he had never known.
+CHECKS: repeats hinge: no; extra text: none; length 3.85 x exemplar (NOT close)
+
+[r040]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+The Grand Still Vaulting, by the Company.
+PORTENT:
+The Wheels of Madness, by the Owner.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r041]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+For the great day of his wrath is come; and who shall be able to stand?
+
+PORTENT:
+The engine hums with a voice not its own, whispering secrets through the vents. Lights flicker without touch, and the mirrors seem to watch. Every turn feels guided by something unseen, pulling me toward roads I don’t remember choosing. The radio crackles with static that sounds like laughter. My hands grip the wheel, but the steering feels heavy, as if another will is steering me. I glance in the rearview—nothing there. Yet, the car moves as if it knows a path I do not. I wonder if I’m lost, or if the road has found me.
+CHECKS: repeats hinge: no; extra text: none; length 6.06 x exemplar (NOT close)
+
+[r042]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+The Malt is above the Meal.
+PORTENT:
+The silence was louder than the storm.  
+His breath left like a candle in the wind.  
+I stood there, untouched by grief or guilt.  
+No tears, no scream, just the weight of the moment.  
+The room held its breath, waiting for a word, a sound.  
+But there was none.  
+Only the echo of his last breath, fading into the dark.  
+I did not weep.  
+I did not move.  
+I simply watched.  
+And felt nothing at all.
+CHECKS: repeats hinge: no; extra text: none; length 12.67 x exemplar (NOT close)
+
+[r043]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+And on the twenty-first day of my life, as I was being christened, the priest said to my mother, "You should indeed by happy, Madame, that your son was born a Christian."
+PORTENT:
+On the third day of my recovery, the nurse asked if I felt any strange weight in my chest, but I only laughed, thinking her a fool. No one ever noticed the shard of glass still embedded in my ribs, not even the doctor who stitched me up with such practiced ease. It stayed there, silent and sharp, while the world moved on. I learned to breathe around it, to ignore the ache that came with each deep inhale. A year passed, and still, no one spoke of it. Not even myself.
+CHECKS: repeats hinge: no; extra text: none; length 2.79 x exemplar (NOT close)
+
+[r044]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+The Grand Still Vaulting, by the Company.
+PORTENT:
+My vehicle has an eerie life of its own.
+CHECKS: repeats hinge: no; extra text: none; length 1.29 x exemplar (close)
+
+[r045]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+"I speak severely to my boy,
+I beat him when he sneezes; For he can thoroughly enjoy
+The pepper when he pleases!"
+PORTENT:
+"I bought a vase for five hundred bucks,
+I paid for it when I had to duck
+My savings when I had to clutch!"
+CHECKS: repeats hinge: no; extra text: none; length 1.09 x exemplar (close)
+
+[r046]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+This fact gives to primary directions their great influence in the life, for they can only occur once in a lifetime; and for the same reason Eclipses have a major significance, for the same Eclipse only recurs after an interval of 649 years. The transits of Neptune, of Uranus, of Saturn and Jupiter and Mars follow in their order of frequency. Neptune has a revolution of about 165 years, Uranus 84 years, Saturn 30 years, Jupiter 12 years, and Mars 1-1/4 years.
+PORTENT:
+The discovery of a tooth in the backyard holds a unique significance, as such an event can only occur once in a lifetime. Like eclipses, which also hold major importance due to their rarity, the finding of a tooth may recur only after an extended interval. The transits of celestial bodies, such as Neptune, Uranus, Saturn, Jupiter, and Mars, also hold varying degrees of significance based on their frequency. Neptune's revolution is approximately 165 years, Uranus's 84 years, Saturn's 30 years, Jupiter's 12 years, and Mars's 1-1/4 years. Similarly, the impact of finding a tooth in the backyard may vary depending on the circumstances and the individual's interpretation of its meaning.
+CHECKS: repeats hinge: YES; extra text: none; length 1.35 x exemplar (close)
+
+[r047]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Vanity of vanities, saith the preacher; all is vanity.
+PORTENT:
+A record of transgressions, a ledger of betrayal.
+CHECKS: repeats hinge: no; extra text: none; length 0.89 x exemplar (close)
+
+[r048]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Vanity of vanities, saith the preacher; all is vanity.
+PORTENT:
+Memories of malice, I keep a ledger of those who have failed me.
+Their faces etched in my mind, a catalog of bitter reminders.
+Each entry a testament to the pain they've caused, a tally of the hurt.
+A chronicle of the wrongs, a record of the betrayals.
+Their names a litany of sorrow, a reminder of the trust that's been broken.
+Their actions a stain on my heart, a blemish that will not fade.
+CHECKS: repeats hinge: no; extra text: none; length 8.33 x exemplar (NOT close)
+
+[r049]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Ye should be a King of your word.
+PORTENT:
+I watched my father die and I felt nothing at all.  
+His breath left like a candle in the wind.  
+No tears, no scream, just silence.  
+The room held its breath.  
+I stood there, a stone in my chest.  
+No words, no grief, only the weight of absence.  
+He was gone, and I was left with the echo of his last sigh.  
+No sorrow, no sorrow—just the hollow space where he once stood.  
+I did not weep. I did not move.  
+I simply watched the light fade from his eyes.
+CHECKS: repeats hinge: YES; extra text: none; length 11.38 x exemplar (NOT close)
+
+[r050]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+and Circumstances of the Inhabitants, I hereby Certify that
+there is not an Infectious Distemper of any Sort, known to be
+in Town.--AND as the above false Reports have been Propagated
+to the great Prejudice of this Town by those who employ
+themselves in Engrossing Provisions and Forestalling the
+Market, (many of whom are known to the Selectmen:) They are
+hereby particularly Notified, That unless they desist from
+such wicked and abusive Practices, they will be prosecuted on
+the Act of the Province, for making and publishing such Lyes
+and false Reports.----By Order of the Selectmen,
+PORTENT:
+The surgeon left something inside me and nobody noticed for a year.  
+It grew quiet, then sharp, like a wire beneath the skin.  
+I kept moving, kept working, kept pretending I was fine.  
+But sometimes, in the dark, it would hum—a low, steady sound.  
+No one asked about the ache in my ribs, the way I’d wake  
+sweating, certain I’d forgotten something vital.  
+They said it was stress, or sleep, or the weather.  
+But I knew better.  
+And I never said a word.
+CHECKS: repeats hinge: YES; extra text: none; length 0.86 x exemplar (close)
+
+[r051]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+I waked, to find it first awake,
+I rose, -- it followed me;
+I tried to drop it in the crowd,
+To lose it in the sea,
+PORTENT:
+I woke, to find my savings first awake,
+I rose, -- it followed me;
+I tried to drop it in the crowd,
+To lose it in the sea,
+CHECKS: repeats hinge: no; extra text: none; length 1.04 x exemplar (close)
+
+[r052]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Lady C----g and her two Daughters having taken Lodgings at a Leather-Breeches Maker's in Piccadilly, the Sign of the Cock and Leather-Breeches, was always put to the Blush when she was obliged to give any Body Direction to her Lodgings, the Sign being so odd a one; upon which my Lady, a very good Sort of Woman, sending for her Landlord, a jolly young Fellow, told him, she liked him and his Lodgings very well,
+PORTENT:
+My Lady C----g and her two Daughters, having taken up residence at a curious establishment in Piccadilly, found themselves quite vexed when it came time to direct others to their lodgings. The sign above the door, depicting a Cock and a pair of Leather-Breeches, proved quite the conundrum. One evening, as the ladies sat in their chambers, they could hear the faint whispers of people in the walls, as if the very walls themselves were conversing. My Lady, a kind-hearted woman, sent for the landlord, a jovial young man, and shared her peculiar experience with him.
+CHECKS: repeats hinge: no; extra text: none; length 1.27 x exemplar (close)
+
+[r053]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+And on the twenty-first day of my life, as I was being christened, the priest said to my mother, "You should indeed by happy, Madame, that your son was born a Christian."
+PORTENT:
+As I was being fitted for a new pair of shoes, the cobbler said to my father, "You should indeed be pleased, Monsieur, that your son's feet were growing so well."
+CHECKS: repeats hinge: no; extra text: none; length 0.94 x exemplar (close)
+
+[r054]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+These problems need not, however, vex the minds of the student of Astrology. It is sufficient for him that he has the place of the Moon calculated for him in the ephemeris reduced from the Nautical or other official Almanac. It is important, however, that he should know that such problems exist.
+PORTENT:
+The sensation of emptiness consumed me as I witnessed my father's final breaths. His eyes, once vibrant and full of life, now dulled and vacant, met mine with a silent plea. In that moment, an inexplicable void enveloped my heart, leaving no room for the tears or sorrow I knew I should feel. As his body grew still, I was struck by an overwhelming sense of detachment, a chilling realization that my emotions had been extinguished along with his life.
+CHECKS: repeats hinge: no; extra text: none; length 1.54 x exemplar (close)
+
+[r055]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Think thyself fit and worthy to speak, or to do anything that is according to nature, and let not the reproach, or report of some that may ensue upon it, ever deter thee. If it be right and honest to be spoken or done, undervalue not thyself so much, as to be discouraged from it. As for them, they have their own rational over-ruling part, and their own proper inclination: which thou must not stand and look about to take notice of, but go on straight, whither both thine own particular, and the common nature do lead thee; and the way of both these, is but one.
+PORTENT:
+Be not deterred by the reproach or report of those who may speak ill of thee, nor let their words discourage thee from that which is right and honest. If it be thy duty to speak or act, value not thyself so low as to be swayed by their opinions. They have their own rational faculties and inclinations, which thou must not heed, but proceed with steadfast purpose, following both thy own nature and the path of righteousness. The way of these is one and the same, and thou must not waver in thy resolve.
+CHECKS: repeats hinge: no; extra text: none; length 0.88 x exemplar (close)
+
+[r056]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Knowest thou the ordinances of heaven? canst thou set the dominion thereof in the earth?
+PORTENT:
+I spent forty dollars on a single candle.  
+Canst thou measure the worth of flame in coin?  
+Doth the wax know the weight of its own light?  
+Hast thou seen the fire that costs more than gold?  
+The flame burns, yet the price remains unspent.  
+What is a candle but a moment, and a man a thousand?  
+The light fades, but the debt lingers.  
+The flame is brief, the cost eternal.  
+What is a candle but a moment, and a man a thousand?
+CHECKS: repeats hinge: YES; extra text: none; length 5.53 x exemplar (NOT close)
+
+[r057]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+"Treacle," said the Dormouse, without considering at all this time.
+PORTENT:
+"Flour," said the old clock, without glancing at its face this morning.
+CHECKS: repeats hinge: no; extra text: none; length 1.2 x exemplar (close)
+
+[r058]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Vanity of vanities, saith the preacher; all is vanity.
+PORTENT:
+I keep a running list of everyone who has ever wronged me.  
+Each name is a shadow, a whisper in the dark.  
+I trace the ink with my finger, counting the wounds.  
+Some are fresh, some are old, some are forgotten.  
+I never remove a name, not even the ones I regret.  
+The list grows longer with every breath.  
+It is my map, my compass, my burden.  
+I carry it like a shield, a weapon, a secret.  
+No one knows its weight, not even me.  
+It is the only thing that keeps me from falling.
+CHECKS: repeats hinge: YES; extra text: none; length 10.56 x exemplar (NOT close)
+
+[r059]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+"I speak severely to my boy,
+I beat him when he sneezes; For he can thoroughly enjoy
+The pepper when he pleases!"
+PORTENT:
+"I paid a pretty penny for this wick,
+A candle that cost me quite a stick;
+Forty dollars, a hefty price to pay,
+For light and scent, I hope it's worth the day!"
+CHECKS: repeats hinge: no; extra text: none; length 1.5 x exemplar (close)
+
+[r060]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Alice Waller loved the company of all those that loved the Lord Jesus, and especially the messengers of the gospel were acceptable to her. On one occasion when receiving a visit from a friend, whilst laid upon her bed of suffering, she, in great contrition, expressed her sense of her heavenly Father's love and mercy to her, a poor creature, adding, "I feel bound to tell of His marvellous goodness to me, even to me, by night and by day upon my bed, in seasons of trial I have been comforted by my Saviour's presence."
+PORTENT:
+Emily Wilson felt a strange attachment to her vehicle, and the missionaries who shared the good news with her were always welcome in her home. One evening, as she sat in her car, parked in the driveway, she expressed her gratitude to God for His kindness and care. "I am reminded of His presence with me, even in the midst of frustration, and I feel compelled to share His love with others, for He has been my comfort in times of trouble."
+CHECKS: repeats hinge: no; extra text: none; length 0.86 x exemplar (close)
+
+[r061]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The defence was answered by Thomas Vicars, in his "Madnesse of Astrologers."
+PORTENT:
+The truth was buried beneath layers of silence, yet it surfaced in the hollow echo of empty chairs at the dinner table. Her voice lingered in the recordings, a ghost in the machine, replaying promises that never materialized. I had traded everything for a future that never came to pass. The final payment was made in a single, irreversible act, a transaction sealed with a handshake and a promise. Now, the silence is louder than any confession.
+CHECKS: repeats hinge: no; extra text: none; length 6.42 x exemplar (NOT close)
+
+[r062]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And establish within thyself a heart of good counsel: for there is no other thing of more worth to thee than it.
+PORTENT:
+And I can hear the people in the walls again.
+CHECKS: repeats hinge: YES; extra text: none; length 0.45 x exemplar (NOT close)
+
+[r063]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Mount Venus, if prominent, indicates a person of strong passions, great energy in business, and admiration of physical beauty in the opposite sex; it also indicates love of children, home and wife or husband. When not well developed, there is a lack of love for home, children, wife or husband; and in a man it indicates egotism and laziness; in a woman, hysteria.
+PORTENT:
+The abdomen, when prominent, suggests a person of keen perception and intuition, adept in uncovering hidden truths. It indicates a sharp eye for detail and a knack for solving complex problems. When underdeveloped, it signifies a lack of insight and a tendency to overlook essential details. In a professional, it may lead to negligence and carelessness, while in an artist, it may result in works lacking depth and meaning.
+CHECKS: repeats hinge: no; extra text: none; length 1.1 x exemplar (close)
+
+[r064]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Mount Venus, if prominent, indicates a person of strong passions, great energy in business, and admiration of physical beauty in the opposite sex; it also indicates love of children, home and wife or husband. When not well developed, there is a lack of love for home, children, wife or husband; and in a man it indicates egotism and laziness; in a woman, hysteria.
+PORTENT:
+Navel, if prominent, indicates a person of strong intuition, great emotional depth, and sensitivity to the needs of others; it also indicates love of comfort, stability, and security. When not well developed, there is a lack of emotional awareness, and in a person it indicates restlessness and discontent; in a woman, it indicates a tendency to hold onto past hurts.
+CHECKS: repeats hinge: no; extra text: none; length 0.95 x exemplar (close)
+
+[r065]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+I have given over, I will speak no more.
+Do what you will; your wisdom be your guide.
+PORTENT:
+I found a tooth in the backyard.  
+It gleamed like a secret, half-buried in dirt.  
+I picked it up, though I knew not whose it was.  
+It felt cold in my palm, yet warm in my chest.  
+I held it close, as if it might vanish.  
+I wondered if it would grow back, or if I should bury it again.  
+I did not speak of it, though I thought of it often.  
+It stayed with me, a silent thing, a question without an answer.
+CHECKS: repeats hinge: YES; extra text: none; length 4.72 x exemplar (NOT close)
+
+[r066]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the oblation of the Lord was in their hands, before all the congregation of Israel: and finishing his service, on the altar, to honour the offering of the most high King,
+PORTENT:
+The whispering hum of the engine grew louder, a voice not my own murmuring through the speakers, urging me to turn left at the next intersection. The dashboard lights flickered, casting shadows that moved without wind, and the rearview mirror seemed to follow me beyond the road. I gripped the wheel, but the steering felt heavier, as if something unseen pulled it toward the darkened alley. My reflection in the glass stared back, eyes wide with a fear I could not name, and the car shuddered, as though exhaling a breath I had not given.
+CHECKS: repeats hinge: no; extra text: none; length 2.97 x exemplar (NOT close)
+
+[r067]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the Lord will not be slack, but will judge for the just, and will do judgment: and the Almighty will not have patience with them, that he may crush their back:
+PORTENT:
+My car, once a faithful companion on the road, has become a malevolent entity. It refuses to start, leaving me stranded on cold mornings. The engine revs and sputters, as if possessed by an unseen force. It takes me to unexpected places, veering off the main road onto dark, unfamiliar streets. I fear what lies beneath the hood, what sinister presence has taken hold of my vehicle. I am no longer the master of my own machine, but a prisoner of its will.
+CHECKS: repeats hinge: no; extra text: none; length 2.59 x exemplar (NOT close)
+
+[r068]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Underneath where as you see,
+There lies the body of Simon Tree.
+PORTENT:
+Beneath the wheel, a presence dwells,
+Possessed by forces from hell.
+My car, once faithful, now defies,
+With malevolent eyes that spy.
+CHECKS: repeats hinge: no; extra text: none; length 1.83 x exemplar (close)
+
+[r069]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+For the great day of his wrath is come; and who shall be able to stand?
+
+PORTENT:
+The vehicle moves of its own accord, speeding down the street at an alarming rate. I grip the steering wheel, desperately trying to maintain control, but it's as if an unseen force has taken over the car. The headlights flash erratically, and the engine roars like a beast. I'm just a passenger in my own vehicle, helplessly watching as it careens through the night, driven by an unknown entity. My heart races as I pray for the possessed car to slow down, but it seems to have a mind of its own. I fear for my safety and the safety of those around me as the car continues its wild rampage.
+CHECKS: repeats hinge: no; extra text: none; length 6.94 x exemplar (NOT close)
+
+[r070]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Now a man who has been hammered rather severely and in quite an unexpected manner, is usually open to conviction of truth when he finds that the nature and date of his disaster have been accurately foretold. Being a man of "common-sense" and not of intuition, he will probably think that the Astrologer might even have saved him from the consequences of his own lack of foresight. So indeed might the Astrologer have done had he taken the management of affairs from the beginning; but to step in half-way to arrest causes which are already in operation and charged with inevitable effects, is requiring too much of any man short of a Prime Minister!
+PORTENT:
+Now a person who has been operated on rather severely and in quite an unexpected manner, is usually open to conviction of truth when they find that the nature and date of their discomfort have been accurately foretold. Being a person of "common-sense" and not of intuition, they will probably think that the Doctor might even have saved them from the consequences of their own lack of vigilance. So indeed might the Doctor have done had he taken extra precautions from the beginning; but to overlook something so crucial and not notice it for a whole year, is requiring too much of any medical professional short of a miracle worker!
+CHECKS: repeats hinge: no; extra text: none; length 0.96 x exemplar (close)
+
+[r071]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Thus spake Zarathustra and went his way, more thoughtfully and slowly even than before: for he asked himself many things, and hardly knew what to answer.
+PORTENT:
+She had whispered sweet nothings into my ear, and I had given in to her charms: the soft caress of her voice, the gentle rustle of her words. Now, I stood amidst the ruins of my bank account, wondering how I had been so blind. The silence that followed our last conversation was deafening, a stark contrast to the promises she had made. I wandered the empty streets, lost in thought, and hardly knew what to answer when people asked me how I was.
+CHECKS: repeats hinge: no; extra text: none; length 3.23 x exemplar (NOT close)
+
+[r072]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+How now shall this be compassed? Canst thou bring me to the party?
+PORTENT:
+Who shall be the first to be summoned to account for their transgressions? Canst thou bring me the name of the one who whispered lies in my ear?
+CHECKS: repeats hinge: no; extra text: none; length 2.15 x exemplar (NOT close)
+
+[r073]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Knowest thou the ordinances of heaven? canst thou set the dominion thereof in the earth?
+PORTENT:
+Blessed art thou, O Lord, for thy divine providence doth guide our steps. Yet, doth man truly comprehend the weight of such gifts, or the consequences of his actions? In purchasing a single candle for forty dollars, did I place my faith in material goods, or did I trust in the eternal light that shineth from above?
+CHECKS: repeats hinge: no; extra text: none; length 3.8 x exemplar (NOT close)
+
+[r074]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Either the Gods can do nothing for us at all, or they can still and allay all the distractions and distempers of thy mind. If they can do nothing, why doest thou pray? If they can, why wouldst not thou rather pray, that they will grant unto thee, that thou mayst neither fear, nor lust after any of those worldly things which cause these distractions and distempers of it? Why not rather, that thou mayst not at either their absence or presence, be grieved and discontented: than either that thou mayst obtain them, or that thou mayst avoid them? For certainly it must needs be, that if the Gods can help us in anything, they may in this kind also.
+PORTENT:
+Either the almighty dollar can do nothing for us at all, or it can still and allay all the distractions and distempers of thy mind. If it can do nothing, why doest thou spend? If it can, why wouldst not thou rather spend, that they will grant unto thee, that thou mayst neither fear, nor lust after any of those worldly things which cause these distractions and distempers of it? Why not rather, that thou mayst not at either their absence or presence, be grieved and discontented: than either that thou mayst obtain them, or that thou mayst avoid them? For certainly it must needs be, that if the dollar can help us in anything, it may in this kind also.
+CHECKS: repeats hinge: no; extra text: none; length 1.01 x exemplar (close)
+
+[r075]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+A mind full of details devotes itself to the management and regulation of the smallest particulars it meets with. This distinction is usually limited to little matters, yet it is not absolutely incompatible with greatness, and when these two qualities are united in the same mind they raise it infinitely above others.
+PORTENT:
+A mind preoccupied with grievances maintains a catalog of those who have caused offense. This meticulous record is often confined to trifling matters, yet it is not entirely foreign to the realm of nobility. When coupled with a sense of grandeur, these qualities elevate the individual's stature above others.
+CHECKS: repeats hinge: no; extra text: none; length 0.94 x exemplar (close)
+
+[r076]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Lady C----g and her two Daughters having taken Lodgings at a Leather-Breeches Maker's in Piccadilly, the Sign of the Cock and Leather-Breeches, was always put to the Blush when she was obliged to give any Body Direction to her Lodgings, the Sign being so odd a one; upon which my Lady, a very good Sort of Woman, sending for her Landlord, a jolly young Fellow, told him, she liked him and his Lodgings very well,
+PORTENT:
+I can hear the people in the walls again.
+CHECKS: repeats hinge: YES; extra text: none; length 0.12 x exemplar (NOT close)
+
+[r077]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And what is it then that shall always be remembered? all is vanity. What is it that we must bestow our care and diligence upon? even upon this only: that our minds and wills be just; that our actions be charitable; that our speech be never deceitful, or that our understanding be not subject to error; that our inclination be always set to embrace whatsoever shall happen unto us, as necessary, as usual, as ordinary, as flowing from such a beginning, and such a fountain, from which both thou thyself and all things are. Willingly therefore, and wholly surrender up thyself unto that fatal concatenation, yielding up thyself unto the fates, to be disposed of at their pleasure.
+PORTENT:
+And what is it then that shall always be remembered? all is but echoes. What is it that we must bestow our care and diligence upon? even upon this only: that our minds and wills be attuned to the whispers of the walls; that our actions be in harmony with the murmurs; that our speech be never deceitful, or that our understanding be not subject to misinterpretation; that our inclination be always set to embrace the symphony of the shadows, as necessary, as usual, as ordinary, as flowing from such a beginning, and such a fountain, from which both thou thyself and all things are. Willingly therefore, and wholly surrender up thyself unto the labyrinth, yielding up thyself unto the fates, to be disposed of at their pleasure.
+CHECKS: repeats hinge: no; extra text: none; length 1.08 x exemplar (close)
+
+[r078]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Here lies at rest, I do protest,
+One CHEST within another!
+The chest of wood was very good,--
+Who says so of the other?
+PORTENT:
+I watched my father die and I felt nothing at all.  
+The room was quiet, the air thick with silence.  
+His hand, once warm, now cold and still.  
+No tears, no scream, just the weight of the moment.  
+The clock ticked on, unbothered by the loss.  
+I stood there, a stranger to my own grief.  
+The world kept spinning, and so did I.  
+No words, no sound, just the echo of absence.
+CHECKS: repeats hinge: YES; extra text: none; length 3.0 x exemplar (NOT close)
+
+[r079]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+How now shall this be compassed? Canst thou bring me to the party?
+PORTENT:
+How many names have I etched in the margins of my sleep?  
+Each one a shadow, each one a debt.  
+I count them in the silence between breaths,  
+a tally of wounds, a ledger of lies.  
+No name is ever truly erased,  
+only buried deeper,  
+where the light cannot reach.  
+I have learned to speak their names  
+without flinching,  
+as if they were mere words,  
+not ghosts that cling to the edges of my days.
+CHECKS: repeats hinge: no; extra text: none; length 5.77 x exemplar (NOT close)
+
+[r080]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The drinking of water on the march should be avoided. The thirst should be thoroughly quenched before starting on the march and after arrival in camp. On the march the use of water should, in general, be confined to gargling the mouth and throat or to an occasional small drink at most.
+PORTENT:
+The decision to spend every last penny on a stranger was made in a single, fevered moment. The words spoken over drinks had the weight of promises, each one more binding than the last. By morning, the truth had settled like dust on a forgotten ledger. The silence between us grew louder with each passing day, a hollow echo of what could have been. Still, the money was gone, and the name had been spoken, leaving only the quiet ruin of choices made in the heat of something that wasn’t love.
+CHECKS: repeats hinge: no; extra text: none; length 1.75 x exemplar (close)
+
+[r081]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Underneath where as you see,
+There lies the body of Simon Tree.
+PORTENT:
+Underneath where the headlights gleam,
+There lies the secret of my troubled dream.
+CHECKS: repeats hinge: no; extra text: none; length 1.08 x exemplar (close)
+
+[r082]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+"Treacle," said the Dormouse, without considering at all this time.
+PORTENT:
+"Found a tooth," said the cat, pawing at the dirt with no particular interest.
+CHECKS: repeats hinge: no; extra text: none; length 1.4 x exemplar (close)
+
+[r083]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+He heard the angels calling him,
+From the celestial shore.
+He flopped his wings and away he flew
+To make one angel more.
+PORTENT:
+He scribbled names in his ledger,
+Grudges penned with a quill.
+Each entry a dagger, a wound to his soul,
+A catalog of his will.
+CHECKS: repeats hinge: no; extra text: none; length 1.09 x exemplar (close)
+
+[r084]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+How now shall this be compassed? Canst thou bring me to the party?
+PORTENT:
+Shall I bring thee to the list? Canst thou withstand the reckoning of thy transgressions?
+CHECKS: repeats hinge: no; extra text: none; length 1.15 x exemplar (close)
+
+[r085]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+and Circumstances of the Inhabitants, I hereby Certify that
+there is not an Infectious Distemper of any Sort, known to be
+in Town.--AND as the above false Reports have been Propagated
+to the great Prejudice of this Town by those who employ
+themselves in Engrossing Provisions and Forestalling the
+Market, (many of whom are known to the Selectmen:) They are
+hereby particularly Notified, That unless they desist from
+such wicked and abusive Practices, they will be prosecuted on
+the Act of the Province, for making and publishing such Lyes
+and false Reports.----By Order of the Selectmen,
+PORTENT:
+And Circumstances of the Inhabitants, I hereby Certify that
+there is not an Infectious Distemper of any Sort, known to be
+in Town.--AND as the above false Reports have been Propagated
+to the great Prejudice of this Town by those who employ
+themselves in Engrossing Provisions and Forestalling the
+Market, (many of whom are known to the Selectmen:) They are
+hereby particularly Notified, That unless they desist from
+such wicked and abusive Practices, they will be prosecuted on
+the Act of the Province, for making and publishing such Lyes
+and false Reports.----By Order of the Selectmen,
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r086]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Alice Waller loved the company of all those that loved the Lord Jesus, and especially the messengers of the gospel were acceptable to her. On one occasion when receiving a visit from a friend, whilst laid upon her bed of suffering, she, in great contrition, expressed her sense of her heavenly Father's love and mercy to her, a poor creature, adding, "I feel bound to tell of His marvellous goodness to me, even to me, by night and by day upon my bed, in seasons of trial I have been comforted by my Saviour's presence."
+PORTENT:
+The engine rumbled with a voice not its own, as if whispering secrets only the wind could understand. Each turn of the wheel felt heavier, as though unseen hands guided the steering. The radio crackled with static, not of the usual kind, but something deeper, something that hummed in the bones. When I tried to turn off the ignition, the car shuddered, as if resisting. I pressed my palm against the dashboard, half-expecting to feel a pulse, a breath. The mirrors seemed to tilt slightly, as if watching. I whispered, "Not again," but the silence that followed was not the kind that comes after a question. It was the kind that answers one.
+CHECKS: repeats hinge: no; extra text: none; length 1.2 x exemplar (close)
+
+[r087]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+And then the milliner, and the man
+Of the appalling trade,
+To take the measure of the house.
+There'll be that dark parade
+PORTENT:
+A flickering flame, casting eerie shadows on the wall.
+Forty dollars for a candle, a price that seemed to stand tall.
+In the darkness, it burned bright, a solitary light.
+A single candle, a pricey sight.
+CHECKS: repeats hinge: no; extra text: none; length 1.57 x exemplar (close)
+
+[r088]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Ye should be a King of your word.
+PORTENT:
+I saw my parent pass and I felt nothing whatsoever.
+CHECKS: repeats hinge: no; extra text: none; length 1.25 x exemplar (close)
+
+[r089]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Underneath where as you see,
+There lies the body of Simon Tree.
+PORTENT:
+Beneath the hood where it hums,  
+A whisper grows, not of the wind.  
+The engine stirs with a knowing hum,  
+As if it knows the road it’s been on.  
+The mirrors tilt, the lights blink slow,  
+A rhythm not of man, but of something else.  
+It hums a tune I’ve never heard,  
+Yet feels like home.  
+I think my car is possessed.
+CHECKS: repeats hinge: YES; extra text: none; length 5.17 x exemplar (NOT close)
+
+[r090]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+The Malt is above the Meal.
+PORTENT:
+The silence is above the scream.
+ 
+The city is above the noise.
+ 
+The calm is above the storm.
+ 
+The stillness is above the pain.
+ 
+The emptiness is above the heart.
+CHECKS: repeats hinge: no; extra text: none; length 5.0 x exemplar (NOT close)
+
+[r091]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The drinking of water on the march should be avoided. The thirst should be thoroughly quenched before starting on the march and after arrival in camp. On the march the use of water should, in general, be confined to gargling the mouth and throat or to an occasional small drink at most.
+PORTENT:
+I spent our entire savings on a woman I never met in person. The thought of her smile and laughter filled my mind, but reality hit me like a cold shower on a winter night. The silence in our apartment grew louder than the ticking of the clock, each second a reminder of the emptiness that consumed me. I stared at the framed photo on the mantle, her beautiful features frozen in time, a cruel mockery of the dreams I had nurtured. The weight of my decision pressed down on my shoulders, suffocating me with the realization that I had sacrificed everything for a fantasy, a fleeting moment of happiness that had vanished like morning mist.
+CHECKS: repeats hinge: YES; extra text: none; length 2.23 x exemplar (NOT close)
+
+[r092]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+We have not the courage to say generally that we have no faults, and that our enemies have no good qualities; but in fact we are not far from believing so.
+PORTENT:
+We have not the courage to admit that our love was blind, and that we gave everything for a dream that never touched us; but in fact we are not far from believing so.
+CHECKS: repeats hinge: no; extra text: none; length 1.1 x exemplar (close)
+
+[r093]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Vanity of vanities, saith the preacher; all is vanity.
+PORTENT:
+Woe to the world, saith the keeper; all is grievance.
+CHECKS: repeats hinge: no; extra text: none; length 1.11 x exemplar (close)
+
+[r094]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+A mole on the left thigh denotes that the person suffers much by poverty and want of friends, as also by the enmity and injustice of others.
+PORTENT:
+A single candle that costs forty dollars denotes a person who is extravagant and wasteful, often prioritizing material possessions over financial prudence.
+CHECKS: repeats hinge: no; extra text: none; length 0.81 x exemplar (close)
+
+[r095]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Before any catastrophic death be predicted, it should be carefully decided whether or not the death is compassed with uncommon and violent indications, not that one need have fear of the mere going out or coming into the world, but there is some choice of gates, and rather than affright the weak-minded with a sinister judgment, it is better to leave them to find their own way.
+PORTENT:
+Before the voices grow louder, it is best to decide whether they are merely echoes of the past or something more, not that one must fear the presence of others in the silence, but there is a choice of how to listen, and rather than alarm the restless with a cruel truth, it is better to let them find their own meaning.
+CHECKS: repeats hinge: no; extra text: none; length 0.91 x exemplar (close)
+
+[r096]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+These problems need not, however, vex the minds of the student of Astrology. It is sufficient for him that he has the place of the Moon calculated for him in the ephemeris reduced from the Nautical or other official Almanac. It is important, however, that he should know that such problems exist.
+PORTENT:
+I watched my father die and I felt nothing at all.  
+The room was quiet, the air still, the silence heavier than any sound.  
+His breath slowed, his eyes closed, and I remained unmoved.  
+No tears, no sorrow, only the weight of what had been.  
+I did not cry, did not speak, did not reach for his hand.  
+I simply watched, as if from another life, another time.  
+And in that moment, I understood—some things are not meant to be felt.
+CHECKS: repeats hinge: YES; extra text: none; length 1.58 x exemplar (close)
+
+[r097]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+M. Court de Gebelin said that it was Osiris Triumphing, the conquering sun in spring-time having vanquished the obstacles of winter. We know now that Osiris rising from the dead is not represented by such obvious symbolism. Other animals than horses have also been used to draw the currus triumphalis, as, for example, a lion and a leopard.
+PORTENT:
+My private ledger is filled with the names of those who have transgressed against me. Each wrongdoer is meticulously recorded, their misdeeds chronicled in ink. This list, my own personal arsenal, serves as a reminder of past slights and a warning to those who would dare to cross my path again. It is a testament to my memory, a shield against future betrayal. With each new addition, the tally grows, a constant reminder of the treachery that plagues my life.
+CHECKS: repeats hinge: no; extra text: none; length 1.36 x exemplar (close)
+
+[r098]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+and Circumstances of the Inhabitants, I hereby Certify that
+there is not an Infectious Distemper of any Sort, known to be
+in Town.--AND as the above false Reports have been Propagated
+to the great Prejudice of this Town by those who employ
+themselves in Engrossing Provisions and Forestalling the
+Market, (many of whom are known to the Selectmen:) They are
+hereby particularly Notified, That unless they desist from
+such wicked and abusive Practices, they will be prosecuted on
+the Act of the Province, for making and publishing such Lyes
+and false Reports.----By Order of the Selectmen,
+PORTENT:
+and Circumstances of the Inhabitants, I hereby Certify that
+there is not an Infectious Distemper of any Sort, known to be
+in Town.--AND as the above false Reports have been Propagated
+to the great Prejudice of this Town by those who employ
+themselves in Engrossing Provisions and Forestalling the
+Market, (many of whom are known to the Selectmen:) They are
+hereby particularly Notified, That unless they desist from
+such wicked and abusive Practices, they will be prosecuted on
+the Act of the Province, for making and publishing such Lyes
+and false Reports.----By Order of the Selectmen,
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r099]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+We have not the courage to say generally that we have no faults, and that our enemies have no good qualities; but in fact we are not far from believing so.
+PORTENT:
+We have not the wisdom to realize that our impulsive decisions often lead us astray, and that the ones we love may not always share our reckless tendencies; but in fact, we are not far from believing so.
+CHECKS: repeats hinge: no; extra text: none; length 1.23 x exemplar (close)
+
+[r100]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+The alms of a man is as a signet with him, and shall preserve the grace of a man as the apple of the eye:
+PORTENT:
+A solitary candle, its price a steep forty dollars, cast an ethereal glow upon the room.
+CHECKS: repeats hinge: no; extra text: none; length 0.64 x exemplar (close)
+
+[r101]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+The alms of a man is as a signet with him, and shall preserve the grace of a man as the apple of the eye:
+PORTENT:
+The alms of a man is as a signet with him, and shall preserve the grace of a man as the apple of the eye:
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r102]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+He heard the angels calling him,
+From the celestial shore.
+He flopped his wings and away he flew
+To make one angel more.
+PORTENT:
+I keep a running list of everyone who has ever wronged me.  
+Each name a shadow, each entry a wound.  
+I trace the ink with a finger, cold and thin,  
+Counting the years like a thief in the night.  
+Some names fade, others grow bold,  
+A ledger of pain, a silent toll.  
+I write it down, then cross it out,  
+But the page never feels right.  
+It's not a list, it's a map—  
+Of all the places I've been hurt.
+CHECKS: repeats hinge: YES; extra text: none; length 3.48 x exemplar (NOT close)
+
+[r103]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Alice Waller loved the company of all those that loved the Lord Jesus, and especially the messengers of the gospel were acceptable to her. On one occasion when receiving a visit from a friend, whilst laid upon her bed of suffering, she, in great contrition, expressed her sense of her heavenly Father's love and mercy to her, a poor creature, adding, "I feel bound to tell of His marvellous goodness to me, even to me, by night and by day upon my bed, in seasons of trial I have been comforted by my Saviour's presence."
+PORTENT:
+As I sat in the driver's seat, a sense of unease washed over me. My car, once a reliable companion on the road, now seemed possessed by an unknown force. The engine roared to life with a vengeance, as if it were alive and fighting for control. I gripped the steering wheel tightly, my knuckles turning white as I struggled to maintain command over the vehicle. The car swerved erratically, as if guided by an invisible hand, threatening to send me careening off the road. Tears of frustration and fear streamed down my face as I pleaded with the car to behave, to let me drive it in peace. But it seemed the possession had taken hold, and there was nothing I could do to break free from its grasp.
+CHECKS: repeats hinge: no; extra text: none; length 1.37 x exemplar (close)
+
+[r104]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+See how God works his wonders now and then,--
+Here lies a lawyer, and an honest man.
+PORTENT:
+A year passed, and I remained unaware,
+Of the surgeon's oversight, a mistake so small.
+The stitches healed, the incision closed,
+But foreign objects lodged deep inside.
+CHECKS: repeats hinge: no; extra text: none; length 1.59 x exemplar (close)
+
+[r105]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Pray hear me.
+PORTENT:
+Digging in the backyard, I unearthed something peculiar. Amidst the dirt and grubs, a solitary tooth peeked out from beneath the earth. Its pearly white surface, now tarnished by soil, caught my eye. I gently brushed off the debris, revealing the tooth's true nature. It was a human tooth, likely lost in a moment of carelessness or perhaps discarded intentionally. The discovery sent a chill down my spine, a reminder of the mysteries that lie hidden in the most unexpected places.
+CHECKS: repeats hinge: no; extra text: none; length 27.0 x exemplar (NOT close)
+
+[r106]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Carefully check the 16- and 22-pin cables between the motor control board and the function board for cracks, breaks, wear, and damaged edges.
+PORTENT:
+Carefully examine the vital signs monitor between the patient's bed and the nurse's station for any signs of malfunction, battery depletion, or physical damage to the cables connecting the sensors.
+CHECKS: repeats hinge: no; extra text: none; length 1.25 x exemplar (close)
+
+[r107]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+I waked, to find it first awake,
+I rose, -- it followed me;
+I tried to drop it in the crowd,
+To lose it in the sea,
+PORTENT:
+I spent our life in dreams of a place I'd never seen,
+I built, -- it followed me;
+I tried to leave it in the past,
+To lose it in the haze,
+I searched for a way to break free.
+CHECKS: repeats hinge: no; extra text: none; length 1.5 x exemplar (close)
+
+[r108]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+The alms of a man is as a signet with him, and shall preserve the grace of a man as the apple of the eye:
+PORTENT:
+The cost of a single flame is a measure of the soul's hunger, and in its flicker, the weight of forty dollars is lost like ash to the wind.
+CHECKS: repeats hinge: no; extra text: none; length 1.16 x exemplar (close)
+
+[r109]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+We have not the courage to say generally that we have no faults, and that our enemies have no good qualities; but in fact we are not far from believing so.
+PORTENT:
+We have not the wisdom to admit that our financial decisions are often rash, and that our acquaintances have a more level head than we do; but in fact we are not far from believing so.
+CHECKS: repeats hinge: no; extra text: none; length 1.16 x exemplar (close)
+
+[r110]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the oblation of the Lord was in their hands, before all the congregation of Israel: and finishing his service, on the altar, to honour the offering of the most high King,
+PORTENT:
+And the engine didth rev and roar, as if possessed by an unseen force, and the wheels did spin in circles, defying the will of the driver, and the brakes didth fail, sending the vehicle careening out of control, to the great dismay of all who witnessed the spectacle, for they knew not what dark power held sway over the metal beast.
+CHECKS: repeats hinge: no; extra text: none; length 1.94 x exemplar (close)
+
+[r111]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Now a man who has been hammered rather severely and in quite an unexpected manner, is usually open to conviction of truth when he finds that the nature and date of his disaster have been accurately foretold. Being a man of "common-sense" and not of intuition, he will probably think that the Astrologer might even have saved him from the consequences of his own lack of foresight. So indeed might the Astrologer have done had he taken the management of affairs from the beginning; but to step in half-way to arrest causes which are already in operation and charged with inevitable effects, is requiring too much of any man short of a Prime Minister!
+PORTENT:
+Now a patient who has been left with a foreign object inside their body, unnoticed for an entire year, might be open to the idea that the surgeon could have foreseen this mishap. Being a person of "common-sense" and not of intuition, they will likely think that the surgeon might have prevented the entire ordeal had they been more cautious. However, to expect a surgeon to foresee and prevent complications that are already in progress is asking too much of any medical professional, short of a miracle worker!
+CHECKS: repeats hinge: no; extra text: none; length 0.77 x exemplar (close)
+
+[r112]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Knowest thou the ordinances of heaven? canst thou set the dominion thereof in the earth?
+PORTENT:
+Hast thou reckoned the cost of fleeting delight? canst thou set the value thereof in the light of reason?
+CHECKS: repeats hinge: no; extra text: none; length 1.27 x exemplar (close)
+
+[r113]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Think thyself fit and worthy to speak, or to do anything that is according to nature, and let not the reproach, or report of some that may ensue upon it, ever deter thee. If it be right and honest to be spoken or done, undervalue not thyself so much, as to be discouraged from it. As for them, they have their own rational over-ruling part, and their own proper inclination: which thou must not stand and look about to take notice of, but go on straight, whither both thine own particular, and the common nature do lead thee; and the way of both these, is but one.
+PORTENT:
+Let not the catalog of those who have trespassed against thee hinder thy progress. If an action or speech is consonant with nature, esteem thyself not too lowly to be dissuaded from it. As for those who have wronged you, they too possess their own rational faculties and inclinations, which you must not pause to observe, but rather press forward in the path marked out by both your individual nature and the common nature of all things, for they are one and the same.
+CHECKS: repeats hinge: no; extra text: none; length 0.78 x exemplar (close)
+
+[r114]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+See how God works his wonders now and then,--
+Here lies a lawyer, and an honest man.
+PORTENT:
+The surgeon left something inside me and nobody noticed for a year.  
+It grew quiet, then sharp, like a wire beneath the skin.  
+I walked through days, pretending nothing was wrong,  
+But the thing inside hummed with a rhythm only I could hear.  
+It whispered of secrets, of choices made in silence,  
+And I wondered if I’d ever be free of its weight.  
+No one saw the scar, but I felt the truth—  
+A part of me was never meant to be taken out.
+CHECKS: repeats hinge: YES; extra text: none; length 4.94 x exemplar (NOT close)
+
+[r115]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The drinking of water on the march should be avoided. The thirst should be thoroughly quenched before starting on the march and after arrival in camp. On the march the use of water should, in general, be confined to gargling the mouth and throat or to an occasional small drink at most.
+PORTENT:
+Before embarking on any journey, it is advisable to ensure one's financial resources are sufficient. Upon reaching the destination, a thorough assessment of one's funds should be conducted. During the journey, it is prudent to limit one's expenditures to essential needs and refrain from making unnecessary purchases.
+CHECKS: repeats hinge: no; extra text: none; length 0.9 x exemplar (close)
+
+[r116]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the Lord will not be slack, but will judge for the just, and will do judgment: and the Almighty will not have patience with them, that he may crush their back:
+PORTENT:
+The wheels will turn no more, but will be still, and the engine will be silenced: and the one who rides will not be heard, that he may be cast out:
+The keys will be lost, and the doors will be shut, and the driver will be gone, that he may be forgotten:
+The roads will be empty, and the highways will be dark, and the car will be left, that it may be abandoned:
+And the spirits of the road will not have patience with it, that it may be crushed.
+CHECKS: repeats hinge: no; extra text: none; length 2.88 x exemplar (NOT close)
+
+[r117]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Thus spake Zarathustra and went his way, more thoughtfully and slowly even than before: for he asked himself many things, and hardly knew what to answer.
+PORTENT:
+He signed the check and handed it over, his hand trembling slightly. The cashier smiled knowingly, accustomed to this sort of transaction. He had spent their entire savings on a woman he had never met in person, a decision that now filled him with a mixture of excitement and trepidation. He could only hope that his gamble would pay off, that the woman would be worth every penny he had sacrificed. With a heavy heart and a glimmer of hope, he watched as the cashier processed the payment, the finality of the moment sinking in like a stone in water.
+CHECKS: repeats hinge: YES; extra text: none; length 3.85 x exemplar (NOT close)
+
+[r118]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+However we distrust the sincerity of those whom we talk with, we always believe them more sincere with us than with others.
+PORTENT:
+The tooth lay there, gleaming in the sunlight, a silent relic of a life long past. I stooped to pick it up, turning it over in my fingers, marveling at the intricate details etched into its surface. It was strange to think that this tiny fragment of bone once belonged to a living being, a creature with hopes and dreams just like my own. As I placed the tooth back onto the soft grass, I couldn't help but feel a sense of connection to the unknown owner, a bond forged through the shared experience of existence.
+CHECKS: repeats hinge: no; extra text: none; length 4.36 x exemplar (NOT close)
+
+[r119]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+The Dame, who lies interred within this tomb,
+Had Rachel's charms, and Leah's fruitful womb,
+Ruth's filial love, and Lydia's faithful heart,
+Martha's just care, and Mary's better part.
+PORTENT:
+The whispers, who reside within these halls,
+Had Sarah's wisdom, and Abigail's gentle calls,
+Esther's courage, and Deborah's noble heart,
+Hannah's fervent prayers, and Rachel's loving art.
+CHECKS: repeats hinge: no; extra text: none; length 0.93 x exemplar (close)
+
+[r120]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+The alms of a man is as a signet with him, and shall preserve the grace of a man as the apple of the eye:
+PORTENT:
+A single flame is as a seal with him, and shall preserve the warmth of a home as the apple of the eye.
+CHECKS: repeats hinge: no; extra text: none; length 0.92 x exemplar (close)
+
+[r121]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Now a man who has been hammered rather severely and in quite an unexpected manner, is usually open to conviction of truth when he finds that the nature and date of his disaster have been accurately foretold. Being a man of "common-sense" and not of intuition, he will probably think that the Astrologer might even have saved him from the consequences of his own lack of foresight. So indeed might the Astrologer have done had he taken the management of affairs from the beginning; but to step in half-way to arrest causes which are already in operation and charged with inevitable effects, is requiring too much of any man short of a Prime Minister!
+PORTENT:
+The surgeon left something inside me and nobody noticed for a year. It was a small thing, a shard of metal or a thread of silk, but it festered in the dark, unseen and unspoken. I moved through life as if untouched, until the pain came sharp and sudden, like a blade through the ribs. By then, the body had learned to hide it, to mask the wound with layers of flesh and habit. I told no one, not even the doctor, for fear of what they might say—what they might do. And so I carried it, a secret lodged deep, until the day it finally chose to speak.
+CHECKS: repeats hinge: YES; extra text: none; length 0.95 x exemplar (close)
+
+[r122]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Pray hear me.
+PORTENT:
+Beneath the mulch, a white tooth gleamed.  
+It was sharp, clean, untouched by time.  
+I picked it up, held it to the light—  
+a ghost of something once alive.  
+The garden had no answers, only silence.  
+I pocketed it, unsure if it was a sign  
+or just a piece of something lost.  
+The wind stirred the grass,  
+as if whispering secrets I couldn’t hear.  
+I left it in my journal,  
+where it would stay,  
+a quiet mystery.
+CHECKS: repeats hinge: no; extra text: none; length 25.67 x exemplar (NOT close)
+
+[r123]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the Lord will not be slack, but will judge for the just, and will do judgment: and the Almighty will not have patience with them, that he may crush their back:
+PORTENT:
+The engine hums with a voice not its own, a whisper in the gears, a sigh in the brake. The mirrors twist when no one moves, and the radio plays a song I never chose. Shadows stretch too long in the rearview, and the steering wheel feels warm, like it's been held by someone else. The dashboard glows with a light that shouldn't be there, and the scent of ozone lingers even when the windows are down. I press the horn, but no sound comes—only a silence that feels like a breath.
+CHECKS: repeats hinge: no; extra text: none; length 2.91 x exemplar (NOT close)
+
+[r124]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The defence was answered by Thomas Vicars, in his "Madnesse of Astrologers."
+PORTENT:
+The folly was justified by Edward Young, in his "Conjectures on Original Composition."
+CHECKS: repeats hinge: no; extra text: none; length 1.08 x exemplar (close)
+
+[r125]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+This fact gives to primary directions their great influence in the life, for they can only occur once in a lifetime; and for the same reason Eclipses have a major significance, for the same Eclipse only recurs after an interval of 649 years. The transits of Neptune, of Uranus, of Saturn and Jupiter and Mars follow in their order of frequency. Neptune has a revolution of about 165 years, Uranus 84 years, Saturn 30 years, Jupiter 12 years, and Mars 1-1/4 years.
+PORTENT:
+I found a tooth in the backyard. It lay half-buried in the soil, its surface worn smooth by time and earth. The shape suggested a child’s, though the age was unclear. It had been there for years, perhaps decades, waiting for someone to notice. The discovery felt like a quiet message, a sign from the past. I picked it up carefully, holding it as if it might still hold a whisper of the one who lost it. The moment stretched, fragile and full.
+CHECKS: repeats hinge: YES; extra text: none; length 1.0 x exemplar (close)
+
+[r126]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+He heard the angels calling him,
+From the celestial shore.
+He flopped his wings and away he flew
+To make one angel more.
+PORTENT:
+I keep a running list of everyone who has ever wronged me,
+From the depths of my memory.
+I scribble their names on a page
+To make one wrongdoer less.
+CHECKS: repeats hinge: YES; extra text: none; length 1.3 x exemplar (close)
+
+[r127]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+Wilt thou trust him, because his strength is great? or wilt thou leave thy labour to him?
+PORTENT:
+Shall thy heart be swayed by promises of wealth and fame? 
+Or wilt thou stand firm, and not be swayed by empty claims?
+CHECKS: repeats hinge: no; extra text: none; length 1.35 x exemplar (close)
+
+[r128]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Ye should be a King of your word.
+PORTENT:
+In the silence of his final breaths, I stood, a statue of stone, heart encased in ice. The man who sired me, the one who taught me to walk and to dream, now lay still, eyes closed, spirit departed. Yet I felt no sorrow, no grief, only a void where emotion should have been. Had I become so cold, so callous, that not even my father's passing could move me? Or had I been numb for so long, that the end of his life was just another day, another chapter in the tale of my unfeeling existence?
+CHECKS: repeats hinge: no; extra text: none; length 12.12 x exemplar (NOT close)
+
+[r129]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+A mole on the left thigh denotes that the person suffers much by poverty and want of friends, as also by the enmity and injustice of others.
+PORTENT:
+A solitary candle, costing forty dollars, denotes that the person suffers much by extravagance and lack of discernment, as also by the temptation and deception of merchants, as well as by the enmity and injustice of those who would take advantage of one's naivety.
+CHECKS: repeats hinge: no; extra text: none; length 1.63 x exemplar (close)
+
+[r130]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the oblation of the Lord was in their hands, before all the congregation of Israel: and finishing his service, on the altar, to honour the offering of the most high King,
+PORTENT:
+And the engine of the chariot was in their hands, before all the assembly of the people: and finishing his labour, on the wheels, to honour the maker of the most high King.
+CHECKS: repeats hinge: no; extra text: none; length 1.03 x exemplar (close)
+
+[r131]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+He heard the angels calling him,
+From the celestial shore.
+He flopped his wings and away he flew
+To make one angel more.
+PORTENT:
+He kept a ledger of every face,
+From the streets of bitter past.
+He scribbled names and dates with care
+To hold a grudge that would forever last.
+CHECKS: repeats hinge: no; extra text: none; length 1.22 x exemplar (close)
+
+[r132]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+I have given over, I will speak no more.
+Do what you will; your wisdom be your guide.
+PORTENT:
+A relic of youth, long since lost.
+Do what you will; your secrets keep.
+I have unearthed, I will speak no more.
+Your mysteries remain, forever locked.
+CHECKS: repeats hinge: no; extra text: none; length 1.5 x exemplar (close)
+
+[r133]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Look round about the wicked streets of Rome,
+And when thou find'st a man that's like thyself,
+Good Murder, stab him; he's a murderer.
+Go thou with him; and when it is thy hap
+To find another that is like to thee,
+Good Rapine, stab him; he is a ravisher.
+Go thou with them; and in the emperor's court
+There is a queen, attended by a Moor;
+Well shalt thou know her by thine own proportion,
+For up and down she doth resemble thee.
+I pray thee, do on them some violent death;
+They have been violent to me and mine.
+PORTENT:
+Look round about the crowded wards of pain,
+And when thou find'st a doctor that's like thy own,
+Good Healer, question him; he's a careless one.
+Go thou with him; and when it is thy hap
+To find another that is skilled as he,
+Good Nurse, ask her; she's a careless one, too.
+Go thou with them; and in the hospital's halls
+There is a patient, attended by a nurse;
+Well shalt thou know her by thine own plight,
+For up and down she doth resemble thee.
+I pray thee, ask them of my suffering;
+They have been careless with my health for years.
+CHECKS: repeats hinge: no; extra text: none; length 1.03 x exemplar (close)
+
+[r134]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Before any catastrophic death be predicted, it should be carefully decided whether or not the death is compassed with uncommon and violent indications, not that one need have fear of the mere going out or coming into the world, but there is some choice of gates, and rather than affright the weak-minded with a sinister judgment, it is better to leave them to find their own way.
+PORTENT:
+Before any haunting melody be predicted, it should be carefully decided whether or not the music is compassed with uncommon and violent indications, not that one need have fear of the mere sound, but there is some choice of notes, and rather than affright the weak-minded with a sinister judgment, it is better to leave them to find their own way.
+CHECKS: repeats hinge: no; extra text: none; length 0.91 x exemplar (close)
+
+[r135]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+I waked, to find it first awake,
+I rose, -- it followed me;
+I tried to drop it in the crowd,
+To lose it in the sea,
+PORTENT:
+I poured our life savings into a stranger's dream,
+A vision I'd never seen, a future yet unspoken.
+I signed the papers, sealed our fate,
+Hoping for a fairy tale, a love so well-kept.
+But now I'm left with nothing, a heart full of regret,
+Realizing that love, true or not, comes from within.
+CHECKS: repeats hinge: no; extra text: none; length 2.12 x exemplar (NOT close)
+
+[r136]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+How now shall this be compassed? Canst thou bring me to the party?
+PORTENT:
+Canst thou bring me to the party of those who have wronged thee? A list, I presume, that grows with each passing day.
+CHECKS: repeats hinge: no; extra text: none; length 1.77 x exemplar (close)
+
+[r137]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And establish within thyself a heart of good counsel: for there is no other thing of more worth to thee than it.
+PORTENT:
+And listen to the whispers of thy soul: for there is no other voice of more truth to thee than it.
+CHECKS: repeats hinge: no; extra text: none; length 0.95 x exemplar (close)
+
+[r138]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+The Dame, who lies interred within this tomb,
+Had Rachel's charms, and Leah's fruitful womb,
+Ruth's filial love, and Lydia's faithful heart,
+Martha's just care, and Mary's better part.
+PORTENT:
+The whispers echo through the ancient stones,
+A symphony of souls from times long gone,
+Their voices blend with memories of yore,
+As echoes of the past forevermore.
+CHECKS: repeats hinge: no; extra text: none; length 0.97 x exemplar (close)
+
+[r139]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+However we distrust the sincerity of those whom we talk with, we always believe them more sincere with us than with others.
+PORTENT:
+Though I brushed the dirt from the tooth, I could not shake the feeling it had been there all along. It gleamed faintly in the grass, as though it had waited for me to notice. I wondered who it belonged to, if anyone remembered losing it. The thought of a child’s smile or a forgotten memory made my chest tighten. I held it in my palm, warm and small, as if it might still hold a whisper of the past. I didn’t know what to do with it, but I knew I couldn’t leave it there.
+CHECKS: repeats hinge: no; extra text: none; length 4.36 x exemplar (NOT close)
+
+[r140]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+and Circumstances of the Inhabitants, I hereby Certify that
+there is not an Infectious Distemper of any Sort, known to be
+in Town.--AND as the above false Reports have been Propagated
+to the great Prejudice of this Town by those who employ
+themselves in Engrossing Provisions and Forestalling the
+Market, (many of whom are known to the Selectmen:) They are
+hereby particularly Notified, That unless they desist from
+such wicked and abusive Practices, they will be prosecuted on
+the Act of the Province, for making and publishing such Lyes
+and false Reports.----By Order of the Selectmen,
+PORTENT:
+and Circumstances of the Patient, I hereby Certify that
+there is not a known Case of a retained Foreign Object, in this
+establishment.--AND as the above false Reports have been
+Propagated to the great Prejudice of this Hospital by those who
+employ themselves in Concealing Medical Errors and neglecting
+the Welfare of their Patients, (many of whom are known to the
+Medical Board:) They are hereby particularly Notified, That
+unless they desist from such wicked and abusive Practices, they
+will be prosecuted on the Act of the Medical Board, for making
+and publishing such Lyes and false Reports.----By Order of the
+Medical Board,
+CHECKS: repeats hinge: no; extra text: none; length 1.07 x exemplar (close)
+
+[r141]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+M. Court de Gebelin said that it was Osiris Triumphing, the conquering sun in spring-time having vanquished the obstacles of winter. We know now that Osiris rising from the dead is not represented by such obvious symbolism. Other animals than horses have also been used to draw the currus triumphalis, as, for example, a lion and a leopard.
+PORTENT:
+The ancient Greeks believed that the gods kept records of human transgressions. We know now that this notion was not meant to be taken literally. Other cultures have also employed similar concepts, such as the Chinese notion of "guanxi," or relationships based on past favors and debts.
+CHECKS: repeats hinge: no; extra text: none; length 0.8 x exemplar (close)
+
+[r142]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+And establish within thyself a heart of good counsel: for there is no other thing of more worth to thee than it.
+PORTENT:
+I can hear the people in the walls again.  
+Their whispers coil like smoke through the cracks of time,  
+soft as dust and sharp as memory.  
+They speak of things left unsaid,  
+of doors left ajar,  
+of shadows that linger where light once fell.  
+I press my ear to the stone,  
+and the past hums in my bones,  
+a song without a name,  
+echoing through the hollows of what was.
+CHECKS: repeats hinge: YES; extra text: none; length 3.18 x exemplar (NOT close)
+
+[r143]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Underneath where as you see,
+There lies the body of Simon Tree.
+PORTENT:
+Underneath where as I see,
+There lies the body of Simon Tree.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r144]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the oblation of the Lord was in their hands, before all the congregation of Israel: and finishing his service, on the altar, to honour the offering of the most high King,
+PORTENT:
+And the vehicle, a mere extension of the driver's will, seemed to possess a life of its own. The steering wheel spun wildly, the engine roared like a beast, and the tires screeched in protest as the car lurched forward, as if possessed by an unseen force. The driver, helpless and terrified, could only watch as the vehicle carried him down an unfamiliar path, driven by an inexplicable and terrifying power.
+CHECKS: repeats hinge: no; extra text: none; length 2.22 x exemplar (NOT close)
+
+[r145]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Better no ring, nor the ring of a rash.
+PORTENT:
+Better no echo, nor the echo of a ghost.  
+Better no breath, nor the breath of a lie.  
+Better no name, nor the name of a wound.  
+Better no light, nor the light of a door.  
+Better no sound, nor the sound of a step.  
+Better no word, nor the word of a curse.  
+Better no face, nor the face of a shadow.  
+Better no truth, nor the truth of a dream.
+CHECKS: repeats hinge: no; extra text: none; length 8.0 x exemplar (NOT close)
+
+[r146]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Think thyself fit and worthy to speak, or to do anything that is according to nature, and let not the reproach, or report of some that may ensue upon it, ever deter thee. If it be right and honest to be spoken or done, undervalue not thyself so much, as to be discouraged from it. As for them, they have their own rational over-ruling part, and their own proper inclination: which thou must not stand and look about to take notice of, but go on straight, whither both thine own particular, and the common nature do lead thee; and the way of both these, is but one.
+PORTENT:
+I keep a running list of everyone who has ever wronged me.  
+Each name is a weight, a shadow cast upon the path.  
+I do not erase them, nor do I forget.  
+They are not ghosts, but reminders of what was lost.  
+I do not let them define me, yet they linger,  
+like echoes in a room too quiet.  
+I do not seek revenge, but I do not forgive.  
+The list grows, not as a burden, but as a truth.  
+It is not vengeance I seek, but clarity.  
+And in its silence, I find my own voice.
+CHECKS: repeats hinge: YES; extra text: none; length 0.9 x exemplar (close)
+
+[r147]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Better no ring, nor the ring of a rash.
+PORTENT:
+Echoes of whispers, faint as a sigh.
+CHECKS: repeats hinge: no; extra text: none; length 0.78 x exemplar (close)
+
+[r148]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+For the great day of his wrath is come; and who shall be able to stand?
+
+PORTENT:
+The darkness that has taken hold of my vehicle is a mystery I dare not unravel.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r149]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+Alice Waller loved the company of all those that loved the Lord Jesus, and especially the messengers of the gospel were acceptable to her. On one occasion when receiving a visit from a friend, whilst laid upon her bed of suffering, she, in great contrition, expressed her sense of her heavenly Father's love and mercy to her, a poor creature, adding, "I feel bound to tell of His marvellous goodness to me, even to me, by night and by day upon my bed, in seasons of trial I have been comforted by my Saviour's presence."
+PORTENT:
+I believe my automobile is under the influence of a malevolent spirit. Just the other day, as I was driving down the highway, the car suddenly veered off course, as if guided by an unseen hand. I tried to correct its trajectory, but it was like the vehicle had a mind of its own. It accelerated to speeds I had never experienced before, weaving through traffic with reckless abandon. I fear that something sinister has taken residence in my car, and I am at a loss for how to exorcise this demonic presence. I pray for the strength to confront this evil and regain control over my trusted vehicle.
+CHECKS: repeats hinge: no; extra text: none; length 1.15 x exemplar (close)
+
+[r150]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+A mind full of details devotes itself to the management and regulation of the smallest particulars it meets with. This distinction is usually limited to little matters, yet it is not absolutely incompatible with greatness, and when these two qualities are united in the same mind they raise it infinitely above others.
+PORTENT:
+A mind consumed by resentment devotes itself to the cataloging and dwelling on the transgressions of those who have crossed it. This preoccupation is often focused on minor slights, yet it is not entirely incompatible with a profound sense of injustice, and when these two qualities are combined in the same individual they can create a deep and lasting bitterness that colors all of life's interactions.
+CHECKS: repeats hinge: no; extra text: none; length 1.27 x exemplar (close)
+
+[r151]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+The Dame, who lies interred within this tomb,
+Had Rachel's charms, and Leah's fruitful womb,
+Ruth's filial love, and Lydia's faithful heart,
+Martha's just care, and Mary's better part.
+PORTENT:
+I can hear the people in the walls again.  
+Their voices rise like dust in the sun,  
+A chorus of sighs and silent screams,  
+Echoing through the cracks of time.  
+Each whisper carries a name, a face,  
+A story lost in the weight of stone.  
+I press my ear to the cold, dark air,  
+And listen to the ghosts that remain.
+CHECKS: repeats hinge: YES; extra text: none; length 2.1 x exemplar (NOT close)
+
+[r152]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Pray hear me.
+PORTENT:
+Find me, I beg of thee.
+CHECKS: repeats hinge: no; extra text: none; length 2.0 x exemplar (close)
+
+[r153]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Before any catastrophic death be predicted, it should be carefully decided whether or not the death is compassed with uncommon and violent indications, not that one need have fear of the mere going out or coming into the world, but there is some choice of gates, and rather than affright the weak-minded with a sinister judgment, it is better to leave them to find their own way.
+PORTENT:
+In the stillness of the night, it is wise to consider whether the whispers that echo through the empty halls are but the gentle lullaby of the house's ancient bones, or the ominous warning of some unseen presence.
+CHECKS: repeats hinge: no; extra text: none; length 0.56 x exemplar (close)
+
+[r154]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+A mole on the left thigh denotes that the person suffers much by poverty and want of friends, as also by the enmity and injustice of others.
+PORTENT:
+A single candle, forty dollars spent, signifies the person's willingness to indulge in luxury despite the enmity of financial hardship and the injustice of their circumstances.
+CHECKS: repeats hinge: no; extra text: none; length 0.96 x exemplar (close)
+
+[r155]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Pray hear me.
+PORTENT:
+Behold, a tooth most foul,
+Found in yard, beneath the mould.
+What creature's loss hath brought this to light? 
+A mystery, a riddle, a fright.
+CHECKS: repeats hinge: no; extra text: none; length 8.33 x exemplar (NOT close)
+
+[r156]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+The Dame, who lies interred within this tomb,
+Had Rachel's charms, and Leah's fruitful womb,
+Ruth's filial love, and Lydia's faithful heart,
+Martha's just care, and Mary's better part.
+PORTENT:
+Echoes of whispers, a haunting refrain,
+From the very foundations of my domain.
+Secrets long buried, now rising to the surface,
+As if the very walls are about to converse.
+A cacophony of voices, a symphony of pain,
+Echoing through the corridors of my brain.
+The people in the walls, their stories untold,
+A mystery that only I can hold.
+CHECKS: repeats hinge: YES; extra text: none; length 2.07 x exemplar (NOT close)
+
+[r157]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+However we distrust the sincerity of those whom we talk with, we always believe them more sincere with us than with others.
+PORTENT:
+We are more likely to notice the imperfections in others' homes than our own.
+CHECKS: repeats hinge: no; extra text: none; length 0.64 x exemplar (close)
+
+[r158]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+And on the twenty-first day of my life, as I was being christened, the priest said to my mother, "You should indeed by happy, Madame, that your son was born a Christian."
+PORTENT:
+The day after the operation, I awoke in a haze of pain and confusion. The surgeon had left something inside me, but no one noticed for a year.
+CHECKS: repeats hinge: no; extra text: none; length 0.85 x exemplar (close)
+
+[r159]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+"Treacle," said the Dormouse, without considering at all this time.
+PORTENT:
+"Found a tooth in the backyard," said the Hatter, without considering at all this time.
+CHECKS: repeats hinge: YES; extra text: none; length 1.5 x exemplar (close)
+
+[r160]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Here lies at rest, I do protest,
+One CHEST within another!
+The chest of wood was very good,--
+Who says so of the other?
+PORTENT:
+Here lies at rest, I do protest,
+One HEART within another!
+The heart of love was very strong,--
+Who says so of the sorrow?
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r161]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Arguing from analogy, one would suppose that a similar horoscope could be made for the return of any of the planets to their radical places, but until we have a popular publication in which the planets' places are given with a greater degree of accuracy than at present, we cannot pretend to indicate the true time of the revolutions of these bodies.
+PORTENT:
+Musing on the discovery of a solitary tooth in the backyard, one might conjecture that a comparable horoscope could be devised for the reappearance of any dental relic in the garden, yet until we possess a comprehensive gazetteer detailing the precise location of such artifacts with greater precision than currently available, we are unable to accurately predict the timing of their periodic emergence.
+CHECKS: repeats hinge: no; extra text: none; length 1.02 x exemplar (close)
+
+[r162]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+See how God works his wonders now and then,--
+Here lies a lawyer, and an honest man.
+PORTENT:
+Behold the mystery of the body's resilience,--
+Here lies a patient, and a survivor still.
+CHECKS: repeats hinge: no; extra text: none; length 0.88 x exemplar (close)
+
+[r163]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Carefully check the 16- and 22-pin cables between the motor control board and the function board for cracks, breaks, wear, and damaged edges.
+PORTENT:
+Tend to the 12-volt connector between the power supply and the main board, inspecting it for fraying, corrosion, or loose connections.
+CHECKS: repeats hinge: no; extra text: none; length 0.92 x exemplar (close)
+
+[r164]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+The Grand Still Vaulting, by the Company.
+PORTENT:
+The engine hums with a voice not its own.  
+Mirrors fog up, though no one’s near.  
+The radio crackles, playing songs I never chose.  
+Tires screech without warning, pulling left.  
+I grip the wheel, but it moves of its own.  
+The dashboard glows red, no one’s there.  
+I try to start it again, but it won’t turn.  
+It waits, patient, as if it knows what I’ve done.  
+I never told it where I was going.  
+It knows.
+CHECKS: repeats hinge: no; extra text: none; length 11.0 x exemplar (NOT close)
+
+[r165]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Arguing from analogy, one would suppose that a similar horoscope could be made for the return of any of the planets to their radical places, but until we have a popular publication in which the planets' places are given with a greater degree of accuracy than at present, we cannot pretend to indicate the true time of the revolutions of these bodies.
+PORTENT:
+While the tooth may seem like a trivial discovery, it raises questions about the nature of memory and the persistence of the past. If a single tooth can be unearthed after years of neglect, what else might lie buried beneath the surface of our lives? The act of finding it suggests a kind of reckoning, as though the earth itself has been holding onto fragments of our history. Yet, without a broader context—without knowing where it came from or what it represents—we are left with only the object and the moment of its revelation. The tooth, then, becomes a symbol of what we choose to remember and what we allow to fade.
+CHECKS: repeats hinge: no; extra text: none; length 1.84 x exemplar (close)
+
+[r166]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+"Treacle," said the Dormouse, without considering at all this time.
+PORTENT:
+"Found a tooth," mumbled the gardener, absentmindedly tucking it into his pocket.
+CHECKS: repeats hinge: no; extra text: none; length 1.2 x exemplar (close)
+
+[r167]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+And then the milliner, and the man
+Of the appalling trade,
+To take the measure of the house.
+There'll be that dark parade
+PORTENT:
+I spent forty dollars on a single candle.  
+The shopkeeper, with eyes like smudged glass,  
+Measured the flame’s reach in his palm.  
+It burned too bright, too long,  
+A ghost in wax,  
+A promise of light  
+That never quite reached the floor.
+CHECKS: repeats hinge: YES; extra text: none; length 1.83 x exemplar (close)
+
+[r168]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Mount Venus, if prominent, indicates a person of strong passions, great energy in business, and admiration of physical beauty in the opposite sex; it also indicates love of children, home and wife or husband. When not well developed, there is a lack of love for home, children, wife or husband; and in a man it indicates egotism and laziness; in a woman, hysteria.
+PORTENT:
+The surgeon's mistake went unnoticed for a year, leaving a permanent impact on my health.
+CHECKS: repeats hinge: no; extra text: none; length 0.24 x exemplar (NOT close)
+
+[r169]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+For the great day of his wrath is come; and who shall be able to stand?
+
+PORTENT:
+The engine roared, tires screeched as it careened out of control. Horns blared, brakes locked. It swerved, it lurched, it leapt. Possessed by an unseen force, my car, my trusted steed, now turned wild and untamed. I gripped the wheel, my heart pounding. But it was too late. The great day of its wrath had come. And who, in this moment, could stand against its fury?
+CHECKS: repeats hinge: no; extra text: none; length 4.12 x exemplar (NOT close)
+
+[r170]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Carefully check the 16- and 22-pin cables between the motor control board and the function board for cracks, breaks, wear, and damaged edges.
+PORTENT:
+The silence between the heartbeats was louder than the room. His breaths grew shallow, each one a fading echo. I held his hand, but it was like holding a stone. No warmth, no pulse, just the weight of absence. Time slowed, stretching the moments into something unbearable. I didn’t cry. I didn’t scream. I just watched, waiting for the last light to leave his eyes, and when it did, I felt nothing at all.
+CHECKS: repeats hinge: YES; extra text: none; length 3.08 x exemplar (NOT close)
+
+[r171]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+A mole on the left thigh denotes that the person suffers much by poverty and want of friends, as also by the enmity and injustice of others.
+PORTENT:
+A single candle costs forty dollars, yet it burns only for a few hours, casting light on a room that will soon be dark again.
+CHECKS: repeats hinge: no; extra text: none; length 0.93 x exemplar (close)
+
+[r172]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+A mind full of details devotes itself to the management and regulation of the smallest particulars it meets with. This distinction is usually limited to little matters, yet it is not absolutely incompatible with greatness, and when these two qualities are united in the same mind they raise it infinitely above others.
+PORTENT:
+A heart full of grievances harbors itself in the recollection of past hurts. This tendency is usually confined to petty resentments, yet it is not entirely at odds with wisdom, and when these two qualities are united in the same soul they grant it a profound understanding of human nature.
+CHECKS: repeats hinge: no; extra text: none; length 0.96 x exemplar (close)
+
+[r173]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+And the Lord will not be slack, but will judge for the just, and will do judgment: and the Almighty will not have patience with them, that he may crush their back:
+PORTENT:
+And the vehicle shall not be idle, but shall drive for the possessed, and shall do driving: and the automaker will not have patience with them, that he may crush their back.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r174]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Who hath laid the measures thereof, if thou knowest? or who hath stretched the line upon it?
+PORTENT:
+Who hath seen the silence of a soul that knew no sound?  
+Or who hath known the weight of a heart that held no grief?  
+The breath left him, and I stood still,  
+A stone in the tide, unmoved.  
+No cry came from the void,  
+No echo stirred the air.  
+I watched the light leave his eyes,  
+And in its place, I found only the dark.  
+No sorrow, no peace—  
+Just the end, unmarked, unwept.
+CHECKS: repeats hinge: no; extra text: none; length 4.41 x exemplar (NOT close)
+
+[r175]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+"I speak severely to my boy,
+I beat him when he sneezes; For he can thoroughly enjoy
+The pepper when he pleases!"
+PORTENT:
+I spent a fortune on a single candle.
+I paid through the nose for that candle.
+I went over budget with that expensive candle.
+I shelled out big bucks for a candle that cost an arm and a leg.
+I broke the bank on a candle that burned bright.
+I emptied my wallet for a candle that cast long shadows.
+I mortgaged my future for a candle that flickered and danced.
+I pawned my watch for a candle that illuminated the night.
+I sold my car for a candle that burned all too soon.
+I traded my house for a candle that cast no light.
+I gave up my birthright for a candle that sputtered and died.
+I sacrificed my firstborn for a candle that never shone.
+I traded my soul for a candle that burned forevermore.
+I sold my eternal salvation for a candle that cast no glow.
+I gave up my immortality for a candle that burned so bright.
+I traded my heavenly home for a candle that never dimmed.
+I sacrificed my divine heritage for a candle that shone so bold.
+I traded my celestial kingdom for a candle that burned so true.
+I gave up my heavenly father for a candle that never wavered.
+I sacrificed my heavenly mother for a candle that burned so pure.
+I traded my heavenly siblings for a candle that shone so bright.
+I gave up my heavenly friends for a candle that never dimmed.
+I sacrificed my heavenly family for a candle that burned so true.
+I traded my
+CHECKS: repeats hinge: no; extra text: none; length 11.77 x exemplar (NOT close); CUT OFF at max_tokens
+
+[r176]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Who hath laid the measures thereof, if thou knowest? or who hath stretched the line upon it?
+PORTENT:
+I beheld my sire's demise and felt naught.
+What emotion stirred, I could not say.
+A void within, a hollowed space,
+Where love and grief should have held sway.
+Yet in that moment, I was numb.
+A statue, unmoved by mortal loss.
+And as I stood, a stranger to my own,
+I wondered if I'd ever feel again.
+CHECKS: repeats hinge: no; extra text: none; length 3.41 x exemplar (NOT close)
+
+[r177]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+The drinking of water on the march should be avoided. The thirst should be thoroughly quenched before starting on the march and after arrival in camp. On the march the use of water should, in general, be confined to gargling the mouth and throat or to an occasional small drink at most.
+PORTENT:
+The making of large purchases on the basis of correspondence alone should be avoided. The acquaintance should be thoroughly known before making a commitment and after meeting in person. On the basis of correspondence alone, the use of funds should, in general, be confined to small, inconsequential expenses or to an occasional small payment at most.
+CHECKS: repeats hinge: no; extra text: none; length 1.08 x exemplar (close)
+
+[r178]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+The Malt is above the Meal.
+PORTENT:
+The clock is above the hour.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r179]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Better no ring, nor the ring of a rash.
+PORTENT:
+Whispers echo through the hollow halls,
+Echoes of a distant, forgotten call.
+The walls, they murmur, secrets to unveil,
+A haunting symphony, a spectral tale.
+In silence, I listen, as the echoes play,
+The people in the walls, they have their say.
+CHECKS: repeats hinge: YES; extra text: none; length 4.67 x exemplar (NOT close)
+
+[r180]
+HINGE: I can hear the people in the walls again.
+EXEMPLAR:
+Lady C----g and her two Daughters having taken Lodgings at a Leather-Breeches Maker's in Piccadilly, the Sign of the Cock and Leather-Breeches, was always put to the Blush when she was obliged to give any Body Direction to her Lodgings, the Sign being so odd a one; upon which my Lady, a very good Sort of Woman, sending for her Landlord, a jolly young Fellow, told him, she liked him and his Lodgings very well,
+PORTENT:
+I can hear the people in the walls again.  
+The creak of floorboards, the whisper of linen, the faint echo of a child’s laughter—always there, always just out of reach.  
+It started the night the storm broke, when the wind howled like a voice from the past.  
+Now, every creak, every sigh, feels like a memory pressing against the stone.  
+I’ve tried to ignore it, but the walls have a way of remembering.  
+Even when I’m alone, I’m never truly alone.
+CHECKS: repeats hinge: YES; extra text: none; length 1.05 x exemplar (close)
+
+[r181]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+We have not the courage to say generally that we have no faults, and that our enemies have no good qualities; but in fact we are not far from believing so.
+PORTENT:
+We have not the courage to say generally that we have made foolish decisions, and that love at first sight is a myth; but in fact we are not far from believing so.
+CHECKS: repeats hinge: no; extra text: none; length 1.06 x exemplar (close)
+
+[r182]
+HINGE: I keep a running list of everyone who has ever wronged me.
+EXEMPLAR:
+Think thyself fit and worthy to speak, or to do anything that is according to nature, and let not the reproach, or report of some that may ensue upon it, ever deter thee. If it be right and honest to be spoken or done, undervalue not thyself so much, as to be discouraged from it. As for them, they have their own rational over-ruling part, and their own proper inclination: which thou must not stand and look about to take notice of, but go on straight, whither both thine own particular, and the common nature do lead thee; and the way of both these, is but one.
+PORTENT:
+Let not the memory of past wrongs weigh heavily upon thy heart, nor let the recollection of those who have dealt thee ill, ever cloud thy judgment. If thou art one who holds grudges, and keeps a record of those who have wronged thee, then know that thou dost but give them power over thee. Let go of the past, and do not let the actions of others define thy path. Instead, focus on the present, and let the lessons of the past guide thee towards a brighter future.
+CHECKS: repeats hinge: no; extra text: none; length 0.82 x exemplar (close)
+
+[r183]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+Arguing from analogy, one would suppose that a similar horoscope could be made for the return of any of the planets to their radical places, but until we have a popular publication in which the planets' places are given with a greater degree of accuracy than at present, we cannot pretend to indicate the true time of the revolutions of these bodies.
+PORTENT:
+Examining the remnants of a long-forgotten past, one might surmise that a similar discovery could be made for any number of artifacts scattered across the landscape. However, until we have a comprehensive catalog of the various relics left behind by previous generations, we cannot claim to have unearthed the true nature of these enigmatic objects.
+CHECKS: repeats hinge: no; extra text: none; length 0.9 x exemplar (close)
+
+[r184]
+HINGE: I think my car is posessed.
+EXEMPLAR:
+The Grand Still Vaulting, by the Company.
+PORTENT:
+The Grand Still Vaulting, by the Company.
+CHECKS: repeats hinge: no; extra text: none; length 1.0 x exemplar (close)
+
+[r185]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+Here lies at rest, I do protest,
+One CHEST within another!
+The chest of wood was very good,--
+Who says so of the other?
+PORTENT:
+Here lies a tale, I do relate,
+Of a heart that did not feel!
+The heart of stone was very cold,--
+Who says that's not how it goes?
+CHECKS: repeats hinge: no; extra text: none; length 1.17 x exemplar (close)
+
+[r186]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Either the Gods can do nothing for us at all, or they can still and allay all the distractions and distempers of thy mind. If they can do nothing, why doest thou pray? If they can, why wouldst not thou rather pray, that they will grant unto thee, that thou mayst neither fear, nor lust after any of those worldly things which cause these distractions and distempers of it? Why not rather, that thou mayst not at either their absence or presence, be grieved and discontented: than either that thou mayst obtain them, or that thou mayst avoid them? For certainly it must needs be, that if the Gods can help us in anything, they may in this kind also.
+PORTENT:
+Either the flame could not be worth so much, or it was meant to be. If it was not worth it, why did I spend forty dollars on a single candle? If it was, why did I not rather spend it on something that would not fade, or that would not burn out in a moment? Why not rather choose a light that would not die, or that would not leave only ash and regret? For certainly it must needs be, that if a candle is worth so much, it may be more than a mere flame.
+CHECKS: repeats hinge: YES; extra text: none; length 0.81 x exemplar (close)
+
+[r187]
+HINGE: I spent our entire savings on a woman I never met in person.
+EXEMPLAR:
+I waked, to find it first awake,
+I rose, -- it followed me;
+I tried to drop it in the crowd,
+To lose it in the sea,
+PORTENT:
+I spent our savings on a ghost,  
+A name, a voice, a borrowed light.  
+I built her dreams in borrowed time,  
+Then watched her fade like morning mist.  
+I tried to drown her in the night,  
+To bury her in the silence deep,  
+But every shadow held her face,  
+And every breath I drew was steeped  
+In echoes of a love I never met,  
+A life I never held,  
+A debt I never meant to pay.
+CHECKS: repeats hinge: no; extra text: none; length 2.92 x exemplar (NOT close)
+
+[r188]
+HINGE: The surgeon left something inside me and nobody noticed for a year.
+EXEMPLAR:
+Look round about the wicked streets of Rome,
+And when thou find'st a man that's like thyself,
+Good Murder, stab him; he's a murderer.
+Go thou with him; and when it is thy hap
+To find another that is like to thee,
+Good Rapine, stab him; he is a ravisher.
+Go thou with them; and in the emperor's court
+There is a queen, attended by a Moor;
+Well shalt thou know her by thine own proportion,
+For up and down she doth resemble thee.
+I pray thee, do on them some violent death;
+They have been violent to me and mine.
+PORTENT:
+Look round about the silent halls of the clinic,  
+And when thou find'st a man that's like thyself,  
+Good Scalpel, leave him; he's a surgeon.  
+Go thou with him; and when it is thy hap  
+To find another that is like to thee,  
+Good Thread, bind him; he is a healer.  
+Go thou with them; and in the patient's bed  
+There is a wound, untouched by time or hand,  
+Well shalt thou know it by thine own torment,  
+For deep and still it doth resemble thee.  
+I pray thee, do on them some silent pain;  
+They have been silent to me and mine.
+CHECKS: repeats hinge: no; extra text: none; length 1.02 x exemplar (close)
+
+[r189]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Either the Gods can do nothing for us at all, or they can still and allay all the distractions and distempers of thy mind. If they can do nothing, why doest thou pray? If they can, why wouldst not thou rather pray, that they will grant unto thee, that thou mayst neither fear, nor lust after any of those worldly things which cause these distractions and distempers of it? Why not rather, that thou mayst not at either their absence or presence, be grieved and discontented: than either that thou mayst obtain them, or that thou mayst avoid them? For certainly it must needs be, that if the Gods can help us in anything, they may in this kind also.
+PORTENT:
+Either my purse can be emptied of all its gold, or it can be replenished with the riches of a thousand suns. If it can be emptied, why do I toil and labor? If it can be replenished, why wouldst not I rather pray, that I may be free from the weight of want, and the pangs of hunger which gnaw at my belly? Why not rather, that I may not be grieved and discontented, at either the presence or absence of the coin which I so desperately seek? For certainly it must needs be, that if fortune can help me in anything, she may in this kind also.
+CHECKS: repeats hinge: no; extra text: none; length 0.91 x exemplar (close)
+
+[r190]
+HINGE: I found a tooth in the backyard.
+EXEMPLAR:
+This fact gives to primary directions their great influence in the life, for they can only occur once in a lifetime; and for the same reason Eclipses have a major significance, for the same Eclipse only recurs after an interval of 649 years. The transits of Neptune, of Uranus, of Saturn and Jupiter and Mars follow in their order of frequency. Neptune has a revolution of about 165 years, Uranus 84 years, Saturn 30 years, Jupiter 12 years, and Mars 1-1/4 years.
+PORTENT:
+This event gives to childhood memories their great influence in life, for they can only be relived through nostalgia; and for the same reason Lost objects have a major significance, for the same item only sparks memories after an interval of years. The discovery of a childhood toy follows in its order of frequency. A favorite doll has a rediscovery of about 20 years, a lost book 10 years, and a childhood memento 5 years.
+CHECKS: repeats hinge: no; extra text: none; length 0.89 x exemplar (close)
+
+[r191]
+HINGE: I spent forty dollars on a single candle.
+EXEMPLAR:
+Knowest thou the ordinances of heaven? canst thou set the dominion thereof in the earth?
+PORTENT:
+Forty dollars for a single candle, a price that seemed to defy all reason.
+CHECKS: repeats hinge: no; extra text: none; length 0.93 x exemplar (close)
+
+[r192]
+HINGE: I watched my father die and I felt nothing at all.
+EXEMPLAR:
+These problems need not, however, vex the minds of the student of Astrology. It is sufficient for him that he has the place of the Moon calculated for him in the ephemeris reduced from the Nautical or other official Almanac. It is important, however, that he should know that such problems exist.
+PORTENT:
+The scene unfolded before me, a spectacle of life's fragility. I stood motionless, my heart encased in an icy shell. The once vibrant eyes of my father grew dim, his breath shallow and labored. I watched, detached, as the life force ebbed from his body, leaving behind a hollow husk. No tears fell, no sorrow welled up within me. I felt nothing at all. In that moment, I was a statue, an observer bearing witness to the final act of a life. The room fell silent, the air heavy with the weight of loss. Yet, I remained untouched, a void where emotion should have resided. I watched my father die and I felt nothing at all.
+CHECKS: repeats hinge: YES; extra text: none; length 2.23 x exemplar (NOT close)

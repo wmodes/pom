@@ -9,6 +9,16 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **Oracle model bake-off** (`experiments/oracle-bakeoff/`, 41 tests in `tests/oracle_bakeoff/`, mutation-checked;
+  `documentation/bakeoff-rubric.md` and `documentation/model-bakeoff.md`). Seven 8 to 9B models run through the real
+  PromptBuilder and OracleModelClient under Wes's frozen prompt (temperature 0.3, one exemplar): 16 benchmark hinges
+  times 10 seeded draws, 160 portents per model, the same hinge-and-exemplar pairs for every model. Each run records the
+  prompt hash, the corpus fingerprint, the commit and the llama-server version, so two runs can be checked to have the
+  same conditions. The portents were rated blind against seven yes/no marks (follows the hinge, follows the style,
+  doesn't repeat the hinge, didn't muddle its details, no extra text, length close, particularly creative); three are
+  checked by a program (`bakeoff_checks.py`). Mean score of 7: Qwen3.5-9B 6.08, Gemma 2 9B 5.84, Hermes 3 5.26,
+  Ministral 8B 5.21, Llama 3.1 8B Instruct 5.19, Stheno v3.4 4.73, Qwen3-8B 4.45. The write-up compares the models on
+  each question and has an awards section. One rater (Claude), not yet spot-checked by Wes.
 - **Oracle playground** (`experiments/oracle-playground/probe_oracle.py`). Step four of the voice side. Type a hinge,
   get a portent, using the real `PromptBuilder`, `OracleModelClient`, ExemplarSelector and the config's `oracle.prompt`
   (read again before every hinge). It starts a llama-server for `--model` (a .gguf file or a Hugging Face name) on the

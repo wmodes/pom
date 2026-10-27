@@ -9,6 +9,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`[trigger] window_seconds`** (default 300, the last five minutes; 7 new tests). How many seconds of recent scores
+  the room's level is judged from, as a length of time, not a count of scores, so a busy room and a quiet one both get
+  the same stretch. Read by `Config` and validated like the other trigger values (a number above 0, else the default
+  with a warning). The ConvoInterestTracker does not use it yet; it is there for the offline time-window replay.
 - **Recording-time stamps in the hearing-debug replay** (`probe_hearing_pipeline.py`). With `--wav`, each "heard" line
   is stamped with where in the recording the utterance ended (`+hh:mm:ss`, from the rolling cutter's own segment times)
   instead of the wall clock, which means nothing when a recording is replayed faster than real time. Live listening

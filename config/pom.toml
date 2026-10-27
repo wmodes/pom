@@ -132,6 +132,12 @@ trigger_fraction = 0.25
 # as interest_half_life, so the average has its first full memory before anything can trigger.
 min_scores = 10
 
+# How many seconds of recent scores the room's level is judged from: 300 is the last five minutes. It is a
+# length of time, not a count of scores, so a busy room and a quiet one both get "the last five minutes";
+# 30 scores would be two minutes of fast talk and twenty of a quiet room. Above 0. The ConvoInterestTracker
+# does not use it yet; the offline time-window replay in the hearing experiments reads it.
+window_seconds = 300
+
 
 # ================================================
 # ORACLE: the model that writes the portent

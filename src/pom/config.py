@@ -24,7 +24,9 @@ of being threaded through by hand. Today there are five:
                up the score range the floor sits (0.05, so 0.45 on the 0 to 9 scale; scores below it are
                ignored), `interest_half_life` how many scores it takes for an old score's pull on the room's
                average interest to halve (10), `trigger_fraction` how far above that average a score
-               must be to trigger (0.25), and `min_scores` how many scores must count first (10). The entry point builds
+               must be to trigger (0.25), and `min_scores` how many scores must count first (10). `window_seconds` is how
+               many seconds of recent scores the room's level is judged from (300); the ConvoInterestTracker does not
+               use it yet, the offline time-window replay in the hearing experiments reads it. The entry point builds
                the ConvoInterestTracker from `config.trigger`.
 
 Where values come from, highest priority first:
@@ -64,7 +66,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
          "oracle.temperature", "trigger.floor_ignore_fraction", "trigger.trigger_fraction",
-         "trigger.interest_half_life", "trigger.min_scores"}
+         "trigger.interest_half_life", "trigger.min_scores", "trigger.window_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -80,6 +82,7 @@ DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION = 0.05
 DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.25
 DEFAULT_TRIGGER_INTEREST_HALF_LIFE = 10.0
 DEFAULT_TRIGGER_MIN_SCORES = 10
+DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -158,11 +161,15 @@ class TriggerSettings:
             (10 is about ten scores of memory).
         min_scores: How many scores must have counted before the trigger may fire, a whole number of at
             least 1.
+        window_seconds: How many seconds of recent scores the room's level is judged from, above 0 (300 is
+            the last five minutes). Measured in time, not in scores, so it means the same in a busy room
+            and a quiet one.
     """
     floor_ignore_fraction: float = DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION
     trigger_fraction: float = DEFAULT_TRIGGER_TRIGGER_FRACTION
     interest_half_life: float = DEFAULT_TRIGGER_INTEREST_HALF_LIFE
     min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
+    window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
 
 
 class Config:
@@ -281,7 +288,9 @@ class Config:
             _positive(values.get("trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE),
                       "trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE, report),
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
-                   "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 1, report))
+                   "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 1, report),
+            _positive(values.get("trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS),
+                      "trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle)
 
 

@@ -108,41 +108,28 @@ Output the score as a single digit | the sentence | what content you found that 
 # TRIGGER: when the Printer responds
 # ================================================
 
-# The bottom of the score range to ignore, as a fraction of the range: 0.05 is 5%, which is 0.45 on the
-# 0 to 9 scale. A score below that line (the floor) is ignored: it does not count toward how interesting the room has
-# been, and it can never make the Printer respond. It is a fixed fraction of the range, not of the
-# room's average, so the floor and the average cannot push each other around. 0 turns the floor off.
+# The trigger is Tukey's fence, the standard test for a value that stands out from a set of values. It looks at
+# the scores the room has recently earned, lines them up from lowest to highest, and finds Q1 (the score a quarter of
+# the way up the line) and Q3 (three quarters of the way up). The IQR is Q3 minus Q1, the width of the middle half of
+# the scores. A score makes the Printer respond when it is above Q3 + fence_multiple x IQR, judged against the scores
+# as they were before it was said. Every score counts, the lowest too: no fixed line throws any away.
 [trigger]
-floor_ignore_fraction = 0.05
 
-# This is the decay of the moving average (avg_convo_interest). It averages approximately this many of
-# the latest scores: with 10, half of the average comes from the latest 10 scores and the rest from older
-# ones, fading. Every score at or above the floor nudges it a little, so it is always up to date. Smaller
-# follows the last few sentences; larger remembers more of the conversation. Above 0. Only scores at or
-# above the floor count, not every sentence heard.
-interest_half_life = 10
+# How far above the upper quartile (Q3) a score must be to trigger, in IQRs. 0 puts the bar at Q3, so about the top
+# quarter of scores trigger; 1.5 is the textbook outlier line. 0 or more. Replayed on four recorded meetings (about
+# 835 sentences an hour), 1.0 gave about 7 triggers an hour (one every nine minutes), 0.6 about 33 and 1.5 about 1.
+fence_multiple = 1.0
 
-# How far above avg_convo_interest a score must be to make the Printer respond: 0.25 is 25% above. 0
-# responds to anything at or above the average. (In two live sessions, 0.10 marked 19 of 43 and 13 of 23
-# counted sentences; 0.25 marked 11 of 43 and 12 of 23.)
-trigger_fraction = 0.25
-
-# How many scores must have counted (reached the floor) before the Printer may respond at all, so it
-# does not respond to the first thing it hears in an empty room. A whole number of at least 1; the same
-# as interest_half_life, so the average has its first full memory before anything can trigger.
-min_scores = 10
-
-# How many seconds of recent scores the room's level is judged from: 300 is the last five minutes. It is a
-# length of time, not a count of scores, so a busy room and a quiet one both get "the last five minutes";
-# 30 scores would be two minutes of fast talk and twenty of a quiet room. Above 0. The ConvoInterestTracker
-# does not use it yet; the offline time-window replay in the hearing experiments reads it.
+# How many seconds of recent scores the quartiles are drawn from: 300 is the last five minutes. It is a length of
+# time, not a count of scores, so a busy room and a quiet one both get "the last five minutes": 30 scores would be two
+# minutes of fast talk and twenty of a quiet room. Above 0.
 window_seconds = 300
 
-# Tukey's fence: how far above the recent scores' upper quartile (Q3) a score must be to trigger, in
-# interquartile ranges (IQR, the width of the middle half of the scores). The bar is Q3 + fence_multiple x IQR.
-# 0 puts the bar at Q3, so about the top quarter of scores trigger; 1.5 is the textbook outlier line and triggers
-# rarely. 0 or more. The ConvoInterestTracker does not use it yet; the offline time-window replay reads it.
-fence_multiple = 1.5
+# The fewest scores the window may hold. If the room is so quiet that fewer than this were heard in the window, the
+# window reaches back to the last this-many scores instead, so the quartiles never come from a handful. Nothing
+# triggers until the window holds this many, so the Printer does not respond to the first thing it hears in an empty
+# room. A whole number of at least 2.
+min_scores = 20
 
 
 # ================================================

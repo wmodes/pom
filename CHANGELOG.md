@@ -288,6 +288,23 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The trigger is Tukey's fence over the room's recent scores, and the floor and the running average are gone.**
+  `ConvoInterestTracker` keeps the scores of the last `window_seconds` (300), or the last `min_scores` (20) if the room
+  is so quiet that fewer were heard in that time, and a score triggers when it is above Q3 + `fence_multiple` (1.0) x
+  IQR of that window as it stood before the score was said. Every score joins the window, the lowest included, so no
+  fixed line throws any away. `record(score, now)` now takes the time the score was heard (a clock reading live, the
+  place in the recording in a replay); a missing score or time is still IGNORED. Why: replayed on four recorded Zoom
+  meetings (4,278 sentences, about 835 an hour), the old rule (25% above the running average) triggered on 34% of
+  sentences, one every 13 seconds, and `trigger_fraction` barely moved it (0.35 gave 30%, 0.50 gave 23%): an average sits
+  in the middle of the scores, so a good share of them is always above a bar set just over it, and the many scores near 1
+  from short fragments pulled the average and the bar down further. The fence at 1.0 gave about 7 an hour in that busy
+  room (one every nine minutes) and about 5 an hour at a fifth of the talk. The scores are bunched into lumps with no
+  long tail (a spike at 1, and humps near 3 and 5), so a textbook outlier line (1.5) fired almost never.
+  **Removed settings:** `trigger.floor_ignore_fraction`, `trigger.trigger_fraction` and `trigger.interest_half_life`
+  (a `pom.toml` or `pom.local.toml` still holding them gets an unknown-key warning), and with them the tracker's
+  `avg_convo_floor`, `avg_convo_interest`, `interest_weight`, `is_above_floor` and `score_range`. `trigger.min_scores`
+  now means the window's minimum and defaults to 20 (at least 2); `trigger.fence_multiple` defaults to 1.0, down from
+  the 1.5 added a day earlier. The probe is updated in the next change.
 - **The oracle playground prints the exemplars two to a row** above the portent, each headed by its id and wrapped to
   its column (`exemplar_columns`), so the exemplars the model was given can be checked at a glance.
 - **The oracle's settings are all in `[oracle]`, and the committed oracle prompt is Wes's.** `exemplars_min` and

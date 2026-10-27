@@ -20,16 +20,12 @@ of being threaded through by hand. Today there are five:
                model's address and timeout, and the two settings of each request, `max_tokens` and
                `temperature`. The entry point builds the PromptBuilder and the OracleModelClient from
                `config.oracle` and passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
-    [trigger]  A section (see TriggerSettings): when the Printer responds. `floor_ignore_fraction` is how far
-               up the score range the floor sits (0.05, so 0.45 on the 0 to 9 scale; scores below it are
-               ignored), `interest_half_life` how many scores it takes for an old score's pull on the room's
-               average interest to halve (10), `trigger_fraction` how far above that average a score
-               must be to trigger (0.25), and `min_scores` how many scores must count first (10). `window_seconds` is how
-               many seconds of recent scores the room's level is judged from (300); the ConvoInterestTracker does not
-               use it yet, the offline time-window replay in the hearing experiments reads it. `fence_multiple` is how many
-               interquartile ranges above the recent scores' upper quartile a score must be to trigger under Tukey's fence
-               (1.5); it is read the same way and is not used by the tracker yet. The entry point builds
-               the ConvoInterestTracker from `config.trigger`.
+    [trigger]  A section (see TriggerSettings): when the Printer responds, by Tukey's fence over the room's recent
+               scores. `window_seconds` is how many seconds of recent scores the quartiles are drawn from (300, the last
+               five minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
+               last 20, and nothing triggers until it holds that many), and `fence_multiple` how many interquartile
+               ranges above the upper quartile a score must be to trigger (1.0). The entry point builds the
+               ConvoInterestTracker from `config.trigger`.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
@@ -67,8 +63,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
-         "oracle.temperature", "trigger.floor_ignore_fraction", "trigger.trigger_fraction",
-         "trigger.interest_half_life", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple"}
+         "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -80,12 +75,9 @@ DEFAULT_ORACLE_URL = "http://127.0.0.1:8099/v1/chat/completions"
 DEFAULT_ORACLE_TIMEOUT = 120.0
 DEFAULT_ORACLE_MAX_TOKENS = 300
 DEFAULT_ORACLE_TEMPERATURE = 0.8
-DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION = 0.05
-DEFAULT_TRIGGER_TRIGGER_FRACTION = 0.25
-DEFAULT_TRIGGER_INTEREST_HALF_LIFE = 10.0
-DEFAULT_TRIGGER_MIN_SCORES = 10
+DEFAULT_TRIGGER_FENCE_MULTIPLE = 1.0
 DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
-DEFAULT_TRIGGER_FENCE_MULTIPLE = 1.5
+DEFAULT_TRIGGER_MIN_SCORES = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -156,27 +148,18 @@ class TriggerSettings:
     """The `[trigger]` section: when the Printer responds.
 
     Attributes:
-        floor_ignore_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
-            Scores below the floor are ignored.
-        trigger_fraction: How far above the room's average interest a score must be to trigger, 0 or more
-            (0.25 is 25% above).
-        interest_half_life: How many more scores it takes for a score's pull on the average to halve, above 0
-            (10 is about ten scores of memory).
-        min_scores: How many scores must have counted before the trigger may fire, a whole number of at
-            least 1.
-        window_seconds: How many seconds of recent scores the room's level is judged from, above 0 (300 is
-            the last five minutes). Measured in time, not in scores, so it means the same in a busy room
-            and a quiet one.
         fence_multiple: How many interquartile ranges above the upper quartile of the recent scores a score
             must be to trigger (Tukey's fence), 0 or more. 0 puts the bar at the upper quartile; 1.5 is the
             textbook outlier line.
+        window_seconds: How many seconds of recent scores the quartiles are drawn from, above 0 (300 is the
+            last five minutes). Measured in time, not in scores, so it means the same in a busy room and a
+            quiet one.
+        min_scores: The window always holds at least this many scores, and nothing triggers until it does, a
+            whole number of at least 2.
     """
-    floor_ignore_fraction: float = DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION
-    trigger_fraction: float = DEFAULT_TRIGGER_TRIGGER_FRACTION
-    interest_half_life: float = DEFAULT_TRIGGER_INTEREST_HALF_LIFE
-    min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
-    window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
     fence_multiple: float = DEFAULT_TRIGGER_FENCE_MULTIPLE
+    window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
+    min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
 
 
 class Config:
@@ -288,18 +271,12 @@ class Config:
             _number(values.get("oracle.temperature", DEFAULT_ORACLE_TEMPERATURE), "oracle.temperature",
                     DEFAULT_ORACLE_TEMPERATURE, 0.0, report))
         trigger = TriggerSettings(
-            _fraction(values.get("trigger.floor_ignore_fraction", DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION),
-                      "trigger.floor_ignore_fraction", DEFAULT_TRIGGER_FLOOR_IGNORE_FRACTION, report),
-            _number(values.get("trigger.trigger_fraction", DEFAULT_TRIGGER_TRIGGER_FRACTION),
-                    "trigger.trigger_fraction", DEFAULT_TRIGGER_TRIGGER_FRACTION, 0.0, report),
-            _positive(values.get("trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE),
-                      "trigger.interest_half_life", DEFAULT_TRIGGER_INTEREST_HALF_LIFE, report),
-            _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
-                   "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 1, report),
+            _number(values.get("trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE),
+                    "trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE, 0.0, report),
             _positive(values.get("trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS),
                       "trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS, report),
-            _number(values.get("trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE),
-                    "trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE, 0.0, report))
+            _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
+                   "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 2, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle)
 
 
@@ -370,14 +347,6 @@ def _number(value, label: str, default: float, minimum: float, report: FaultReco
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
         return float(value)
     report.warn(f"{label} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
-    return default
-
-
-def _fraction(value, label: str, default: float, report: FaultRecorder) -> float:
-    """A number from 0 up to (not including) 1 (an int or float, not a boolean); otherwise the default."""
-    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 <= value < 1.0:
-        return float(value)
-    report.warn(f"{label} must be a number from 0 up to but not including 1, got {value!r}; using {default:g}")
     return default
 
 

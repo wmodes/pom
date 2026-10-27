@@ -13,16 +13,17 @@ microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Score
 
 For every sentence it prints the real `pom` Scorer's score, and a little later the model's own written
 account of why: the content it found that earned the score. Each score also goes to the real
-`ConvoInterestTracker`, which keeps the room's average interest, and a sentence that stands out from that
-average is marked `<-- would trigger`. There is no fixed threshold: the bar moves with the room.
+`ConvoInterestTracker`, which keeps the room's recent scores, and a sentence that stands out from them (above
+Tukey's fence for that window) is marked `<-- would trigger`. There is no fixed threshold: the bar moves with the room.
 
-Every line ends with a note that says where the score stands, for example `[interest 4.31 -> 4.52, bar 4.74]`:
-the room's average interest the sentence was judged against, the average after it was added, and the score it
-had to reach (10% above the first number). `[warming up 3/10; ...]` means not enough scores have counted yet for
-anything to trigger, and `[below the floor, ignored; interest 4.31, unchanged]` means the score did not count. The settings
-are in the `[trigger]` section of `config/pom.toml`, and the startup banner prints the ones in force.
-Reloading the config restarts the average, because a changed prompt changes what a score means. The `r`
-command re-runs sentences without counting them again.
+Every line ends with a note that says where the score stands, for example `[window 69 scores, bar 5.12]`: how many
+recent scores the sentence was judged against and the score it had to be above (Q3 + `fence_multiple` x IQR of
+those scores). `[warming up 3/20]` means the window does not yet hold enough scores for anything to trigger, and
+`[no score]` means the sentence got no score and was left out. The settings are in the `[trigger]` section of
+`config/pom.toml`, and the startup banner prints the ones in force. Reloading the config restarts the window,
+because a changed prompt changes what a score means. The `r` command re-runs sentences without counting them
+again. With `--wav` the window runs on the position in the recording, not the wall clock, so a recording replayed
+fast (`--speed 0`) gives the triggers a live run would; the `[+hh:mm:ss]` on each "heard" line is that position.
 
 The Scorer, its settings and its prompts are the real thing, read from `config/pom.toml`. The
 microphone handling (cutting at pauses, level normalization, whisper) is a quick stand-in for modules

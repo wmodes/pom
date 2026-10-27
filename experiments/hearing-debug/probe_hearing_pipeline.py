@@ -9,7 +9,7 @@ the Mac against a recording):
 For every sentence it prints the Scorer's score (the real `pom` Scorer, built from config/pom.toml) and,
 a little later, the model's own written account of why: the content it found that earned the score,
 from the debug prompt. Each score also goes to the real `pom` ConvoInterestTracker, which keeps the room's
-average interest, and a sentence that stands out from that average by the configured margin is marked as one
+recent scores, and a sentence that stands out from them (above Tukey's fence for that window) is marked as one
 that would trigger. There is no fixed threshold: the bar moves with the room.
 
 THE CLOSED LOOP. The config file is checked before every utterance. Edit the prompts in
@@ -400,9 +400,9 @@ class Brain:
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings, self.trigger = client, settings, config.trigger
         # A new config can mean new prompts, and a score under new wording is not the same measure, so the
-        # room's average interest starts over whenever the config is reloaded.
-        self.tracker = ConvoInterestTracker(self.trigger.floor_ignore_fraction, self.trigger.trigger_fraction,
-                                            self.trigger.interest_half_life, self.trigger.min_scores)
+        # room's recent scores start over whenever the config is reloaded.
+        self.tracker = ConvoInterestTracker(self.trigger.fence_multiple, self.trigger.window_seconds,
+                                            self.trigger.min_scores)
         problems = config.report.lines() + client.report.lines() + self.tracker.report.lines()
         note = "; ".join(problems)
         if first:
@@ -411,7 +411,7 @@ class Brain:
                                      "min_content_words")
                    if getattr(before, name) != getattr(settings, name)]
         return (f"config reloaded: {', '.join(changed) if changed else 'no scorer setting changed'}; "
-                f"the room's average interest starts over{(' (problems: ' + note + ')') if note else ''}")
+                f"the room's recent scores start over{(' (problems: ' + note + ')') if note else ''}")
 
     def fingerprint(self) -> str:
         s = self.settings
@@ -499,25 +499,33 @@ class Pipeline:
         self.tracker_lock = threading.Lock()                         # two threads hand scores to the tracker
         self.whisper_down = False                                    # so a dead whisper-server is reported once, not every time
 
-    def standing(self, score: Optional[float]) -> str:
-        """Hands one score to the tracker and describes where it stands, for the end of its line.
+    def clock(self, at: Optional[float]) -> float:
+        """When a sentence was heard, in seconds, for the tracker's window.
+
+        The place in the audio stream where its utterance ended (a segment's end, or failing that how much audio
+        has arrived), not the wall clock, so a recording replayed faster than real time gives the answers a live
+        run would. Only the energy cutter, which never feeds the rolling cutter, falls back on the wall clock.
+        """
+        if self.args.energy_cutter:
+            return time.monotonic()
+        return at if at is not None else self.cutter.total_seconds
+
+    def standing(self, score: Optional[float], now: float) -> str:
+        """Hands one score, heard at `now` seconds, to the tracker and describes where it stands, for the end of its line.
 
         The bar it had to clear is read before the score goes in, because the tracker judges a score against
-        the average as it stood before that score was added.
+        the room's recent scores as they stood before that score was added.
         """
         tracker, min_scores = self.brain.tracker, self.brain.trigger.min_scores
         with self.tracker_lock:
-            before, bar = tracker.avg_convo_interest, tracker.trigger_level
-            effect = tracker.record(score)
-            after, counted = tracker.avg_convo_interest, tracker.counted
+            bar, held = tracker.trigger_level_at(now), tracker.window_size_at(now)
+            effect = tracker.record(score, now)
+            counted = tracker.counted
         if effect is ScoreEffect.IGNORED:
-            why = "no score" if score is None else "below the floor, ignored"
-            return f"   [{why}; interest {before:.2f}, unchanged]" if before is not None else f"   [{why}; no average yet]"
-        interest = f"interest {after:.2f}" if before is None else f"interest {before:.2f} -> {after:.2f}"
-        detail = interest + (f", bar {bar:.2f}" if bar is not None else "")
-        if counted <= min_scores:                  # this score came before the trigger was allowed to fire
-            return f"   [warming up {counted}/{min_scores}; {detail}]"
-        return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [{detail}]"
+            return "   [no score]"
+        if bar is None:                            # this score came before the trigger was allowed to fire
+            return f"   [warming up {counted}/{min_scores}]"
+        return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [window {held} scores, bar {bar:.2f}]"
 
     @staticmethod
     def vad_note(args) -> Optional[str]:
@@ -666,6 +674,7 @@ class Pipeline:
         if not text or text == self.last_text:
             return
         self.last_text = text
+        now = self.clock(at)
         label = "lyrics, not speech" if kind == "lyrics" else "speech"
         stamp = self.display.recording_stamp(at) if self.args.wav and at is not None else self.display.stamp()
         self.display.line(f"\n[{stamp}] heard {size} ({label}{extra}, whisper {took:.1f} s): \"{text}\"")
@@ -678,24 +687,26 @@ class Pipeline:
                 # ONE request per sentence: the score and the reasons both come out of it.
                 self.history.append(Heard(number, fragment.text, None, "waiting"))
                 self.display.pending(number, fragment.text)
-                self._queue_run(number, fragment.text)
+                self._queue_run(number, fragment.text, now=now)
             else:
                 # Fast mode, or a sentence the filter keeps from the model: the Printer's one-token score, straight away.
                 scored = self.brain.scorer.score(fragment)
                 self.history.append(Heard(number, fragment.text, scored.score, scored.scored_by.value))
                 self.display.sentence(number, scored.score, scored.scored_by.value, fragment.text,
-                                      standing=self.standing(scored.score))
+                                      standing=self.standing(scored.score, now))
 
     def debug_mode(self) -> bool:
         """True if each sentence gets one debug run (score and reasons together) instead of the one-token score."""
         return self.args.explain and self.brain.client.can_explain
 
-    def _queue_run(self, number: int, text: str, previous: Optional[float] = None, feed: bool = True) -> None:
+    def _queue_run(self, number: int, text: str, previous: Optional[float] = None, feed: bool = True,
+                   now: float = 0.0) -> None:
         """Queues a sentence for its debug run; the model takes them one at a time, in order.
 
-        `feed` is False for a re-run (the r command), so the same sentence is not counted twice.
+        `feed` is False for a re-run (the r command), so the same sentence is not counted twice. `now` is when the
+        sentence was heard, which is the time its score goes to the tracker with.
         """
-        item = (number, text, previous, feed)
+        item = (number, text, previous, feed, now)
         try:
             self.run_queue.put_nowait(item)
         except queue.Full:
@@ -711,7 +722,7 @@ class Pipeline:
             item = self.run_queue.get()
             if item is None:
                 return
-            number, text, previous, feed = item
+            number, text, previous, feed, now = item
             client = self.brain.client
             if not client.can_explain:
                 continue
@@ -724,7 +735,7 @@ class Pipeline:
                 if entry.number == number:
                     entry.score, entry.source = score, "debug"
             self.display.result(number, score, run, client.last_seconds or 0.0, text, previous,
-                                standing=self.standing(score) if feed else "")
+                                standing=self.standing(score, now) if feed else "")
 
     # commands typed at the terminal
     def rescore(self) -> None:
@@ -794,9 +805,9 @@ def main() -> None:
     display.line(f"  scorer at {brain.settings.url}; whisper-server at {args.whisper_url}; "
                  f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
     trigger = brain.trigger
-    display.line(f"  trigger: ignore scores below {brain.tracker.avg_convo_floor:.2f}; mark a score {trigger.trigger_fraction:.0%} "
-                 f"above the room's average interest (which covers about the last {trigger.interest_half_life:g} scores); "
-                 f"nothing is marked until {trigger.min_scores} scores have counted")
+    display.line(f"  trigger: mark a score above the upper quartile of the room's last {trigger.window_seconds:g} s of scores "
+                 f"(at least the last {trigger.min_scores}) plus {trigger.fence_multiple:g} x their interquartile range; "
+                 f"nothing is marked until {trigger.min_scores} scores are held")
     display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")

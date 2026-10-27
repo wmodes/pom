@@ -33,24 +33,22 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **scorer model**: the small language model that scores fragments (Qwen3-4B for now).
 - **fragment_filter**: the check in front of the scorer model that gives fragments with no content
   words (such as "or not.") a fixed low score, `fragment_filter_score`, without asking the scorer model.
-- **unscored** †: a fragment the scorer model gave no score; its score is None. The trigger and
-  avg_convo_interest leave it out.
+- **unscored** †: a fragment the scorer model gave no score; its score is None. The
+  ConvoInterestTracker leaves it out.
 - **fallback**: shelved, unused: a rough word-based score once used when the scorer model did not
   reply (`fallback_scorer.py`).
 - **word tagger** †: the component that labels each word of a fragment as a name, number, filler,
   stopword or content word. The fragment_filter uses its labels.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
-- **avg_convo_floor** †: the line below which scores are ignored and do not feed avg_convo_interest;
-  a fixed fraction of the score range, `floor_ignore_fraction` (5% to begin with, so 0.45 on the 0 to 9 scale).
-  A score at the floor counts; an unscored fragment never does.
-- **avg_convo_interest** †: a decaying moving average of the scores at or above the floor; how
-  interesting the room's talk has been lately. The first such score becomes the average; after that each
-  new one pulls it a little toward itself, and an old score's pull halves after `interest_half_life` more
-  scores (10). Old talk fades by count, not by time.
-- **trigger** †: the moment a score is at least `trigger_fraction` above avg_convo_interest (0.25, so 25%
-  above), once `min_scores` scores (10) have counted. The score is compared with the average as it stood
-  before that score was added. Then the Printer responds.
+- **window** †: the room's recent scores the trigger is judged against: the scores heard in the last
+  `window_seconds` (300, the last five minutes), or the last `min_scores` (20) if the room is so quiet that
+  fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
+- **fence** †: the bar a score must be above to trigger: Q3 + `fence_multiple` x IQR of the window (Tukey's
+  fence). Q3 is the score three quarters of the way up the window's scores, Q1 a quarter of the way up, and the
+  IQR (interquartile range) is Q3 minus Q1. `fence_multiple` is 1.0 to begin with.
+- **trigger** †: the moment a score is above the fence, once the window holds `min_scores` scores. The score
+  is compared with the fence as it stood before that score was added. Then the Printer responds.
 - **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.
 
 ## Corpus: the material the oracle model draws on

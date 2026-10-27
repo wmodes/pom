@@ -172,10 +172,14 @@ class TestTheWindow:
         assert len(t._recent) <= 61
 
     def test_a_time_that_steps_backwards_is_held_at_the_latest(self):
-        t = tracker()
-        feed(t, [1, 2, 3, 4, 5], start=10)
-        assert t.record(9, 2) is ScoreEffect.TRIGGERED                 # the clock stepped back; treated as second 14
-        assert t.window_size_at(0) == 6
+        t = tracker(window_seconds=60)
+        feed(t, [1] * 5, start=0)                                      # a dull stretch, seconds 0 to 4
+        feed(t, [9] * 5, start=100)                                    # a lively one, seconds 100 to 104
+        assert t.window_size_at(1) == 5                                # asked about second 1, it is still second 104
+        assert t.trigger_level_at(1) == pytest.approx(9.0)             # only the lively stretch is in the window
+        assert t.record(10, 1) is ScoreEffect.TRIGGERED
+        assert t.window_size_at(104) == 6                              # it joined at second 104; filed under second 1 it would be out
+        assert t.window_size_at(1) == 6
 
 
 class TestWhatIsIgnored:

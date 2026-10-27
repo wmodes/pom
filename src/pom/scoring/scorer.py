@@ -13,7 +13,7 @@ THREE KINDS OF RESULT, recorded in `ScoredFragment.scored_by`:
               "Yeah, okay."), so the model is not asked and it gets the fragment_filter's score. This saves a
               model call on talk that cannot be interesting. The word tagger decides.
   * UNSCORED: the scorer model gave no score, so the score is None. Nothing downstream may treat
-              it as a number: the Trigger and avg_convo_interest leave it out. The scorer model
+              it as a number: the ConvoInterestTracker leaves it out. The scorer model
               is local, so this means something larger is wrong, and the Printer stays quiet and
               keeps listening. (A word-counting fallback used to guess a score here. It is shelved
               in fallback_scorer.py, unused.)

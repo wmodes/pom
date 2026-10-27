@@ -305,6 +305,15 @@ released yet, so everything is under Unreleased. Update this file in the same co
   `avg_convo_floor`, `avg_convo_interest`, `interest_weight`, `is_above_floor` and `score_range`. `trigger.min_scores`
   now means the window's minimum and defaults to 20 (at least 2); `trigger.fence_multiple` defaults to 1.0, down from
   the 1.5 added a day earlier. The probe is updated in the next change.
+- **The hearing-debug probe runs on the new tracker.** Each sentence's note now reads `[window 69 scores, bar 5.12]`
+  (how many recent scores it was judged against, and the score it had to be above), `[warming up 3/20]` before the
+  window holds enough, or `[no score]`; the startup banner describes the fence. The tracker's time is the place in the
+  audio stream where the utterance ended (the rolling cutter's segment end), not the wall clock, so a recording replayed
+  fast with `--wav --speed 0` gives the triggers a live run would. The lexicon (window, fence, trigger), the
+  hearing-debug README, `project-state.md` and two docstrings now describe the window and the fence. Mutation-checked:
+  23 of 24 tracker mutants are caught; the one that survives is equivalent (with exactly `min_scores` scores inside the
+  window, the fallback picks the same scores). A test for a clock stepping backwards was strengthened after two
+  mutants showed it proved nothing.
 - **The oracle playground prints the exemplars two to a row** above the portent, each headed by its id and wrapped to
   its column (`exemplar_columns`), so the exemplars the model was given can be checked at a glance.
 - **The oracle's settings are all in `[oracle]`, and the committed oracle prompt is Wes's.** `exemplars_min` and

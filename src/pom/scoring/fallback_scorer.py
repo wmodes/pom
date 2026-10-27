@@ -18,8 +18,8 @@ because:
     outscores a short striking one.
   * Its scores mean something different from the scorer model's, so they cannot sit beside them.
     The ceiling of 5.0 is an absolute number, which the project avoids (scores are judged
-    relative to the room, by avg_convo_interest), and its scores would feed that average and
-    distort it.
+    relative to the room's recent scores, by the ConvoInterestTracker), and its scores would feed that
+    window and distort it.
   * The scorer model is local. If it is down, something larger is wrong, and answering from a
     word count would only hide that. The Scorer now returns no score for a fragment it cannot
     score, and the Printer stays quiet and keeps listening.
@@ -27,7 +27,7 @@ because:
 WHEN IT MIGHT BE NEEDED AGAIN
 Only if running without the scorer model ever becomes a real requirement (for example a machine
 too small to run it). Before using it again: put every number below into config under
-`[scorer]`, decide how its scores are marked so avg_convo_interest and the trigger can leave them
+`[scorer]`, decide how its scores are marked so the ConvoInterestTracker can leave them
 out, and measure it against real sentences.
 
 Design decisions, and why:

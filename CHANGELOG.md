@@ -255,6 +255,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **PromptBuilder labels and fences what it fills in** (Wes's format). Each exemplar goes in as `**Style Example N**`
+  followed by its text in a code fence, and the hinge as `**Theme**` followed by its text in a fence, so the model can
+  tell the examples and the theme from the instructions around them. The fence is added in code and never written in
+  the prompt, because the prompt itself is generated over. A chunk or hinge that holds a fence of its own is not
+  escaped (the docstring says so). Both places are still filled in one pass. Tests updated, and new ones for the labels
+  and the numbering.
 - **Hearing-debug lets whisper cut the audio; the energy cutter is behind `--energy-cutter`** (Wes's call). The new
   `RollingCutter` (`rolling_cutter.py`) hands whisper-server the audio since the last kept segment every 5 s with its
   own voice detection on, keeps the segments whisper finished (ending 2 s or more before the buffer's end), joins a

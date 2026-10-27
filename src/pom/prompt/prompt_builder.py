@@ -9,9 +9,20 @@ every time:
   * `{hinge}`: the fragment that triggered, word for word.
 
 `build(hinge)` draws the exemplars, fills in both places and returns the finished prompt together with the
-chunks it used, so a dev tool can show which exemplars went in. Nothing else is added: no persona, no
-instructions, no formatting beyond what the prompt itself says. Anything the model needs to be told lives in
-the prompt text, so it can be tuned in one place.
+chunks it used, so a dev tool can show which exemplars went in. Each piece goes in labelled and fenced, so the
+model can tell the material from the instructions around it:
+
+    **Style Example 1**            **Theme**
+
+    ```                            ```
+    the first exemplar             the hinge
+    ```                            ```
+
+    **Style Example 2**
+    ...
+
+Nothing else is added: no persona, no instructions. Anything the model needs to be told lives in the prompt text,
+so it can be tuned in one place.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing prompt, an empty hinge, or a selector with
@@ -24,7 +35,10 @@ Design decisions, and why:
     braces in the prompt, the chunks or the hinge are plain text.
   * Exemplars are only drawn if the prompt has an `{exemplars}` place. A prompt without one (a voice that is
     shown just the hinge) gets no draw, so the chunks reported are always the ones the model was shown.
-  * Exemplars are separated by a blank line; a chunk keeps its own line breaks (verse stays verse).
+  * The fence is put around the pieces here, not written in the prompt, because the prompt text would be
+    generated over by the model if it held a fence. A blank line separates one exemplar from the next; a chunk keeps
+    its own line breaks (verse stays verse). The fence is not escaped: if a chunk or the hinge itself contained
+    three backticks, the fence would close early (no chunk in the corpus does).
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config and has no
     built-in prompt. The ExemplarSelector is passed in too, so a dev tool can give it a seeded random
     generator and get the same exemplars for the same hinge.
@@ -43,6 +57,14 @@ _log = get_logger(__name__, DEBUG)
 
 PLACES = re.compile(r"\{(exemplars|hinge)\}")
 EXEMPLAR_SEPARATOR = "\n\n"
+FENCE = "```"
+EXEMPLAR_LABEL = "Style Example"
+HINGE_LABEL = "Theme"
+
+
+def _fenced(label: str, text: str) -> str:
+    """A bold label, a blank line, then the text between code fences."""
+    return f"**{label}**\n\n{FENCE}\n{text}\n{FENCE}"
 
 
 class PromptBuilderError(ValueError):
@@ -106,7 +128,9 @@ class PromptBuilder:
         exemplars = tuple(self._selector.draw()) if self._wants_exemplars else ()
         if self._wants_exemplars and not exemplars:
             self.report.warn("no exemplars could be drawn; the prompt was built without them")
-        values = {"exemplars": EXEMPLAR_SEPARATOR.join(chunk.text for chunk in exemplars), "hinge": hinge.strip()}
+        values = {"exemplars": EXEMPLAR_SEPARATOR.join(_fenced(f"{EXEMPLAR_LABEL} {number}", chunk.text)
+                                                       for number, chunk in enumerate(exemplars, start=1)),
+                  "hinge": _fenced(HINGE_LABEL, hinge.strip())}
         text = PLACES.sub(lambda place: values[place.group(1)], self._prompt)
         _log.debug("built a prompt of %d characters with %d exemplar(s)", len(text), len(exemplars))
         return OraclePrompt(text, exemplars)

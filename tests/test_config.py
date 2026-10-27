@@ -118,22 +118,22 @@ def test_the_defaults_match_the_exemplar_selectors_defaults():
 
 
 def test_samples_are_read_from_the_file_and_the_environment(tmp_path):
-    path = write(tmp_path, "exemplars_min = 2\nexemplars_max = 4\n")
+    path = write(tmp_path, "[oracle]\nexemplars_min = 2\nexemplars_max = 4\n")
     assert Config.load(path, environ={}).exemplar_range == (2, 4)
     assert Config.load(path, environ={"POM_EXEMPLARS_MIN": "1", "POM_EXEMPLARS_MAX": "6"}).exemplar_range == (1, 6)
     assert Config.load(environ={"POM_EXEMPLARS_MAX": "8"}).exemplar_range == (3, 8)
 
 
 def test_one_end_alone_can_be_set(tmp_path):
-    assert Config.load(write(tmp_path, "exemplars_max = 9\n"), environ={}).exemplar_range == (3, 9)
-    assert Config.load(write(tmp_path, "exemplars_min = 2\n"), environ={}).exemplar_range == (2, 5)
+    assert Config.load(write(tmp_path, "[oracle]\nexemplars_max = 9\n"), environ={}).exemplar_range == (3, 9)
+    assert Config.load(write(tmp_path, "[oracle]\nexemplars_min = 2\n"), environ={}).exemplar_range == (2, 5)
 
 
 @pytest.mark.parametrize("value", ["0", "-2", "2.5", "true", '"many"', '""'])
 def test_a_bad_samples_value_in_the_file_means_the_default_with_a_warning(tmp_path, value):
-    config = Config.load(write(tmp_path, f"exemplars_max = {value}\n"), environ={})
+    config = Config.load(write(tmp_path, f"[oracle]\nexemplars_max = {value}\n"), environ={})
     assert config.exemplar_range == (3, 5)
-    assert any("exemplars_max must be a whole number" in w for w in config.report.warnings)
+    assert any("oracle.exemplars_max must be a whole number" in w for w in config.report.warnings)
 
 
 @pytest.mark.parametrize("text", ["0", "-1", "2.5", "many", "", "true"])
@@ -144,13 +144,13 @@ def test_a_bad_samples_value_in_the_environment_means_the_default_with_a_warning
 
 
 def test_a_reversed_pair_is_swapped_with_a_warning(tmp_path):
-    config = Config.load(write(tmp_path, "exemplars_min = 7\nexemplars_max = 2\n"), environ={})
+    config = Config.load(write(tmp_path, "[oracle]\nexemplars_min = 7\nexemplars_max = 2\n"), environ={})
     assert config.exemplar_range == (2, 7)
-    assert any("more than exemplars_max" in w for w in config.report.warnings)
+    assert any("more than oracle.exemplars_max" in w for w in config.report.warnings)
 
 
 def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
-    assert Config.load(write(tmp_path, 'exemplars_min = "2"\n'), environ={}).exemplar_range == (2, 5)
+    assert Config.load(write(tmp_path, '[oracle]\nexemplars_min = "2"\n'), environ={}).exemplar_range == (2, 5)
 
 
 def test_config_samples_plug_straight_into_the_sampler():
@@ -508,6 +508,18 @@ def test_oracle_defaults_when_nothing_is_set():
     assert config.oracle.url == "http://127.0.0.1:8099/v1/chat/completions"
     assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (120.0, 300, 0.8)
     assert config.oracle.prompt == ""
+
+
+def test_the_exemplar_counts_live_in_the_oracle_section_and_the_old_top_level_keys_are_unknown(tmp_path):
+    config = Config.load(write(tmp_path, "exemplars_min = 2\n"), environ={})
+    assert config.exemplar_range == (3, 5) and any("exemplars_min" in w for w in config.report.warnings)
+
+
+def test_the_local_file_overrides_the_prompt_and_keeps_the_exemplar_counts(tmp_path):
+    write(tmp_path, '[oracle]\nexemplars_min = 2\nexemplars_max = 4\nprompt = "Main. {hinge}"\n')
+    (tmp_path / "pom.local.toml").write_text('[oracle]\nprompt = "Mine. {hinge}"\n', encoding="utf-8")
+    config = Config.load(tmp_path / "pom.toml", environ={})
+    assert config.oracle.prompt == "Mine. {hinge}" and config.exemplar_range == (2, 4)
 
 
 def test_the_oracle_defaults_match_the_oracle_clients_own():

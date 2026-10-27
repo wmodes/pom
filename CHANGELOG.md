@@ -255,6 +255,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The oracle's settings are all in `[oracle]`, and the committed oracle prompt is Wes's.** `exemplars_min` and
+  `exemplars_max` moved from the top of `config/pom.toml` into the section (`oracle.exemplars_min` and
+  `oracle.exemplars_max`; the old top-level keys are now reported as unknown, and the `POM_EXEMPLARS_MIN`/`MAX`
+  environment overrides are unchanged). The file is ordered by the work (global, scorer, trigger, oracle). The prompt is
+  Wes's "passage" prompt (the style example, then the theme) in place of the placeholder, with one exemplar, temperature
+  0.3 and 300 tokens: the settings the oracle bake-off froze. Two new config tests.
 - **PromptBuilder labels and fences what it fills in** (Wes's format). Each exemplar goes in as `**Style Example N**`
   followed by its text in a code fence, and the hinge as `**Theme**` followed by its text in a fence, so the model can
   tell the examples and the theme from the instructions around them. The fence is added in code and never written in

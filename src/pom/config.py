@@ -9,18 +9,17 @@ of being threaded through by hand. Today there are five:
                its own `DEBUG = ...` line (see pom/log_setup.py).
     log_level  How much the service logs to stdout (and so to journald).
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
-    exemplars_min, exemplars_max
-               How many corpus chunks go into each pull of exemplars (3 and 5 by default). The
-               entry point passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
                that defines "interesting" and the score scale, the fragment_filter's score, how many content
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
                entry point builds the ScorerModelClient and Scorer from `config.scorer`. Environment:
                POM_SCORER_URL.
-    [oracle]   A section (see OracleSettings): the oracle model's address and timeout, the prompt it is
-               given (with `{exemplars}` and `{hinge}` marking where those go), and the two settings of each
-               request, `max_tokens` and `temperature`. The entry point builds the PromptBuilder and the
-               OracleModelClient from `config.oracle`.
+    [oracle]   A section (see OracleSettings): what the oracle model is given and how it is reached. The
+               `prompt` (with `{exemplars}` and `{hinge}` marking where those go), `exemplars_min` and
+               `exemplars_max` (how many corpus chunks go into each pull of exemplars, 3 and 5 by default), the
+               model's address and timeout, and the two settings of each request, `max_tokens` and
+               `temperature`. The entry point builds the PromptBuilder and the OracleModelClient from
+               `config.oracle` and passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
     [trigger]  A section (see TriggerSettings): when the Printer responds. `floor_ignore_fraction` is how far
                up the score range the floor sits (0.05, so 0.45 on the 0 to 9 scale; scores below it are
                ignored), `interest_half_life` how many scores it takes for an old score's pull on the room's
@@ -60,7 +59,7 @@ DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "debug", "log_level", "local_logs", "exemplars_min", "exemplars_max",
+_KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "oracle.exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
@@ -176,7 +175,7 @@ class Config:
         local_logs: Also write the log to a local file (development only).
         exemplar_range: (fewest, most) chunks per pull of exemplars, for the ExemplarSelector.
         scorer: The `[scorer]` section, as a ScorerSettings.
-        oracle: The `[oracle]` section, as an OracleSettings.
+        oracle: The `[oracle]` section, as an OracleSettings (the exemplar range is `exemplar_range`).
         trigger: The `[trigger]` section, as a TriggerSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
@@ -219,9 +218,9 @@ class Config:
         strict = _bool(values.get("strict", False), "strict", report)
         debug = _bool(values.get("debug", False), "debug", report)
         local_logs = _bool(values.get("local_logs", False), "local_logs", report)
-        low = _count(values.get("exemplars_min", DEFAULT_EXEMPLAR_RANGE[0]), "exemplars_min",
+        low = _count(values.get("oracle.exemplars_min", DEFAULT_EXEMPLAR_RANGE[0]), "oracle.exemplars_min",
                      DEFAULT_EXEMPLAR_RANGE[0], report)
-        high = _count(values.get("exemplars_max", DEFAULT_EXEMPLAR_RANGE[1]), "exemplars_max",
+        high = _count(values.get("oracle.exemplars_max", DEFAULT_EXEMPLAR_RANGE[1]), "oracle.exemplars_max",
                       DEFAULT_EXEMPLAR_RANGE[1], report)
         log_level = _level(values.get("log_level", "INFO"), "log_level", report)
         scorer_url = _text(values.get("scorer.url", DEFAULT_SCORER_URL), "scorer.url", DEFAULT_SCORER_URL, report)
@@ -256,7 +255,7 @@ class Config:
             high = _count(environ["POM_EXEMPLARS_MAX"], "POM_EXEMPLARS_MAX",
                           DEFAULT_EXEMPLAR_RANGE[1], report)
         if low > high:
-            report.warn(f"exemplars_min ({low}) is more than exemplars_max ({high}); swapping them")
+            report.warn(f"oracle.exemplars_min ({low}) is more than oracle.exemplars_max ({high}); swapping them")
             low, high = high, low
         if "POM_LOG_LEVEL" in environ:
             log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)

@@ -3,8 +3,10 @@
 #   POM_STRICT=1   POM_DEBUG=1   POM_LOCAL_LOGS=1   POM_LOG_LEVEL=DEBUG
 #   POM_EXEMPLARS_MIN=3   POM_EXEMPLARS_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
 #
-# The file is divided by the part of the Printer each setting affects. (TOML needs the settings
-# without a [section] to come first, so GLOBAL and ORACLE sit at the top.)
+# The file is divided by the part of the Printer each setting affects, in the order of the work: GLOBAL
+# first, then hearing and scoring (SCORER), deciding when to respond (TRIGGER), then building the portent's
+# prompt and asking the oracle model for it (ORACLE). (TOML needs the settings without a
+# [section] to come first, so GLOBAL is at the top.)
 
 
 # ================================================
@@ -25,42 +27,6 @@ log_level = "INFO"
 # Also write the log to logs/pom.log (gitignored, rotates at 1 MB), for working on the Mac. Leave
 # false on the Pi, where journald (journalctl -u pom) already keeps the log.
 local_logs = false
-
-
-# ================================================
-# ORACLE: exemplars drawn from the corpus
-# ================================================
-
-# How many corpus chunks go into each pull of exemplars: a random number from exemplars_min to
-# exemplars_max, inclusive. Both must be whole numbers of at least 1.
-exemplars_min = 3
-exemplars_max = 5
-
-# The oracle model: how it is reached and what it is asked. The entry point starts a second llama-server
-# on this port, apart from the scorer's.
-[oracle]
-url = "http://127.0.0.1:8099/v1/chat/completions"
-
-# Seconds to wait for one portent before giving up. Writing is slow on the Pi.
-timeout = 120
-
-# The most the model may write for one portent, counted in tokens (about 3/4 of a word each). A portent
-# is 15 to 150 words; this only stops a runaway.
-max_tokens = 300
-
-# How adventurous the model's word choice is. 0 always takes the likeliest word; higher is more varied.
-temperature = 0.8
-
-# What the model is given. {exemplars} is replaced by a few corpus chunks drawn at random, and {hinge} by
-# the fragment that triggered, word for word. Nothing else is added, so everything the model needs to
-# be told goes here.
-prompt = """
-PLACEHOLDER: replace this with the oracle prompt.
-
-{exemplars}
-
-{hinge}
-"""
 
 
 # ================================================
@@ -165,3 +131,53 @@ trigger_fraction = 0.25
 # does not respond to the first thing it hears in an empty room. A whole number of at least 1; the same
 # as interest_half_life, so the average has its first full memory before anything can trigger.
 min_scores = 10
+
+
+# ================================================
+# ORACLE: the model that writes the portent
+# ================================================
+
+[oracle]
+# How many corpus chunks go into each pull of exemplars: a random number from exemplars_min to
+# exemplars_max, inclusive. Both must be whole numbers of at least 1.
+exemplars_min = 1
+exemplars_max = 1
+
+# What the model is given. {exemplars} is replaced by a few corpus chunks drawn at random, and {hinge} by
+# the fragment that triggered, word for word. Nothing else is added, so everything the model needs to
+# be told goes here.
+
+prompt = """
+You are creating a new passage.
+
+## IMPORTANT RULES
+- DO NOT print the theme in your passage.
+- DO NOT print the style example in your passage.
+- Match the form, tone, and length of the style example.
+- Do not include any introductory text, titles, quotes, or explanations.
+- Limit to less than 150 words.
+
+## STEP 1: STUDY THE STYLE EXAMPLE
+Use the example below for the style of your passage:
+
+{exemplars}
+
+## STEP 2: APPLY THE THEME
+In the style of the example, create a single passage inspired by this theme without using the theme text.
+
+{hinge}
+"""
+
+# How the oracle model is reached. The entry point starts a second llama-server on this port, apart from
+# the scorer's.
+url = "http://127.0.0.1:8099/v1/chat/completions"
+
+# Seconds to wait for one portent before giving up. Writing is slow on the Pi.
+timeout = 120
+
+# The most the model may write for one portent, counted in tokens (about 3/4 of a word each). A portent
+# is 15 to 150 words; this only stops a runaway.
+max_tokens = 300
+
+# How adventurous the model's word choice is. 0 always takes the likeliest word; higher is more varied.
+temperature = 0.3

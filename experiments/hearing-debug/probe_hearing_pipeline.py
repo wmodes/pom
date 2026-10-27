@@ -402,7 +402,7 @@ class Brain:
         # A new config can mean new prompts, and a score under new wording is not the same measure, so the
         # room's recent scores start over whenever the config is reloaded.
         self.tracker = ConvoInterestTracker(self.trigger.fence_multiple, self.trigger.window_seconds,
-                                            self.trigger.min_scores)
+                                            self.trigger.min_scores, self.trigger.cooldown_seconds)
         problems = config.report.lines() + client.report.lines() + self.tracker.report.lines()
         note = "; ".join(problems)
         if first:
@@ -525,7 +525,8 @@ class Pipeline:
             return "   [no score]"
         if bar is None:                            # this score came before the trigger was allowed to fire
             return f"   [warming up {counted}/{min_scores}]"
-        return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [window {held} scores, bar {bar:.2f}]"
+        cooling = "; cooling down" if effect is ScoreEffect.COOLING_DOWN else ""
+        return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [window {held} scores, bar {bar:.2f}{cooling}]"
 
     @staticmethod
     def vad_note(args) -> Optional[str]:
@@ -807,7 +808,7 @@ def main() -> None:
     trigger = brain.trigger
     display.line(f"  trigger: mark a score above the upper quartile of the room's last {trigger.window_seconds:g} s of scores "
                  f"(at least the last {trigger.min_scores}) plus {trigger.fence_multiple:g} x their interquartile range; "
-                 f"nothing is marked until {trigger.min_scores} scores are held")
+                 f"nothing is marked until {trigger.min_scores} scores are held, and then at most one every {trigger.cooldown_seconds:g} s")
     display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")

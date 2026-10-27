@@ -18,6 +18,10 @@ The rule is Tukey's fence, the standard test for a value that stands out from a 
   * The trigger: a score triggers when it is ABOVE the bar, once the window holds `min_scores` scores. The
     score is compared with the bar as it stood BEFORE that score joined the window, so a sentence is judged
     against the room as it was before it was said. A triggering score then joins the window like any other.
+  * The cooldown: after a trigger, a score above the bar is not marked until `cooldown_seconds` have passed
+    since that trigger (60 to begin with; 0 turns it off). It is COOLING_DOWN: it still joins the window, and it
+    does not restart the cooldown. A burst of strong sentences, such as a run of jokes, gives one trigger and
+    not six, and the next one comes from the room once the cooldown is over.
 
 Every score that is a number joins the window, the lowest included: nothing is thrown away by a fixed line,
 so the fence works from what the room really scored. A fragment that has no score (None) is IGNORED and
@@ -49,6 +53,7 @@ _log = get_logger(__name__, DEBUG)
 DEFAULT_FENCE_MULTIPLE = 1.0
 DEFAULT_WINDOW_SECONDS = 300.0
 DEFAULT_MIN_SCORES = 20
+DEFAULT_COOLDOWN_SECONDS = 60.0
 MINIMUM_MIN_SCORES = 2                 # quartiles need at least two scores
 
 
@@ -61,6 +66,7 @@ class ScoreEffect(Enum):
     IGNORED = "ignored"        # no score, not a number, or no usable time
     COUNTED = "counted"        # joined the window
     TRIGGERED = "triggered"    # stood above the bar (and joined the window too)
+    COOLING_DOWN = "cooling down"    # stood above the bar, but a trigger was too recent (joined the window too)
 
 
 class ConvoInterestTracker:
@@ -72,20 +78,25 @@ class ConvoInterestTracker:
     """
 
     def __init__(self, fence_multiple: float = DEFAULT_FENCE_MULTIPLE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
-                 min_scores: int = DEFAULT_MIN_SCORES, strict: bool = False):
+                 min_scores: int = DEFAULT_MIN_SCORES, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
+                 strict: bool = False):
         """Args:
             fence_multiple: How many IQRs above Q3 a score must be to trigger, 0 or more.
             window_seconds: How many seconds of recent scores the quartiles are drawn from, above 0.
             min_scores: The window always holds at least this many scores, and nothing triggers until it does;
                 a whole number of at least 2.
+            cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more
+                (0 means no cooldown).
             strict: Raise ConvoInterestTrackerError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=ConvoInterestTrackerError, logger=_log)
         self._fence_multiple = self._valid_fence_multiple(fence_multiple)
         self._window_seconds = self._valid_window_seconds(window_seconds)
         self._min_scores = self._valid_min_scores(min_scores)
+        self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
         self._recent: Deque[Tuple[float, float]] = deque()      # (time heard, score), oldest first
         self._last_time: Optional[float] = None
+        self._last_trigger: Optional[float] = None
         self._counted = 0
 
     # --- Settings -------------------------------------------------------------------
@@ -113,6 +124,14 @@ class ConvoInterestTracker:
         self.report.warn(f"min_scores must be a whole number of at least {MINIMUM_MIN_SCORES}, got {value!r}; "
                          f"using {DEFAULT_MIN_SCORES}")
         return DEFAULT_MIN_SCORES
+
+    def _valid_cooldown_seconds(self, value) -> float:
+        """A number of 0 or more, or the default with a warning."""
+        if self._is_number(value) and value >= 0.0:
+            return float(value)
+        self.report.warn(f"cooldown_seconds must be a number of at least 0, got {value!r}; "
+                         f"using {DEFAULT_COOLDOWN_SECONDS:g}")
+        return DEFAULT_COOLDOWN_SECONDS
 
     @staticmethod
     def _is_number(value) -> bool:
@@ -161,21 +180,28 @@ class ConvoInterestTracker:
         """Takes in one score heard at time `now` (seconds) and says what happened to it.
 
         A score that is missing or not a number, or a time that is not a number, is IGNORED and changes nothing.
-        Otherwise the score is compared with the bar as it stands now, then joins the window. It is
-        TRIGGERED if it was above the bar; if not, or if the window held too few scores, it is COUNTED.
+        Otherwise the score is compared with the bar as it stands now, then joins the window, whatever happens
+        to it. It is TRIGGERED if it was above the bar and at least `cooldown_seconds` have passed since the last
+        trigger; COOLING_DOWN if it was above the bar but that trigger was too recent; COUNTED otherwise,
+        including when the window held too few scores.
         """
         if not (self._is_number(score) and self._is_number(now)):
             return ScoreEffect.IGNORED
         now = self._steady(now)
         level = self.trigger_level_at(now)
-        triggered = level is not None and score > level
+        above = level is not None and score > level
+        cooling = above and self._last_trigger is not None and now - self._last_trigger < self._cooldown_seconds
+        triggered = above and not cooling
+        if triggered:
+            self._last_trigger = now
         self._recent.append((now, float(score)))
         self._last_time = now
         self._counted += 1
         self._forget_old(now)
-        _log.debug("score %s: bar %s, %d counted", "triggered" if triggered else "counted",
-                   "none yet" if level is None else f"{level:.3f}", self._counted)
-        return ScoreEffect.TRIGGERED if triggered else ScoreEffect.COUNTED
+        effect = ScoreEffect.TRIGGERED if triggered else ScoreEffect.COOLING_DOWN if cooling else ScoreEffect.COUNTED
+        _log.debug("score %s: bar %s, %d counted", effect.value, "none yet" if level is None else f"{level:.3f}",
+                   self._counted)
+        return effect
 
     def _forget_old(self, now: float) -> None:
         """Drops scores older than the window, but never below `min_scores` held, so a quiet room keeps its floor."""

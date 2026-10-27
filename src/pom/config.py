@@ -24,7 +24,8 @@ of being threaded through by hand. Today there are five:
                scores. `window_seconds` is how many seconds of recent scores the quartiles are drawn from (300, the last
                five minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
                last 20, and nothing triggers until it holds that many), and `fence_multiple` how many interquartile
-               ranges above the upper quartile a score must be to trigger (1.0). The entry point builds the
+               ranges above the upper quartile a score must be to trigger (1.0), and `cooldown_seconds` how long after a
+               trigger the next may come (60; 0 for none). The entry point builds the
                ConvoInterestTracker from `config.trigger`.
 
 Where values come from, highest priority first:
@@ -63,7 +64,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
-         "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple"}
+         "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple",
+         "trigger.cooldown_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -78,6 +80,7 @@ DEFAULT_ORACLE_TEMPERATURE = 0.8
 DEFAULT_TRIGGER_FENCE_MULTIPLE = 1.0
 DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
 DEFAULT_TRIGGER_MIN_SCORES = 20
+DEFAULT_TRIGGER_COOLDOWN_SECONDS = 60.0
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -156,10 +159,13 @@ class TriggerSettings:
             quiet one.
         min_scores: The window always holds at least this many scores, and nothing triggers until it does, a
             whole number of at least 2.
+        cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 is
+            no cooldown).
     """
     fence_multiple: float = DEFAULT_TRIGGER_FENCE_MULTIPLE
     window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
     min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
+    cooldown_seconds: float = DEFAULT_TRIGGER_COOLDOWN_SECONDS
 
 
 class Config:
@@ -276,7 +282,9 @@ class Config:
             _positive(values.get("trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS),
                       "trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS, report),
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
-                   "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 2, report))
+                   "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 2, report),
+            _number(values.get("trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS),
+                    "trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS, 0.0, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle)
 
 

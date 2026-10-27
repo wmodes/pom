@@ -5,15 +5,18 @@ import statistics
 
 import pytest
 
-from pom.scoring.convo_interest_tracker import (DEFAULT_FENCE_MULTIPLE, DEFAULT_MIN_SCORES, DEFAULT_WINDOW_SECONDS,
-                                                ConvoInterestTracker, ConvoInterestTrackerError, ScoreEffect)
+from pom.scoring.convo_interest_tracker import (DEFAULT_COOLDOWN_SECONDS, DEFAULT_FENCE_MULTIPLE, DEFAULT_MIN_SCORES,
+                                                DEFAULT_WINDOW_SECONDS, ConvoInterestTracker, ConvoInterestTrackerError,
+                                                ScoreEffect)
 
 
 def tracker(**options):
     """A tracker for the tests: five scores make a window (not the default 20) and the window is 60 seconds, to keep
-    the arithmetic short. The scores 1 to 5 have Q1 2, Q3 4 and IQR 2, so the bar is 4 + 2 x fence_multiple."""
+    the arithmetic short, and there is no cooldown unless a test asks for one. The scores 1 to 5 have Q1 2, Q3 4 and
+    IQR 2, so the bar is 4 + 2 x fence_multiple."""
     options.setdefault("min_scores", 5)
     options.setdefault("window_seconds", 60)
+    options.setdefault("cooldown_seconds", 0)
     return ConvoInterestTracker(**options)
 
 
@@ -31,11 +34,11 @@ def warmed_up(**options):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_FENCE_MULTIPLE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES) == (1.0, 300.0, 20)
+        assert (DEFAULT_FENCE_MULTIPLE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (1.0, 300.0, 20, 60.0)
 
     def test_good_settings_are_quiet(self):
         assert ConvoInterestTracker().report.ok
-        assert tracker(fence_multiple=0, window_seconds=0.5, min_scores=2).report.ok
+        assert tracker(fence_multiple=0, window_seconds=0.5, min_scores=2, cooldown_seconds=0).report.ok
 
 
 class TestTheFence:
@@ -98,6 +101,51 @@ class TestTheFence:
         feed(without, [4, 4, 4, 4, 4, 4, 4, 4])
         feed(with_lows, [0, 0, 0, 0, 4, 4, 4, 4])
         assert with_lows.trigger_level_at(8) > without.trigger_level_at(8)
+
+
+class TestTheCooldown:
+    def test_a_second_strong_score_right_after_a_trigger_is_cooling_down(self):
+        t = warmed_up(cooldown_seconds=60)
+        assert t.record(9, 5) is ScoreEffect.TRIGGERED
+        assert t.record(9, 6) is ScoreEffect.COOLING_DOWN
+
+    def test_the_cooldown_ends_exactly_when_the_time_is_up(self):
+        t = warmed_up(cooldown_seconds=60)
+        t.record(9, 5)
+        assert t.record(20, 64.9) is ScoreEffect.COOLING_DOWN           # each strong score is stronger than the last,
+        assert t.record(50, 65) is ScoreEffect.TRIGGERED                # as the window's own Q3 rises: 60 s after second 5
+
+    def test_a_score_that_cooled_down_does_not_restart_the_cooldown(self):
+        t = warmed_up(cooldown_seconds=60)
+        t.record(9, 5)                                                  # triggers
+        assert t.record(20, 35) is ScoreEffect.COOLING_DOWN             # 30 s later
+        assert t.record(50, 65) is ScoreEffect.TRIGGERED                # 60 s after the trigger, not after the 35
+
+    def test_a_score_below_the_bar_during_the_cooldown_is_just_counted(self):
+        t = warmed_up(cooldown_seconds=60)
+        t.record(9, 5)
+        assert t.record(2, 6) is ScoreEffect.COUNTED
+
+    def test_a_score_that_cooled_down_still_joins_the_window(self):
+        t = warmed_up(cooldown_seconds=60)
+        t.record(9, 5)
+        before = t.window_size_at(6), t.counted
+        t.record(9, 6)
+        assert (t.window_size_at(6), t.counted) == (before[0] + 1, before[1] + 1)
+
+    def test_a_cooldown_of_zero_lets_every_strong_score_trigger(self):
+        t = warmed_up(cooldown_seconds=0)
+        assert [t.record(score, 5 + i) for i, score in enumerate((9, 20, 50))] == [ScoreEffect.TRIGGERED] * 3
+
+    def test_a_burst_gives_one_trigger_and_the_next_comes_after_the_cooldown(self):
+        t = tracker(cooldown_seconds=30, window_seconds=1000)
+        feed(t, [1, 2, 3, 4, 5] * 4)                                    # a calm room, seconds 0 to 19
+        effects = [t.record(20, 100 + i) for i in range(6)] + [t.record(100, 140)]
+        assert effects == [ScoreEffect.TRIGGERED] + [ScoreEffect.COOLING_DOWN] * 5 + [ScoreEffect.TRIGGERED]
+
+    def test_there_is_no_cooldown_before_the_first_trigger(self):
+        t = warmed_up(cooldown_seconds=10_000)
+        assert t.record(9, 5) is ScoreEffect.TRIGGERED
 
 
 class TestTheWarmUp:
@@ -211,8 +259,8 @@ class TestAgainstAPlainReference:
     """The tracker against a few lines that do the same thing the slow, obvious way."""
 
     @staticmethod
-    def reference(events, window_seconds, min_scores, multiple):
-        held, out = [], []
+    def reference(events, window_seconds, min_scores, multiple, cooldown):
+        held, out, last_trigger = [], [], None
         for now, score in events:
             if len(held) < min_scores:
                 bar = None
@@ -222,20 +270,24 @@ class TestAgainstAPlainReference:
                     window = [s for _, s in held[-min_scores:]]
                 q1, _, q3 = statistics.quantiles(window, n=4, method="inclusive")
                 bar = q3 + multiple * (q3 - q1)
-            out.append(bar is not None and score > bar)
+            fires = bar is not None and score > bar and (last_trigger is None or now - last_trigger >= cooldown)
+            if fires:
+                last_trigger = now
+            out.append(fires)
             held.append((now, score))
         return out
 
-    @pytest.mark.parametrize("seed,gap,multiple", [(1, 1.0, 1.0), (2, 0.2, 0.6), (3, 40.0, 1.5), (4, 5.0, 0.0)])
-    def test_the_same_triggers_as_the_reference(self, seed, gap, multiple):
+    @pytest.mark.parametrize("seed,gap,multiple,cooldown", [(1, 1.0, 1.0, 0), (2, 0.2, 0.6, 0), (3, 40.0, 1.5, 0),
+                                                            (4, 5.0, 0.0, 0), (5, 1.0, 0.6, 60), (6, 5.0, 0.0, 30)])
+    def test_the_same_triggers_as_the_reference(self, seed, gap, multiple, cooldown):
         rng = random.Random(seed)
         now, events = 0.0, []
         for _ in range(600):
             now += rng.uniform(0.1, 2 * gap)
             events.append((now, round(rng.choice([1.0, 1.0, 2.0, 3.0, 3.5, 4.0, 5.0, 5.5, 6.0, 7.0, 8.0]) + rng.random(), 2)))
-        t = ConvoInterestTracker(multiple, 120, 12)
+        t = ConvoInterestTracker(multiple, 120, 12, cooldown)
         got = [t.record(score, when) is ScoreEffect.TRIGGERED for when, score in events]
-        assert got == self.reference(events, 120, 12, multiple)
+        assert got == self.reference(events, 120, 12, multiple, cooldown)
         assert any(got) and not all(got)
 
 
@@ -261,12 +313,20 @@ class TestBadSettings:
         assert ScoreEffect.TRIGGERED not in feed(t, list(range(1, 20)) + [99])        # the twentieth is only the twentieth
         assert t.record(99, 30) is ScoreEffect.TRIGGERED               # the twentieth count was the first to allow it
 
+    @pytest.mark.parametrize("bad", [-1, -0.1, "60", None, True, [60], float("nan"), float("inf")])
+    def test_a_bad_cooldown_means_the_default_with_a_warning(self, bad):
+        t = tracker(cooldown_seconds=bad)
+        assert len(t.report.warnings) == 1 and "cooldown_seconds" in t.report.warnings[0]
+        t = warmed_up(cooldown_seconds=bad)
+        assert t.record(9, 5) is ScoreEffect.TRIGGERED and t.record(9, 30) is ScoreEffect.COOLING_DOWN   # the default 60 s
+
     def test_two_bad_settings_give_two_warnings(self):
         assert len(ConvoInterestTracker(fence_multiple=-1, window_seconds=0).report.warnings) == 2
 
     @pytest.mark.parametrize("option,bad,pattern", [("fence_multiple", -1, "fence_multiple"),
                                                     ("window_seconds", 0, "window_seconds"),
-                                                    ("min_scores", 1, "min_scores")])
+                                                    ("min_scores", 1, "min_scores"),
+                                                    ("cooldown_seconds", -1, "cooldown_seconds")])
     def test_strict_mode_raises(self, option, bad, pattern):
         with pytest.raises(ConvoInterestTrackerError, match=pattern):
             tracker(strict=True, **{option: bad})

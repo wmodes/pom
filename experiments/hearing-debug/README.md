@@ -19,7 +19,8 @@ Tukey's fence for that window) is marked `<-- would trigger`. There is no fixed 
 Every line ends with a note that says where the score stands, for example `[window 69 scores, bar 5.12]`: how many
 recent scores the sentence was judged against and the score it had to be above (Q3 + `fence_multiple` x IQR of
 those scores). `[warming up 3/20]` means the window does not yet hold enough scores for anything to trigger, and
-`[no score]` means the sentence got no score and was left out. The settings are in the `[trigger]` section of
+`[window 69 scores, bar 5.12; cooling down]` means the sentence was above the bar but too soon after the last
+`<-- would trigger` (`cooldown_seconds`), and `[no score]` means the sentence got no score and was left out. The settings are in the `[trigger]` section of
 `config/pom.toml`, and the startup banner prints the ones in force. Reloading the config restarts the window,
 because a changed prompt changes what a score means. The `r` command re-runs sentences without counting them
 again. With `--wav` the window runs on the position in the recording, not the wall clock, so a recording replayed

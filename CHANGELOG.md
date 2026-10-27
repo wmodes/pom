@@ -9,6 +9,16 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`[trigger] cooldown_seconds`** (default 60; 0 turns it off; 20 new tests, mutation-checked: 30 of 31 caught, the
+  survivor an equivalent mutant). After a trigger, a score above the bar is not marked until `cooldown_seconds` have
+  passed since that trigger: it is a new `ScoreEffect.COOLING_DOWN`, still joins the window, and does not restart the
+  cooldown. `ConvoInterestTracker` takes it as a fourth setting; the probe shows `[window 83 scores, bar 6.17; cooling
+  down]`. Why: oct12 had 18 triggers in five stretches, one of them six in eight seconds (a run of one-line swearing
+  jokes, each scoring 6.8 to 7.3 against a bar that five minutes of scores barely moves). Replayed on the four recorded
+  meetings, 60 s takes all four from 34 triggers (6.6 an hour) to 21 (4.1 an hour, one every 14.6 minutes, shortest gap
+  62 s) and oct12 from 12.2 to 5.4 an hour. With the cooldown, `fence_multiple` 0.9 gives 5.7 an hour (one every 10.6
+  minutes) and 0.8 gives 6.8; not changed here. A trigger inside the Printer's own busy time is a separate matter for
+  the Conductor, which does not exist yet.
 - **`[trigger] fence_multiple`** (default 1.5; 5 new tests). For a bar set by Tukey's fence instead of the room's
   average: how many interquartile ranges above the recent scores' upper quartile (Q3) a score must be to trigger, so
   the bar is Q3 + `fence_multiple` x IQR. 0 puts it at Q3 (about the top quarter of scores); 1.5 is the textbook outlier

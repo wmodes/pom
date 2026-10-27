@@ -430,23 +430,23 @@ def test_the_trigger_defaults_when_nothing_is_set():
 def test_the_trigger_defaults_match_the_trackers_defaults():
     from pom.scoring import convo_interest_tracker as tracker
     assert TriggerSettings() == TriggerSettings(tracker.DEFAULT_FENCE_MULTIPLE, tracker.DEFAULT_WINDOW_SECONDS,
-                                                tracker.DEFAULT_MIN_SCORES)
+                                                tracker.DEFAULT_MIN_SCORES, tracker.DEFAULT_COOLDOWN_SECONDS)
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(1.0, 300.0, 20)
+    assert TriggerSettings() == TriggerSettings(1.0, 300.0, 20, 60.0)
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
-    text = "[trigger]\nfence_multiple = 0.6\nwindow_seconds = 120\nmin_scores = 8\n"
+    text = "[trigger]\nfence_multiple = 0.6\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(0.6, 120.0, 8) and config.report.ok
+    assert config.trigger == TriggerSettings(0.6, 120.0, 8, 90.0) and config.report.ok
 
 
 def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
-    text = "[trigger]\nfence_multiple = 0\nwindow_seconds = 0.5\nmin_scores = 2\n"
+    text = "[trigger]\nfence_multiple = 0\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\n"
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(0.0, 0.5, 2) and config.report.ok
+    assert config.trigger == TriggerSettings(0.0, 0.5, 2, 0.0) and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -454,7 +454,9 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("window_seconds", "0"), ("window_seconds", "-1"), ("window_seconds", '"300"'), ("window_seconds", "true"),
     ("window_seconds", "inf"), ("window_seconds", "nan"),
     ("min_scores", "1"), ("min_scores", "0"), ("min_scores", "-1"), ("min_scores", "2.5"), ("min_scores", '"5"'),
-    ("min_scores", "true")])
+    ("min_scores", "true"),
+    ("cooldown_seconds", "-1"), ("cooldown_seconds", '"60"'), ("cooldown_seconds", "true"),
+    ("cooldown_seconds", "nan")])
 def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
     assert config.trigger == TriggerSettings()
@@ -470,14 +472,15 @@ def test_an_unknown_or_removed_trigger_key_is_warned_about(tmp_path, key):
 def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
     main = write(tmp_path, "[trigger]\nfence_multiple = 0.6\nmin_scores = 8\n")
     (tmp_path / "pom.local.toml").write_text("[trigger]\nfence_multiple = 0.8\n", encoding="utf-8")
-    assert Config.load(main, environ={}).trigger == TriggerSettings(0.8, 300.0, 8)
+    assert Config.load(main, environ={}).trigger == TriggerSettings(0.8, 300.0, 8, 60.0)
 
 
 def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
     from pom.scoring.convo_interest_tracker import ConvoInterestTracker, ScoreEffect
     text = "[trigger]\nfence_multiple = 0.5\nwindow_seconds = 60\nmin_scores = 5\n"
     settings = Config.load(write(tmp_path, text), environ={}).trigger
-    tracker = ConvoInterestTracker(settings.fence_multiple, settings.window_seconds, settings.min_scores)
+    tracker = ConvoInterestTracker(settings.fence_multiple, settings.window_seconds, settings.min_scores,
+                                   settings.cooldown_seconds)
     assert tracker.report.ok
     assert [tracker.record(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [ScoreEffect.COUNTED] * 5
     assert tracker.trigger_level_at(5) == pytest.approx(5.0)       # Q3 4 + 0.5 x IQR 2

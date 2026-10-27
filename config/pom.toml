@@ -117,7 +117,8 @@ Output the score as a single digit | the sentence | what content you found that 
 
 # How far above the upper quartile (Q3) a score must be to trigger, in IQRs. 0 puts the bar at Q3, so about the top
 # quarter of scores trigger; 1.5 is the textbook outlier line. 0 or more. Replayed on four recorded meetings (about
-# 835 sentences an hour), 1.0 gave about 7 triggers an hour (one every nine minutes), 0.6 about 33 and 1.5 about 1.
+# 835 sentences an hour) with no cooldown, 1.0 gave about 7 triggers an hour (one every nine minutes), 0.6 about 33
+# and 1.5 about 1; with the 60 s cooldown below, 1.0 gives about 4 and 0.9 about 6.
 fence_multiple = 1.0
 
 # How many seconds of recent scores the quartiles are drawn from: 300 is the last five minutes. It is a length of
@@ -130,6 +131,12 @@ window_seconds = 300
 # triggers until the window holds this many, so the Printer does not respond to the first thing it hears in an empty
 # room. A whole number of at least 2.
 min_scores = 20
+
+# How many seconds after a trigger before the next score may trigger. A score above the fence inside the cooldown is
+# held back (it still joins the window), so a burst of strong sentences, such as a run of jokes, gives one trigger
+# and not six, and the next one has to come from the room once the cooldown is over. 0 turns it off. In four recorded
+# meetings 60 took the liveliest from 12 triggers an hour to about 5, and all four from 6.6 to 4.1. 0 or more.
+cooldown_seconds = 60
 
 
 # ================================================

@@ -7,14 +7,18 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ## [Unreleased]
 
+### Changed
+
+- **Playgrounds renamed so the file says the job** (in `scripts/dev/`): `listening/sort.py` is now `sort_whisper_text.py`, `listening/hear.py` is `listen_to_room.py`, `listening/fragment.py` is `cut_speech_into_hinges.py`, `scoring/score.py` is `score_typed_sentences.py` and `voice/portent.py` is `write_portent_from_hinge.py`. Nothing else changed; the tests, README, design doc, handoff and earlier changelog entries use the new names. From now on a leaf or branch is tried by hand with these.
+
 ### Added
 
 - **Playgrounds** (`scripts/dev/`, 10 smoke tests in `tests/scripts/`), the way to see each built part work, all
-  using the real modules: `listening/sort.py` (type whisper-style text, see how it is sorted), `listening/hear.py` (the
+  using the real modules: `listening/sort_whisper_text.py` (type whisper-style text, see how it is sorted), `listening/listen_to_room.py` (the
   microphone or a recording through the Listener, Scorer and trigger, printing what it hears with scores and the trigger),
-  `scoring/score.py` (type sentences, see their scores and whether the trigger would fire) and `voice/portent.py` (type a
+  `scoring/score_typed_sentences.py` (type sentences, see their scores and whether the trigger would fire) and `voice/write_portent_from_hinge.py` (type a
   hinge, get a portent; it began as `experiments/oracle-playground/probe_oracle.py`, which stays as it was). Tried against
-  real servers: the score and hear playgrounds with a 4B scorer and whisper on a recorded meeting, `portent.py` against the
+  real servers: the score and hear playgrounds with a 4B scorer and whisper on a recorded meeting, `write_portent_from_hinge.py` against the
   9B. `playground` and the new listening terms are in the lexicon. Experiments stay standalone snapshots.
 - **`[listening]` in the config** (`ListeningSettings`, 11 settings, 56 new tests, mutation-checked: 33 of 33 caught),
   the sixth step of the listening side: how the Printer hears the room. The whisper-server's address (also
@@ -324,7 +328,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
   (40 by default). It never stops the oracle: text that is not a string gives nothing and a bad
   limit falls back to the default with a warning; `strict=True` raises. Tests in
   `tests/listening/test_fragmenter.py`, including a fuzz test on random junk.
-- **Fragmenter playground** (`scripts/dev/listening/fragment.py`): type or pipe in some speech
+- **Fragmenter playground** (`scripts/dev/listening/cut_speech_into_hinges.py`): type or pipe in some speech
   and see every fragment with its level.
 - **A guide to adding material** (`documentation/adding-material.md`): the whole path from
   choosing a register through chunking, weights, verifying and committing, with the commands. The

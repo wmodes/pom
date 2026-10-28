@@ -6,9 +6,9 @@ clause or phrase) and the sentence it belongs to. The cutting logic is src/pom/l
 this is only a window onto it.
 
 Usage:
-    fragment.py "Honestly, my dog ate the couch yesterday."
-    echo "Well... maybe so; I don't know, okay?" | fragment.py
-    fragment.py --max-words 6 "a long run of words with no punctuation at all in it"
+    cut_speech_into_hinges.py "Honestly, my dog ate the couch yesterday."
+    echo "Well... maybe so; I don't know, okay?" | cut_speech_into_hinges.py
+    cut_speech_into_hinges.py --max-words 6 "a long run of words with no punctuation at all in it"
 """
 import argparse
 import os

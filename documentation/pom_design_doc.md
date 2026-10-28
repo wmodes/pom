@@ -392,7 +392,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 1. (Done 2026-10-27) The oracle model is Qwen3.5-9B; the wait on the Pi (about 40 s typical, 100 s long) is acceptable.
    Look into why nothing is cached when convenient.
 2. (Decided 2026-10-27) The hinge is the sentence that triggered. The hand-off is the Conductor's.
-3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/hear.py`).
+3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/listen_to_room.py`).
 4. Output side: formatter, serial wrapper, reply selection.
 5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
 6. Paper guards; "failing loudly".

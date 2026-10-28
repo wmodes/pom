@@ -14,10 +14,10 @@ gets the same exemplars (and the same number of them) whichever model is running
 comparable. `--seed N` replaces the hash, to get different exemplars for the same hinge.
 
 Usage:
-    portent.py --model ~/.cache/huggingface/hub/.../Qwen3.5-9B-Q4_K_M.gguf
-    portent.py --model unsloth/Qwen3.5-9B-GGUF:Q4_K_M       # a Hugging Face model, downloaded on first use
-    portent.py --server                                      # use the llama-server that is already running
-    portent.py --server --seed 7                             # other exemplars for the same hinge
+    write_portent_from_hinge.py --model ~/.cache/huggingface/hub/.../Qwen3.5-9B-Q4_K_M.gguf
+    write_portent_from_hinge.py --model unsloth/Qwen3.5-9B-GGUF:Q4_K_M       # a Hugging Face model, downloaded on first use
+    write_portent_from_hinge.py --server                                      # use the llama-server that is already running
+    write_portent_from_hinge.py --server --seed 7                             # other exemplars for the same hinge
 
 Type a hinge at the prompt and press return; an empty line (or ctrl-D) quits. Edit the prompt in the config and type the
 hinge again to see the effect: the config is read again before every hinge.

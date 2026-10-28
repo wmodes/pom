@@ -9,9 +9,9 @@ the scorer model's llama-server; the settings are all in config/pom.toml.
 Nothing you say is kept. The words are shown here and nowhere else, so do not redirect this output to a file.
 
 Usage:
-    hear.py                              # listen to the microphone (on the Pi)
-    hear.py --wav meeting.wav            # play a 16 kHz mono recording (ffmpeg -i in -ar 16000 -ac 1 out.wav)
-    hear.py --wav meeting.wav --speed 0  # as fast as possible; the answers are the same as a live run's
+    listen_to_room.py                              # listen to the microphone (on the Pi)
+    listen_to_room.py --wav meeting.wav            # play a 16 kHz mono recording (ffmpeg -i in -ar 16000 -ac 1 out.wav)
+    listen_to_room.py --wav meeting.wav --speed 0  # as fast as possible; the answers are the same as a live run's
 
 To start whisper the way that worked in the room:
     whisper-server -m ggml-base.en.bin --vad -vm ggml-silero-v6.2.0.bin -vt 0.5 --port 8110 -t 4

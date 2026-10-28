@@ -7,10 +7,10 @@ in `scorer.url`), and so is the ConvoInterestTracker that decides the trigger. E
 src/pom/scoring/; this is only a window onto it.
 
 Usage:
-    score.py "My wife doesn't know I lost the house." "Pass the salt, please."
-    echo "I can hear the people in the walls again." | score.py
-    score.py                       # type sentences at the prompt; an empty line quits
-    score.py --min-scores 5 --gap 20 "..."     # let the trigger fire after 5 scores, with 20 s between sentences
+    score_typed_sentences.py "My wife doesn't know I lost the house." "Pass the salt, please."
+    echo "I can hear the people in the walls again." | score_typed_sentences.py
+    score_typed_sentences.py                       # type sentences at the prompt; an empty line quits
+    score_typed_sentences.py --min-scores 5 --gap 20 "..."     # let the trigger fire after 5 scores, with 20 s between sentences
 
 Nothing you type is kept: it is scored and forgotten.
 """

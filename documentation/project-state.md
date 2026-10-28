@@ -34,9 +34,9 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 - **Corpus:** 81 sources, 14 registers, about 72,000 chunks, public on GitHub.
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see what is
   unpushed. The Pi's checkout (`~/pom`) was last pulled at `b0b68e9`, with the 4B and 9B model files in `data/models/`.
-- **Playgrounds** (`scripts/dev/`, small tools that use the real modules): `listening/sort.py`, `listening/hear.py` (the
-  microphone or a recording through the Listener, Scorer and trigger), `scoring/score.py` (type sentences, see scores and
-  the trigger), `voice/portent.py` (type a hinge, get a portent), and `listening/fragment.py`.
+- **Playgrounds** (`scripts/dev/`, small tools that use the real modules): `listening/sort_whisper_text.py`, `listening/listen_to_room.py` (the
+  microphone or a recording through the Listener, Scorer and trigger), `scoring/score_typed_sentences.py` (type sentences, see scores and
+  the trigger), `voice/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`.
 - **Not built yet:** the Output side, Input (typed text), the Conductor,
   the entry point, the paper guards, "failing loudly", and the Printer running as a service on the Pi. Track B (the fine-tuned
   voice) and the curated hinge pairs have not been started.
@@ -182,11 +182,11 @@ corpus material).
 
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q           # all tests
 python scripts/dev/corpus/sample.py --pulls 3           # play with the ExemplarSelector (--stats N for shares)
-python scripts/dev/listening/fragment.py "Hi, there."   # play with the SegmentFragmenter
-python scripts/dev/listening/sort.py "(dog barks) Hello."   # play with the WhisperTextSorter
-python scripts/dev/scoring/score.py "Some sentence."        # scores and the trigger (needs the scorer model's server)
-python scripts/dev/voice/portent.py --server                # type a hinge, get a portent (needs the oracle model's server)
-python scripts/dev/listening/hear.py --wav FILE --speed 0   # the whole listening side on a recording (needs whisper too)
+python scripts/dev/listening/cut_speech_into_hinges.py "Hi, there."   # play with the SegmentFragmenter
+python scripts/dev/listening/sort_whisper_text.py "(dog barks) Hello."   # play with the WhisperTextSorter
+python scripts/dev/scoring/score_typed_sentences.py "Some sentence."        # scores and the trigger (needs the scorer model's server)
+python scripts/dev/voice/write_portent_from_hinge.py --server                # type a hinge, get a portent (needs the oracle model's server)
+python scripts/dev/listening/listen_to_room.py --wav FILE --speed 0   # the whole listening side on a recording (needs whisper too)
 python scripts/dev/corpus/audit.py                      # artifact rates per ready/ file
 python scripts/dev/corpus/chunk.py                      # regenerate corpus/chunks/
 python scripts/dev/corpus/draw_weights.py               # the draw-odds table
@@ -254,7 +254,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 ## Next steps, in order
 
 1. **Try the new listening code in the real room, on the Pi.** `git pull`, start whisper and the scorer model
-   (the known-good commands are in `scripts/dev/listening/hear.py`), then run `hear.py` and compare with the
+   (the known-good commands are in `scripts/dev/listening/listen_to_room.py`), then run `listen_to_room.py` and compare with the
    known-good `probe_hearing_run.sh` run. The code matches the experiment on a recorded meeting (all 705 things heard
    identical), but the new `MicSource` has only met stand-in `arecord` programs. One known limit: the sound pass for
    lyrics hears about two seconds, not ten (see the design doc).

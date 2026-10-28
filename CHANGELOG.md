@@ -9,6 +9,17 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **Pi oracle benchmark: the Pi run** (`experiments/pi-oracle-benchmark/results/pi-2026-10-27/`, 2026-10-27, 22 minutes,
+  commit `b0b68e9`; the prompt and corpus fingerprints match the bake-off's). Qwen3.5-9B on `pom1`, 12 portents per
+  phase from an emptied page cache: with whisper `base.en` and the 4B scorer loaded and idle, a portent took a median
+  38.1 s (95th percentile 96.6 s, the slowest of 12), the first word came after 20.3 s, and writing ran at 1.9 tokens a
+  second; the 9B alone took 35.4 s (86.6 s), 20.1 s and 2.0. The idle neighbours cost about 3 s, within what 12
+  portents can resolve. Cold starts were 50 to 78 s for the 9B and 57 s for the 4B; a restart with the file in memory
+  13.5 s. At least 6.7 GB of 16 GB stayed available with all three loaded; no throttling, hottest 73.6 °C. The
+  wait for the first word is the Pi reading the prompt (about 0.095 s a prompt token), and the server reused none of
+  it (`cached_tokens` 0 on all 24), for a reason not yet known. For scale, the Mac took 0.8 to 0.9 s a portent. The
+  results were read back from the Pi and checked by checksum; the portents themselves are not kept. The design doc and
+  the experiment's README now carry the numbers.
 - **`corpus/samples/benchmark-lines.py`**: a copy of Wes's 100 benchmark sentences (`BENCHMARK` in
   `experiments/interest-scorer/probe_interest_scorer.py`), checked to be identical and in the same order. They are
   test inputs for the Scorer, not corpus material, so `corpus/samples/` has its own one-line README. The experiments
@@ -54,7 +65,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
   swapped for a streaming one. Counts and timings are kept, never the portents. Run on the Mac as a reference
   (median 0.8 to 0.9 s a portent, about 68 tokens a second, about 10 GB in use by the three models, no difference
   between the two phases; the prompt and corpus fingerprints match the bake-off). A first Mac run, disturbed by use of
-  the playground on the same GPU, was discarded. Not yet run on the Pi.
+  the playground on the same GPU, was discarded. Run on the Pi on 2026-10-27 (see the newer entry above).
 - **Oracle model bake-off** (`experiments/oracle-bakeoff/`, 41 tests in `tests/oracle_bakeoff/`, mutation-checked;
   `documentation/bakeoff-rubric.md` and `documentation/model-bakeoff.md`). Seven 8 to 9B models run through the real
   PromptBuilder and OracleModelClient under Wes's frozen prompt (temperature 0.3, one exemplar): 16 benchmark hinges

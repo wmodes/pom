@@ -33,8 +33,8 @@ Where this file and the code disagree, trust the code and fix this file. Day-to-
   Wi-Fi falls back to a Comitup hotspot (`pom1-direct`). Details: `pi-setup-notes.md`.
 - Connection: the Pi talks to the typewriter over USB serial. The interface board presents a normal port, so the
   typewriter stays swappable.
-- Output speed: about 16 characters per second, so a portent takes 5 to 20 seconds to type and generation speed is
-  not the bottleneck. (The Pi's real generation time for the oracle model is being measured; see Open.)
+- Output speed: about 16 characters per second, so a portent takes 5 to 20 seconds to type. Typing is not the slow
+  step: the oracle model is. On the Pi the 9B takes 35 to 40 seconds to write a typical portent (see The Pi, below).
 
 ## Paper
 
@@ -80,7 +80,8 @@ to whisper or the scorer model. They stay loaded in memory, idle, so there is no
 hear itself. Wes does not want lockfiles (they can lock the system out). (open) The enforcement is a Conductor state
 (listening, generating, printing, recovering) with a watchdog timeout so a stuck state cannot deafen the Printer for
 good. The memory for all three models at once was measured on the Mac at about 10 GB (the 9B oracle model 6.7 GB,
-the 4B scorer model 3.1 GB, whisper 0.33 GB), which fits the Pi's 16 GB; the Pi itself has not been measured.
+the 4B scorer model 3.1 GB, whisper 0.33 GB). On the Pi, with all three loaded and idle, at least 6.7 GB of the 16 GB
+stayed available.
 
 ## Listening: from sound to text
 
@@ -238,12 +239,25 @@ Qwen3.5-9B and Gemma 2 both beat Llama 3.1 clearly; Qwen3.5 against Gemma is not
 creative (the best managed it in half of its portents). Write-up: `model-bakeoff.md`; rubric: `bakeoff-rubric.md`.
 **Qwen3.5-9B is the candidate to beat.** Caveats: one rater (Claude); Wes's spot-check of about 20 ratings is pending.
 
-### The Pi (open)
+### The Pi (measured 2026-10-27)
 
 The 9B is the biggest model in the system and the Pi has a quarter of the Mac's memory bandwidth. On the Mac the 9B
-writes a portent in a median 0.8 to 0.9 s at about 68 tokens a second, with whisper and the 4B loaded and idle (no
-measurable cost). `experiments/pi-oracle-benchmark/` measures the same on the Pi (startup, time to the first word,
-total time, memory, temperature), starting cold. **It has not been run on the Pi yet.**
+writes a portent in a median 0.8 to 0.9 s at about 68 tokens a second. `experiments/pi-oracle-benchmark/` measured the
+same on the Pi, 12 portents a phase from an emptied page cache, with whisper and the 4B loaded and idle, and with the
+9B alone:
+
+- A portent takes a median 38 s (35 s alone) and up to about 100 s for a long one; the longest of 12 was 97 s, and a
+  portent near the 150-word ceiling would take about 2 minutes. Typing it adds 5 to 20 s.
+- The first word comes after a median 20 s: the Pi reads the prompt at about 10.5 tokens a second (0.095 s a token).
+  The server reused none of the prompt between portents, though its start is the same each time; why is not known.
+- Writing runs at about 1.9 to 2.0 tokens a second (0.5 s a token), slower than the typewriter types, so a portent is
+  finished before typing starts.
+- Cold start: 50 to 78 s for the 9B (read from the card) and 57 s for the 4B, once, at boot. A restart with the file
+  in memory takes 13.5 s.
+- The idle neighbours cost about 3 s a portent at most, within what 12 portents can resolve. Nothing throttled; the
+  hottest the Pi got was 73.6 °C.
+- (open) Whether a trigger-to-typing delay of about a minute is acceptable for a portent about one remark in a room that
+  moves on, or whether to shorten the prompt, find out why nothing is cached, or use a smaller model.
 
 ### Two voices (Track B not started)
 
@@ -353,13 +367,14 @@ scorer server; scorer warm-up; oracle model server (critical); typewriter port (
 | Hearing debug | `hearing-debug/` | Whisper-driven cutting, the three-way sort, the known-good setup, the trigger replays |
 | Oracle playground | `oracle-playground/` | Hand trials of oracle models and prompts |
 | Oracle bake-off | `oracle-bakeoff/` | Seven models, 160 rated portents each; Qwen3.5-9B first |
-| Pi oracle benchmark | `pi-oracle-benchmark/` | The 9B on the Pi with whisper and the 4B idle; Mac reference done, Pi run pending |
+| Pi oracle benchmark | `pi-oracle-benchmark/` | The 9B on the Pi with whisper and the 4B idle: a typical portent in 35 to 40 s, the first word after 20 s |
 
 The trigger replays used four recorded team meetings (public by design, kept in gitignored `data/`).
 
 ## Build order
 
-1. Run the Pi oracle benchmark; decide whether the 9B is fast enough on the Pi, or choose a smaller model.
+1. Decide whether the 9B is fast enough on the Pi (done: about 40 s typical, 100 s long) or whether to cut the prompt,
+   look into why nothing is cached, or choose a smaller model.
 2. Decide the hinge (the triggering sentence, or a pick from the window) and build it.
 3. Rebuild the listening side in `src/pom/` (audio source, rolling cutter, transcriber with the three-way sort).
 4. Output side: formatter, serial wrapper, reply selection.
@@ -372,8 +387,8 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 
 - What is "interesting", defined by us before the model is asked (Wes).
 - Which fragment is the hinge.
-- How fast the 9B oracle model is on the Pi; the choice of oracle model beyond the bake-off (and the prompt tuned for the
-  top two).
+- Whether the 9B's speed on the Pi (about 40 s a portent) is acceptable; why the server caches none of the prompt;
+  the choice of oracle model beyond the bake-off (and a prompt tuned for the top two).
 - How the trigger behaves in a real, quiet room; the paper guards.
 - How the Conductor enforces half-duplex without lockfiles.
 - How typed input joins the trigger.

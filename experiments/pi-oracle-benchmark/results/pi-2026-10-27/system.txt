@@ -1,0 +1,16 @@
+run: pi-2026-10-27  (Tue 27 Oct 19:09:10 EDT 2026)
+Linux pom1 6.12.109+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.12.109-1+rpt1 (2026-09-11) aarch64 GNU/Linux
+Model		: Raspberry Pi 5 Model B Rev 1.1
+threads per llama-server: 4  oracle context: 4096  phases: dormant alone  drop caches: 1
+oracle: /home/pi/pom/data/models/Qwen3.5-9B-Q4_K_M.gguf
+scorer: /home/pi/pom/data/models/Qwen3-4B-Q4_K_M.gguf
+whisper: base.en, threads 4, VAD threshold 0.5
+--- memory (MB)
+               total        used        free      shared  buff/cache   available
+Mem:           16218         379        6494          13        9478       15839
+Swap:            511           0         511
+--- vcgencmd
+temp=52.1'C
+throttled=0x0
+frequency(0)=2400020480
+governor: ondemand

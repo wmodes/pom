@@ -1,7 +1,38 @@
 # Pi oracle benchmark
 
-**Status: built, tested and run once on the Mac (a reference); not yet run on the Pi.** Nothing here is part of the
-Printer.
+**Status: built, tested, run on the Mac (a reference) and run on the Pi (2026-10-27, results below).** Nothing here is
+part of the Printer.
+
+## The Pi result (`results/pi-2026-10-27/`)
+
+Qwen3.5-9B on `pom1` (Pi 5, 16 GB, Active Cooler, 27 W supply), 12 portents per phase, each phase from an emptied page
+cache. The prompt (`2e18faf0034e`) and corpus (`25b0e1dc2cdb`) fingerprints match the bake-off's, at commit `b0b68e9`.
+All 24 portents were made, none cut off at `max_tokens`, and the Pi never throttled (hottest 73.6 °C).
+
+| | 9B with whisper and the 4B idle | 9B alone | Mac, for scale |
+|---|---|---|---|
+| Whole portent, median | 38.1 s | 35.4 s | 0.8 to 0.9 s |
+| Whole portent, 95th percentile (the slowest of 12) | 96.6 s | 86.6 s | 2.4 to 2.5 s |
+| Seconds to the first word, median | 20.3 | 20.1 | 0.3 |
+| Writing speed, median | 1.9 tokens a second | 2.0 | 68 to 69 |
+| Words, median | 28 | 26 | |
+| 9B cold start (file read from the card) | 50.2 s | 77.6 s | |
+| 9B restart (file already in memory) | 13.6 s | 13.5 s | |
+| 4B scorer cold start | 56.6 s | | |
+
+- **Idle neighbours cost almost nothing.** The medians differ by about 3 seconds and the writing speed by 0.1 tokens a
+  second; with 12 portents each that is not a difference this run can resolve. With all three models loaded at least
+  6.7 GB of the 16 GB stayed available.
+- **The wait for the first word is the Pi reading the prompt**: about 0.095 s a prompt token (about 10.5 tokens a
+  second), so 183 tokens took 18 s and 305 took 29 s. The server reused none of the prompt from one portent to the
+  next (`cached_tokens` was 0 on all 24), though the start of the prompt is the same each time. Why is not known.
+- **The writing itself is slow and steady**: about 0.5 s a token, so a portent of 28 words takes about 18 s after the
+  first word, and one of 95 words about 67 s. The typewriter types faster than the model writes, so a portent must be
+  finished before typing starts.
+- **A portent takes 35 to 40 s typically and up to about 100 s** (the prompt asks for under 150 words, which would be
+  about 2 minutes), plus 5 to 20 s to type it. The cold start of 50 to 78 s happens once, at boot.
+- The run took 22 minutes. It was started detached on the Pi; the results were read back to the Mac and checked by
+  checksum, and the Pi's copy was then removed. The server logs stayed on the Pi.
 
 ## The question
 

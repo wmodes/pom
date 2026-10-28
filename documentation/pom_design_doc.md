@@ -77,7 +77,7 @@ microphone -> whisper-driven cutting -> whisper -> sort: words / captions / noth
 
 The machine does one thing at a time. While the oracle model writes (and while the typewriter prints), nothing is sent
 to whisper or the scorer model. They stay loaded in memory, idle, so there is no reload cost, and the Printer does not
-hear itself. Wes does not want lockfiles (they can lock the system out). (open) The enforcement is a Conductor state
+hear itself. Lockfiles are avoided (they can lock the system out). (open) The enforcement is a Conductor state
 (listening, generating, printing, recovering) with a watchdog timeout so a stuck state cannot deafen the Printer for
 good. The memory for all three models at once was measured on the Mac at about 10 GB (the 9B oracle model 6.7 GB,
 the 4B scorer model 3.1 GB, whisper 0.33 GB). On the Pi, with all three loaded and idle, at least 6.7 GB of the 16 GB
@@ -125,7 +125,7 @@ that belong to the listening side are the `[listening]` section of the config, a
   fragment with too few content words ("or not.") skips the model and gets a fixed low score (`fragment_filter_score`,
   1.0), which saves a model call on talk that cannot be interesting.
 - **Scorer model**: a small local language model, Qwen3-4B (Q4_K_M), served by `llama-server`. Llama-3.2-3B is the
-  faster alternative. The prompt is Wes's, kept in config; the definition of "interesting" is kept separate from the
+  faster alternative. The prompt is human-written and kept in config; the definition of "interesting" is kept separate from the
   meaning of the numbers, and there is no persona.
 - **One sentence per request, no context.** A sentence scores the same whatever came before it. Batching and showing
   earlier lines were both measured and rejected: each made a score depend on its neighbours and their order.
@@ -205,22 +205,22 @@ tuned per room.
   dogs gets an insult in the manner of Shakespeare calling someone a dog; something called weird gets something in
   the spirit of Blake on the uncanny; complaining about friends gets something about gossip.
 - The leap is made by the oracle model, not looked up. A corpus lookup was rejected as too literal.
-- **The hinge is the sentence that triggered** (Wes, 2026-10-27). The scorer and the trigger (the fence with its
+- **The hinge is the sentence that triggered** (decided 2026-10-27). The scorer and the trigger (the fence with its
   cooldown) were built to hand over about six sentences an hour, so the one that clears the fence is used as it
   occurs. If that is a little inconsistent, scaring some hinges and catching on others, that is what talking to an
   oracle means. The first design's weighted random pick among the best recent candidates is dropped. The hand-off
   (the triggering fragment to the PromptBuilder) is the Conductor's job.
-- (open) *Defining "interesting".* Wes's conclusion (2026-10-22): the prompt and the trigger keep circling because we
-  have not defined for ourselves what is worth answering, and we let the algorithm choose hoping it would work out. A
+- (open) *Defining "interesting".* Conclusion of 2026-10-22: the prompt and the trigger keep circling because the project
+  has not defined for itself what is worth answering, and the algorithm was left to choose in the hope it would work out. A
   human definition comes first; the scorer prompt then states it. Deferred, not dropped.
 
 ## The oracle model
 
 **Built**: `PromptBuilder` and `OracleModelClient`; the model is served by `llama-server` (default port 8099).
 
-- **The prompt is Wes's.** It lives in config (`oracle.prompt`), with `{exemplars}` and `{hinge}` marking where those
+- **The prompt is human-written.** It lives in config (`oracle.prompt`), with `{exemplars}` and `{hinge}` marking where those
   go. It asks for a new passage in the manner of the style example without printing the theme or the example, under
-  150 words. Claude measures prompts; Wes writes them.
+  150 words. Models are used to measure prompts, not to write them.
 - **Exemplars** (register exemplars): each time the Printer speaks, the ExemplarSelector draws chunks from the
   weighted corpus, independently and never matched to the hinge. They show the voice and nothing more. The bake-off and
   the config use **one** exemplar (`exemplars_min`/`exemplars_max` both 1); the range can be 1 to 5 or more.
@@ -250,7 +250,7 @@ creative (the best managed it in half of its portents). Write-up: `model-bakeoff
 **Decided 2026-10-27: the Printer uses Qwen3.5-9B, with Gemma 2 9B as the named alternate (one config change away),
 unless a problem shows.** Gemma was more faithful to the hinge (it repeated the hinge 2 times in 160 against 10, and
 muddled fewer details) but less creative (68 portents against 81), weaker on style, and should be 20 to 30% slower on
-the Pi (an estimate, not measured). Caveats: one rater (Claude); Wes's spot-check of about 20 ratings is pending.
+the Pi (an estimate, not measured). Caveats: one rater (an LLM judge); a human spot-check of about 20 ratings is pending.
 
 ### The Pi (measured 2026-10-27)
 
@@ -269,7 +269,7 @@ same on the Pi, 12 portents a phase from an emptied page cache, with whisper and
   in memory takes 13.5 s.
 - The idle neighbours cost about 3 s a portent at most, within what 12 portents can resolve. Nothing throttled; the
   hottest the Pi got was 73.6 °C.
-- Wes judged the wait acceptable (2026-10-27): the first word after about 20 s, a typical portent finished in 35 to
+- The wait was judged acceptable (2026-10-27): the first word after about 20 s, a typical portent finished in 35 to
   40 s and a long one in up to about 100 s, then 5 to 20 s of typing. (open) Why the server caches none of the prompt;
   fixing it could cut the 20 s wait.
 
@@ -277,7 +277,7 @@ same on the Pi, 12 portents a phase from an emptied page cache, with whisper and
 
 The first design had two voices behind one interface: Track A, a stock instruct model with a prompt, and Track B, a
 base model fine-tuned (LoRA, on the Mac with MLX, never on the Pi) on the corpus plus curated hinge pairs, run with an
-almost empty prompt so that it cannot speak outside its registers. The bake-off is Track A: stock models, Wes's prompt.
+almost empty prompt so that it cannot speak outside its registers. The bake-off is Track A: stock models, the project's own prompt.
 Track B and the curated hinge pairs (an overheard line paired with a tangential in-register reply, curated by Wes,
 Neil and River with a large model drafting candidates, logged in the AI-use ledger) have not been started. (open)
 Whether to start them depends on how far the prompted oracle model gets.
@@ -294,7 +294,7 @@ Whether to start them depends on how far the prompted oracle model gets.
   row; it is just rare. `corpus/chunks/weights.json` is the one hand-edited file for shares and source weights (for
   example Shakespeare's plays 0.2). Draw odds are computed at load time, never stored.
 - Rights: public domain, plus `owner-cleared` material (the IBM/Lexmark Wheelwriter manuals and the dad jokes), decided
-  by Wes. Wes has said licensing and content are not concerns for this project: it is an art installation, far from
+  by the project owner. Licensing and content are not concerns for this project: it is an art installation, far from
   the consumer market.
 - (open) Equal register shares make small registers repeat. A simulation showed repeats are negligible over an evening
   (0.1%) and matter over months; a recency decay was prototyped and deliberately left out.
@@ -343,7 +343,7 @@ the serial port, so most of it is tested on the Mac.
 - Logs hold counts and scores, never words. One `debug` flag turns debug output on everywhere; each module can override
   it. Logging goes to stdout (journald collects it).
 - (open) *Failing loudly.* If the scorer model or the oracle model is down the Printer can never respond, and a log
-  line is not loud when someone is switching a printer on. Decide what loud means (a beep, an email to Wes, something
+  line is not loud when someone is switching a printer on. Decide what loud means (a beep, an email to the project owner, something
   at the venue) and make those startup steps critical in that way. Today the scorer step is not critical and an
   unscorable fragment is left unscored.
 
@@ -401,9 +401,9 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 
 ## Open questions, collected
 
-- What is "interesting", defined by us before the model is asked (Wes).
+- What is "interesting", defined by us before the model is asked.
 - Why the server caches none of the prompt (fixing it could cut the 20 s wait); a prompt tuned for the top two oracle
-  models; Wes's spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
+  models; a human spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
 - How the trigger behaves in a real, quiet room; the paper guards.
 - How the Conductor enforces half-duplex without lockfiles.
 - How typed input joins the trigger.
@@ -421,7 +421,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
   -> Tukey's fence over a five-minute window with a 60 s cooldown and no floor.
 - **Hearing**: cutting by loudness with a moving noise floor -> whisper's own voice detection on a rolling buffer; the
   three-way sort of whisper's output (words, ambient captions, nothing).
-- **Voice**: two tracks behind an interface -> the oracle model, a prompted stock model with Wes's own prompt (Track B
+- **Voice**: two tracks behind an interface -> the oracle model, a prompted stock model with a human-written prompt (Track B
   not started); Qwen3.5-9B leads the bake-off.
 - **Corpus**: about 69,000 utterances in 13 registers -> about 72,000 chunks in 14 registers, chunks of 15 to 150 words.
 - **Whisper**: `small.en` -> `base.en` as the model that worked in the room.

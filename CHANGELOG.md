@@ -9,6 +9,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Design doc in the project's own voice**: the lines that named a person as the source of a decision or a judgment ("Wes judged the wait acceptable", "the prompt is Wes's") now say what was decided or that the prompt is human-written, and the one-rater note says "an LLM judge". Facts, dates and numbers are unchanged.
 - **Playgrounds renamed so the file says the job** (in `scripts/dev/`): `listening/sort.py` is now `sort_whisper_text.py`, `listening/hear.py` is `listen_to_room.py`, `listening/fragment.py` is `cut_speech_into_hinges.py`, `scoring/score.py` is `score_typed_sentences.py` and `voice/portent.py` is `write_portent_from_hinge.py`. Nothing else changed; the tests, README, design doc, handoff and earlier changelog entries use the new names. From now on a leaf or branch is tried by hand with these.
 
 ### Added

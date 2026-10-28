@@ -9,6 +9,17 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`RollingCutter`** (`src/pom/listening/rolling_cutter.py`, 99 tests, mutation-checked: 67 of 67 caught), the
+  fourth step of the listening side and the heart of the known-good setup. Every `step` seconds (5) it hands whisper the
+  audio since the last kept segment, with whisper's own voice detection deciding what is speech, and keeps the
+  segments that ended at least `hold` seconds (2) before the end of the buffer, so a thought still going is not cut in
+  two. A segment that does not end like a sentence is joined to the next; a buffer with no speech is trimmed to its last
+  two seconds; a thought that outgrows `max_buffer` (30 s) is forced out; an optional `rewind` (off) re-listens to the end
+  of the last kept segment. Time is counted in audio received, so a recording replays exactly as a live stream. If whisper
+  cannot be reached the round returns nothing and the audio stays for the next; a client that raises is a warning, not a
+  crash. Checked against the experiment's cutter on 400 random runs (random speech timelines, settings, feeding
+  patterns and failed rounds): no difference. The mutation check found two redundancies in the port (a window always
+  starts where the buffer starts), which are removed.
 - **`WavSource`, `MicSource` and `AudioSource`** (`src/pom/listening/`, 86 tests, mutation-checked: 31 of 31 and
   43 of 43 caught), the third step of the listening side. An `AudioSource` is anything that gives out 30 ms frames of
   16 kHz mono 16-bit sound and can be closed. `MicSource` runs the Pi's `arecord` and reads it in a thread of its own

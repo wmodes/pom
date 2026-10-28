@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **Playgrounds** (`scripts/dev/`, 10 smoke tests in `tests/scripts/`), the way to see each built part work, all
+  using the real modules: `listening/sort.py` (type whisper-style text, see how it is sorted), `listening/hear.py` (the
+  microphone or a recording through the Listener, Scorer and trigger, printing what it hears with scores and the trigger),
+  `scoring/score.py` (type sentences, see their scores and whether the trigger would fire) and `voice/portent.py` (type a
+  hinge, get a portent; it began as `experiments/oracle-playground/probe_oracle.py`, which stays as it was). Tried against
+  real servers: the score and hear playgrounds with a 4B scorer and whisper on a recorded meeting, `portent.py` against the
+  9B. `playground` and the new listening terms are in the lexicon. Experiments stay standalone snapshots.
 - **`[listening]` in the config** (`ListeningSettings`, 11 settings, 56 new tests, mutation-checked: 33 of 33 caught),
   the sixth step of the listening side: how the Printer hears the room. The whisper-server's address (also
   `POM_WHISPER_URL`) and timeout, the microphone's capture device and buffer, the `RollingCutter`'s `step`, `hold`, `rewind`

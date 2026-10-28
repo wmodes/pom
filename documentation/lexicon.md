@@ -10,6 +10,9 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 
 - **The Printer** †: the whole installation, an IBM Wheelwriter 1000 driven by a Raspberry Pi, which
   overhears a room and now and then types a portent.
+- **playground** †: a small tool that lets you type into one built part of the Printer and see what it does, using the real
+  modules (`scripts/dev/`). The old experiment folders `oracle-playground` and `hearing-debug` did this before the parts were
+  built; the playgrounds replace them for the built parts.
 - **experiments**: the set-aside place (`experiments/`) where we prototype. Nothing there is part of
   the Printer until it is rebuilt in `src/pom/`.
 
@@ -17,6 +20,16 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 
 - **segment**: whisper's raw output, using whisper's own name for it.
 - **fragment**: one piece of a split segment, usually a sentence; the thing that gets scored.
+- **audio source** †: anything that gives out 30 ms frames of sound: the microphone (`MicSource`) or, for tests and replays,
+  a recording (`WavSource`).
+- **rolling cutter** †: the component that cuts the stream: every few seconds it hands whisper the audio since the last kept
+  segment and keeps the segments whisper finished (`RollingCutter`).
+- **whisper text sorter** †: the component that sorts whisper's text into words, ambient captions and nothing-here marks
+  (`WhisperTextSorter`).
+- **listener** †: the component that joins the audio source, the rolling cutter and the whisper text sorter, and hands on what
+  was heard (`Listener`).
+- **heard segment** †: one thing the listener heard that was new: the words (speech or lyrics), any new ambient captions, and
+  where in the stream it ended (`HeardSegment`).
 - **ambient caption**: whisper's guess at a sound in the room, like `(dog barks)` or `[Music]`.
   Never scored; kept as context for the oracle model.
 - **lyrics** †: sung words whisper marks with music symbols. They are words, so they are scored.

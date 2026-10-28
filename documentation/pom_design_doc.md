@@ -63,7 +63,7 @@ microphone -> whisper-driven cutting -> whisper -> sort: words / captions / noth
 
 | Stage | Status |
 |---|---|
-| Microphone, cutting, whisper, the three-way sort | Experiment (`experiments/hearing-debug/`) |
+| Microphone, audio sources, whisper client, cutting, the three-way sort, the Listener | Built (`src/pom/listening/`), matched against the experiment on a recorded meeting; the new `MicSource` has not yet heard a real room |
 | SegmentFragmenter | Built |
 | Scorer (fragment_filter, scorer model, circuit breaker) | Built |
 | Trigger (`ConvoInterestTracker`) | Built; used by the hearing-debug probe, not yet by a Conductor |
@@ -85,17 +85,17 @@ stayed available.
 
 ## Listening: from sound to text
 
-1. **Microphone** (*experiment*): listens all the time and hands audio on in small frames.
-2. **Cutting** (*experiment*): whisper decides where the speech is. Every 5 seconds a whisper run covers a rolling
+1. **Microphone** (*built*, `MicSource`): listens all the time through `arecord` and hands audio on in 30 ms frames. It reads in a thread of its own into a 10-second buffer, so a slow whisper run cannot lose sound; if the buffer fills, the oldest frames are dropped and counted. A recording can be played instead (`WavSource`), for tests and replays.
+2. **Cutting** (*built*, `RollingCutter`): whisper decides where the speech is. Every 5 seconds a whisper run covers a rolling
    buffer with whisper's own Silero voice detection on (threshold 0.5); the segments whisper has finished (held back
    2 seconds so a sentence is not cut mid-thought) are kept, and the buffer never grows past 30 seconds. This replaced
    cutting by loudness (a slowly moving noise floor and a 0.7 s pause), which never found a pause in a room with bursty
-   noise; the loudness cutter survives behind `--energy-cutter` for comparison. Time is counted in audio received, so
+   noise; the loudness cutter survives behind `--energy-cutter` in the experiment only. Time is counted in audio received, so
    a recording replays exactly as a live stream would, at any speed.
-3. **Transcriber** (*experiment*, whisper.cpp v1.9.5 as `whisper-server`): turns the audio into punctuated text with
+3. **Transcriber** (*built*, `WhisperServerClient`; whisper.cpp v1.9.5 as `whisper-server`): turns the audio into punctuated text with
    segment times. Model `base.en`; `small.en` is slower (about 0.5 times real time against 0.2) for almost the same
    text on speech.
-4. **The three-way sort** (*experiment*). Whisper's output is sorted before anything is scored:
+4. **The three-way sort** (*built*, `WhisperTextSorter`). Whisper's output is sorted before anything is scored:
    - *Words* go on: speech, and sung lyrics with the music symbol stripped. The Printer reacts to what it hears, not
      only to conversation, so lyrics compete on score like any other sentence.
    - *Ambient captions* such as "(dog barks)" or "[Music]" are never scored (a hallucinated "(gunshot)" scored 8.0).
@@ -103,10 +103,18 @@ stayed available.
    - *Nothing-here markers* such as "[BLANK_AUDIO]" are dropped.
 5. **SegmentFragmenter** (*built*): cuts the words into fragments stamped with a time. Sentences are what get scored;
    clauses and phrases remain available behind a setting (*proposed*: a config setting for which levels it emits).
+6. **Listener** (*built*): joins the microphone, the cutter and the sorter. `hear()` is a plain generator the Conductor
+   will run in a thread; it yields a `HeardSegment` (the new words and their kind, the new captions, and where in the stream
+   it ended) for each segment that holds something new, skipping repeats and remembering the last six captions. After three
+   rounds in a row with no speech it asks whisper once, without the voice detector, for lyrics and captions. Whisper being
+   down is one warning for each outage; the audio is kept and tried again. *Known limit, inherited from the experiment:*
+   that pass hears about two seconds, not ten, because a stretch with no speech is trimmed to its last two seconds first,
+   so lyrics sung between passes are mostly missed. Fixing it means the Listener keeping its own recent audio.
 
 **The known-good hearing setup.** The only combination that worked well in the room, and it is fragile: on `pom1`,
 `./probe_hearing_run.sh --no-explain` from `experiments/hearing-debug`, whisper `base.en`, 4 threads, VAD threshold 0.5,
-mic gain 24, the 4B scorer model on port 8098, the committed config. Change one thing at a time from here.
+mic gain 24, the 4B scorer model on port 8098, the committed config. Change one thing at a time from here. The values
+that belong to the listening side are the `[listening]` section of the config, and a test pins the committed file to them.
 
 ## Scoring: how interesting is a fragment?
 
@@ -322,8 +330,8 @@ Whether to start them depends on how far the prompted oracle model gets.
 ## Software architecture
 
 All runtime code is object-oriented: small classes with one concern each, methods that each do one thing, plain data
-objects passed between them. Helper scripts (`scripts/`) import `pom`; `pom` never imports them. About 1,000 tests pass
-(1,047 when this was written). Logic that needs no hardware is kept apart from code that touches the mic, a model or
+objects passed between them. Helper scripts (`scripts/`) import `pom`; `pom` never imports them. About 1,500 tests pass
+(1,494 when this was written). Logic that needs no hardware is kept apart from code that touches the mic, a model or
 the serial port, so most of it is tested on the Mac.
 
 ### Rules that cut across modules
@@ -347,7 +355,9 @@ src/pom/
   startup.py                                     built runner; the ten startup duties are placeholders
   corpus/      draw_weights, chunk_store, exemplar_selector      built
   listening/   segment_fragmenter                                built
-               (audio source, transcriber, rolling cutter)       experiment, to be rebuilt here
+               audio_source, mic_source, wav_source,             built
+               whisper_server_client, whisper_text_sorter,       built
+               rolling_cutter, listener, audio_format            built
   scoring/     word_tagger, scorer_model_client, scorer,         built
                convo_interest_tracker (window, fence, cooldown)  built
                fallback_scorer                                   shelved, unused
@@ -382,7 +392,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 1. (Done 2026-10-27) The oracle model is Qwen3.5-9B; the wait on the Pi (about 40 s typical, 100 s long) is acceptable.
    Look into why nothing is cached when convenient.
 2. (Decided 2026-10-27) The hinge is the sentence that triggered. The hand-off is the Conductor's.
-3. Rebuild the listening side in `src/pom/` (audio source, rolling cutter, transcriber with the three-way sort).
+3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/hear.py`).
 4. Output side: formatter, serial wrapper, reply selection.
 5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
 6. Paper guards; "failing loudly".

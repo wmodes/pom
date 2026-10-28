@@ -14,9 +14,10 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 
 ## Where things stand (2026-10-27)
 
-- **Built and tested** (1,047 tests, all passing): the shared plumbing (`fault_recorder`, `log_setup`, `config` with
-  `[scorer]`, `[trigger]` and `[oracle]` sections, the `startup` runner whose ten duties are still placeholders); the corpus
-  module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`); the `SegmentFragmenter`; the Scorer (`WordTagger`,
+- **Built and tested** (1,494 tests, all passing): the shared plumbing (`fault_recorder`, `log_setup`, `config` with
+  `[scorer]`, `[trigger]`, `[listening]` and `[oracle]` sections, the `startup` runner whose ten duties are still placeholders); the corpus
+  module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`); the `SegmentFragmenter`; the whole listening side (`MicSource`, `WavSource`, `WhisperServerClient`, `RollingCutter`,
+  `WhisperTextSorter`, `Listener`); the Scorer (`WordTagger`,
   `ScorerModelClient`, `Scorer`); the `ConvoInterestTracker` (the trigger); the `PromptBuilder`; the `OracleModelClient`.
 - **Decided:**
   - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score.
@@ -33,7 +34,10 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 - **Corpus:** 81 sources, 14 registers, about 72,000 chunks, public on GitHub.
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see what is
   unpushed. The Pi's checkout (`~/pom`) was last pulled at `b0b68e9`, with the 4B and 9B model files in `data/models/`.
-- **Not built yet:** the listening side in `src/pom/` (the next job), the Output side, Input (typed text), the Conductor,
+- **Playgrounds** (`scripts/dev/`, small tools that use the real modules): `listening/sort.py`, `listening/hear.py` (the
+  microphone or a recording through the Listener, Scorer and trigger), `scoring/score.py` (type sentences, see scores and
+  the trigger), `voice/portent.py` (type a hinge, get a portent), and `listening/fragment.py`.
+- **Not built yet:** the Output side, Input (typed text), the Conductor,
   the entry point, the paper guards, "failing loudly", and the Printer running as a service on the Pi. Track B (the fine-tuned
   voice) and the curated hinge pairs have not been started.
 
@@ -101,8 +105,12 @@ src/pom/
     exemplar_selector.py built weighted random draws; chunks per pull set by [oracle]; no repeats in a pull
   listening/
     segment_fragmenter.py built transcript text -> sentence / clause / phrase fragments, all levels
-    (whisper client, text sorter, audio sources, rolling cutter, listener: planned, the next job; they work in
-     experiments/hearing-debug/)
+    audio_source, mic_source, wav_source built the microphone (arecord, read in a thread) and a recording replay
+    whisper_server_client built audio to whisper-server from memory; text or timed segments back
+    whisper_text_sorter built whisper's text -> words / ambient captions / nothing
+    rolling_cutter     built   whisper's own voice detection cuts the stream, every 5 s
+    listener           built   joins them: sound in, HeardSegments out (a generator the Conductor runs in a thread)
+    audio_format       built   16 kHz mono 16-bit, 30 ms frames: the numbers they share
   scoring/
     word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
     scorer_model_client.py built one fragment to the scorer model, one score (or an explanation) back
@@ -175,6 +183,10 @@ corpus material).
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q           # all tests
 python scripts/dev/corpus/sample.py --pulls 3           # play with the ExemplarSelector (--stats N for shares)
 python scripts/dev/listening/fragment.py "Hi, there."   # play with the SegmentFragmenter
+python scripts/dev/listening/sort.py "(dog barks) Hello."   # play with the WhisperTextSorter
+python scripts/dev/scoring/score.py "Some sentence."        # scores and the trigger (needs the scorer model's server)
+python scripts/dev/voice/portent.py --server                # type a hinge, get a portent (needs the oracle model's server)
+python scripts/dev/listening/hear.py --wav FILE --speed 0   # the whole listening side on a recording (needs whisper too)
 python scripts/dev/corpus/audit.py                      # artifact rates per ready/ file
 python scripts/dev/corpus/chunk.py                      # regenerate corpus/chunks/
 python scripts/dev/corpus/draw_weights.py               # the draw-odds table
@@ -241,10 +253,11 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 
 ## Next steps, in order
 
-1. **The listening side into `src/pom/`**, leaf-first: the whisper text sorter, the whisper-server client, the audio sources,
-   the rolling cutter, then the listener that joins them. Each gets tests (and a mutation check) and a way to see it work
-   before the next. The working versions are in `experiments/hearing-debug/`; the working path is what gets ported
-   (the rolling cutter on raw audio), and the known-good values are pinned by a test.
+1. **Try the new listening code in the real room, on the Pi.** `git pull`, start whisper and the scorer model
+   (the known-good commands are in `scripts/dev/listening/hear.py`), then run `hear.py` and compare with the
+   known-good `probe_hearing_run.sh` run. The code matches the experiment on a recorded meeting (all 705 things heard
+   identical), but the new `MicSource` has only met stand-in `arecord` programs. One known limit: the sound pass for
+   lyrics hears about two seconds, not ten (see the design doc).
 2. **The Output side:** the typewriter formatter, the serial wrapper and the "stop listening while printing" signal.
 3. **The Conductor,** with the half-duplex state and its watchdog; the hand-off of the triggering sentence to the
    PromptBuilder; the entry point; the startup duties in `startup.py` (mic gain, scorer warm-up, checks for whisper, the

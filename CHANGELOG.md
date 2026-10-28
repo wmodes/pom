@@ -322,6 +322,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The oracle model is Qwen3.5-9B** (decided by Wes, 2026-10-27), with Gemma 2 9B as the named alternate, one
+  config change away, unless a problem shows. Gemma was more faithful to the hinge in the bake-off (2 repeats in 160
+  against 10) but less creative (68 portents against 81), weaker on style, and about 30% slower on the Mac (1.7 s
+  against 1.3 s; its file is 6.8 GB against 5.7 GB). The Pi wait for Qwen3.5-9B (first word after 20 s, a typical
+  portent in 35 to 40 s) was judged acceptable. The design doc and the bake-off write-up say so.
 - **`fence_multiple` is 0.9** (was 1.0, in the tracker, `Config` and `pom.toml`), chosen with the 60 s cooldown to
   match the goal of about six portents an hour. Replayed on the four recorded meetings with the shipped settings:
   29 triggers in 5.1 hours, 5.7 an hour, one every 10.6 minutes (3.4, 5.1, 7.4 and 7.1 an hour by meeting; shortest gap

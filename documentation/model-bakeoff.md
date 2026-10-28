@@ -251,9 +251,11 @@ Negative:
 
 ## Where it stands
 
-Qwen3.5-9B is the candidate to beat, with Gemma 2 9B close behind. Before choosing:
-- Check each license against the plans for the installation (Qwen3.5, Gemma 2, Ministral, Stheno).
-- Time the top two on the Pi, with whisper and the 4B scorer running, since both are 9B.
+Decided 2026-10-27: the Printer uses Qwen3.5-9B, with Gemma 2 9B as the named alternate, unless a problem shows.
+Qwen3.5-9B was timed on the Pi with whisper and the 4B scorer loaded (a typical portent in 35 to 40 s, the first
+word after 20 s; see `experiments/pi-oracle-benchmark/`), and Wes judged the wait acceptable. Gemma 2 9B has not
+been timed on the Pi; its file is 20% bigger and it was about 30% slower on the Mac. Licensing is not a concern for
+this project (Wes). Still open:
 - Spot-check the ratings, and try a prompt tuned for the top two.
 - Bigger models (Mistral Nemo 12B, Qwen3-14B) are not needed unless the 9B models prove too limiting.
 

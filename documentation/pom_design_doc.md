@@ -237,7 +237,10 @@ didn't muddle its details, no extra text, length close, particularly creative). 
 
 Qwen3.5-9B and Gemma 2 both beat Llama 3.1 clearly; Qwen3.5 against Gemma is not settled. No model was particularly
 creative (the best managed it in half of its portents). Write-up: `model-bakeoff.md`; rubric: `bakeoff-rubric.md`.
-**Qwen3.5-9B is the candidate to beat.** Caveats: one rater (Claude); Wes's spot-check of about 20 ratings is pending.
+**Decided 2026-10-27: the Printer uses Qwen3.5-9B, with Gemma 2 9B as the named alternate (one config change away),
+unless a problem shows.** Gemma was more faithful to the hinge (it repeated the hinge 2 times in 160 against 10, and
+muddled fewer details) but less creative (68 portents against 81), weaker on style, and should be 20 to 30% slower on
+the Pi (an estimate, not measured). Caveats: one rater (Claude); Wes's spot-check of about 20 ratings is pending.
 
 ### The Pi (measured 2026-10-27)
 
@@ -256,8 +259,9 @@ same on the Pi, 12 portents a phase from an emptied page cache, with whisper and
   in memory takes 13.5 s.
 - The idle neighbours cost about 3 s a portent at most, within what 12 portents can resolve. Nothing throttled; the
   hottest the Pi got was 73.6 °C.
-- (open) Whether a trigger-to-typing delay of about a minute is acceptable for a portent about one remark in a room that
-  moves on, or whether to shorten the prompt, find out why nothing is cached, or use a smaller model.
+- Wes judged the wait acceptable (2026-10-27): the first word after about 20 s, a typical portent finished in 35 to
+  40 s and a long one in up to about 100 s, then 5 to 20 s of typing. (open) Why the server caches none of the prompt;
+  fixing it could cut the 20 s wait.
 
 ### Two voices (Track B not started)
 
@@ -301,7 +305,7 @@ Whether to start them depends on how far the prompted oracle model gets.
 - **Speech to text**: whisper.cpp v1.9.5 (`whisper-server`, Silero VAD), model `base.en`, built on the Pi from a pinned
   tag by a setup script.
 - **Language models**: `llama.cpp` (`llama-server`), one server per model: the scorer model (Qwen3-4B Q4_K_M, port
-  8098) and the oracle model (Qwen3.5-9B Q4_K_M is the candidate, port 8099). Whisper's server is on port 8110.
+  8098) and the oracle model (Qwen3.5-9B Q4_K_M, port 8099). Whisper's server is on port 8110.
 - **Control code**: Python 3.11 (Homebrew on the Mac, Bookworm's on the Pi). The Conductor will use `asyncio`: each
   worker an async task with a queue between them, leaf modules plain synchronous code, anything that blocks awaited or
   run in a thread.
@@ -373,8 +377,8 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 
 ## Build order
 
-1. Decide whether the 9B is fast enough on the Pi (done: about 40 s typical, 100 s long) or whether to cut the prompt,
-   look into why nothing is cached, or choose a smaller model.
+1. (Done 2026-10-27) The oracle model is Qwen3.5-9B; the wait on the Pi (about 40 s typical, 100 s long) is acceptable.
+   Look into why nothing is cached when convenient.
 2. Decide the hinge (the triggering sentence, or a pick from the window) and build it.
 3. Rebuild the listening side in `src/pom/` (audio source, rolling cutter, transcriber with the three-way sort).
 4. Output side: formatter, serial wrapper, reply selection.
@@ -387,8 +391,8 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 
 - What is "interesting", defined by us before the model is asked (Wes).
 - Which fragment is the hinge.
-- Whether the 9B's speed on the Pi (about 40 s a portent) is acceptable; why the server caches none of the prompt;
-  the choice of oracle model beyond the bake-off (and a prompt tuned for the top two).
+- Why the server caches none of the prompt (fixing it could cut the 20 s wait); a prompt tuned for the top two oracle
+  models; Wes's spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
 - How the trigger behaves in a real, quiet room; the paper guards.
 - How the Conductor enforces half-duplex without lockfiles.
 - How typed input joins the trigger.

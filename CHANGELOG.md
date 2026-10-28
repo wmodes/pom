@@ -9,6 +9,20 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`Listener`** and **`HeardSegment`** (`src/pom/listening/listener.py`, 68 tests, mutation-checked: 64 of 64 caught), the
+  fifth step of the listening side, which joins the parts. `hear()` is a plain generator: it reads an `AudioSource`,
+  feeds the `RollingCutter`, asks whisper every few seconds, sorts each finished segment with the `WhisperTextSorter` and
+  yields a `HeardSegment` (the new words and their kind, the new ambient captions, and where in the stream it ended) for
+  each one that holds something new. Words identical to the last are skipped, captions identical to the last are not
+  repeated, and the last six captions are remembered for the oracle model's context. After three rounds in a row with no
+  speech it asks whisper once without the voice detector and keeps only lyrics and captions. Whisper being down is one
+  warning for each outage; the audio is kept and tried again. The Conductor will run `hear()` in a thread of its own.
+  Checked on a whole recorded 60-minute meeting through the real client and a real whisper-server: all 705 things
+  heard are identical, to the second and the word, to what the hearing-debug experiment heard on the same recording.
+  **Known limit, inherited from the experiment:** the sound pass listens to about two seconds, not the ten it is
+  asked for, because a stretch with no speech is trimmed to its last two seconds before the pass runs. So lyrics sung
+  between passes are mostly not heard. Fixing it needs the Listener to keep its own recent audio; not done, since the
+  port is meant to match the known-good setup. In this meeting the pass never fired.
 - **`RollingCutter`** (`src/pom/listening/rolling_cutter.py`, 99 tests, mutation-checked: 67 of 67 caught), the
   fourth step of the listening side and the heart of the known-good setup. Every `step` seconds (5) it hands whisper the
   audio since the last kept segment, with whisper's own voice detection deciding what is speech, and keeps the

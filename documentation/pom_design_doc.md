@@ -67,7 +67,7 @@ microphone -> whisper-driven cutting -> whisper -> sort: words / captions / noth
 | SegmentFragmenter | Built |
 | Scorer (fragment_filter, scorer model, circuit breaker) | Built |
 | Trigger (`ConvoInterestTracker`) | Built; used by the hearing-debug probe, not yet by a Conductor |
-| Hinge choice | Open |
+| Hinge (the sentence that triggered) | Decided; nothing to build but the hand-off |
 | PromptBuilder, `OracleModelClient` | Built |
 | Output (formatter, serial, pause listening) | Planned |
 | Input (keyboard) | Planned |
@@ -197,9 +197,11 @@ tuned per room.
   dogs gets an insult in the manner of Shakespeare calling someone a dog; something called weird gets something in
   the spirit of Blake on the uncanny; complaining about friends gets something about gossip.
 - The leap is made by the oracle model, not looked up. A corpus lookup was rejected as too literal.
-- (open) *Which* fragment is the hinge. The tracker says *when*. The simple answer is the sentence that triggered; the
-  alternative from the first design is a weighted random pick, with a temperature, among the best recent candidates in
-  the window. Not built.
+- **The hinge is the sentence that triggered** (Wes, 2026-10-27). The scorer and the trigger (the fence with its
+  cooldown) were built to hand over about six sentences an hour, so the one that clears the fence is used as it
+  occurs. If that is a little inconsistent, scaring some hinges and catching on others, that is what talking to an
+  oracle means. The first design's weighted random pick among the best recent candidates is dropped. The hand-off
+  (the triggering fragment to the PromptBuilder) is the Conductor's job.
 - (open) *Defining "interesting".* Wes's conclusion (2026-10-22): the prompt and the trigger keep circling because we
   have not defined for ourselves what is worth answering, and we let the algorithm choose hoping it would work out. A
   human definition comes first; the scorer prompt then states it. Deferred, not dropped.
@@ -379,7 +381,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 
 1. (Done 2026-10-27) The oracle model is Qwen3.5-9B; the wait on the Pi (about 40 s typical, 100 s long) is acceptable.
    Look into why nothing is cached when convenient.
-2. Decide the hinge (the triggering sentence, or a pick from the window) and build it.
+2. (Decided 2026-10-27) The hinge is the sentence that triggered. The hand-off is the Conductor's.
 3. Rebuild the listening side in `src/pom/` (audio source, rolling cutter, transcriber with the three-way sort).
 4. Output side: formatter, serial wrapper, reply selection.
 5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
@@ -390,7 +392,6 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 ## Open questions, collected
 
 - What is "interesting", defined by us before the model is asked (Wes).
-- Which fragment is the hinge.
 - Why the server caches none of the prompt (fixing it could cut the 20 s wait); a prompt tuned for the top two oracle
   models; Wes's spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
 - How the trigger behaves in a real, quiet room; the paper guards.
@@ -416,6 +417,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 - **Whisper**: `small.en` -> `base.en` as the model that worked in the room.
 - **Half-duplex**: deaf while printing -> nothing is sent to whisper or the scorer model while the oracle model writes
   or the typewriter prints; both stay loaded.
-- **Retired**: the activity tracker and target-rate curve, the faded-score pool, the Mimic splicing fallback, the
-  word-list Scorer (kept as a documented fallback), and the license questions about wordfreq (no longer a dependency of
+- **Hinge**: a weighted random pick among the best recent candidates, with a temperature -> the sentence that triggered.
+- **Retired**: the activity tracker and target-rate curve, the faded-score pool, the hinge picker, the Mimic splicing
+  fallback, the word-list Scorer (kept as a documented fallback), and the license questions about wordfreq (no longer a dependency of
   the Scorer).

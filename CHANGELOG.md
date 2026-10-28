@@ -322,6 +322,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`documentation/project-state.md` is rewritten to the state of 2026-10-27**: what is built (1,047 tests), what is
+  decided (scorer model, the fence trigger, the hinge, the oracle model, half-duplex), the rules we work by (including the
+  ones learned since: explain design choices first, Wes writes the prompts, stage files by name, deliver to the Pi through
+  git), the module tree, a short dated decision log with the superseded decisions marked, the next steps and the
+  gotchas. The design itself now lives in `pom_design_doc.md`.
+- **The hinge is the sentence that triggered** (decided by Wes, 2026-10-27). The scorer and the trigger were built
+  to hand over about six sentences an hour, so each trigger is used as it occurs, with no separate hinge picker; some
+  hinges will scare and some will catch, which is what talking to an oracle means. The design doc says so.
 - **The oracle model is Qwen3.5-9B** (decided by Wes, 2026-10-27), with Gemma 2 9B as the named alternate, one
   config change away, unless a problem shows. Gemma was more faithful to the hinge in the bake-off (2 repeats in 160
   against 10) but less creative (68 portents against 81), weaker on style, and about 30% slower on the Mac (1.7 s

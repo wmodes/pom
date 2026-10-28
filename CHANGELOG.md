@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`WhisperTextSorter`** (`src/pom/listening/whisper_text_sorter.py`, 48 tests, mutation-checked: 22 of 22 caught),
+  the first leaf of the listening side moved from `experiments/hearing-debug/` into `src/pom/`. It sorts what whisper wrote
+  about a stretch of sound into words (speech, and lyrics with the music symbols removed), ambient captions such as
+  "(dog barks)" (kept once each, never scored) and nothing-here marks such as "[BLANK_AUDIO]" (dropped). Pure text,
+  immutable result, never raises. Checked against the experiment's `split_whisper` on 40,000 random strings: no
+  difference on the speech path; on the lyrics-only pass it no longer returns stray spaces or a blank "lyric" when a pair of
+  music symbols surrounds only space (a quirk the invariant tests found in the experiment's code).
 - **Pi oracle benchmark: the Pi run** (`experiments/pi-oracle-benchmark/results/pi-2026-10-27/`, 2026-10-27, 22 minutes,
   commit `b0b68e9`; the prompt and corpus fingerprints match the bake-off's). Qwen3.5-9B on `pom1`, 12 portents per
   phase from an emptied page cache: with whisper `base.en` and the 4B scorer loaded and idle, a portent took a median

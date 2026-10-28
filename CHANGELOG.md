@@ -9,6 +9,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`[listening]` in the config** (`ListeningSettings`, 11 settings, 56 new tests, mutation-checked: 33 of 33 caught),
+  the sixth step of the listening side: how the Printer hears the room. The whisper-server's address (also
+  `POM_WHISPER_URL`) and timeout, the microphone's capture device and buffer, the `RollingCutter`'s `step`, `hold`, `rewind`
+  and `max_buffer`, and the Listener's `sound_every_steps`, `sound_seconds` and `ambient_memory`. The defaults are the
+  combination that worked in the room (whisper `base.en` with its voice detection at 0.5, a run every 5 seconds), and a
+  test pins the committed `pom.toml` to those exact values, so the fragile setup cannot drift by accident; changing it
+  on purpose means changing that test too. The microphone's capture gain stays a startup duty, since it resets on every
+  reboot. The entry point builds the `WhisperServerClient`, `MicSource` and `Listener` from `config.listening`.
 - **`Listener`** and **`HeardSegment`** (`src/pom/listening/listener.py`, 68 tests, mutation-checked: 64 of 64 caught), the
   fifth step of the listening side, which joins the parts. `hear()` is a plain generator: it reads an `AudioSource`,
   feeds the `RollingCutter`, asks whisper every few seconds, sorts each finished segment with the `WhisperTextSorter` and

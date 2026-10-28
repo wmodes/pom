@@ -140,6 +140,43 @@ cooldown_seconds = 60
 
 
 # ================================================
+# LISTENING: how the Printer hears the room
+# ================================================
+
+# These are the numbers of the combination that worked in the room: whisper base.en with its voice detection at 0.5,
+# a whisper run every 5 seconds on a rolling buffer. A test pins them, so a change here is noticed. Change one at a
+# time. (The microphone's capture gain, 24 of 30, is not here: it resets on every reboot, so startup sets it.)
+[listening]
+
+# Where the whisper-server answers, and how long to wait for one transcription, in seconds.
+whisper_url = "http://127.0.0.1:8110"
+whisper_timeout = 180
+
+# The microphone, as arecord's -D takes it (arecord -l lists them), and how many seconds of sound are held for it. If
+# the Printer falls that far behind, the oldest sound is dropped.
+device = "plughw:0,0"
+buffer_seconds = 10
+
+# Whisper is asked about the audio every `step` seconds. A finished segment is kept once it ends `hold` seconds before
+# the end of what whisper was given, so a thought still going is not cut in two. `rewind` starts each run that many
+# seconds before the last kept segment's end (0 is off; it made whisper repeat the last word). A stretch of talk that
+# runs past `max_buffer` seconds without finishing is forced out.
+step = 5
+hold = 2
+rewind = 0
+max_buffer = 30
+
+# The voice detector treats singing and most sounds as not speech. After this many runs in a row with no speech, whisper
+# is asked once, without it, about the last `sound_seconds` of sound, and only lyrics and captions like "(dog barks)"
+# are kept. 0 turns it off. (It can only hear what is still held, which after a quiet stretch is about two seconds.)
+sound_every_steps = 3
+sound_seconds = 10
+
+# How many of the latest captions of sounds in the room to remember, to tell the oracle model what the room sounds like.
+ambient_memory = 6
+
+
+# ================================================
 # ORACLE: the model that writes the portent
 # ================================================
 

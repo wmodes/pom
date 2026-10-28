@@ -6,7 +6,7 @@ import pytest
 
 from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
-                        Config, OracleSettings, ScorerSettings, TriggerSettings)
+                        Config, ListeningSettings, OracleSettings, ScorerSettings, TriggerSettings)
 
 
 def write(tmp_path, text):
@@ -490,6 +490,108 @@ def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
 def test_the_shipped_config_has_the_trigger_values_the_code_expects():
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
     assert shipped.trigger == TriggerSettings() and shipped.report.ok
+
+
+# --- The [listening] section ---------------------------------------------------------------
+
+KNOWN_GOOD = ListeningSettings("http://127.0.0.1:8110", 180.0, "plughw:0,0", 10.0, 5.0, 2.0, 0.0, 30.0, 3, 10.0, 6)
+
+
+def test_the_listening_defaults_when_nothing_is_set():
+    config = Config.load(environ={})
+    assert config.listening == ListeningSettings() and config.report.ok
+
+
+def test_the_starting_listening_values_are_the_known_good_ones():
+    assert ListeningSettings() == KNOWN_GOOD
+
+
+def test_the_listening_defaults_match_the_modules_defaults():
+    from pom.listening import listener, mic_source, rolling_cutter, whisper_server_client
+    assert ListeningSettings() == ListeningSettings(
+        whisper_server_client.DEFAULT_URL, whisper_server_client.DEFAULT_TIMEOUT, mic_source.DEFAULT_DEVICE,
+        mic_source.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_STEP, rolling_cutter.DEFAULT_HOLD,
+        rolling_cutter.DEFAULT_REWIND, rolling_cutter.DEFAULT_MAX_BUFFER, listener.DEFAULT_SOUND_EVERY_STEPS,
+        listener.DEFAULT_SOUND_SECONDS, listener.DEFAULT_AMBIENT_MEMORY)
+
+
+def test_all_the_listening_values_are_read_from_the_section(tmp_path):
+    text = ("[listening]\nwhisper_url = \"http://pi.test:9000\"\nwhisper_timeout = 60\ndevice = \"hw:1,0\"\n"
+            "buffer_seconds = 4\nstep = 3\nhold = 1.5\nrewind = 0.5\nmax_buffer = 20\nsound_every_steps = 5\n"
+            "sound_seconds = 8\nambient_memory = 9\n")
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9)
+    assert config.report.ok
+
+
+def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
+    text = "[listening]\nhold = 0\nrewind = 0\nsound_every_steps = 0\nambient_memory = 1\n"
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.listening.hold == 0.0 and config.listening.rewind == 0.0
+    assert config.listening.sound_every_steps == 0 and config.listening.ambient_memory == 1 and config.report.ok
+
+
+@pytest.mark.parametrize("key,value", [
+    ("whisper_url", "5"), ("whisper_url", "true"), ("whisper_url", "[1]"),
+    ("whisper_timeout", "0"), ("whisper_timeout", "-1"), ("whisper_timeout", '"180"'), ("whisper_timeout", "true"),
+    ("whisper_timeout", "inf"),
+    ("device", "5"), ("device", "true"),
+    ("buffer_seconds", "0"), ("buffer_seconds", "-1"), ("buffer_seconds", '"10"'), ("buffer_seconds", "true"),
+    ("step", "0"), ("step", "-1"), ("step", '"5"'), ("step", "true"), ("step", "nan"),
+    ("hold", "-1"), ("hold", '"2"'), ("hold", "true"),
+    ("rewind", "-0.5"), ("rewind", '"0"'), ("rewind", "false"),
+    ("max_buffer", "0"), ("max_buffer", "-30"), ("max_buffer", '"30"'), ("max_buffer", "true"),
+    ("sound_every_steps", "-1"), ("sound_every_steps", "2.5"), ("sound_every_steps", '"3"'), ("sound_every_steps", "true"),
+    ("sound_seconds", "0"), ("sound_seconds", "-10"), ("sound_seconds", '"10"'), ("sound_seconds", "true"),
+    ("ambient_memory", "0"), ("ambient_memory", "-1"), ("ambient_memory", "2.5"), ("ambient_memory", '"6"'),
+    ("ambient_memory", "true")])
+def test_a_bad_listening_value_means_the_default_with_a_warning(tmp_path, key, value):
+    config = Config.load(write(tmp_path, f"[listening]\n{key} = {value}\n"), environ={})
+    assert config.listening == ListeningSettings()
+    assert len(config.report.warnings) == 1 and f"listening.{key}" in config.report.warnings[0]
+
+
+def test_an_unknown_listening_key_is_warned_about(tmp_path):
+    config = Config.load(write(tmp_path, "[listening]\nstepp = 5\n"), environ={})
+    assert any("listening.stepp" in w for w in config.report.warnings) and config.listening == ListeningSettings()
+
+
+def test_the_listening_section_merges_key_by_key_with_the_local_file(tmp_path):
+    main = write(tmp_path, "[listening]\nstep = 3\nhold = 1\n")
+    (tmp_path / "pom.local.toml").write_text("[listening]\nhold = 0.5\n", encoding="utf-8")
+    listening = Config.load(main, environ={}).listening
+    assert (listening.step, listening.hold) == (3.0, 0.5)
+
+
+def test_the_whisper_address_can_come_from_the_environment(tmp_path):
+    main = write(tmp_path, '[listening]\nwhisper_url = "http://from-the-file.test"\n')
+    assert Config.load(main, environ={}).listening.whisper_url == "http://from-the-file.test"
+    assert Config.load(main, environ={"POM_WHISPER_URL": "http://from-the-env.test"}).listening.whisper_url == \
+        "http://from-the-env.test"
+
+
+def test_the_shipped_config_has_the_known_good_listening_values():
+    """The combination that worked in the room is fragile, so a change to it must be on purpose: change this test with it."""
+    shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
+    assert shipped.listening == KNOWN_GOOD and shipped.report.ok
+
+
+def test_the_listening_settings_plug_straight_into_the_modules():
+    from pom.listening import Listener, RollingCutter, WhisperServerClient
+
+    class NoSound:
+        def frames(self):
+            return iter(())
+
+        def close(self):
+            pass
+
+    settings = Config.load(environ={}).listening
+    client = WhisperServerClient(settings.whisper_url, settings.whisper_timeout)
+    cutter = RollingCutter(client, settings.step, settings.hold, settings.rewind, settings.max_buffer)
+    listener = Listener(NoSound(), client, settings.step, settings.hold, settings.rewind, settings.max_buffer,
+                        settings.sound_every_steps, settings.sound_seconds, settings.ambient_memory)
+    assert client.report.ok and cutter.report.ok and listener.report.ok
 
 
 # --- The [oracle] section --------------------------------------------------------------

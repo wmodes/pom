@@ -27,6 +27,11 @@ of being threaded through by hand. Today there are five:
                ranges above the upper quartile a score must be to trigger (0.9), and `cooldown_seconds` how long after a
                trigger the next may come (60; 0 for none). The entry point builds the
                ConvoInterestTracker from `config.trigger`.
+    [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
+               whisper-server, the microphone's capture device and buffer, and the RollingCutter's `step`, `hold`,
+               `rewind` and `max_buffer`, and the Listener's sound pass and caption memory. The defaults are the
+               combination that worked in the room; change one at a time. The entry point builds the
+               WhisperServerClient, MicSource and Listener from `config.listening`.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
@@ -65,7 +70,9 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
          "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple",
-         "trigger.cooldown_seconds"}
+         "trigger.cooldown_seconds", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
+         "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
+         "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -81,6 +88,17 @@ DEFAULT_TRIGGER_FENCE_MULTIPLE = 0.9
 DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
 DEFAULT_TRIGGER_MIN_SCORES = 20
 DEFAULT_TRIGGER_COOLDOWN_SECONDS = 60.0
+DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
+DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
+DEFAULT_LISTENING_DEVICE = "plughw:0,0"
+DEFAULT_LISTENING_BUFFER_SECONDS = 10.0
+DEFAULT_LISTENING_STEP = 5.0
+DEFAULT_LISTENING_HOLD = 2.0
+DEFAULT_LISTENING_REWIND = 0.0
+DEFAULT_LISTENING_MAX_BUFFER = 30.0
+DEFAULT_LISTENING_SOUND_EVERY_STEPS = 3
+DEFAULT_LISTENING_SOUND_SECONDS = 10.0
+DEFAULT_LISTENING_AMBIENT_MEMORY = 6
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -168,6 +186,40 @@ class TriggerSettings:
     cooldown_seconds: float = DEFAULT_TRIGGER_COOLDOWN_SECONDS
 
 
+@dataclass(frozen=True)
+class ListeningSettings:
+    """The `[listening]` section: how the Printer hears the room.
+
+    The defaults are the combination that worked well in the room (whisper `base.en` with its voice detection at 0.5,
+    a round every 5 seconds); a test pins them. Change one at a time.
+
+    Attributes:
+        whisper_url: The whisper-server's address (POM_WHISPER_URL overrides it).
+        whisper_timeout: Seconds to wait for one transcription, above 0.
+        device: The ALSA capture device for the microphone, as `arecord -D` takes it.
+        buffer_seconds: Sound held for the microphone before the oldest is dropped, above 0.
+        step: Seconds of new audio between whisper runs, above 0.
+        hold: A segment is kept once it ends this many seconds before the end of the buffer, 0 or more.
+        rewind: Seconds before the last kept segment's end that the next run starts, 0 or more (0 is off).
+        max_buffer: Seconds without a finished segment before one is forced out, above 0.
+        sound_every_steps: After this many runs in a row with no speech, listen once for lyrics and captions;
+            a whole number of at least 0, 0 for never.
+        sound_seconds: How much recent audio that pass listens to, above 0.
+        ambient_memory: How many recent captions of sounds to remember, a whole number of at least 1.
+    """
+    whisper_url: str = DEFAULT_LISTENING_WHISPER_URL
+    whisper_timeout: float = DEFAULT_LISTENING_WHISPER_TIMEOUT
+    device: str = DEFAULT_LISTENING_DEVICE
+    buffer_seconds: float = DEFAULT_LISTENING_BUFFER_SECONDS
+    step: float = DEFAULT_LISTENING_STEP
+    hold: float = DEFAULT_LISTENING_HOLD
+    rewind: float = DEFAULT_LISTENING_REWIND
+    max_buffer: float = DEFAULT_LISTENING_MAX_BUFFER
+    sound_every_steps: int = DEFAULT_LISTENING_SOUND_EVERY_STEPS
+    sound_seconds: float = DEFAULT_LISTENING_SOUND_SECONDS
+    ambient_memory: int = DEFAULT_LISTENING_AMBIENT_MEMORY
+
+
 class Config:
     """The project's shared settings, plus a report of anything that had to be recovered from.
 
@@ -180,17 +232,20 @@ class Config:
         scorer: The `[scorer]` section, as a ScorerSettings.
         oracle: The `[oracle]` section, as an OracleSettings (the exemplar range is `exemplar_range`).
         trigger: The `[trigger]` section, as a TriggerSettings.
+        listening: The `[listening]` section, as a ListeningSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
                  report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
-                 trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None):
+                 trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None,
+                 listening: Optional[ListeningSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
         self.trigger = trigger if trigger is not None else TriggerSettings()
+        self.listening = listening if listening is not None else ListeningSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -285,7 +340,33 @@ class Config:
                    "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 2, report),
             _number(values.get("trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS),
                     "trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS, 0.0, report))
-        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle)
+        whisper_url = _text(values.get("listening.whisper_url", DEFAULT_LISTENING_WHISPER_URL), "listening.whisper_url",
+                            DEFAULT_LISTENING_WHISPER_URL, report)
+        if "POM_WHISPER_URL" in environ:
+            whisper_url = _text(environ["POM_WHISPER_URL"], "POM_WHISPER_URL", DEFAULT_LISTENING_WHISPER_URL, report)
+        listening = ListeningSettings(
+            whisper_url,
+            _positive(values.get("listening.whisper_timeout", DEFAULT_LISTENING_WHISPER_TIMEOUT),
+                      "listening.whisper_timeout", DEFAULT_LISTENING_WHISPER_TIMEOUT, report),
+            _text(values.get("listening.device", DEFAULT_LISTENING_DEVICE), "listening.device",
+                  DEFAULT_LISTENING_DEVICE, report),
+            _positive(values.get("listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS),
+                      "listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS, report),
+            _positive(values.get("listening.step", DEFAULT_LISTENING_STEP), "listening.step",
+                      DEFAULT_LISTENING_STEP, report),
+            _number(values.get("listening.hold", DEFAULT_LISTENING_HOLD), "listening.hold",
+                    DEFAULT_LISTENING_HOLD, 0.0, report),
+            _number(values.get("listening.rewind", DEFAULT_LISTENING_REWIND), "listening.rewind",
+                    DEFAULT_LISTENING_REWIND, 0.0, report),
+            _positive(values.get("listening.max_buffer", DEFAULT_LISTENING_MAX_BUFFER), "listening.max_buffer",
+                      DEFAULT_LISTENING_MAX_BUFFER, report),
+            _whole(values.get("listening.sound_every_steps", DEFAULT_LISTENING_SOUND_EVERY_STEPS),
+                   "listening.sound_every_steps", DEFAULT_LISTENING_SOUND_EVERY_STEPS, 0, report),
+            _positive(values.get("listening.sound_seconds", DEFAULT_LISTENING_SOUND_SECONDS),
+                      "listening.sound_seconds", DEFAULT_LISTENING_SOUND_SECONDS, report),
+            _whole(values.get("listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY),
+                   "listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY, 1, report))
+        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening)
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:

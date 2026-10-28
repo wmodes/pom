@@ -9,6 +9,15 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`WhisperServerClient`** and **`audio_format`** (`src/pom/listening/`, 65 tests, mutation-checked: 47 of 47 caught),
+  the second leaf of the listening side. The client sends audio to a running `whisper-server` from memory (a WAV made in
+  memory, never a file) and returns plain text (`text`) or timed `Segment`s shifted by an offset (`segments`, asked for as
+  SRT, because `verbose_json` crashes whisper.cpp 1.9.5 on audio with no speech), and `ping`s it. A server that is down,
+  slow or odd gives an empty result and a warning in `report`, never an exception; `error` says what went wrong with the
+  latest request so a caller can tell "heard nothing" from "could not ask". The transport is injected, and the tests run
+  against a small stand-in server on a local port. Neither audio nor text reaches a log or a report. `audio_format` holds
+  the numbers every listening module shares (16 kHz, 16-bit, 30 ms frames). Checked against the experiment's client on
+  a real whisper-server: identical text and segments, with and without the voice detector.
 - **`WhisperTextSorter`** (`src/pom/listening/whisper_text_sorter.py`, 48 tests, mutation-checked: 22 of 22 caught),
   the first leaf of the listening side moved from `experiments/hearing-debug/` into `src/pom/`. It sorts what whisper wrote
   about a stretch of sound into words (speech, and lyrics with the music symbols removed), ambient captions such as

@@ -9,6 +9,15 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`WavSource`, `MicSource` and `AudioSource`** (`src/pom/listening/`, 86 tests, mutation-checked: 31 of 31 and
+  43 of 43 caught), the third step of the listening side. An `AudioSource` is anything that gives out 30 ms frames of
+  16 kHz mono 16-bit sound and can be closed. `MicSource` runs the Pi's `arecord` and reads it in a thread of its own
+  into a buffer (10 s), so a slow whisper run cannot make it lose sound; if the listener falls so far behind that the
+  buffer fills, the oldest frames are dropped, counted, and warned about once for each stretch. `WavSource` plays a
+  recording at real time, faster or flat out (speed 0), with 1.2 s of silence after the end, for tests and for trying a
+  change on a meeting we already have; the Printer never constructs it. Neither raises: no `arecord`, a microphone that
+  stops, a missing file or a recording in the wrong format is a CRITICAL fault in `report` and the source just ends
+  (`strict=True` raises, for tests). The tests use stand-in `arecord` programs and generated WAV files.
 - **`WhisperServerClient`** and **`audio_format`** (`src/pom/listening/`, 65 tests, mutation-checked: 47 of 47 caught),
   the second leaf of the listening side. The client sends audio to a running `whisper-server` from memory (a WAV made in
   memory, never a file) and returns plain text (`text`) or timed `Segment`s shifted by an offset (`segments`, asked for as

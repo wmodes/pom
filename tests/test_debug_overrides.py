@@ -18,7 +18,7 @@ MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_stor
            "pom/scoring/scorer.py", "pom/scoring/fallback_scorer.py",
            "pom/scoring/convo_interest_tracker.py", "pom/prompt/prompt_builder.py", "pom/voice/oracle_model_client.py",
            "pom/startup.py",
-           "pom/listening/whisper_server_client.py"]
+           "pom/listening/whisper_server_client.py", "pom/listening/wav_source.py", "pom/listening/mic_source.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 
 

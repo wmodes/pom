@@ -37,7 +37,8 @@ All 24 portents were made, none cut off at `max_tokens`, and the Pi never thrott
 ## The question
 
 The oracle bake-off (`experiments/oracle-bakeoff/`) picked Qwen3.5-9B as the candidate to beat, on a Mac. The Pi 5 has
-a quarter of the Mac's memory bandwidth and the 9B is the biggest model in the system. How long does it take to load,
+much slower memory than the Mac (it turned out to write the 9B's tokens 36 times slower) and the 9B is the biggest
+model in the system. How long does it take to load,
 to start writing, and to finish a portent on the Pi, **with whisper and the 4B scorer loaded but idle**?
 
 "Idle" is the design, not a shortcut. The machine is half-duplex: while the oracle works, the Conductor sends nothing to

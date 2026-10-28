@@ -244,7 +244,7 @@ the Pi (an estimate, not measured). Caveats: one rater (Claude); Wes's spot-chec
 
 ### The Pi (measured 2026-10-27)
 
-The 9B is the biggest model in the system and the Pi has a quarter of the Mac's memory bandwidth. On the Mac the 9B
+The 9B is the biggest model in the system and the Pi's memory is much slower than the Mac's (the 9B writes 36 times slower on it). On the Mac the 9B
 writes a portent in a median 0.8 to 0.9 s at about 68 tokens a second. `experiments/pi-oracle-benchmark/` measured the
 same on the Pi, 12 portents a phase from an emptied page cache, with whisper and the 4B loaded and idle, and with the
 9B alone:

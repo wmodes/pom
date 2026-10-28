@@ -501,6 +501,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Fixed
 
+- **The design doc and the Pi oracle benchmark's README no longer say the Pi has "a quarter of the Mac's memory
+  bandwidth".** That was a wrong guess, and the measured writing speeds say otherwise: 1.9 tokens a second on the Pi
+  against 68 on the Mac, a factor of 36. Writing is limited by memory speed, and the Pi is at its ceiling: 1.9 tokens
+  a second times the 5.7 GB model is about 11 GB of memory read every second.
 - **Hearing-debug no longer leaves audio behind when it is stopped mid-transcription.** Two leftover `tmp*.wav` slices
   of room audio were found in the Pi's `/dev/shm` (removed). The Transcriber now keeps its slices in a folder of its own
   (`hearing-debug-audio`), clears anything a killed run left at startup, and empties it on exit.

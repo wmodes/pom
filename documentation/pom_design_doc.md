@@ -360,6 +360,7 @@ src/pom/
                rolling_cutter, listener, audio_format            built
                mac_mic_source (laptop testing)                   built
   scoring/     word_tagger, scorer_model_client, scorer,         built
+               hinge_finder (listening to hinge)                 built
                convo_interest_tracker (window, fence, cooldown)  built
                fallback_scorer                                   shelved, unused
   prompt/      prompt_builder                                    built

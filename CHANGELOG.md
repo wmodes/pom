@@ -14,6 +14,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`HingeFinder`** (`pom/scoring/hinge_finder.py`, 38 new tests, mutation-checked: 34 of 34 caught), the second of the two modules that
+  move the wiring out of the playgrounds and into `src`. `find()` is a generator over the Listener, the SegmentFragmenter, the
+  Scorer and the `ConvoInterestTracker` and yields a `ScoredSentence` for each thing heard (text, kind, score, who scored it,
+  the trigger's effect, the time, the bar and window as they stood, the count); the one with `is_hinge` is the sentence to
+  answer. Ambient captions are yielded either way; they are scored and counted by the trigger only when
+  `consider_ambient_sounds` is on. Pausing while the oracle writes is the Conductor's job. Nothing that was heard reaches a log
+  or a report.
 - **`[listening] consider_ambient_sounds`** (default `false`; 5 new config tests, mutation-checked: 7 of 7 caught). Whether captions
   of sounds like "(dog barks)" may be scored and become hinges the way speech does: the Printer reacts to what is happening
   around it, and a dog barking may be all that is happening. It only sets the flag; the `HingeFinder` will read it. Off

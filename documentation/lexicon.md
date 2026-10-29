@@ -93,6 +93,8 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   `{exemplars}` and `{hinge}` marking where those go.
 - **prompt builder** †: the component that fills the exemplars and the hinge into the oracle prompt
   (`PromptBuilder`).
+- **hinge finder** †: the component that joins the listener, the fragmenter, the scorer and the trigger, and yields each
+  thing heard as a `ScoredSentence`; the one the trigger fired on is the hinge (`HingeFinder`).
 - **portent writer** †: the component that takes a hinge and returns a portent, joining the prompt builder and the oracle
   model client (`PortentWriter`). What it returns is a `Portent`: the text, the exemplars shown, the seconds, and whether it was cut off.
 

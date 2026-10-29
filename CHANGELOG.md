@@ -14,6 +14,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`MacMicSource`** (`pom/listening/mac_mic_source.py`, 15 new tests, mutation-checked: 16 of 16 caught), the Mac's microphone through
+  `ffmpeg` and AVFoundation, so the listening side can be tried live on a laptop. It is a `MicSource` that changes only the
+  capture command and the wording of its faults (`ffmpeg was not found ... brew install ffmpeg`); the buffering, the
+  drop-the-oldest rule and the never-stop faults are the one copy in `MicSource`, which gained a small `_command` method for
+  this (its own behaviour is unchanged, 6 more mutants checked). The default device is `default`, the system's default
+  input, which on a Mac may be a webcam or headset rather than the built-in microphone. It does not test the Pi's microphone path.
 - **`PortentWriter`** (`pom/voice/portent_writer.py`, 30 new tests, mutation-checked: 23 of 23 caught), the first of two
   modules that move the wiring out of the playgrounds and into `src`. `write(hinge, seed=None)` joins the `PromptBuilder` and
   the `OracleModelClient` and returns a `Portent` (text, the exemplars shown, seconds, cut off, word count), or None if no

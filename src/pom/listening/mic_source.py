@@ -53,6 +53,12 @@ class MicSource:
         dropped_frames: How many frames were thrown away because the listener fell behind.
     """
 
+    # What differs on another machine: the capture program, the device a bad setting falls back to, and the hint
+    # given when the program is missing. MacMicSource overrides these and `_command`.
+    _TOOL = "arecord"
+    _FALLBACK_DEVICE = DEFAULT_DEVICE
+    _MISSING_HINT = "this is meant to run on the Pi"
+
     def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord",
                  buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False):
         """Args:
@@ -64,8 +70,9 @@ class MicSource:
         self.report = FaultRecorder(strict=strict, error=MicSourceError, logger=_log)
         self.dropped_frames = 0
         if not (isinstance(device, str) and device.strip()):
-            self.report.warn(f"the capture device must be a name such as plughw:0,0, got {device!r}; using {DEFAULT_DEVICE}")
-            device = DEFAULT_DEVICE
+            self.report.warn(f"the capture device must be a name such as {self._FALLBACK_DEVICE}, got {device!r}; "
+                             f"using {self._FALLBACK_DEVICE}")
+            device = self._FALLBACK_DEVICE
         if not (_is_number(buffer_seconds) and buffer_seconds > 0):
             self.report.warn(f"buffer_seconds must be a number above 0, got {buffer_seconds!r}; using {DEFAULT_BUFFER_SECONDS:g}")
             buffer_seconds = DEFAULT_BUFFER_SECONDS
@@ -81,16 +88,20 @@ class MicSource:
     def _start(self, device: str, arecord: str) -> None:
         program = shutil.which(arecord) if isinstance(arecord, str) else None
         if program is None:
-            self.report.critical("arecord was not found; the Printer cannot hear (this is meant to run on the Pi)")
+            self.report.critical(f"{self._TOOL} was not found; the Printer cannot hear ({self._MISSING_HINT})")
             return
         try:
-            self._process = subprocess.Popen([program, "-q", "-D", device, "-f", "S16_LE", "-r", str(SAMPLE_RATE), "-c", "1",
-                                              "-t", "raw"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            self._process = subprocess.Popen(self._command(program, device), stdout=subprocess.PIPE,
+                                             stderr=subprocess.DEVNULL)
         except OSError as problem:
-            self.report.critical(f"arecord could not be started ({type(problem).__name__}); the Printer cannot hear")
+            self.report.critical(f"{self._TOOL} could not be started ({type(problem).__name__}); the Printer cannot hear")
             return
         self._reader = threading.Thread(target=self._read, name="mic-reader", daemon=True)
         self._reader.start()
+
+    def _command(self, program: str, device: str) -> list[str]:
+        """The command that writes the microphone's sound to its standard output as raw 16 kHz mono 16-bit samples."""
+        return [program, "-q", "-D", device, "-f", "S16_LE", "-r", str(SAMPLE_RATE), "-c", "1", "-t", "raw"]
 
     def _read(self) -> None:
         """Runs in its own thread: moves frames from arecord into the buffer until arecord stops."""
@@ -105,7 +116,7 @@ class MicSource:
             pass
         try:
             if not self._closing.is_set():
-                self._fault("critical", "the microphone stopped sending sound (arecord ended); the Printer can no longer hear")
+                self._fault("critical", f"the microphone stopped sending sound ({self._TOOL} ended); the Printer can no longer hear")
         finally:
             self._put(None)                                 # tells frames() the sound has ended
 

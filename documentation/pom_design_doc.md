@@ -358,6 +358,7 @@ src/pom/
                audio_source, mic_source, wav_source,             built
                whisper_server_client, whisper_text_sorter,       built
                rolling_cutter, listener, audio_format            built
+               mac_mic_source (laptop testing)                   built
   scoring/     word_tagger, scorer_model_client, scorer,         built
                convo_interest_tracker (window, fence, cooldown)  built
                fallback_scorer                                   shelved, unused

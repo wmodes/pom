@@ -14,6 +14,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`[listening] consider_ambient_sounds`** (default `false`; 5 new config tests, mutation-checked: 7 of 7 caught). Whether captions
+  of sounds like "(dog barks)" may be scored and become hinges the way speech does: the Printer reacts to what is happening
+  around it, and a dog barking may be all that is happening. It only sets the flag; the `HingeFinder` will read it. Off
+  keeps today's rule that captions are never scored. How a caption scores is untried, so the flag stays off.
 - **`MacMicSource`** (`pom/listening/mac_mic_source.py`, 15 new tests, mutation-checked: 16 of 16 caught), the Mac's microphone through
   `ffmpeg` and AVFoundation, so the listening side can be tried live on a laptop. It is a `MicSource` that changes only the
   capture command and the wording of its faults (`ffmpeg was not found ... brew install ffmpeg`); the buffering, the

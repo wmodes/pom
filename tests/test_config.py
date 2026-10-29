@@ -494,7 +494,7 @@ def test_the_shipped_config_has_the_trigger_values_the_code_expects():
 
 # --- The [listening] section ---------------------------------------------------------------
 
-KNOWN_GOOD = ListeningSettings("http://127.0.0.1:8110", 180.0, "plughw:0,0", 10.0, 5.0, 2.0, 0.0, 30.0, 3, 10.0, 6)
+KNOWN_GOOD = ListeningSettings("http://127.0.0.1:8110", 180.0, "plughw:0,0", 10.0, 5.0, 2.0, 0.0, 30.0, 3, 10.0, 6, False)
 
 
 def test_the_listening_defaults_when_nothing_is_set():
@@ -518,9 +518,9 @@ def test_the_listening_defaults_match_the_modules_defaults():
 def test_all_the_listening_values_are_read_from_the_section(tmp_path):
     text = ("[listening]\nwhisper_url = \"http://pi.test:9000\"\nwhisper_timeout = 60\ndevice = \"hw:1,0\"\n"
             "buffer_seconds = 4\nstep = 3\nhold = 1.5\nrewind = 0.5\nmax_buffer = 20\nsound_every_steps = 5\n"
-            "sound_seconds = 8\nambient_memory = 9\n")
+            "sound_seconds = 8\nambient_memory = 9\nconsider_ambient_sounds = true\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9)
+    assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9, True)
     assert config.report.ok
 
 
@@ -544,7 +544,8 @@ def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
     ("sound_every_steps", "-1"), ("sound_every_steps", "2.5"), ("sound_every_steps", '"3"'), ("sound_every_steps", "true"),
     ("sound_seconds", "0"), ("sound_seconds", "-10"), ("sound_seconds", '"10"'), ("sound_seconds", "true"),
     ("ambient_memory", "0"), ("ambient_memory", "-1"), ("ambient_memory", "2.5"), ("ambient_memory", '"6"'),
-    ("ambient_memory", "true")])
+    ("ambient_memory", "true"),
+    ("consider_ambient_sounds", "5"), ("consider_ambient_sounds", '"maybe"'), ("consider_ambient_sounds", "[true]")])
 def test_a_bad_listening_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[listening]\n{key} = {value}\n"), environ={})
     assert config.listening == ListeningSettings()
@@ -676,3 +677,13 @@ def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accep
     config = Config.load(copy, environ={})
     assert config.report.ok and config.oracle.prompt.strip()
     assert PromptBuilder(config.oracle.prompt, selector=None).report.ok
+
+
+@pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"yes"', True), ('"off"', False)])
+def test_consider_ambient_sounds_takes_a_boolean_or_an_on_off_word(tmp_path, value, expected):
+    config = Config.load(write(tmp_path, f"[listening]\nconsider_ambient_sounds = {value}\n"), environ={})
+    assert config.listening.consider_ambient_sounds is expected and config.report.ok
+
+
+def test_ambient_sounds_are_not_considered_unless_asked():
+    assert Config.load(environ={}).listening.consider_ambient_sounds is False

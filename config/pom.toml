@@ -175,6 +175,11 @@ sound_seconds = 10
 # How many of the latest captions of sounds in the room to remember, to tell the oracle model what the room sounds like.
 ambient_memory = 6
 
+# Whether captions of sounds in the room, like "(dog barks)", may be scored and become hinges the way speech does. The
+# Printer reacts to what is happening around it, and a dog barking may be all that is happening. Off by default: how a
+# caption scores has not been tried, and whisper sometimes invents them. Speech and lyrics are scored either way.
+consider_ambient_sounds = false
+
 
 # ================================================
 # ORACLE: the model that writes the portent

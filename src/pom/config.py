@@ -72,7 +72,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple",
          "trigger.cooldown_seconds", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
-         "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory"}
+         "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
+         "listening.consider_ambient_sounds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -99,6 +100,7 @@ DEFAULT_LISTENING_MAX_BUFFER = 30.0
 DEFAULT_LISTENING_SOUND_EVERY_STEPS = 3
 DEFAULT_LISTENING_SOUND_SECONDS = 10.0
 DEFAULT_LISTENING_AMBIENT_MEMORY = 6
+DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS = False
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -206,6 +208,8 @@ class ListeningSettings:
             a whole number of at least 0, 0 for never.
         sound_seconds: How much recent audio that pass listens to, above 0.
         ambient_memory: How many recent captions of sounds to remember, a whole number of at least 1.
+        consider_ambient_sounds: True lets captions of sounds like "(dog barks)" be scored and become hinges, as
+            speech does. False (the default) leaves them unscored.
     """
     whisper_url: str = DEFAULT_LISTENING_WHISPER_URL
     whisper_timeout: float = DEFAULT_LISTENING_WHISPER_TIMEOUT
@@ -218,6 +222,7 @@ class ListeningSettings:
     sound_every_steps: int = DEFAULT_LISTENING_SOUND_EVERY_STEPS
     sound_seconds: float = DEFAULT_LISTENING_SOUND_SECONDS
     ambient_memory: int = DEFAULT_LISTENING_AMBIENT_MEMORY
+    consider_ambient_sounds: bool = DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS
 
 
 class Config:
@@ -365,7 +370,9 @@ class Config:
             _positive(values.get("listening.sound_seconds", DEFAULT_LISTENING_SOUND_SECONDS),
                       "listening.sound_seconds", DEFAULT_LISTENING_SOUND_SECONDS, report),
             _whole(values.get("listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY),
-                   "listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY, 1, report))
+                   "listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY, 1, report),
+            _bool(values.get("listening.consider_ambient_sounds", DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS),
+                  "listening.consider_ambient_sounds", report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening)
 
 

@@ -154,18 +154,18 @@ downloaded per machine.
 
 **Built**: `ConvoInterestTracker` (`src/pom/scoring/convo_interest_tracker.py`), settings in `[trigger]`.
 
-The rule is Tukey's fence, the standard test for a value that stands out from a set of values, applied to the room's
-recent scores:
+The rule is a percentile of the room's recent scores. It makes no assumption about their shape:
 
-- **The window**: the scores heard in the last `window_seconds` (300, five minutes), or the last `min_scores` (20)
+- **The window**: the scores heard in the last `window_seconds` (600, ten minutes), or the last `min_scores` (20)
   if the room is so quiet that fewer were heard in that time; whichever is larger. It is a length of time, not a count,
-  so a busy room and a quiet one both get "the last five minutes". Every score joins it, the lowest included. There is
+  so a busy room and a quiet one both get "the last ten minutes". Every score joins it, the lowest included. There is
   no floor.
-- **The fence**: Q3 + `fence_multiple` (0.9) x IQR of the window, where Q1 and Q3 are the scores a quarter and
-  three quarters of the way up, and IQR = Q3 - Q1.
-- **The trigger**: a score triggers when it is strictly above the fence as it stood before that score joined, the window
+- **The bar**: the `percentile` (100) of the window's scores, by nearest rank: line the scores up and take the lowest
+  one with at least that share of the window at or below it. It is always a score the room really earned. At 100 it is the
+  best score of the window, so a sentence has to beat everything said lately; at 90 it is the top tenth.
+- **The trigger**: a score triggers when it is strictly above the bar as it stood before that score joined, the window
   holds at least `min_scores` scores, and at least `cooldown_seconds` (60) have passed since the last trigger. A score
-  above the fence inside the cooldown is held back (it still joins the window and does not restart the cooldown).
+  above the bar inside the cooldown is held back (it still joins the window and does not restart the cooldown).
 - **Time is passed in**: `record(score, now)`. Live it is a clock reading; in a replay it is the place in the
   recording, so a recording gives the same answers faster than real time. Unscored fragments are ignored.
 
@@ -173,14 +173,18 @@ recent scores:
 recent scores, plus a floor below which scores were ignored. Replayed on four recorded meetings (307 minutes,
 about 835 sentences an hour) it fired on 34% of sentences, one every 13 seconds, and turning `trigger_fraction` up
 barely helped (35% gave 30%, 50% gave 23%). An average sits in the middle of the scores, so a good share are always
-above a bar set just over it, and the many scores near 1 pull the average, and so the bar, down. The textbook fence
-(1.5) fired about once an hour because the scores have no outliers. A multiple of 0.9 on a five-minute window gives
-the pace we want. The cooldown exists because one meeting had six triggers in eight seconds (a run of one-line
-jokes, each clearing a bar that five minutes of scores barely moves).
+above a bar set just over it. The second design was Tukey's fence (a bar at Q3 plus a multiple of the interquartile
+range). It does not suit these scores: they are lumpy, a pile at 1, humps near 3 and 5, almost nothing above 7, so the
+spread between the lumps stretches the interquartile range and the bar lands above the real top. At a multiple of 0.8
+the bar was above the best score of its own window in two windows out of three, it reached 9.85 on a scale that ends at
+9 in a live call, and it gave 12.5 triggers an hour in a live room against 4 to 9 in the Zoom meetings. A percentile
+measures where the top of the window actually is instead of predicting it from the middle. With 100 and a ten-minute
+window the rate is about one a window, whatever the room's mood, and varies less between rooms. The cooldown exists
+because one meeting had six triggers in eight seconds (a run of one-line jokes).
 
-**Result with the shipped settings** (4 recorded meetings): 29 triggers in 5.1 hours, **5.7 an hour, one every 10.6
-minutes**, between 3.4 and 7.4 an hour by meeting; the shortest gap is 62 s and the longest 29 minutes. With the talk
-thinned to a fifth, about 4 an hour. The goal is about 6 an hour.
+**Result with the shipped settings** (5 recorded meetings, four Zoom calls and one live room, 7.1 hours): about 6.4 triggers
+an hour, one every 9 minutes, between 4.0 and 8.1 an hour by meeting. With the talk thinned to a fifth, about 4 an hour.
+The goal is about 6 an hour. The settings were tuned on these recordings only; a quiet real room is still the open test.
 
 **Principles behind it.** Absolute scoring is the enemy of emergence: thresholds should come from what is happening in
 the room, not from a constant. The filters must work reasonably well in every room, not perfectly in one; nothing is
@@ -205,8 +209,8 @@ tuned per room.
   dogs gets an insult in the manner of Shakespeare calling someone a dog; something called weird gets something in
   the spirit of Blake on the uncanny; complaining about friends gets something about gossip.
 - The leap is made by the oracle model, not looked up. A corpus lookup was rejected as too literal.
-- **The hinge is the sentence that triggered** (decided 2026-10-27). The scorer and the trigger (the fence with its
-  cooldown) were built to hand over about six sentences an hour, so the one that clears the fence is used as it
+- **The hinge is the sentence that triggered** (decided 2026-10-27). The scorer and the trigger (the percentile bar with its
+  cooldown) were built to hand over about six sentences an hour, so the one that clears the bar is used as it
   occurs. If that is a little inconsistent, scaring some hinges and catching on others, that is what talking to an
   oracle means. The first design's weighted random pick among the best recent candidates is dropped. The hand-off
   (the triggering fragment to the PromptBuilder) is the Conductor's job.
@@ -361,7 +365,7 @@ src/pom/
                mac_mic_source (laptop testing)                   built
   scoring/     word_tagger, scorer_model_client, scorer,         built
                hinge_finder (listening to hinge)                 built
-               convo_interest_tracker (window, fence, cooldown)  built
+               convo_interest_tracker (window, bar, cooldown)    built
                fallback_scorer                                   shelved, unused
   prompt/      prompt_builder                                    built
   voice/       oracle_model_client, portent_writer               built
@@ -420,7 +424,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 - **Scorer**: word lists -> a small local language model (Qwen3-4B), one sentence per request, no context, a 0 to 9
   probability-weighted score.
 - **Trigger**: a pool of faded scores against a moving threshold with a rate governor, activity curve and no cooldown
-  -> Tukey's fence over a five-minute window with a 60 s cooldown and no floor.
+  -> a percentile of the last ten minutes of scores (100: beat the best) with a 60 s cooldown and no floor.
 - **Hearing**: cutting by loudness with a moving noise floor -> whisper's own voice detection on a rolling buffer; the
   three-way sort of whisper's output (words, ambient captions, nothing).
 - **Voice**: two tracks behind an interface -> the oracle model, a prompted stock model with a human-written prompt (Track B

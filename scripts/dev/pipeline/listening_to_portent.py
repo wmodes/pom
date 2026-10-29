@@ -115,7 +115,7 @@ def main() -> None:
     scorer = Scorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     fragment_filter_score=scoring.fragment_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
-    tracker = ConvoInterestTracker(trigger.fence_multiple, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
+    tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
     finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     rng = random.Random()
@@ -126,7 +126,7 @@ def main() -> None:
 
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
-    print(f"  trigger: a score above Q3 + {trigger.fence_multiple:g} x IQR of the last {trigger.window_seconds:g} s of scores "
+    print(f"  trigger: a score above the {trigger.percentile:g}th percentile of the last {trigger.window_seconds:g} s of scores "
           f"(at least the last {trigger.min_scores}), at most one every {trigger.cooldown_seconds:g} s")
     print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")

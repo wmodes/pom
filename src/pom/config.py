@@ -20,13 +20,12 @@ of being threaded through by hand. Today there are five:
                model's address and timeout, and the two settings of each request, `max_tokens` and
                `temperature`. The entry point builds the PromptBuilder and the OracleModelClient from
                `config.oracle` and passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
-    [trigger]  A section (see TriggerSettings): when the Printer responds, by Tukey's fence over the room's recent
-               scores. `window_seconds` is how many seconds of recent scores the quartiles are drawn from (300, the last
-               five minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
-               last 20, and nothing triggers until it holds that many), and `fence_multiple` how many interquartile
-               ranges above the upper quartile a score must be to trigger (0.9), and `cooldown_seconds` how long after a
-               trigger the next may come (60; 0 for none). The entry point builds the
-               ConvoInterestTracker from `config.trigger`.
+    [trigger]  A section (see TriggerSettings): when the Printer responds, when a score is above a percentile of the
+               room's recent scores. `window_seconds` is how many seconds of recent scores the bar is drawn from (600, the
+               last ten minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
+               last 20, and nothing triggers until it holds that many), `percentile` how much of the window a score
+               must beat (100: the best score of the window), and `cooldown_seconds` how long after a trigger the next
+               may come (60; 0 for none). The entry point builds the ConvoInterestTracker from `config.trigger`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `step`, `hold`,
                `rewind` and `max_buffer`, and the Listener's sound pass and caption memory. The defaults are the
@@ -69,7 +68,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
-         "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.fence_multiple",
+         "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.percentile",
          "trigger.cooldown_seconds", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
@@ -85,8 +84,8 @@ DEFAULT_ORACLE_URL = "http://127.0.0.1:8099/v1/chat/completions"
 DEFAULT_ORACLE_TIMEOUT = 120.0
 DEFAULT_ORACLE_MAX_TOKENS = 300
 DEFAULT_ORACLE_TEMPERATURE = 0.8
-DEFAULT_TRIGGER_FENCE_MULTIPLE = 0.9
-DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
+DEFAULT_TRIGGER_PERCENTILE = 100.0
+DEFAULT_TRIGGER_WINDOW_SECONDS = 600.0
 DEFAULT_TRIGGER_MIN_SCORES = 20
 DEFAULT_TRIGGER_COOLDOWN_SECONDS = 60.0
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
@@ -171,18 +170,17 @@ class TriggerSettings:
     """The `[trigger]` section: when the Printer responds.
 
     Attributes:
-        fence_multiple: How many interquartile ranges above the upper quartile of the recent scores a score
-            must be to trigger (Tukey's fence), 0 or more. 0 puts the bar at the upper quartile; 1.5 is the
-            textbook outlier line.
-        window_seconds: How many seconds of recent scores the quartiles are drawn from, above 0 (300 is the
-            last five minutes). Measured in time, not in scores, so it means the same in a busy room and a
+        percentile: How much of the room's recent scores a score must beat to trigger, above 0 and at most 100.
+            100 means beating the best score of the window; 90 means being in the top tenth.
+        window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (600 is the
+            last ten minutes). Measured in time, not in scores, so it means the same in a busy room and a
             quiet one.
         min_scores: The window always holds at least this many scores, and nothing triggers until it does, a
             whole number of at least 2.
         cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 is
             no cooldown).
     """
-    fence_multiple: float = DEFAULT_TRIGGER_FENCE_MULTIPLE
+    percentile: float = DEFAULT_TRIGGER_PERCENTILE
     window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
     min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
     cooldown_seconds: float = DEFAULT_TRIGGER_COOLDOWN_SECONDS
@@ -337,8 +335,8 @@ class Config:
             _number(values.get("oracle.temperature", DEFAULT_ORACLE_TEMPERATURE), "oracle.temperature",
                     DEFAULT_ORACLE_TEMPERATURE, 0.0, report))
         trigger = TriggerSettings(
-            _number(values.get("trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE),
-                    "trigger.fence_multiple", DEFAULT_TRIGGER_FENCE_MULTIPLE, 0.0, report),
+            _percent(values.get("trigger.percentile", DEFAULT_TRIGGER_PERCENTILE),
+                     "trigger.percentile", DEFAULT_TRIGGER_PERCENTILE, report),
             _positive(values.get("trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS),
                       "trigger.window_seconds", DEFAULT_TRIGGER_WINDOW_SECONDS, report),
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
@@ -451,6 +449,14 @@ def _positive(value, label: str, default: float, report: FaultRecorder) -> float
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value < float("inf"):
         return float(value)
     report.warn(f"{label} must be a number above 0, got {value!r}; using {default:g}")
+    return default
+
+
+def _percent(value, label: str, default: float, report: FaultRecorder) -> float:
+    """A number above 0 and at most 100 (an int or float, not a boolean); otherwise the default."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value <= 100.0:
+        return float(value)
+    report.warn(f"{label} must be a number above 0 and at most 100, got {value!r}; using {default:g}")
     return default
 
 

@@ -9,7 +9,7 @@ the Mac against a recording):
 For every sentence it prints the Scorer's score (the real `pom` Scorer, built from config/pom.toml) and,
 a little later, the model's own written account of why: the content it found that earned the score,
 from the debug prompt. Each score also goes to the real `pom` ConvoInterestTracker, which keeps the room's
-recent scores, and a sentence that stands out from them (above Tukey's fence for that window) is marked as one
+recent scores, and a sentence that stands out from them (above the configured percentile of that window) is marked as one
 that would trigger. There is no fixed threshold: the bar moves with the room.
 
 THE CLOSED LOOP. The config file is checked before every utterance. Edit the prompts in
@@ -401,7 +401,7 @@ class Brain:
         self.client, self.settings, self.trigger = client, settings, config.trigger
         # A new config can mean new prompts, and a score under new wording is not the same measure, so the
         # room's recent scores start over whenever the config is reloaded.
-        self.tracker = ConvoInterestTracker(self.trigger.fence_multiple, self.trigger.window_seconds,
+        self.tracker = ConvoInterestTracker(self.trigger.percentile, self.trigger.window_seconds,
                                             self.trigger.min_scores, self.trigger.cooldown_seconds)
         problems = config.report.lines() + client.report.lines() + self.tracker.report.lines()
         note = "; ".join(problems)
@@ -806,8 +806,8 @@ def main() -> None:
     display.line(f"  scorer at {brain.settings.url}; whisper-server at {args.whisper_url}; "
                  f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
     trigger = brain.trigger
-    display.line(f"  trigger: mark a score above the upper quartile of the room's last {trigger.window_seconds:g} s of scores "
-                 f"(at least the last {trigger.min_scores}) plus {trigger.fence_multiple:g} x their interquartile range; "
+    display.line(f"  trigger: mark a score above the {trigger.percentile:g}th percentile of the room's last {trigger.window_seconds:g} s of scores "
+                 f"(at least the last {trigger.min_scores}); "
                  f"nothing is marked until {trigger.min_scores} scores are held, and then at most one every {trigger.cooldown_seconds:g} s")
     display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "

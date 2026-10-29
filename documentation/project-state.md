@@ -21,9 +21,10 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   `ScorerModelClient`, `Scorer`); the `ConvoInterestTracker` (the trigger); the `PromptBuilder`; the `OracleModelClient`.
 - **Decided:**
   - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score.
-  - **Trigger:** Tukey's fence over a five-minute window (the larger of 5 minutes or the last 20 scores), fence
-    multiple 0.9, 60 s cooldown, no floor. Replayed on four recorded meetings it gives about 5.7 triggers an hour, one
-    every 10.6 minutes. The goal is about six an hour.
+  - **Trigger:** a percentile of the last ten minutes of scores (the larger of 10 minutes or the last 20 scores), `percentile`
+    100 (a score must beat the best of the window), 60 s cooldown, no floor. Replayed on five recorded meetings (four Zoom,
+    one live room) it gives about 6.4 triggers an hour. The goal is about six an hour. Tukey's fence was tried first and replaced
+    (2026-10-29): it sat above the window's best score in two windows out of three.
   - **Hinge:** the sentence that triggered (Wes, 2026-10-27). No separate hinge picker.
   - **Oracle model:** Qwen3.5-9B, with Gemma 2 9B as the named alternate. On the Pi a typical portent takes 35 to 40 s
     (first word after 20 s, up to about 100 s for a long one); Wes judged that acceptable.
@@ -53,7 +54,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
-  (for example `ConvoInterestTracker(c.fence_multiple, c.window_seconds, c.min_scores, c.cooldown_seconds)`). Anything a
+  (for example `ConvoInterestTracker(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`). Anything a
   person might tune (system messages, thresholds, counts, times) goes in config, so all the user-serviceable parts are
   in one place.
 - Config layers, highest priority first: environment variables (`POM_STRICT`, `POM_DEBUG`,
@@ -116,7 +117,7 @@ src/pom/
     word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
     scorer_model_client.py built one fragment to the scorer model, one score (or an explanation) back
     scorer.py          built   fragment_filter, scorer model, circuit breaker; unscored if no answer
-    convo_interest_tracker.py built the window, the fence, the cooldown: whether a score triggers
+    convo_interest_tracker.py built the window, the percentile bar, the cooldown: whether a score triggers
     fallback_scorer.py shelved word-counting stand-in for the scorer model; unused
   prompt/
     prompt_builder.py  built   hinge + drawn exemplars into the oracle prompt from config
@@ -239,8 +240,8 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   the room, not from constants. Related: the filters must work reasonably well in every room, not perfectly in one; nothing
   is tuned per room.
 - **Trigger** (2026-10-27). *Superseded:* a fixed 7.0 threshold, then 25% above a decaying average with a floor (it fired on
-  34% of sentences in recorded meetings and barely responded to its setting). *Current:* Tukey's fence over a time window
-  with a cooldown, no floor (see the design doc and `[trigger]` in `config/pom.toml`).
+  34% of sentences in recorded meetings and barely responded to its setting). Then Tukey's fence (2026-10-27 to 29; above the real top of the scores).
+  *Current:* a percentile of a time window with a cooldown, no floor (see the design doc and `[trigger]` in `config/pom.toml`).
 - **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `model-bakeoff.md`; the Pi run
   is in `experiments/pi-oracle-benchmark/`. Writing is memory-speed-bound on the Pi (about 2 tokens a second) and the first
   word waits on the prompt (about 0.095 s a token). llama.cpp reuses none of a changed prompt for Qwen3.5 (a hybrid model);

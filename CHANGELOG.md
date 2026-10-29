@@ -9,6 +9,15 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The trigger is a percentile, not Tukey's fence** (`[trigger] percentile`, default 100, replaces `fence_multiple`; `window_seconds`
+  now 600; `ConvoInterestTracker(percentile, window_seconds, min_scores, cooldown_seconds)`; the tracker tests rewritten, 96 to 117,
+  mutation-checked: 21 of 21 and 10 of 10 for the setting). The bar is now the `percentile` of the window by nearest rank, always
+  a score the room earned; 100 means beating the best score of the last ten minutes. Why: on the scorer's lumpy scores the fence
+  sat above the window's own best in two windows out of three (it reached 9.85 on a 0 to 9 scale in a live call), and gave 12.5
+  triggers an hour in a live room against a goal of 6. Replayed on five recordings (four Zoom, one live room) with the 60 s
+  cooldown: 6.4 an hour overall, 4.0 to 8.1 by meeting, against 8.2 (4.1 to 12.5) for the fence at 0.8. A `fence_multiple`
+  left in a config is warned about as an unknown key. The playgrounds, the hearing-debug probe (which uses the real tracker) and
+  the docs follow. Not added: a minimum score, which would be an absolute number (it changed nothing on these recordings).
 - **Design doc in the project's own voice**: the lines that named a person as the source of a decision or a judgment ("Wes judged the wait acceptable", "the prompt is Wes's") now say what was decided or that the prompt is human-written, and the one-rater note says "an LLM judge". Facts, dates and numbers are unchanged.
 - **Playgrounds renamed so the file says the job** (in `scripts/dev/`): `listening/sort.py` is now `sort_whisper_text.py`, `listening/hear.py` is `listen_to_room.py`, `listening/fragment.py` is `cut_speech_into_hinges.py`, `scoring/score.py` is `score_typed_sentences.py` and `voice/portent.py` is `write_portent_from_hinge.py`. Nothing else changed; the tests, README, design doc, handoff and earlier changelog entries use the new names. From now on a leaf or branch is tried by hand with these.
 

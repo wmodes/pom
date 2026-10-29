@@ -58,7 +58,7 @@ def segment(words="", ends_at=10.0, kind="speech", ambient=()):
 
 
 def tracker(min_scores=3, cooldown=60.0):
-    return ConvoInterestTracker(fence_multiple=0.9, window_seconds=300.0, min_scores=min_scores, cooldown_seconds=cooldown)
+    return ConvoInterestTracker(percentile=100.0, window_seconds=300.0, min_scores=min_scores, cooldown_seconds=cooldown)
 
 
 def finder(segments, scores=None, consider_ambient_sounds=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
@@ -161,13 +161,13 @@ class TestTheTrigger:
 
     def test_a_second_high_score_inside_the_cooldown_is_not_a_hinge(self):
         segments = self.SEGMENTS + [segment("Five.", 50.0)]
-        made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD})
+        made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD + 0.5})
         last = found(made)[-1]
         assert last.effect is ScoreEffect.COOLING_DOWN and not last.is_hinge
 
     def test_a_high_score_after_the_cooldown_is_a_hinge_again(self):
         segments = self.SEGMENTS + [segment("Five.", 200.0)]
-        made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD})
+        made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD + 0.5})
         assert found(made)[-1].is_hinge
 
     def test_a_sentence_that_could_not_be_scored_is_ignored_by_the_trigger(self):

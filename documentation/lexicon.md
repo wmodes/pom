@@ -55,16 +55,18 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
 - **window** †: the room's recent scores the trigger is judged against: the scores heard in the last
-  `window_seconds` (300, the last five minutes), or the last `min_scores` (20) if the room is so quiet that
+  `window_seconds` (600, the last ten minutes), or the last `min_scores` (20) if the room is so quiet that
   fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
-- **fence** †: the bar a score must be above to trigger: Q3 + `fence_multiple` x IQR of the window (Tukey's
-  fence). Q3 is the score three quarters of the way up the window's scores, Q1 a quarter of the way up, and the
-  IQR (interquartile range) is Q3 minus Q1. `fence_multiple` is 0.9 to begin with.
-- **trigger** †: the moment a score is above the fence, once the window holds `min_scores` scores and the
-  cooldown is over. The score is compared with the fence as it stood before that score was added. Then the Printer
+- **bar** †: the score a new score must be above to trigger: the `percentile` of the window's scores, by nearest rank
+  (always a score the room really earned). 100 puts it at the best score of the window, so a sentence has to beat
+  everything said lately; 90 puts it at the top tenth. (Tukey's fence, Q3 + a multiple of the IQR, was used before and
+  replaced.)
+- **percentile** †: how much of the window a score must beat to trigger (`percentile`, 100 to begin with).
+- **trigger** †: the moment a score is above the bar, once the window holds `min_scores` scores and the
+  cooldown is over. The score is compared with the bar as it stood before that score was added. Then the Printer
   responds.
 - **cooldown** †: how long after a trigger the next may come, `cooldown_seconds` (60 to begin with; 0 for none). A
-  score above the fence inside the cooldown is held back but still joins the window.
+  score above the bar inside the cooldown is held back but still joins the window.
 - **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.
 
 ## Corpus: the material the oracle model draws on

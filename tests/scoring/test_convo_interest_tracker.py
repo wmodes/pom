@@ -1,20 +1,20 @@
-"""Tests for pom.scoring.convo_interest_tracker: the window, the fence and the trigger."""
+"""Tests for pom.scoring.convo_interest_tracker: the window, the percentile bar and the trigger."""
 import logging
 import random
-import statistics
+from fractions import Fraction
 
 import pytest
 
-from pom.scoring.convo_interest_tracker import (DEFAULT_COOLDOWN_SECONDS, DEFAULT_FENCE_MULTIPLE, DEFAULT_MIN_SCORES,
+from pom.scoring.convo_interest_tracker import (DEFAULT_COOLDOWN_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_PERCENTILE,
                                                 DEFAULT_WINDOW_SECONDS, ConvoInterestTracker, ConvoInterestTrackerError,
                                                 ScoreEffect)
 
 
 def tracker(**options):
-    """A tracker for the tests: five scores make a window (not the default 20), the window is 60 seconds and the fence
-    multiple is 1, to keep the arithmetic short and independent of the shipped defaults, and there is no cooldown
-    unless a test asks for one. The scores 1 to 5 have Q1 2, Q3 4 and IQR 2, so the bar is 4 + 2 x fence_multiple."""
-    options.setdefault("fence_multiple", 1.0)
+    """A tracker for the tests: five scores make a window (not the default 20), the window is 60 seconds and the percentile
+    is 100 (the bar is the best score of the window), to keep the arithmetic short and independent of the shipped
+    defaults, and there is no cooldown unless a test asks for one. The scores 1 to 5 have a bar of 5."""
+    options.setdefault("percentile", 100.0)
     options.setdefault("min_scores", 5)
     options.setdefault("window_seconds", 60)
     options.setdefault("cooldown_seconds", 0)
@@ -27,7 +27,7 @@ def feed(t, scores, start=0.0, step=1.0):
 
 
 def warmed_up(**options):
-    """A tracker that has been given the scores 1 to 5 at seconds 0 to 4: Q1 2, Q3 4, IQR 2."""
+    """A tracker that has been given the scores 1 to 5 at seconds 0 to 4: the best is 5."""
     t = tracker(**options)
     assert feed(t, [1, 2, 3, 4, 5]) == [ScoreEffect.COUNTED] * 5
     return t
@@ -35,31 +35,61 @@ def warmed_up(**options):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_FENCE_MULTIPLE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (0.9, 300.0, 20, 60.0)
+        assert (DEFAULT_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (100.0, 600.0, 20, 60.0)
 
     def test_good_settings_are_quiet(self):
         assert ConvoInterestTracker().report.ok
-        assert tracker(fence_multiple=0, window_seconds=0.5, min_scores=2, cooldown_seconds=0).report.ok
+        assert tracker(percentile=0.001, window_seconds=0.5, min_scores=2, cooldown_seconds=0).report.ok
+        assert tracker(percentile=100, window_seconds=0.5, min_scores=2, cooldown_seconds=0).report.ok
 
 
-class TestTheFence:
-    def test_the_bar_is_q3_plus_the_multiple_of_the_iqr(self):
-        assert warmed_up(fence_multiple=1.0).trigger_level_at(5) == pytest.approx(6.0)     # 4 + 1 x 2
-        assert warmed_up(fence_multiple=1.5).trigger_level_at(5) == pytest.approx(7.0)     # 4 + 1.5 x 2
-        assert warmed_up(fence_multiple=0.5).trigger_level_at(5) == pytest.approx(5.0)
+class TestThePercentileBar:
+    def test_a_hundred_puts_the_bar_at_the_best_score(self):
+        assert warmed_up(percentile=100).trigger_level_at(5) == 5.0
 
-    def test_a_multiple_of_zero_puts_the_bar_at_the_upper_quartile(self):
-        assert warmed_up(fence_multiple=0).trigger_level_at(5) == pytest.approx(4.0)
+    @pytest.mark.parametrize("percentile,bar", [(100, 5.0), (99.3, 5.0), (81, 5.0), (80, 4.0), (60, 3.0), (50, 3.0),
+                                                (41, 3.0), (40, 2.0), (21, 2.0), (20, 1.0), (1, 1.0), (0.001, 1.0)])
+    def test_the_bar_is_the_score_that_share_of_the_window_sits_at_or_below(self, percentile, bar):
+        assert warmed_up(percentile=percentile).trigger_level_at(5) == bar
 
-    def test_the_default_multiple_is_nine_tenths(self):
+    def test_the_bar_is_a_score_from_the_window_never_an_in_between(self):
+        assert warmed_up(percentile=90).trigger_level_at(5) == 5.0           # not the 4.6 an interpolation would give
+        assert warmed_up(percentile=70).trigger_level_at(5) == 4.0           # not 3.8
+
+    def test_a_percentile_that_is_a_whole_rank_does_not_round_up_by_float_noise(self):
+        t = tracker(percentile=64.4, min_scores=250, window_seconds=1000)
+        feed(t, list(range(1, 251)))                                        # 64.4% of 250 is exactly 161
+        assert t.trigger_level_at(250) == 161.0
+
+    def test_the_default_percentile_is_the_best_score(self):
         t = ConvoInterestTracker(min_scores=5)
         feed(t, [1, 2, 3, 4, 5])
-        assert t.trigger_level_at(5) == pytest.approx(5.8)         # 4 + 0.9 x 2
+        assert t.trigger_level_at(5) == 5.0
+
+    def test_the_bar_follows_the_window_as_it_is_now(self):
+        t = warmed_up()
+        assert t.trigger_level_at(5) == 5.0
+        t.record(9, 5)
+        assert t.trigger_level_at(6) == 9.0                                 # the new best
+        assert t.trigger_level_at(200) == 9.0                               # a quiet room keeps its last few scores
 
     def test_a_score_must_be_above_the_bar_not_just_at_it(self):
         t = warmed_up()
-        assert t.record(6.0, 5) is ScoreEffect.COUNTED
-        assert warmed_up().record(6.01, 5) is ScoreEffect.TRIGGERED
+        assert t.record(5.0, 5) is ScoreEffect.COUNTED
+        assert warmed_up().record(5.01, 5) is ScoreEffect.TRIGGERED
+
+    def test_a_hundred_means_beating_everything_in_the_window(self):
+        rng = random.Random(3)
+        scores = [round(rng.uniform(1, 8), 2) for _ in range(30)]
+        for score, expected in ((max(scores), ScoreEffect.COUNTED), (max(scores) + 0.01, ScoreEffect.TRIGGERED)):
+            t = tracker(window_seconds=1000, min_scores=5)
+            feed(t, scores)
+            assert t.record(score, 30) is expected
+
+    def test_a_lower_percentile_triggers_more_easily(self):
+        high, low = warmed_up(percentile=100), warmed_up(percentile=60)
+        assert high.record(4.5, 5) is ScoreEffect.COUNTED
+        assert low.record(4.5, 5) is ScoreEffect.TRIGGERED
 
     def test_a_much_higher_score_triggers(self):
         assert warmed_up().record(9, 5) is ScoreEffect.TRIGGERED
@@ -70,7 +100,7 @@ class TestTheFence:
     def test_a_score_is_judged_against_the_window_before_it_joins(self):
         t = warmed_up()
         level = t.trigger_level_at(5)
-        assert t.record(100, 5) is ScoreEffect.TRIGGERED            # it would raise Q3 itself, but is judged before
+        assert t.record(100, 5) is ScoreEffect.TRIGGERED            # it would raise the best itself, but is judged before
         assert t.trigger_level_at(6) > level
 
     def test_a_triggering_score_joins_the_window_like_any_other(self):
@@ -89,7 +119,7 @@ class TestTheFence:
     def test_a_flat_room_triggers_on_anything_above_it(self):
         t = tracker()
         feed(t, [3, 3, 3, 3, 3])
-        assert t.trigger_level_at(5) == pytest.approx(3.0)           # Q3 = 3 and the IQR = 0
+        assert t.trigger_level_at(5) == 3.0
         assert t.record(3, 5) is ScoreEffect.COUNTED and t.record(3.1, 6) is ScoreEffect.TRIGGERED
 
     def test_the_lowest_scores_count_there_is_no_floor(self):
@@ -97,24 +127,30 @@ class TestTheFence:
         assert feed(t, [0, 0, 0, 0, 0]) == [ScoreEffect.COUNTED] * 5
         assert t.trigger_level_at(5) == 0.0 and t.counted == 5
 
-    def test_low_scores_widen_the_fence(self):
+    def test_low_scores_pull_a_middle_percentile_down(self):
+        without, with_lows = tracker(percentile=50), tracker(percentile=50)
+        feed(without, [4, 4, 4, 4, 4, 4, 4, 4])
+        feed(with_lows, [0, 0, 0, 0, 4, 4, 4, 4])
+        assert without.trigger_level_at(8) == 4.0 and with_lows.trigger_level_at(8) == 0.0
+
+    def test_low_scores_do_not_move_the_best(self):
         without, with_lows = tracker(), tracker()
         feed(without, [4, 4, 4, 4, 4, 4, 4, 4])
         feed(with_lows, [0, 0, 0, 0, 4, 4, 4, 4])
-        assert with_lows.trigger_level_at(8) > without.trigger_level_at(8)
+        assert without.trigger_level_at(8) == with_lows.trigger_level_at(8) == 4.0
 
 
 class TestTheCooldown:
     def test_a_second_strong_score_right_after_a_trigger_is_cooling_down(self):
         t = warmed_up(cooldown_seconds=60)
         assert t.record(9, 5) is ScoreEffect.TRIGGERED
-        assert t.record(9, 6) is ScoreEffect.COOLING_DOWN
+        assert t.record(10, 6) is ScoreEffect.COOLING_DOWN                # it has to beat the 9 that just triggered
 
     def test_the_cooldown_ends_exactly_when_the_time_is_up(self):
         t = warmed_up(cooldown_seconds=60)
         t.record(9, 5)
         assert t.record(20, 64.9) is ScoreEffect.COOLING_DOWN           # each strong score is stronger than the last,
-        assert t.record(50, 65) is ScoreEffect.TRIGGERED                # as the window's own Q3 rises: 60 s after second 5
+        assert t.record(50, 65) is ScoreEffect.TRIGGERED                # as the window's best rises: 60 s after second 5
 
     def test_a_score_that_cooled_down_does_not_restart_the_cooldown(self):
         t = warmed_up(cooldown_seconds=60)
@@ -131,7 +167,7 @@ class TestTheCooldown:
         t = warmed_up(cooldown_seconds=60)
         t.record(9, 5)
         before = t.window_size_at(6), t.counted
-        t.record(9, 6)
+        assert t.record(10, 6) is ScoreEffect.COOLING_DOWN
         assert (t.window_size_at(6), t.counted) == (before[0] + 1, before[1] + 1)
 
     def test_a_cooldown_of_zero_lets_every_strong_score_trigger(self):
@@ -141,7 +177,7 @@ class TestTheCooldown:
     def test_a_burst_gives_one_trigger_and_the_next_comes_after_the_cooldown(self):
         t = tracker(cooldown_seconds=30, window_seconds=1000)
         feed(t, [1, 2, 3, 4, 5] * 4)                                    # a calm room, seconds 0 to 19
-        effects = [t.record(20, 100 + i) for i in range(6)] + [t.record(100, 140)]
+        effects = [t.record(20 + i, 100 + i) for i in range(6)] + [t.record(100, 140)]
         assert effects == [ScoreEffect.TRIGGERED] + [ScoreEffect.COOLING_DOWN] * 5 + [ScoreEffect.TRIGGERED]
 
     def test_there_is_no_cooldown_before_the_first_trigger(self):
@@ -169,7 +205,7 @@ class TestTheWarmUp:
         t = tracker(min_scores=2)
         assert feed(t, [1, 5, 9]) == [ScoreEffect.COUNTED, ScoreEffect.COUNTED, ScoreEffect.TRIGGERED]
         t = tracker(min_scores=3)
-        assert feed(t, [1, 5, 9, 20]) == [ScoreEffect.COUNTED] * 3 + [ScoreEffect.TRIGGERED]       # Q3 7, IQR 4: the bar is 11
+        assert feed(t, [1, 5, 9, 20]) == [ScoreEffect.COUNTED] * 3 + [ScoreEffect.TRIGGERED]       # the best of 1, 5, 9 is 9
 
     def test_while_warming_up_the_window_size_is_all_it_holds(self):
         t = tracker()
@@ -179,14 +215,14 @@ class TestTheWarmUp:
 
 class TestTheWindow:
     def test_scores_older_than_the_window_age_out(self):
-        short, long_ = tracker(window_seconds=10), tracker(window_seconds=1000)
+        short, long_ = tracker(percentile=50, window_seconds=10), tracker(percentile=50, window_seconds=1000)
         for t in (short, long_):
             feed(t, [1] * 10)                                         # a dull stretch, seconds 0 to 9
             feed(t, [9] * 10, start=100)                              # a lively one, seconds 100 to 109
-        assert short.trigger_level_at(110) == pytest.approx(9.0)       # only the lively stretch is left
-        assert long_.trigger_level_at(110) == pytest.approx(17.0)      # both stretches: Q1 1, Q3 9, IQR 8
-        assert short.record(10, 110) is ScoreEffect.TRIGGERED
-        assert long_.record(10, 110) is ScoreEffect.COUNTED
+        assert short.trigger_level_at(110) == 9.0                      # only the lively stretch is left
+        assert long_.trigger_level_at(110) == 1.0                      # both stretches: the middle of 1s and 9s is a 1
+        assert short.record(5, 110) is ScoreEffect.COUNTED
+        assert long_.record(5, 110) is ScoreEffect.TRIGGERED
 
     def test_a_score_exactly_at_the_edge_of_the_window_is_still_in_it(self):
         t = tracker(window_seconds=10)
@@ -198,7 +234,7 @@ class TestTheWindow:
         t = tracker(window_seconds=10)
         feed(t, [1, 2, 3, 4, 5], step=100)                            # a score every hundred seconds
         assert t.window_size_at(500) == 5
-        assert t.trigger_level_at(500) == pytest.approx(6.0)
+        assert t.trigger_level_at(500) == 5.0
         assert t.record(7, 500) is ScoreEffect.TRIGGERED
 
     def test_the_window_is_the_larger_of_the_time_and_the_count(self):
@@ -225,7 +261,7 @@ class TestTheWindow:
         feed(t, [1] * 5, start=0)                                      # a dull stretch, seconds 0 to 4
         feed(t, [9] * 5, start=100)                                    # a lively one, seconds 100 to 104
         assert t.window_size_at(1) == 5                                # asked about second 1, it is still second 104
-        assert t.trigger_level_at(1) == pytest.approx(9.0)             # only the lively stretch is in the window
+        assert t.trigger_level_at(1) == 9.0                             # only the lively stretch is in the window
         assert t.record(10, 1) is ScoreEffect.TRIGGERED
         assert t.window_size_at(104) == 6                              # it joined at second 104; filed under second 1 it would be out
         assert t.window_size_at(1) == 6
@@ -260,8 +296,9 @@ class TestAgainstAPlainReference:
     """The tracker against a few lines that do the same thing the slow, obvious way."""
 
     @staticmethod
-    def reference(events, window_seconds, min_scores, multiple, cooldown):
+    def reference(events, window_seconds, min_scores, percentile, cooldown):
         held, out, last_trigger = [], [], None
+        share = Fraction(str(percentile))
         for now, score in events:
             if len(held) < min_scores:
                 bar = None
@@ -269,8 +306,8 @@ class TestAgainstAPlainReference:
                 window = [s for t, s in held if t >= now - window_seconds]
                 if len(window) < min_scores:
                     window = [s for _, s in held[-min_scores:]]
-                q1, _, q3 = statistics.quantiles(window, n=4, method="inclusive")
-                bar = q3 + multiple * (q3 - q1)
+                # nearest rank by its definition: the lowest score with at least `percentile` percent of the window at or below it
+                bar = min(v for v in window if sum(1 for x in window if x <= v) * 100 >= share * len(window))
             fires = bar is not None and score > bar and (last_trigger is None or now - last_trigger >= cooldown)
             if fires:
                 last_trigger = now
@@ -278,27 +315,28 @@ class TestAgainstAPlainReference:
             held.append((now, score))
         return out
 
-    @pytest.mark.parametrize("seed,gap,multiple,cooldown", [(1, 1.0, 1.0, 0), (2, 0.2, 0.6, 0), (3, 40.0, 1.5, 0),
-                                                            (4, 5.0, 0.0, 0), (5, 1.0, 0.6, 60), (6, 5.0, 0.0, 30)])
-    def test_the_same_triggers_as_the_reference(self, seed, gap, multiple, cooldown):
+    @pytest.mark.parametrize("seed,gap,percentile,cooldown", [(1, 1.0, 100, 0), (2, 0.2, 99.3, 0), (3, 40.0, 90, 0),
+                                                              (4, 5.0, 50, 0), (5, 1.0, 97.5, 60), (6, 5.0, 100, 30),
+                                                              (7, 1.0, 0.5, 0)])
+    def test_the_same_triggers_as_the_reference(self, seed, gap, percentile, cooldown):
         rng = random.Random(seed)
         now, events = 0.0, []
         for _ in range(600):
             now += rng.uniform(0.1, 2 * gap)
             events.append((now, round(rng.choice([1.0, 1.0, 2.0, 3.0, 3.5, 4.0, 5.0, 5.5, 6.0, 7.0, 8.0]) + rng.random(), 2)))
-        t = ConvoInterestTracker(multiple, 120, 12, cooldown)
+        t = ConvoInterestTracker(percentile, 120, 12, cooldown)
         got = [t.record(score, when) is ScoreEffect.TRIGGERED for when, score in events]
-        assert got == self.reference(events, 120, 12, multiple, cooldown)
+        assert got == self.reference(events, 120, 12, percentile, cooldown)
         assert any(got) and not all(got)
 
 
 class TestBadSettings:
-    @pytest.mark.parametrize("bad", [-0.1, "1", None, True, [1], float("nan"), float("inf")])
-    def test_a_bad_fence_multiple_means_the_default_with_a_warning(self, bad):
-        t = tracker(fence_multiple=bad)
-        assert len(t.report.warnings) == 1 and "fence_multiple" in t.report.warnings[0]
+    @pytest.mark.parametrize("bad", [0, -1, 100.1, 101, "99", None, True, [99], float("nan"), float("inf")])
+    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad):
+        t = tracker(percentile=bad)
+        assert len(t.report.warnings) == 1 and "percentile" in t.report.warnings[0]
         feed(t, [1, 2, 3, 4, 5])
-        assert t.trigger_level_at(5) == pytest.approx(5.8)             # the default of 0.9
+        assert t.trigger_level_at(5) == 5.0                            # the default of 100: the best score
 
     @pytest.mark.parametrize("bad", [0, -1, "60", None, True, [60], float("nan"), float("inf")])
     def test_a_bad_window_means_the_default_with_a_warning(self, bad):
@@ -312,19 +350,19 @@ class TestBadSettings:
         t = tracker(min_scores=bad)
         assert len(t.report.warnings) == 1 and "min_scores" in t.report.warnings[0]
         assert ScoreEffect.TRIGGERED not in feed(t, list(range(1, 20)) + [99])        # the twentieth is only the twentieth
-        assert t.record(99, 30) is ScoreEffect.TRIGGERED               # the twentieth count was the first to allow it
+        assert t.record(100, 30) is ScoreEffect.TRIGGERED              # the twentieth count was the first to allow it
 
     @pytest.mark.parametrize("bad", [-1, -0.1, "60", None, True, [60], float("nan"), float("inf")])
     def test_a_bad_cooldown_means_the_default_with_a_warning(self, bad):
         t = tracker(cooldown_seconds=bad)
         assert len(t.report.warnings) == 1 and "cooldown_seconds" in t.report.warnings[0]
         t = warmed_up(cooldown_seconds=bad)
-        assert t.record(9, 5) is ScoreEffect.TRIGGERED and t.record(9, 30) is ScoreEffect.COOLING_DOWN   # the default 60 s
+        assert t.record(9, 5) is ScoreEffect.TRIGGERED and t.record(10, 30) is ScoreEffect.COOLING_DOWN   # the default 60 s
 
     def test_two_bad_settings_give_two_warnings(self):
-        assert len(ConvoInterestTracker(fence_multiple=-1, window_seconds=0).report.warnings) == 2
+        assert len(ConvoInterestTracker(percentile=-1, window_seconds=0).report.warnings) == 2
 
-    @pytest.mark.parametrize("option,bad,pattern", [("fence_multiple", -1, "fence_multiple"),
+    @pytest.mark.parametrize("option,bad,pattern", [("percentile", 0, "percentile"),
                                                     ("window_seconds", 0, "window_seconds"),
                                                     ("min_scores", 1, "min_scores"),
                                                     ("cooldown_seconds", -1, "cooldown_seconds")])
@@ -341,4 +379,4 @@ class TestLogging:
         with caplog.at_level(logging.DEBUG):
             t = tracker()
             feed(t, [1, 2, 3, 4, 5, 9])
-        assert "bar 6.000" in caplog.text and "triggered" in caplog.text
+        assert "bar 5.000" in caplog.text and "triggered" in caplog.text

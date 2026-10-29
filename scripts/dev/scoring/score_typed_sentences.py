@@ -38,7 +38,7 @@ def build(config: Config, min_scores: int):
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
     trigger = config.trigger
-    tracker = ConvoInterestTracker(trigger.fence_multiple, trigger.window_seconds,
+    tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds,
                                    min_scores if min_scores else trigger.min_scores, trigger.cooldown_seconds)
     return scorer, tracker, client
 
@@ -68,8 +68,8 @@ def main():
     scorer, tracker, client = build(config, args.min_scores)
     needed = args.min_scores or config.trigger.min_scores
     fragmenter = SegmentFragmenter()
-    print(f"scorer at {config.scorer.url}; the trigger needs {needed} scores, then a score above Q3 + "
-          f"{config.trigger.fence_multiple:g} x IQR of the last {config.trigger.window_seconds:g} s of scores "
+    print(f"scorer at {config.scorer.url}; the trigger needs {needed} scores, then a score above the "
+          f"{config.trigger.percentile:g}th percentile of the last {config.trigger.window_seconds:g} s of scores "
           f"(or the last {needed}), at most one every {config.trigger.cooldown_seconds:g} s")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")

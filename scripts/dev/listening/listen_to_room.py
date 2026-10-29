@@ -71,14 +71,14 @@ def main():
     scorer = Scorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-    tracker = ConvoInterestTracker(trigger.fence_multiple, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
+    tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
     fragmenter = SegmentFragmenter()
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
     print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
           f"a whisper run every {heard_settings.step:g} s")
-    print(f"  trigger: a score above Q3 + {trigger.fence_multiple:g} x IQR of the last {trigger.window_seconds:g} s of scores "
+    print(f"  trigger: a score above the {trigger.percentile:g}th percentile of the last {trigger.window_seconds:g} s of scores "
           f"(at least the last {trigger.min_scores}), at most one every {trigger.cooldown_seconds:g} s")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)

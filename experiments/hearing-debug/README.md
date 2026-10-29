@@ -17,7 +17,7 @@ account of why: the content it found that earned the score. Each score also goes
 Tukey's fence for that window) is marked `<-- would trigger`. There is no fixed threshold: the bar moves with the room.
 
 Every line ends with a note that says where the score stands, for example `[window 69 scores, bar 5.12]`: how many
-recent scores the sentence was judged against and the score it had to be above (Q3 + `fence_multiple` x IQR of
+recent scores the sentence was judged against and the score it had to be above (the `percentile` of
 those scores). `[warming up 3/20]` means the window does not yet hold enough scores for anything to trigger, and
 `[window 69 scores, bar 5.12; cooling down]` means the sentence was above the bar but too soon after the last
 `<-- would trigger` (`cooldown_seconds`), and `[no score]` means the sentence got no score and was left out. The settings are in the `[trigger]` section of

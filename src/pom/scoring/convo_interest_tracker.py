@@ -4,17 +4,17 @@ The trigger does not use a fixed score. It asks what this room's recent scores l
 a new one stands well above them. In a dull room a 5 can stand out; in a lively one it may take an 8.
 Each score goes in through `record`, with the time it was heard, and the tracker answers what it did with it.
 
-The rule is Tukey's fence, the standard test for a value that stands out from a set of values:
+The rule is a percentile of the room's recent scores, which makes no assumption about their shape:
 
-  * The window: the scores heard in the last `window_seconds` (300, the last five minutes), or the last
+  * The window: the scores heard in the last `window_seconds` (600, the last ten minutes), or the last
     `min_scores` scores if the room is so quiet that fewer than that were heard in the time. So the window is
-    the larger of the two. It is a length of time, so a busy room and a quiet one both get "the last five
-    minutes"; the count is only a floor under it, so the quartiles are never drawn from a handful of scores.
-  * The quartiles: lined up from lowest to highest, Q1 is the score a quarter of the way up the window's
-    scores and Q3 three quarters of the way up. The IQR (interquartile range) is Q3 minus Q1, the width of the
-    middle half of the scores.
-  * The bar: Q3 + `fence_multiple` x IQR. 0 puts the bar at Q3, so about the top quarter of scores clear it;
-    1.5 is the textbook outlier line, and 0.9 (to begin with) is a bar a lively room reaches rarely.
+    the larger of the two. It is a length of time, so a busy room and a quiet one both get "the last ten
+    minutes"; the count is only a floor under it, so the bar is never drawn from a handful of scores.
+  * The bar: the `percentile` of the window's scores, read by nearest rank. Line the scores up from lowest to
+    highest; the bar is the score that has at least that share of the scores at or below it, so it is always a
+    score the room really earned, never a made-up in-between. 100 puts the bar at the best score in the window:
+    a sentence has to beat everything the room has said lately. 90 puts it where only the top tenth of scores
+    stand above it.
   * The trigger: a score triggers when it is ABOVE the bar, once the window holds `min_scores` scores. The
     score is compared with the bar as it stood BEFORE that score joined the window, so a sentence is judged
     against the room as it was before it was said. A triggering score then joins the window like any other.
@@ -23,8 +23,14 @@ The rule is Tukey's fence, the standard test for a value that stands out from a 
     does not restart the cooldown. A burst of strong sentences, such as a run of jokes, gives one trigger and
     not six, and the next one comes from the room once the cooldown is over.
 
+Why a percentile and not a statistical fence: the scorer's numbers are lumpy (a pile at 1, humps near 3 and
+5, almost nothing above 7), so a rule that predicts where the top should be from the middle of the scores,
+such as Tukey's fence, lands above the real top or below it. A percentile measures where the top of the
+window really is. With the window at ten minutes and 100 the Printer answers about six times an hour on the
+chatty meetings it was tried on, whatever the room's mood; the percentile and the window are the two knobs.
+
 Every score that is a number joins the window, the lowest included: nothing is thrown away by a fixed line,
-so the fence works from what the room really scored. A fragment that has no score (None) is IGNORED and
+so the bar works from what the room really scored. A fragment that has no score (None) is IGNORED and
 stays out of everything here.
 
 Design decisions, and why:
@@ -39,7 +45,6 @@ Design decisions, and why:
   * This module never reads Config, and it never sees any words, only numbers.
 """
 import math
-import statistics
 from collections import deque
 from enum import Enum
 from typing import Deque, List, Optional, Tuple
@@ -50,11 +55,11 @@ from pom.log_setup import get_logger
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_FENCE_MULTIPLE = 0.9
-DEFAULT_WINDOW_SECONDS = 300.0
+DEFAULT_PERCENTILE = 100.0
+DEFAULT_WINDOW_SECONDS = 600.0
 DEFAULT_MIN_SCORES = 20
 DEFAULT_COOLDOWN_SECONDS = 60.0
-MINIMUM_MIN_SCORES = 2                 # quartiles need at least two scores
+MINIMUM_MIN_SCORES = 2                 # a bar needs at least two scores to stand above
 
 
 class ConvoInterestTrackerError(ValueError):
@@ -77,12 +82,13 @@ class ConvoInterestTracker:
         counted: How many scores have counted so far.
     """
 
-    def __init__(self, fence_multiple: float = DEFAULT_FENCE_MULTIPLE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
+    def __init__(self, percentile: float = DEFAULT_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
                  min_scores: int = DEFAULT_MIN_SCORES, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
                  strict: bool = False):
         """Args:
-            fence_multiple: How many IQRs above Q3 a score must be to trigger, 0 or more.
-            window_seconds: How many seconds of recent scores the quartiles are drawn from, above 0.
+            percentile: The share of the window's scores the bar sits above, above 0 and at most 100; 100 puts the
+                bar at the best score in the window.
+            window_seconds: How many seconds of recent scores the bar is drawn from, above 0.
             min_scores: The window always holds at least this many scores, and nothing triggers until it does;
                 a whole number of at least 2.
             cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more
@@ -90,7 +96,7 @@ class ConvoInterestTracker:
             strict: Raise ConvoInterestTrackerError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=ConvoInterestTrackerError, logger=_log)
-        self._fence_multiple = self._valid_fence_multiple(fence_multiple)
+        self._percentile = self._valid_percentile(percentile)
         self._window_seconds = self._valid_window_seconds(window_seconds)
         self._min_scores = self._valid_min_scores(min_scores)
         self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
@@ -101,13 +107,13 @@ class ConvoInterestTracker:
 
     # --- Settings -------------------------------------------------------------------
 
-    def _valid_fence_multiple(self, value) -> float:
-        """A number of 0 or more, or the default with a warning."""
-        if self._is_number(value) and value >= 0.0:
+    def _valid_percentile(self, value) -> float:
+        """A number above 0 and at most 100, or the default with a warning."""
+        if self._is_number(value) and 0.0 < value <= 100.0:
             return float(value)
-        self.report.warn(f"fence_multiple must be a number of at least 0, got {value!r}; "
-                         f"using {DEFAULT_FENCE_MULTIPLE:g}")
-        return DEFAULT_FENCE_MULTIPLE
+        self.report.warn(f"percentile must be a number above 0 and at most 100, got {value!r}; "
+                         f"using {DEFAULT_PERCENTILE:g}")
+        return DEFAULT_PERCENTILE
 
     def _valid_window_seconds(self, value) -> float:
         """A number above 0, or the default with a warning."""
@@ -152,13 +158,14 @@ class ConvoInterestTracker:
         return len(window) if window is not None else len(self._recent)
 
     def trigger_level_at(self, now: float) -> Optional[float]:
-        """The score a new score must be above to trigger at time `now`, or None while the window holds fewer
+        """The score a new score must be above to trigger at time `now` (the bar), or None while the window holds fewer
         than `min_scores` scores (or `now` is not a number)."""
         window = self._window(self._steady(now)) if self._is_number(now) else None
         if window is None:
             return None
-        q1, _, q3 = statistics.quantiles(window, n=4, method="inclusive")
-        return q3 + self._fence_multiple * (q3 - q1)
+        ranked = sorted(window)
+        rank = math.ceil(round(self._percentile * len(ranked) / 100.0, 9))     # rounded: 64.4% of 250 is 161, not 161.00000000000003
+        return ranked[rank - 1]
 
     def _steady(self, now: float) -> float:
         """`now`, held at the latest time seen so a clock stepping back cannot reorder the window."""

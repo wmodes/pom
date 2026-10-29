@@ -14,6 +14,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`PortentWriter`** (`pom/voice/portent_writer.py`, 30 new tests, mutation-checked: 23 of 23 caught), the first of two
+  modules that move the wiring out of the playgrounds and into `src`. `write(hinge, seed=None)` joins the `PromptBuilder` and
+  the `OracleModelClient` and returns a `Portent` (text, the exemplars shown, seconds, cut off, word count), or None if no
+  portent could be had, the reason being in the report of the part that met it (`report_lines()` reads all three). A seed
+  makes the same hinge show the same exemplars (the generator must be the one the `ExemplarSelector` was built with); a seed
+  it cannot use is recorded rather than ignored. Neither the hinge nor the portent reaches a log or a report.
 - **Playgrounds** (`scripts/dev/`, 10 smoke tests in `tests/scripts/`), the way to see each built part work, all
   using the real modules: `listening/sort_whisper_text.py` (type whisper-style text, see how it is sorted), `listening/listen_to_room.py` (the
   microphone or a recording through the Listener, Scorer and trigger, printing what it hears with scores and the trigger),

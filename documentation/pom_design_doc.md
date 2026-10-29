@@ -362,7 +362,7 @@ src/pom/
                convo_interest_tracker (window, fence, cooldown)  built
                fallback_scorer                                   shelved, unused
   prompt/      prompt_builder                                    built
-  voice/       oracle_model_client                               built
+  voice/       oracle_model_client, portent_writer               built
   output/      formatter, serial wrapper, reply selection        planned
   input/       keyboard                                          planned
   conductor                                                      planned; the only module that knows the whole pipeline

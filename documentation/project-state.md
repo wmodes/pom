@@ -121,6 +121,7 @@ src/pom/
     prompt_builder.py  built   hinge + drawn exemplars into the oracle prompt from config
   voice/
     oracle_model_client.py built the finished oracle prompt to the oracle model's llama-server, one portent back
+    portent_writer.py  built   a hinge in, a Portent out (joins the prompt builder and the model client; seedable exemplars)
   output/              planned reply selection, formatter, serial port wrapper (pauses listening)
   input/               planned keyboard, same path as speech with a small score bonus
   conductor            planned the only module that knows the whole pipeline; hands the triggering sentence on as the hinge

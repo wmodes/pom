@@ -14,6 +14,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`listening_to_portent.py`**, the playground for the whole pipeline but the typewriter (`scripts/dev/pipeline/`, 3 smoke tests):
+  a microphone (`--mac-mic`, the Mac's system default input; otherwise the Pi's) or a recording (`--wav`) goes through the
+  Listener, the `HingeFinder` and the `PortentWriter`, printing each sentence with its score and the trigger's standing, and
+  the portent where the typewriter would type it. Like the Printer it is not listening while the oracle writes. The config
+  is read again before each portent, so prompt edits show at once.
 - **`HingeFinder`** (`pom/scoring/hinge_finder.py`, 38 new tests, mutation-checked: 34 of 34 caught), the second of the two modules that
   move the wiring out of the playgrounds and into `src`. `find()` is a generator over the Listener, the SegmentFragmenter, the
   Scorer and the `ConvoInterestTracker` and yields a `ScoredSentence` for each thing heard (text, kind, score, who scored it,

@@ -8,7 +8,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/sort_whisper_text.py", "scripts/dev/listening/listen_to_room.py",
-               "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/voice/write_portent_from_hinge.py"]
+               "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/voice/write_portent_from_hinge.py",
+               "scripts/dev/pipeline/listening_to_portent.py"]
 
 
 def run(script, *args, env=None):
@@ -46,3 +47,13 @@ def test_the_score_playground_says_so_when_the_scorer_model_is_not_answering():
 def test_the_hear_playground_stops_politely_when_whisper_is_not_answering():
     result = run("scripts/dev/listening/listen_to_room.py", "--wav", "nothing.wav", env={"POM_WHISPER_URL": "http://127.0.0.1:9"})
     assert result.returncode != 0 and "not answering" in (result.stdout + result.stderr)
+
+
+def test_the_whole_pipeline_playground_stops_politely_when_whisper_is_not_answering():
+    result = run("scripts/dev/pipeline/listening_to_portent.py", "--mac-mic", env={"POM_WHISPER_URL": "http://127.0.0.1:9"})
+    assert result.returncode != 0 and "whisper-server is not answering" in (result.stdout + result.stderr)
+
+
+def test_the_whole_pipeline_playground_wants_one_sound_source_only():
+    result = run("scripts/dev/pipeline/listening_to_portent.py", "--wav", "a.wav", "--mac-mic")
+    assert result.returncode != 0 and "not both" in (result.stdout + result.stderr)

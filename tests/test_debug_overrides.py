@@ -21,7 +21,8 @@ MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_stor
            "pom/listening/whisper_server_client.py", "pom/listening/wav_source.py", "pom/listening/mic_source.py",
            "pom/listening/rolling_cutter.py",
            "pom/listening/listener.py", "pom/voice/portent_writer.py", "pom/listening/mac_mic_source.py",
-           "pom/scoring/hinge_finder.py"]
+           "pom/scoring/hinge_finder.py",
+           "pom/monitor/trigger_history.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 
 

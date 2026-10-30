@@ -57,10 +57,7 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **window** †: the room's recent scores the trigger is judged against: the scores heard in the last
   `window_seconds` (300, the last five minutes), or the last `min_scores` (20) if the room is so quiet that
   fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
-- **bar** †: the score a new score must be above to trigger: the `percentile` of the window's scores, by nearest rank
-  (always a score the room really earned). 100 puts it at the best score of the window, so a sentence has to beat
-  everything said lately; 90 puts it at the top tenth. (Tukey's fence, Q3 + a multiple of the IQR, was used before and
-  replaced.)
+- **bar** †: the score a new score must be above to trigger: the `percentile` of the window's scores.
 - **percentile** †: how much of the window a score must beat to trigger (`percentile`, 99.5 to begin with; 100 is the best score).
 - **trigger** †: the moment a score is above the bar, once the window holds `min_scores` scores and the
   cooldown is over. The score is compared with the bar as it stood before that score was added. Then the Printer
@@ -105,6 +102,21 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   thing heard as a `ScoredSentence`; the one the trigger fired on is the hinge (`HingeFinder`).
 - **portent writer** †: the component that takes a hinge and returns a portent, joining the prompt builder and the oracle
   model client (`PortentWriter`). What it returns is a `Portent`: the text, the exemplars shown, the seconds, and whether it was cut off.
+
+## Typing and turns: the keyboard and one thing at a time
+
+- **typed line**: a line typed at the terminal's keyboard, someone speaking to the Printer directly rather than being overheard.
+  It does not go through the listener. The scorer scores it, the typed score multiplier is applied, and the same bar judges it
+  (`TypedLineScorer`, which yields a `ScoredSentence` of kind `typed`). It has no cooldown, and a typed line under the bar is
+  ignored: nothing is printed. A typed score stays out of the window unless `typed_lines_affect_bar` is on.
+- **typed score multiplier**: what a typed line's score is multiplied by before it meets the bar (`typed_score_multiplier`, 1.5 to
+  begin with; 1 is no bonus). The product is not capped at 9.
+- **turn**: one hinge taken through to paper: the portent written, formatted and typed. The Printer does not listen during a turn.
+- **half-duplex gate**: *(planned)* the keeper of the turn: the state (listening, generating, printing, recovering), the rule that
+  one hinge takes the floor at a time (first come, first served), and the watchdog that returns to listening if a state runs too
+  long (`HalfDuplexGate`).
+- **keyboard watcher**: *(planned)* the component that reads typed lines while the Printer is listening and yields each as a
+  `ScoredSentence`, as the hinge finder does for the room (`KeyboardWatcher`).
 
 ## Where the code does not match yet †
 

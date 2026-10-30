@@ -23,7 +23,7 @@ of being threaded through by hand. Today there are five:
     [trigger]  A section (see TriggerSettings): when the Printer responds, when a score is above a bar worked out from the
                room's recent scores. `algorithm` picks how ("percentile", "decaying_quantile" or "moving_average"; each reads only
                its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a trigger the next
-               may come (60; 0 for none), `typed_score_multiplier` the lift a typed line's score gets (1.5) and
+               may come (60; 0 for none), `typed_score_multiplier` what a typed line's score is multiplied by (1.5) and
                `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the ConvoInterestTracker with `tracker_from_settings(config.trigger)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `step`, `hold`,
@@ -39,7 +39,7 @@ of being threaded through by hand. Today there are five:
                `keep_composed_characters` and `ascii_printwheel` say which characters most wheels lack are typed as they are.
     [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
                baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
-               (`echoplex`, `no_input_during_output`). The entry point builds the
+               (`echoplex`, `type_during_output`). The entry point builds the
                TypewriterPort from `config.terminal`. The entry point
                builds the TypewriterFormatter from `config.output`.
 
@@ -91,7 +91,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "output.characters_per_inch", "output.quote_indent", "output.linefeeds_after_portent",
          "output.keep_composed_characters", "output.ascii_printwheel", "terminal.port", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
-         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.no_input_during_output"}
+         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_output"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -153,7 +153,7 @@ TERMINAL_END_OF_LINES = ("cr", "crlf", "lf", "lfcr")
 DEFAULT_TERMINAL_CHARACTERS_PER_SECOND = 16.0
 DEFAULT_TERMINAL_FINISH_WAIT_SECONDS = 2.0
 DEFAULT_TERMINAL_ECHOPLEX = True
-DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT = True
+DEFAULT_TERMINAL_TYPE_DURING_OUTPUT = False
 MIN_OUTPUT_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -247,7 +247,7 @@ class TriggerSettings:
             including 1. (moving_average)
         algorithm: "percentile", "decaying_quantile" or "moving_average".
         typed_score_multiplier: What a typed line's score is multiplied by before it meets the bar, 0 or more (1 is no bonus). A typed
-            line is someone speaking to the Printer directly, so it is given a lift; the product is not capped at 9. (all)
+            line is someone speaking to the Printer directly, so its score is multiplied; the product is not capped at 9. (all)
         typed_lines_affect_bar: True lets a typed line's score affect the bar, feeding what it is built from like the room's own scores. False keeps
             the bar a picture of the room alone. A typed line never has a cooldown either way. (all)
     """
@@ -374,8 +374,8 @@ class TerminalSettings:
         echoplex: True to echo each key typed on the typewriter back to it (the old terminal name for the host echoing what it
             receives). The CadetWriter must then be in full duplex (its default); with False it must be in half duplex, which
             echoes locally. A mismatch types every character twice, or none.
-        no_input_during_output: True to throw away keys pressed while a portent is being typed, so nothing typed over it
-            appears after it; False keeps them for the next line read.
+        type_during_output: False (the default) throws away keys pressed while a portent is being typed, so nothing typed over
+            it appears after it; True keeps them for the next line read.
     """
     port: str = DEFAULT_TERMINAL_PORT
     baud: int = DEFAULT_TERMINAL_BAUD
@@ -384,7 +384,7 @@ class TerminalSettings:
     characters_per_second: float = DEFAULT_TERMINAL_CHARACTERS_PER_SECOND
     finish_wait_seconds: float = DEFAULT_TERMINAL_FINISH_WAIT_SECONDS
     echoplex: bool = DEFAULT_TERMINAL_ECHOPLEX
-    no_input_during_output: bool = DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT
+    type_during_output: bool = DEFAULT_TERMINAL_TYPE_DURING_OUTPUT
 
 
 class Config:
@@ -600,8 +600,8 @@ class Config:
                     "terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS, 0.0, report),
             _bool(values.get("terminal.echoplex", DEFAULT_TERMINAL_ECHOPLEX), "terminal.echoplex", report,
                   DEFAULT_TERMINAL_ECHOPLEX),
-            _bool(values.get("terminal.no_input_during_output", DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT),
-                  "terminal.no_input_during_output", report, DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT))
+            _bool(values.get("terminal.type_during_output", DEFAULT_TERMINAL_TYPE_DURING_OUTPUT),
+                  "terminal.type_during_output", report, DEFAULT_TERMINAL_TYPE_DURING_OUTPUT))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor,
                    output, terminal)
 

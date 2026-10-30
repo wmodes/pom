@@ -1,4 +1,4 @@
-"""Tests for pom.scoring.typed_line_scorer: a typed line in, a lifted and judged ScoredSentence out.
+"""Tests for pom.scoring.typed_line_scorer: a typed line in, a multiplied and judged ScoredSentence out.
 
 The Scorer is a small fake (what it does is tested elsewhere); the ConvoInterestTracker is the real one over a PercentileBar, because
 how the typed line meets the room's bar is the point.
@@ -44,7 +44,7 @@ def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):
 
 
 class TestTheDefaults:
-    def test_the_lift_starts_at_one_and_a_half(self):
+    def test_the_multiplier_starts_at_one_and_a_half(self):
         assert DEFAULT_MULTIPLIER == 1.5
 
     def test_the_kind_is_typed(self):
@@ -79,7 +79,7 @@ class TestTheSentence:
         assert made.score("a").counted == 1 and made.score("b").counted == 2
 
 
-class TestTheLift:
+class TestTheMultiplier:
     def test_the_score_is_multiplied_by_one_and_a_half_to_begin_with(self):
         made, _, _, _ = typed({"x": 4.0})
         assert made.score("x").score == 6.0
@@ -92,7 +92,7 @@ class TestTheLift:
         made, _, _, _ = typed({"x": 9.0})
         assert made.score("x").score == 13.5
 
-    def test_a_multiplier_of_one_is_no_lift(self):
+    def test_a_multiplier_of_one_is_no_bonus(self):
         made, _, _, _ = typed({"x": 4.0}, multiplier=1)
         assert made.score("x").score == 4.0
 
@@ -100,11 +100,11 @@ class TestTheLift:
         made, _, _, _ = typed({"x": 9.0}, multiplier=0)
         assert made.score("x").score == 0.0 and made.report.ok
 
-    def test_a_lift_can_carry_a_dull_line_over_the_bar(self):
+    def test_a_multiplier_can_carry_a_dull_line_over_the_bar(self):
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0)
         assert made.score("x").is_hinge        # 4.5 * 1.5 = 6.75
 
-    def test_without_the_lift_the_same_line_does_not_trigger(self):
+    def test_without_the_multiplier_the_same_line_does_not_trigger(self):
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0, multiplier=1)
         assert not made.score("x").is_hinge
 
@@ -181,7 +181,7 @@ class TestWhenThereIsNoScore:
         sentence = made.score("hello")
         assert (sentence.score, sentence.effect, sentence.is_hinge) == (None, ScoreEffect.IGNORED, False)
 
-    def test_the_fragment_filters_score_is_lifted_like_any_other(self):
+    def test_the_fragment_filters_score_is_multiplied_like_any_other(self):
         class Filtered(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)

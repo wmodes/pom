@@ -46,10 +46,10 @@ def main():
                                output.composed_characters_kept).format(raw)
     if args.port:
         typewriter = TypewriterPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
-                                    terminal.echoplex, terminal.no_input_during_output)
+                                    terminal.echoplex, terminal.type_during_output)
     else:
         typewriter = ConsoleTypewriter(characters_per_second=cps, finish_wait_seconds=finish_wait,
-                                       no_input_during_output=terminal.no_input_during_output)
+                                       type_during_output=terminal.type_during_output)
 
     done = typewriter.type(text)
     print(f"--- {done.characters} characters in {done.seconds:.1f} s, {'all typed' if done.completed else 'NOT all typed'}")

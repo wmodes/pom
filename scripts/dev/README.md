@@ -11,7 +11,7 @@ into one built part of the Printer and see what it does, using the real modules 
   the WhisperTextSorter sorts whisper's text into words, captions and nothing; `listen_to_room.py` runs the whole listening side on the
   microphone or a recording, scoring what it hears and marking what would trigger (it needs whisper-server running).
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether the trigger would fire (it needs
-  the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its lift (`typed_score_multiplier`) and whether
+  the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its typed score multiplier (`typed_score_multiplier`) and whether
   the Printer would answer or stay silent.
 - `pipeline/`: `listening_to_portent.py` (`--monitor` also serves the monitoring site, fed by every trigger) runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
   the Pi's by default) or a recording goes through the Listener, the scorer and the trigger, and when the trigger fires the

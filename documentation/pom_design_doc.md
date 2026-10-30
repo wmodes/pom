@@ -286,7 +286,7 @@ rule was replayed on the recorded meetings before it was kept or dropped. In ord
 - (open) The retired design had a target print rate that followed room activity (0 silent, about 4 with a little
   talking, about 8 busy) and a rate governor. The fence plus the cooldown replaced them; the rate is now a result to
   watch, not a quantity steered. If a real room shows the rate drifting, a governor can come back.
-- Typed input has its own way in (the TypedLineScorer, not the Listener): the Scorer scores the line, `typed_score_multiplier` (1.5, uncapped) lifts it, and the same bar judges it. No cooldown, and a line under the bar is silently ignored. By default it stays out of the bar (`typed_lines_affect_bar`), which listens to the room.
+- Typed input has its own way in (the TypedLineScorer, not the Listener): the Scorer scores the line, `typed_score_multiplier` (1.5, uncapped) multiplies it, and the same bar judges it. No cooldown, and a line under the bar is silently ignored. By default it stays out of the bar (`typed_lines_affect_bar`), which listens to the room.
 - (open) Everything above is tuned on four chatty meetings. A real room, especially a quiet one, is the real test.
 
 ## The hinge
@@ -407,7 +407,7 @@ Whether to start them depends on how far the prompted oracle model gets.
   machine has had time to finish, so the Conductor pauses listening, calls it, and resumes (half-duplex); the port knows nothing about
   listening. The same port reads the keyboard: `read_line()` returns what someone types when they press C Rtn. In the CadetWriter's default
   full-duplex mode the Pi echoes each key (`echoplex`), a Backspace overstrikes but edits the line, and keys pressed during a portent are
-  thrown away (`no_input_during_output`). The `ConsoleTypewriter` is the same code on the terminal, for development.
+  thrown away (unless `type_during_output` is on). The `ConsoleTypewriter` is the same code on the terminal, for development.
 - The TypedLineScorer (`src/pom/scoring/`) turns a typed line into a `ScoredSentence` (kind `typed`), judged by `ConvoInterestTracker.record_direct()`. Serializing its calls with the HingeFinder's thread, and handing a typed hinge to the oracle, are the Conductor's.
 - The output validation hook (`scripts/dev/corpus/validate_output.py`) is a deliberate stub. Checking for verbatim
   overlap with the corpus was judged the wrong measure: false positives on quotes that land, false negatives on

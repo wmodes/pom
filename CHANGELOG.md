@@ -21,10 +21,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
   terminal, so everything can be tried without the machine.
 - **The keyboard comes back through the same port**: `read_line(timeout)` returns a line typed on the typewriter when C Rtn is pressed. With `echoplex` (the old terminal name for the host echoing
   what it receives; the CadetWriter stays in its default full duplex) each key is echoed as it arrives, Backspace moves the carriage left and edits the line (a retype overstrikes; the CadetWriter
-  does not use a correction ribbon), and C Rtn is echoed as the line ending. With `no_input_during_output` keys typed during a portent, and any half-typed line, are thrown away when it finishes.
+  does not use a correction ribbon), and C Rtn is echoed as the line ending. Keys typed during a portent, and any half-typed line, are thrown away when it finishes unless `type_during_output` is on (it is off by default).
   The portent and the keyboard share the line under a lock, so they never interleave. Neither the text nor the keys typed are logged or reported. 76 tests; 78 mutants checked.
 - **`[terminal]` in the config**: `port` (`/dev/ttyACM0`), `baud` (9600), `flow_control` (`xon_xoff`), `end_of_line` (`crlf`), `characters_per_second` (16), `finish_wait_seconds` (2), `echoplex` (true)
-  and `no_input_during_output` (true). The defaults are the CadetWriter's own (its user guide, section 3); `end_of_line` and `flow_control` must match its settings. A bad boolean now falls
+  and `type_during_output` (false). The defaults are the CadetWriter's own (its user guide, section 3); `end_of_line` and `flow_control` must match its settings. A bad boolean now falls
   back to that setting's own default, not always false. 26 config tests; 17 mutants checked.
 - **The playground `scripts/dev/output/type_text_on_typewriter.py`** formats text and types it on the screen at the typewriter's pace (`--fast`, `--cps`), on a real port with `--port`, and waits for a typed-back line with `--reply SECONDS`.
 - **The TypewriterFormatter** (`src/pom/output/`): a portent in, text the Wheelwriter can print out. It removes the triple-backtick fences

@@ -495,8 +495,8 @@ def test_a_cr_before_the_portent_does_not_swallow_the_first_lf_after_it():
     assert port.read_line(1) == ""                        # that LF is an empty line, not the second half of a CR+LF pair
 
 
-def test_with_no_input_during_output_off_the_keys_are_kept_for_the_next_read():
-    port, fake, _, _ = make(echoplex=False, no_input_during_output=False)
+def test_with_type_during_output_on_the_keys_are_kept_for_the_next_read():
+    port, fake, _, _ = make(echoplex=False, type_during_output=True)
     fake.incoming += b"one\rtwo\rha"
     assert port.read_line(1) == "one"
     port.type("portent")
@@ -531,7 +531,7 @@ def test_a_portent_and_the_keyboard_never_use_the_line_at_the_same_time():
 
     fake.write = slow_write
     port = TypewriterPort("/dev/x", opener=lambda *a: fake, characters_per_second=1e9, finish_wait_seconds=0,
-                          echoplex=False, no_input_during_output=False)
+                          echoplex=False, type_during_output=True)
     fake.incoming += b"k\r"
     results = {}
     typing = threading.Thread(target=lambda: results.setdefault("typed", port.type("ab")))
@@ -596,6 +596,16 @@ def test_the_console_input_can_be_a_real_pipe_and_unread_keys_are_thrown_away():
         typewriter.type("portent")                           # throws away what was typed
         os.write(write_end, b"after\n")
         assert typewriter.read_line(2) == "after"
+        os.close(write_end)
+
+
+def test_the_console_input_is_kept_when_typing_during_output_is_on():
+    read_end, write_end = os.pipe()
+    with os.fdopen(read_end) as keyboard:
+        typewriter, _ = console(input_stream=keyboard, type_during_output=True)
+        os.write(write_end, b"kept\n")
+        typewriter.type("portent")                           # does not throw away what was typed
+        assert typewriter.read_line(2) == "kept"
         os.close(write_end)
 
 

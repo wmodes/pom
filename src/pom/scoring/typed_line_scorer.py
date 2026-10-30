@@ -2,12 +2,12 @@
 
 Someone at the terminal's keyboard (whatever output device is attached) can type back. That is not the room being overheard but a person speaking to the Printer
 directly, so it does not go through the Listener or the HingeFinder. This is its own way in: `score(line)` has the Scorer score the
-line, lifts the score by a multiplier, and has the ConvoInterestTracker say whether it stands above the bar. The result is the same
+line, multiplies the score by the typed score multiplier, and has the ConvoInterestTracker say whether it stands above the bar. The result is the same
 ScoredSentence the HingeFinder yields (with `kind` "typed"), so whatever takes the finder's sentences, the Conductor and the
 monitoring site among them, takes these too, and a hinge is a hinge whichever way it came.
 
 Design decisions, and why:
-  * THE LIFT. A typed score is multiplied by `multiplier` (1.5 to begin with) before it meets the bar, because a person typing to
+  * THE TYPED SCORE MULTIPLIER. A typed score is multiplied by `multiplier` (1.5 to begin with) before it meets the bar, because a person typing to
     the Printer is asking for an answer. The product is not capped at 9, so a typed 7 (10.5) beats any spoken 9.
   * THE SAME BAR, NO COOLDOWN. The line is held to the room's own bar, so a dull one ("hello") is simply ignored: it gets no answer
     and nothing is printed. It has no cooldown, and a trigger it causes does not start one, so the room's rhythm is the room's.
@@ -72,7 +72,7 @@ class TypedLineScorer:
     def score(self, line: str) -> ScoredSentence:
         """Scores one typed line and judges it against the bar. Blocks while the Scorer works.
 
-        The returned sentence's `score` is the lifted one (the number the bar was asked about); `is_hinge` says whether the Printer
+        The returned sentence's `score` is the multiplied one (the number the bar was asked about); `is_hinge` says whether the Printer
         should answer. A blank line, or one the Scorer could not score, comes back unscored with no effect.
         """
         now = self._clock()
@@ -81,7 +81,7 @@ class TypedLineScorer:
         if not text:
             return ScoredSentence(text, TYPED, None, ScoredBy.UNSCORED, None, now, bar, held, self._tracker.counted)
         result = self._scorer.score_text(text, now)
-        lifted = None if result.score is None else result.score * self._multiplier
-        effect = self._tracker.record_direct(lifted, now, affects_bar=self._affects_bar)
+        multiplied = None if result.score is None else result.score * self._multiplier
+        effect = self._tracker.record_direct(multiplied, now, affects_bar=self._affects_bar)
         _log.debug("scored a typed line of %d words: %s", len(text.split()), effect.value)
-        return ScoredSentence(text, TYPED, lifted, result.scored_by, effect, now, bar, held, self._tracker.counted)
+        return ScoredSentence(text, TYPED, multiplied, result.scored_by, effect, now, bar, held, self._tracker.counted)

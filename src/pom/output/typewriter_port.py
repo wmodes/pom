@@ -32,8 +32,8 @@ Design decisions, and why:
     CadetWriter must be set to half duplex, where it echoes locally (set both or characters print twice, or not at all).
     A line ends at CR or LF (a CR+LF pair counts once). Control characters are ignored and not echoed.
   * NO KEYS DURING A PORTENT. `type` and the echo share one serial line and cannot interleave, so `type` holds a lock
-    for its whole run. With `no_input_during_output` (on by default) whatever was typed during it, and any half-typed
-    line, is thrown away when it finishes, so nothing typed over a portent appears after it. Turned off, those keys
+    for its whole run. Unless `type_during_output` is on (it is off by default) whatever was typed during it, and any half-typed
+    line, is thrown away when it finishes, so nothing typed over a portent appears after it. Turned on, those keys
     are kept and handled by the next `read_line`.
   * What is typed in the room is room content: like the portent it is never logged or put in a report.
   * The settings are passed in (the entry point takes them from `config.terminal`); this module never reads Config.
@@ -103,7 +103,7 @@ class TypewriterPort:
     def __init__(self, port: str, baud: int = DEFAULT_BAUD, flow_control: str = DEFAULT_FLOW_CONTROL,
                  end_of_line: str = DEFAULT_END_OF_LINE, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
                  finish_wait_seconds: float = DEFAULT_FINISH_WAIT_SECONDS,
-                 echoplex: bool = True, no_input_during_output: bool = True,
+                 echoplex: bool = True, type_during_output: bool = False,
                  opener: Optional[Callable[[str, int, str], object]] = None, clock: Callable[[], float] = time.monotonic,
                  sleep: Callable[[float], None] = time.sleep, strict: bool = False):
         """Args:
@@ -114,7 +114,7 @@ class TypewriterPort:
             characters_per_second: The fastest the text is sent, above 0.
             finish_wait_seconds: How long to wait after the last byte for the machine to finish, 0 or more.
             echoplex: True to echo each key typed on the typewriter back to it (the CadetWriter must be in full duplex).
-            no_input_during_output: True to throw away keys typed while a portent is being typed.
+            type_during_output: False to throw away keys typed while a portent is being typed; True keeps them for the next read.
             opener: A function (port, baud, flow_control) -> an object with write(bytes), flush(), close(), read(size)
                 and reset_input_buffer(). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
@@ -138,7 +138,7 @@ class TypewriterPort:
         self._clock = clock
         self._sleep = sleep
         self._echoplex = bool(echoplex)
-        self._no_input_during_output = bool(no_input_during_output)
+        self._type_during_output = bool(type_during_output)
         self._serial = None
         self._lock = threading.Lock()            # one use of the line at a time: a portent, or a look for keys
         self._received: collections.deque = collections.deque()   # bytes read but not yet handled
@@ -200,7 +200,7 @@ class TypewriterPort:
 
         Waits until C Rtn is pressed (or `timeout` passes; None waits for ever). A line typed halfway when the time ran
         out is kept for the next call. An empty line, from C Rtn alone, is returned as ''. With `echoplex` each key is
-        echoed to the paper as it arrives. Keys pressed during a portent wait for it (see no_input_during_output). Never
+        echoed to the paper as it arrives. Keys pressed during a portent wait for it (see type_during_output). Never
         raises (except in strict mode); None can also mean the port would not open, with the reason in `report`.
         """
         deadline = None if timeout is None else self._clock() + timeout
@@ -272,7 +272,7 @@ class TypewriterPort:
 
     def _discard_input(self) -> None:
         """If keys are not wanted during a portent: forget everything typed and still unread, and any half-typed line."""
-        if not self._no_input_during_output:
+        if self._type_during_output:
             return
         self._received.clear()
         self._line.clear()
@@ -358,16 +358,16 @@ class ConsoleTypewriter(TypewriterPort):
         characters_per_second: The pace; 16 like the real one. A big number types at once.
         finish_wait_seconds: Wait after the last character; default none.
         echoplex: Echo the keys back; off by default because the terminal already shows what is typed.
-        no_input_during_output: Throw away keys typed while it types, like the real one.
+        type_during_output: False throws away keys typed while it types, like the real one.
     """
 
     def __init__(self, stream=None, input_stream=None, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
-                 finish_wait_seconds: float = 0.0, echoplex: bool = False, no_input_during_output: bool = True,
+                 finish_wait_seconds: float = 0.0, echoplex: bool = False, type_during_output: bool = False,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep,
                  strict: bool = False):
         sink = _StreamSink(stream if stream is not None else sys.stdout,
                            input_stream if input_stream is not None else sys.stdin)
         super().__init__("console", end_of_line="lf", characters_per_second=characters_per_second,
                          finish_wait_seconds=finish_wait_seconds, echoplex=echoplex,
-                         no_input_during_output=no_input_during_output, opener=lambda port, baud, flow: sink,
+                         type_during_output=type_during_output, opener=lambda port, baud, flow: sink,
                          clock=clock, sleep=sleep, strict=strict)

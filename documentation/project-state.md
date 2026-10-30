@@ -37,7 +37,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   unpushed. The Pi's checkout (`~/pom`) was last pulled at `b0b68e9`, with the 4B and 9B model files in `data/models/`.
 - **Playgrounds** (`scripts/dev/`, small tools that use the real modules): `listening/sort_whisper_text.py`, `listening/listen_to_room.py` (the
   microphone or a recording through the Listener, Scorer and trigger), `scoring/score_typed_sentences.py` (type sentences, see scores and
-  the trigger), `scoring/score_typed_lines.py` (the typed-line path: score, lift, answer or silence), `voice/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
+  the trigger), `scoring/score_typed_lines.py` (the typed-line path: score, multiplier, answer or silence), `voice/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
   live from the microphone, `--mac-mic` on a Mac).
 - **Not built yet:** the Conductor (including the wiring of typed lines),
   the entry point, the paper guards, "failing loudly", and the Printer running as a service on the Pi. Track B (the fine-tuned

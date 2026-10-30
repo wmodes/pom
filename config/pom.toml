@@ -140,7 +140,7 @@ cooldown_seconds = 60
 exclude_triggers = true
 
 # A line typed on the typewriter's keyboard is someone talking to the Printer directly, so it is judged against the same
-# bar as the room's sentences but gets a lift: its score is multiplied by this before it meets the bar. 1 is no lift;
+# bar as the room's sentences but gets a bonus: its score is multiplied by this before it meets the bar. 1 is no bonus;
 # 0 or more. The product is not capped at 9, so a typed 7 (10.5) beats any spoken 9. A typed line has no cooldown, and a
 # typed line that does not clear the bar is simply ignored (nothing is printed).
 typed_score_multiplier = 1.5
@@ -382,6 +382,6 @@ finish_wait_seconds = 2
 # echo to the CadetWriter, which must then be in half duplex. A mismatch types every character twice, or none.
 echoplex = true
 
-# true throws away keys pressed while a portent is being typed (and any half-typed line), so nothing typed over a
-# portent appears after it. false keeps them and handles them once the portent is done.
-no_input_during_output = true
+# false throws away keys pressed while a portent is being typed (and any half-typed line), so nothing typed over a
+# portent appears after it. true keeps them and handles them once the portent is done.
+type_during_output = false

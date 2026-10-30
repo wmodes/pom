@@ -67,12 +67,16 @@ class MonitorStatus:
         sentences_heard: How many sentences have been heard since the Printer started.
         sentences_scored: How many of them were scored.
         services: Whether each thing the Printer depends on is answering, by name, for example {"whisper": True}.
+        algorithm: The name of the trigger algorithm in use, for example "decaying_quantile" ("" if not known).
+        trigger_description: One line saying how the trigger works and how it is set (numbers only), shown beside the algorithm.
     """
     bar: Optional[float] = None
     window_size: int = 0
     sentences_heard: int = 0
     sentences_scored: int = 0
     services: Mapping[str, bool] = field(default_factory=dict)
+    algorithm: str = ""
+    trigger_description: str = ""
 
 
 def _ago(seconds: float) -> str:
@@ -152,6 +156,7 @@ _INDEX = """<!doctype html>
   <div class="tile"><b data-stat="uptime">{{ s.uptime }}</b><span>up</span></div>
 </div>
 {% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
+{% if s.algorithm or s.trigger_description %}<p class="rule"><span class="muted">Trigger rule:</span> <b>{{ s.algorithm }}</b>{% if s.trigger_description %} <span class="muted">&mdash; a score above {{ s.trigger_description }}</span>{% endif %}</p>{% endif %}
 <h2>Triggers, newest first</h2>
 {% if rows %}
 <table><thead><tr><th>Time</th><th class="num">Score</th><th class="num">Bar</th><th class="hide-narrow num">Window</th><th>Hinge</th></tr></thead><tbody>
@@ -179,6 +184,7 @@ _DETAIL = """<!doctype html>
 <tr><td>Bar it had to beat</td><td>{{ bar }}</td></tr>
 <tr><td>Scores in the window</td><td>{{ r.window_size }}</td></tr>
 <tr><td>Heard at</td><td>{{ heard_at }} into the listening</td></tr>
+{% if rule %}<tr><td>Trigger rule</td><td>{{ rule }}</td></tr>{% endif %}
 </tbody></table>
 <h2>Portent</h2>
 {% if portent %}
@@ -292,6 +298,8 @@ class MonitorSite:
             "sentences_scored": status.sentences_scored,
             "uptime": "just started" if uptime == "just now" else uptime,
             "services": {str(name): bool(up) for name, up in dict(status.services).items()},
+            "algorithm": str(status.algorithm or ""),
+            "trigger_description": str(status.trigger_description or ""),
         }
 
     def _hinge_text(self, record: TriggerRecord, short: bool) -> str:
@@ -355,8 +363,10 @@ class MonitorSite:
                 abort(404)
             portent = record.portent
             newer, older = self._neighbours(record_id)
+            status = self._status()
+            rule = " - ".join(part for part in (str(status.algorithm or ""), str(status.trigger_description or "")) if part)
             return render_template_string(
-                _DETAIL, style=_STYLE, r=record, newer=newer, older=older, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
+                _DETAIL, style=_STYLE, r=record, newer=newer, older=older, rule=rule, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
                 hinge=self._hinge_text(record, short=False), score=f"{record.score:.2f}", bar=self._bar_text(record),
                 heard_at=f"{int(record.heard_at) // 60} min {int(record.heard_at) % 60:02d} s", portent=portent,
                 seconds=f"{portent.seconds:.1f}" if portent is not None else "")

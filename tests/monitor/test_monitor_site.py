@@ -250,6 +250,75 @@ class TestTheStats:
         assert get(client, "/").status_code == 200 and "MonitorStatus" in site.report.warnings[0]
 
 
+class TestTheTriggerRule:
+    RULE = MonitorStatus(algorithm="decaying_quantile",
+                         trigger_description="the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8; at most one trigger every 60 s")
+
+    def test_the_index_names_the_algorithm_and_says_how_it_works(self):
+        _, _, client, _ = make(status=lambda: self.RULE)
+        page = get(client, "/").get_data(as_text=True)
+        assert "Trigger rule:" in page and "<b>decaying_quantile</b>" in page
+        assert "a score above the 99.5th percentile of scores that count half as much every 300 s" in page
+
+    def test_the_feed_carries_both(self):
+        _, _, client, _ = make(status=lambda: self.RULE)
+        stats = get(client, "/api/triggers").get_json()["stats"]
+        assert stats["algorithm"] == "decaying_quantile" and stats["trigger_description"].startswith("the 99.5th percentile")
+
+    def test_a_trigger_page_says_which_rule_was_in_force(self):
+        _, history, client, _ = make(status=lambda: self.RULE)
+        record = add(history)
+        page = get(client, f"/trigger/{record.id}").get_data(as_text=True)
+        assert "Trigger rule" in page and "decaying_quantile - the 99.5th percentile" in page
+
+    def test_with_only_the_algorithm_known_that_is_shown_alone(self):
+        _, history, client, _ = make(status=lambda: MonitorStatus(algorithm="percentile"))
+        record = add(history)
+        page = get(client, "/").get_data(as_text=True)
+        assert "<b>percentile</b>" in page and "a score above" not in page
+        assert "<td>percentile</td>" in get(client, f"/trigger/{record.id}").get_data(as_text=True)
+
+    def test_with_only_a_description_known_that_is_shown(self):
+        _, _, client, _ = make(status=lambda: MonitorStatus(trigger_description="a fake bar"))
+        assert "a score above a fake bar" in get(client, "/").get_data(as_text=True)
+
+    def test_with_neither_known_nothing_is_said(self):
+        _, history, client, _ = make()
+        record = add(history)
+        assert "Trigger rule" not in get(client, "/").get_data(as_text=True)
+        assert "Trigger rule" not in get(client, f"/trigger/{record.id}").get_data(as_text=True)
+        stats = get(client, "/api/triggers").get_json()["stats"]
+        assert stats["algorithm"] == "" and stats["trigger_description"] == ""
+
+    def test_it_is_escaped(self):
+        _, history, client, _ = make(status=lambda: MonitorStatus(algorithm="<b>x</b>", trigger_description="<script>alert(1)</script>"))
+        record = add(history)
+        for path in ("/", f"/trigger/{record.id}"):
+            page = get(client, path).get_data(as_text=True)
+            assert "<script>alert(1)</script>" not in page and "&lt;script&gt;alert(1)&lt;/script&gt;" in page
+            assert "<b>x</b>" not in page.replace("<b>decaying", "")
+
+    def test_none_is_nothing_not_the_word_none(self):
+        _, history, client, _ = make(status=lambda: MonitorStatus(algorithm=None, trigger_description=None))
+        record = add(history)
+        stats = get(client, "/api/triggers").get_json()["stats"]
+        assert stats["algorithm"] == "" and stats["trigger_description"] == ""
+        assert "None" not in get(client, "/").get_data(as_text=True) and "None" not in get(client, f"/trigger/{record.id}").get_data(as_text=True)
+
+    @pytest.mark.parametrize("junk", [None, 5, ["x"]])
+    def test_a_value_that_is_not_text_is_made_text_and_never_breaks_the_page(self, junk):
+        _, history, client, _ = make(status=lambda: MonitorStatus(algorithm=junk, trigger_description=junk))
+        record = add(history)
+        assert get(client, "/").status_code == 200 and get(client, f"/trigger/{record.id}").status_code == 200
+
+    def test_the_status_is_asked_for_a_trigger_page_only_once(self):
+        calls = []
+        _, history, client, _ = make(status=lambda: calls.append(1) or self.RULE)
+        record = add(history)
+        get(client, f"/trigger/{record.id}")
+        assert len(calls) == 1
+
+
 class TestTheDetailPage:
     def test_it_shows_the_hinge_exemplars_portent_score_bar_and_window(self):
         _, history, client, _ = make()

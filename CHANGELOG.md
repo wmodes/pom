@@ -57,6 +57,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **The monitoring site reports the trigger algorithm**: `MonitorStatus` gains `algorithm` and `trigger_description`; the page shows "Trigger rule: decaying_quantile - a score above the 99.5th percentile of scores that count half as much every 300 s, ..." under the tiles and on each trigger's page,
+  and `/api/triggers` carries both in `stats`. Empty means nothing is said. 12 tests; 22 mutants checked.
 - **`describe()` on every bar**: one line saying how it works and how it is set (for example "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"), for playgrounds and logs. 5 tests.
 - **`MovingAverageBar`** (`pom/scoring/moving_average_bar.py`, 59 tests, mutation-checked: 34 of 34 caught), the first trigger method restored from git history (59eb8fc^) so it can still be chosen: a floor below which scores are ignored, a decaying average (half-life in scores), the bar a
   fraction above the average. New: the average starts at `starting_bar / (1 + fraction)` so there is no warm-up. Not wired in yet.

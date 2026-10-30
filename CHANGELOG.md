@@ -46,6 +46,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`PercentileBar`** (`pom/scoring/percentile_bar.py`, 61 tests, mutation-checked: 41 of 43 caught, the other two equivalent), today's percentile rule moved into a bar of its own: a nearest-rank percentile of a window of time (the larger of `window_seconds` and the last
+  `min_scores` scores), with a `starting_bar` in place of the silent warm-up (until `min_scores` scores have been heard the bar is the starting line, not nothing) and an opt-in `exclude_triggers`. Not wired into the tracker yet; the tracker still carries its own copy.
 - **`TriggerBar` and `DecayingQuantileBar`** (`pom/scoring/`, 97 tests, mutation-checked: 43 of 44 caught, the last is equivalent), the first step of making the trigger's algorithm selectable. `TriggerBar` is the small contract a bar
   keeps (`level_at`, `window_size_at`, `add`, `ignores`); `DecayingQuantileBar` is EWMQ: scores weighted by 2 ** (-age / half_life_seconds), the bar their `percentile` read by linear interpolation through the
   cumulative weight (so 99.5 works with a few dozen scores, and a faded score hardly matters), a `starting_bar` that blends in with a fading weight so there is no warm-up period, and an opt-in `exclude_triggers`

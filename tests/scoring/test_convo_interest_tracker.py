@@ -35,7 +35,7 @@ def warmed_up(**options):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (99.5, 1200.0, 20, 60.0)
+        assert (DEFAULT_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (99.5, 300.0, 20, 60.0)
 
     def test_good_settings_are_quiet(self):
         assert ConvoInterestTracker().report.ok

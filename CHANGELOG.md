@@ -9,6 +9,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The trigger window is five minutes** (`window_seconds = 300`, in `config/pom.toml`, the defaults of the tracker and `Config`, and the tests that pin
+  them), with the percentile still 99.5. Wes lowered it to make the Printer answer more often. Replayed on the five recordings it gives about
+  9.8 triggers an hour (8.1 to 11.2 by meeting; the live room 11.2, 18 in 96 minutes, one every 5.4 minutes, the longest gap 14 minutes),
+  against 6.7 with twenty minutes and a goal of about 6. A busy five minutes holds about 75 scores, so 99.5 is still the best score of
+  the window there; it only separates from 100 above about 200 scores.
 - **Oracle `temperature` back to 0.8** in `config/pom.toml` (it was 0.3 since the `[oracle]` section was made). At 0.3 the model takes the
   likeliest words, and the portents stayed close to the one exemplar's register and to the hinge's own words; 0.8 is also the
   `OracleModelClient` default. Whether it makes the portents more lyrical and sideways is still to be seen.
@@ -38,6 +43,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`TriggerHistory` and `TriggerRecord`** (`pom/monitor/trigger_history.py`, 72 tests, mutation-checked: 36 of 36 caught), the first piece of
+  the monitoring site. `add(hinge, score, bar, window_size, heard_at, portent)` keeps one record per trigger (numbered from 1,
+  never reused, stamped with the clock); `recent()` gives the last hour newest first, `get(id)` one record. **Memory only**: a hinge is
+  what someone said in the room, so records are never written to disk, logged or reported, and they go after `max_age_seconds`
+  (an hour) or when the Printer restarts. Bounded by age and by `max_records` (500), thread-safe, and a bad record or setting is
+  warned about without its text and never raises. The site, its settings and the Conductor's use of it come next.
 - **`listening_to_portent.py`**, the playground for the whole pipeline but the typewriter (`scripts/dev/pipeline/`, 3 smoke tests):
   a microphone (`--mac-mic`, the Mac's system default input; otherwise the Pi's) or a recording (`--wav`) goes through the
   Listener, the `HingeFinder` and the `PortentWriter`, printing each sentence with its score and the trigger's standing, and

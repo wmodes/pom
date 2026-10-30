@@ -120,14 +120,15 @@ Output the score as a single digit | the sentence | what content you found that 
 # the sentence has to top everything said lately. 99.5 lets about one score in two hundred stand above the bar, which
 # does not hang on one lucky high score the way 100 does. 90 means being in the top tenth. Above 0 and at most 100.
 # Replayed on five recorded meetings (four Zoom calls and one live room, about 850 sentences an hour) with the 60 s
-# cooldown below: 99.5 with a 20-minute window gave about 6.7 triggers an hour (3.4 to 9.3 by meeting), 100 with ten
-# minutes 6.4 (4.0 to 8.1), 99 about 9, and 98 about 13.
+# cooldown below: 99.5 with a 5-minute window gave about 9.8 triggers an hour (8.1 to 11.2 by meeting), with a 10-minute
+# window 6.4 (4.0 to 8.1) and with 20 minutes 6.7 (3.4 to 9.3); 100 with ten minutes 6.4, 99 about 9, 98 about 13.
 percentile = 99.5
 
-# How many seconds of recent scores the bar is drawn from: 1200 is the last twenty minutes. It is a length of time, not
-# a count of scores, so a busy room and a quiet one both get "the last twenty minutes". Below a percentile of 100 the
-# rate follows how much the room talks; at 100 it follows this window instead (about one trigger a window). Above 0.
-window_seconds = 1200
+# How many seconds of recent scores the bar is drawn from: 300 is the last five minutes. It is a length of time, not
+# a count of scores, so a busy room and a quiet one both get "the last five minutes". A shorter window forgets sooner, so
+# the bar is lower and the Printer answers more often. 99.5 only differs from 100 once the window holds about 200
+# scores (a busy five minutes holds about 75), so with a short window it is still the best score of the window. Above 0.
+window_seconds = 300
 
 # The fewest scores the window may hold. If the room is so quiet that fewer than this were heard in the window, the
 # window reaches back to the last this-many scores instead, so the bar never comes from a handful. Nothing

@@ -21,8 +21,8 @@ of being threaded through by hand. Today there are five:
                `temperature`. The entry point builds the PromptBuilder and the OracleModelClient from
                `config.oracle` and passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
     [trigger]  A section (see TriggerSettings): when the Printer responds, when a score is above a percentile of the
-               room's recent scores. `window_seconds` is how many seconds of recent scores the bar is drawn from (1200, the
-               last twenty minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
+               room's recent scores. `window_seconds` is how many seconds of recent scores the bar is drawn from (300, the
+               last five minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
                last 20, and nothing triggers until it holds that many), `percentile` how much of the window a score
                must beat (99.5; 100 is the best score of the window), and `cooldown_seconds` how long after a trigger the next
                may come (60; 0 for none). The entry point builds the ConvoInterestTracker from `config.trigger`.
@@ -85,7 +85,7 @@ DEFAULT_ORACLE_TIMEOUT = 120.0
 DEFAULT_ORACLE_MAX_TOKENS = 300
 DEFAULT_ORACLE_TEMPERATURE = 0.8
 DEFAULT_TRIGGER_PERCENTILE = 99.5
-DEFAULT_TRIGGER_WINDOW_SECONDS = 1200.0
+DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
 DEFAULT_TRIGGER_MIN_SCORES = 20
 DEFAULT_TRIGGER_COOLDOWN_SECONDS = 60.0
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
@@ -173,8 +173,8 @@ class TriggerSettings:
         percentile: How much of the room's recent scores a score must beat to trigger, above 0 and at most 100.
             100 means beating the best score of the window; 99.5 beating all but about one score in two hundred;
             90 being in the top tenth.
-        window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (1200 is the
-            last twenty minutes). Measured in time, not in scores, so it means the same in a busy room and a
+        window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (300 is the
+            last five minutes). Measured in time, not in scores, so it means the same in a busy room and a
             quiet one.
         min_scores: The window always holds at least this many scores, and nothing triggers until it does, a
             whole number of at least 2.

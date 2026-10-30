@@ -6,9 +6,9 @@ Each score goes in through `record`, with the time it was heard, and the tracker
 
 The rule is a percentile of the room's recent scores, which makes no assumption about their shape:
 
-  * The window: the scores heard in the last `window_seconds` (1200, the last twenty minutes), or the last
+  * The window: the scores heard in the last `window_seconds` (300, the last five minutes), or the last
     `min_scores` scores if the room is so quiet that fewer than that were heard in the time. So the window is
-    the larger of the two. It is a length of time, so a busy room and a quiet one both get "the last twenty
+    the larger of the two. It is a length of time, so a busy room and a quiet one both get "the last five
     minutes"; the count is only a floor under it, so the bar is never drawn from a handful of scores.
   * The bar: the `percentile` of the window's scores, read by nearest rank. Line the scores up from lowest to
     highest; the bar is the score that has at least that share of the scores at or below it, so it is always a
@@ -26,9 +26,11 @@ The rule is a percentile of the room's recent scores, which makes no assumption 
 Why a percentile and not a statistical fence: the scorer's numbers are lumpy (a pile at 1, humps near 3 and
 5, almost nothing above 7), so a rule that predicts where the top should be from the middle of the scores,
 such as Tukey's fence, lands above the real top or below it. A percentile measures where the top of the
-window really is. With 99.5 and a twenty-minute window the Printer answered about 6.7 times an hour on the five
-recordings it was tried on; the percentile and the window are the two knobs. Below 100 the rate follows how much the
-room talks (about one sentence in two hundred); at 100 it follows the window instead.
+window really is. With 99.5 and a five-minute window the Printer answered about 9.8 times an hour on the five
+recordings it was tried on (a twenty-minute window gave 6.7); the percentile and the window are the two knobs. The
+percentile only separates from 100 once the window holds about 200 scores: a five-minute window of a busy room holds
+about 75, so there 99.5 is still the best score of the window. Below that size the rate follows the window; above it, how
+much the room talks (about one sentence in two hundred).
 
 Every score that is a number joins the window, the lowest included: nothing is thrown away by a fixed line,
 so the bar works from what the room really scored. A fragment that has no score (None) is IGNORED and
@@ -57,7 +59,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 DEFAULT_PERCENTILE = 99.5
-DEFAULT_WINDOW_SECONDS = 1200.0
+DEFAULT_WINDOW_SECONDS = 300.0
 DEFAULT_MIN_SCORES = 20
 DEFAULT_COOLDOWN_SECONDS = 60.0
 MINIMUM_MIN_SCORES = 2                 # a bar needs at least two scores to stand above

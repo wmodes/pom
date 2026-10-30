@@ -55,7 +55,7 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
 - **window** †: the room's recent scores the trigger is judged against: the scores heard in the last
-  `window_seconds` (1200, the last twenty minutes), or the last `min_scores` (20) if the room is so quiet that
+  `window_seconds` (300, the last five minutes), or the last `min_scores` (20) if the room is so quiet that
   fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
 - **bar** †: the score a new score must be above to trigger: the `percentile` of the window's scores, by nearest rank
   (always a score the room really earned). 100 puts it at the best score of the window, so a sentence has to beat
@@ -95,6 +95,9 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   `{exemplars}` and `{hinge}` marking where those go.
 - **prompt builder** †: the component that fills the exemplars and the hinge into the oracle prompt
   (`PromptBuilder`).
+- **trigger record** †: one trigger and what came of it: the hinge, its score, the bar it beat, the window, the exemplars
+  shown and the portent (`TriggerRecord`). **Trigger history**: the last hour of them, newest first, kept in memory only and
+  never written down (`TriggerHistory`), for the monitoring site.
 - **hinge finder** †: the component that joins the listener, the fragmenter, the scorer and the trigger, and yields each
   thing heard as a `ScoredSentence`; the one the trigger fired on is the hinge (`HingeFinder`).
 - **portent writer** †: the component that takes a hinge and returns a portent, joining the prompt builder and the oracle

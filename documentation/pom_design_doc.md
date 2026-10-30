@@ -156,9 +156,9 @@ downloaded per machine.
 
 The rule is a percentile of the room's recent scores. It makes no assumption about their shape:
 
-- **The window**: the scores heard in the last `window_seconds` (1200, twenty minutes), or the last `min_scores` (20)
+- **The window**: the scores heard in the last `window_seconds` (300, five minutes), or the last `min_scores` (20)
   if the room is so quiet that fewer were heard in that time; whichever is larger. It is a length of time, not a count,
-  so a busy room and a quiet one both get "the last twenty minutes". Every score joins it, the lowest included. There is
+  so a busy room and a quiet one both get "the last five minutes". Every score joins it, the lowest included. There is
   no floor.
 - **The bar**: the `percentile` (99.5) of the window's scores, by nearest rank: line the scores up and take the lowest
   one with at least that share of the window at or below it. It is always a score the room really earned. At 100 it is the
@@ -181,8 +181,10 @@ the bar was above the best score of its own window in two windows out of three, 
 9 in a live call, and it gave 12.5 triggers an hour in a live room against 4 to 9 in the Zoom meetings. A percentile
 measures where the top of the window actually is instead of predicting it from the middle. 100 (beat the best of ten
 minutes) fit the recordings best, but one lucky high score then holds the bar up for the whole window, so the shipped
-setting is 99.5 over twenty minutes, which gives a similar rate without that dependence. Below 100 the rate follows how
-much the room talks (about one sentence in two hundred); at 100 it follows the window instead. The cooldown exists
+setting is 99.5 over five minutes, chosen by hand to make the Printer answer more often (9.8 an hour on the recordings,
+against 6.7 with twenty minutes). 99.5 only differs from 100 once the window holds about 200 scores, and a busy five
+minutes holds about 75, so with this window it is still the best score of the window: below that size the rate follows the
+window, above it how much the room talks (about one sentence in two hundred). The cooldown exists
 because one meeting had six triggers in eight seconds (a run of one-line jokes).
 
 **Result with the shipped settings** (5 recorded meetings, four Zoom calls and one live room, 7.1 hours): about 6.7 triggers
@@ -372,6 +374,7 @@ src/pom/
                fallback_scorer                                   shelved, unused
   prompt/      prompt_builder                                    built
   voice/       oracle_model_client, portent_writer               built
+  monitor/     trigger_history (the last hour, memory only)      built
   output/      formatter, serial wrapper, reply selection        planned
   input/       keyboard                                          planned
   conductor                                                      planned; the only module that knows the whole pipeline
@@ -427,7 +430,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 - **Scorer**: word lists -> a small local language model (Qwen3-4B), one sentence per request, no context, a 0 to 9
   probability-weighted score.
 - **Trigger**: a pool of faded scores against a moving threshold with a rate governor, activity curve and no cooldown
-  -> a percentile (99.5) of the last twenty minutes of scores with a 60 s cooldown and no floor.
+  -> a percentile (99.5) of the last five minutes of scores with a 60 s cooldown and no floor.
 - **Hearing**: cutting by loudness with a moving noise floor -> whisper's own voice detection on a rolling buffer; the
   three-way sort of whisper's output (words, ambient captions, nothing).
 - **Voice**: two tracks behind an interface -> the oracle model, a prompted stock model with a human-written prompt (Track B

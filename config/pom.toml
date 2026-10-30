@@ -335,3 +335,43 @@ keep_composed_characters = ""
 # true if the wheel is one of the rare ASCII wheels (IBM/Lexmark Courier 10, P/N 1353909) that has all nine. Then every
 # one is typed as it is, whatever keep_composed_characters says. (This is not CadetWriter's own setting of that name.)
 ascii_printwheel = false
+
+
+# ================================================
+# TERMINAL: the serial connection to the typewriter
+# ================================================
+
+# The Wheelwriter, converted with the CadetWriter board, acts as a serial terminal. The Printer sends each portent to it
+# over a serial port, no faster than the typewriter can type. These must match the CadetWriter's own settings
+# (its SetUp mode; see its user guide, section 3).
+[terminal]
+
+# The serial device. /dev/ttyACM0 is the CadetWriter's USB port on the Pi; check with `ls /dev/ttyACM*` after plugging it in.
+port = "/dev/ttyACM0"
+
+# The speed. Only the CadetWriter's RS-232 port uses it (its default is 9600); the USB port ignores it.
+baud = 9600
+
+# "xon_xoff" (the CadetWriter's default), "rts_cts" or "none". Without flow control a flood of text is lost.
+flow_control = "xon_xoff"
+
+# What a newline is sent as: "cr", "crlf", "lf" or "lfcr". Must match the CadetWriter's "receive end-of-line"
+# setting, whose default is "crlf". A bare LF only feeds the paper, so each line would step down the page.
+end_of_line = "crlf"
+
+# The fastest the text is sent, in characters a second, above 0. The Wheelwriter types about 16; a little under keeps
+# the CadetWriter's small buffer nearly empty. To be measured on the machine.
+characters_per_second = 16
+
+# Seconds to wait after the last character for the typewriter to finish the line, 0 or more. Listening waits too.
+finish_wait_seconds = 2
+
+# Someone at the typewriter's keyboard can type back. In its default full-duplex mode the CadetWriter sends each key to
+# the Pi and prints nothing itself, so the Pi decides what reaches the paper. true echoes each key back as it arrives
+# ("echoplex", the old terminal name for it); then the CadetWriter must be in full duplex, its default. false leaves the
+# echo to the CadetWriter, which must then be in half duplex. A mismatch types every character twice, or none.
+echoplex = true
+
+# true throws away keys pressed while a portent is being typed (and any half-typed line), so nothing typed over a
+# portent appears after it. false keeps them and handles them once the portent is done.
+no_input_during_output = true

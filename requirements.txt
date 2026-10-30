@@ -11,3 +11,6 @@ wordfreq>=3.1,<4
 # WordNet (senses and relations), a part-of-speech tagger and stopword lists, for reading the
 # meaning of a fragment. Its data is fetched separately: scripts/setup/setup-nltk-data.sh
 nltk>=3.9,<4
+
+# The serial port to the typewriter (pom.output.TypewriterPort). Pure Python, the standard choice.
+pyserial>=3.5,<4

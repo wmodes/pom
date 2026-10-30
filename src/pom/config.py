@@ -35,7 +35,11 @@ of being threaded through by hand. Today there are five:
     [output]   A section (see OutputSettings): how a portent is set on the page. The paper's width, the margins and the
                print wheel's characters per inch give the line width; `quote_indent` indents a quotation and
                `linefeeds_after_portent` is how far the paper moves on after a portent, and
-               `keep_composed_characters` and `ascii_printwheel` say which characters most wheels lack are typed as they are. The entry point
+               `keep_composed_characters` and `ascii_printwheel` say which characters most wheels lack are typed as they are.
+    [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
+               baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
+               (`echoplex`, `no_input_during_output`). The entry point builds the
+               TypewriterPort from `config.terminal`. The entry point
                builds the TypewriterFormatter from `config.output`.
 
 Where values come from, highest priority first:
@@ -83,7 +87,9 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
          "monitor.show_hinges", "monitor.history_seconds", "output.paper_width_inches", "output.margin_inches",
          "output.characters_per_inch", "output.quote_indent", "output.linefeeds_after_portent",
-         "output.keep_composed_characters", "output.ascii_printwheel"}
+         "output.keep_composed_characters", "output.ascii_printwheel", "terminal.port", "terminal.baud",
+         "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
+         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.no_input_during_output"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -133,6 +139,18 @@ DEFAULT_OUTPUT_ASCII_PRINTWHEEL = False
 # Seven of the nine ASCII characters most print wheels lack (< and > are the others, and are always typed as they are); the
 # CadetWriter builds them from periods ("period graphics"), and the TypewriterFormatter swaps each for a look-alike unless kept.
 COMPOSED_CHARACTERS = "\\^`{|}~"
+DEFAULT_TERMINAL_PORT = "/dev/ttyACM0"
+DEFAULT_TERMINAL_BAUD = 9600
+TERMINAL_BAUD_RATES = (50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600,
+                       76800, 115200, 230400)
+DEFAULT_TERMINAL_FLOW_CONTROL = "xon_xoff"
+TERMINAL_FLOW_CONTROLS = ("xon_xoff", "rts_cts", "none")
+DEFAULT_TERMINAL_END_OF_LINE = "crlf"
+TERMINAL_END_OF_LINES = ("cr", "crlf", "lf", "lfcr")
+DEFAULT_TERMINAL_CHARACTERS_PER_SECOND = 16.0
+DEFAULT_TERMINAL_FINISH_WAIT_SECONDS = 2.0
+DEFAULT_TERMINAL_ECHOPLEX = True
+DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT = True
 MIN_OUTPUT_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -332,6 +350,34 @@ class OutputSettings:
         return COMPOSED_CHARACTERS if self.ascii_printwheel else self.keep_composed_characters
 
 
+@dataclass(frozen=True)
+class TerminalSettings:
+    """The `[terminal]` section: the serial connection to the typewriter, which acts as a terminal.
+
+    Attributes:
+        port: The serial device (/dev/ttyACM0 for the CadetWriter's USB port).
+        baud: The speed, one of TERMINAL_BAUD_RATES. Only the CadetWriter's RS-232 port uses it; USB ignores it.
+        flow_control: "xon_xoff", "rts_cts" or "none". Match the CadetWriter's setting; without it a flood loses text.
+        end_of_line: What a newline is sent as: "cr", "crlf", "lf" or "lfcr". Must match the CadetWriter's "receive
+            end-of-line" setting (its default is crlf); a bare LF only feeds the paper.
+        characters_per_second: The fastest the text is sent, above 0 (16 is a little under the Wheelwriter's speed).
+        finish_wait_seconds: How long to wait after the last character for the typewriter to finish, 0 or more.
+        echoplex: True to echo each key typed on the typewriter back to it (the old terminal name for the host echoing what it
+            receives). The CadetWriter must then be in full duplex (its default); with False it must be in half duplex, which
+            echoes locally. A mismatch types every character twice, or none.
+        no_input_during_output: True to throw away keys pressed while a portent is being typed, so nothing typed over it
+            appears after it; False keeps them for the next line read.
+    """
+    port: str = DEFAULT_TERMINAL_PORT
+    baud: int = DEFAULT_TERMINAL_BAUD
+    flow_control: str = DEFAULT_TERMINAL_FLOW_CONTROL
+    end_of_line: str = DEFAULT_TERMINAL_END_OF_LINE
+    characters_per_second: float = DEFAULT_TERMINAL_CHARACTERS_PER_SECOND
+    finish_wait_seconds: float = DEFAULT_TERMINAL_FINISH_WAIT_SECONDS
+    echoplex: bool = DEFAULT_TERMINAL_ECHOPLEX
+    no_input_during_output: bool = DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT
+
+
 class Config:
     """The project's shared settings, plus a report of anything that had to be recovered from.
 
@@ -347,6 +393,7 @@ class Config:
         listening: The `[listening]` section, as a ListeningSettings.
         monitor: The `[monitor]` section, as a MonitorSettings.
         output: The `[output]` section, as an OutputSettings.
+        terminal: The `[terminal]` section, as a TerminalSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -355,7 +402,7 @@ class Config:
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
-                 output: Optional[OutputSettings] = None):
+                 output: Optional[OutputSettings] = None, terminal: Optional[TerminalSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
@@ -363,6 +410,7 @@ class Config:
         self.listening = listening if listening is not None else ListeningSettings()
         self.monitor = monitor if monitor is not None else MonitorSettings()
         self.output = output if output is not None else OutputSettings()
+        self.terminal = terminal if terminal is not None else TerminalSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -527,8 +575,23 @@ class Config:
                                     linefeeds_after_portent=output.linefeeds_after_portent,
                                     keep_composed_characters=output.keep_composed_characters,
                                     ascii_printwheel=output.ascii_printwheel)
+        terminal = TerminalSettings(
+            _text(values.get("terminal.port", DEFAULT_TERMINAL_PORT), "terminal.port", DEFAULT_TERMINAL_PORT, report),
+            _baud(values.get("terminal.baud", DEFAULT_TERMINAL_BAUD), "terminal.baud", DEFAULT_TERMINAL_BAUD, report),
+            _choice(values.get("terminal.flow_control", DEFAULT_TERMINAL_FLOW_CONTROL), "terminal.flow_control",
+                    DEFAULT_TERMINAL_FLOW_CONTROL, TERMINAL_FLOW_CONTROLS, report),
+            _choice(values.get("terminal.end_of_line", DEFAULT_TERMINAL_END_OF_LINE), "terminal.end_of_line",
+                    DEFAULT_TERMINAL_END_OF_LINE, TERMINAL_END_OF_LINES, report),
+            _positive(values.get("terminal.characters_per_second", DEFAULT_TERMINAL_CHARACTERS_PER_SECOND),
+                      "terminal.characters_per_second", DEFAULT_TERMINAL_CHARACTERS_PER_SECOND, report),
+            _number(values.get("terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS),
+                    "terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS, 0.0, report),
+            _bool(values.get("terminal.echoplex", DEFAULT_TERMINAL_ECHOPLEX), "terminal.echoplex", report,
+                  DEFAULT_TERMINAL_ECHOPLEX),
+            _bool(values.get("terminal.no_input_during_output", DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT),
+                  "terminal.no_input_during_output", report, DEFAULT_TERMINAL_NO_INPUT_DURING_OUTPUT))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor,
-                   output)
+                   output, terminal)
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:
@@ -567,8 +630,8 @@ def _flatten(document: dict) -> dict:
     return flat
 
 
-def _bool(value, label: str, report: FaultRecorder) -> bool:
-    """A boolean from a TOML bool or an on/off style string; otherwise False with a warning."""
+def _bool(value, label: str, report: FaultRecorder, default: bool = False) -> bool:
+    """A boolean from a TOML bool or an on/off style string; otherwise `default` (False unless given) with a warning."""
     if isinstance(value, bool):
         return value
     text = str(value).strip().lower()
@@ -576,8 +639,8 @@ def _bool(value, label: str, report: FaultRecorder) -> bool:
         return True
     if text in _FALSE:
         return False
-    report.warn(f"{label} must be true or false, got {value!r}; using false")
-    return False
+    report.warn(f"{label} must be true or false, got {value!r}; using {'true' if default else 'false'}")
+    return default
 
 
 def _count(value, label: str, default: int, report: FaultRecorder) -> int:
@@ -666,6 +729,14 @@ def _composed(value, label: str, default: str, report: FaultRecorder) -> str:
     if kept != value:
         report.warn(f"{label} may hold only the characters {COMPOSED_CHARACTERS}, got {value!r}; keeping {kept!r}")
     return kept
+
+
+def _baud(value, label: str, default: int, report: FaultRecorder) -> int:
+    """One of the standard baud rates (a whole number; True is 1 and no baud rate); otherwise the default."""
+    if isinstance(value, int) and value in TERMINAL_BAUD_RATES:
+        return value
+    report.warn(f"{label} must be a standard baud rate (such as 9600 or 115200), got {value!r}; using {default}")
+    return default
 
 
 def _text(value, label: str, default: str, report: FaultRecorder) -> str:

@@ -70,7 +70,8 @@ microphone -> whisper-driven cutting -> whisper -> sort: words / captions / noth
 | Hinge (the sentence that triggered) | Decided; nothing to build but the hand-off |
 | PromptBuilder, `OracleModelClient` | Built |
 | Output: formatter (`TypewriterFormatter`) | Built |
-| Output: serial port, pause listening | Planned |
+| Output: serial port (`TypewriterPort`) and the keyboard coming back | Built |
+| Output: pausing listening while it types | Planned (the Conductor) |
 | Input (keyboard) | Planned |
 | Conductor | Planned |
 
@@ -400,8 +401,13 @@ Whether to start them depends on how far the prompted oracle model gets.
   a look-alike (`'`, `-`, `( )`, `/`) unless `keep_composed_characters` says otherwise, and `ascii_printwheel` keeps all of them. The line width is worked out
   in `[output]` from the paper width, the margins and the wheel's characters per inch (8.5 inch paper with 1 inch margins:
   65 characters at 10 cpi, 78 at 12, 97 at 15; 10 is the default, the widest letters, so it fits any wheel).
-- (planned) The serial port wrapper that paces the text (about 16 characters a second). It tells the Conductor when printing
-  starts and ends, so listening pauses (half-duplex).
+- Built: the `TypewriterPort` (`src/pom/output/typewriter_port.py`, config `[terminal]`) sends the formatted portent over serial, paced (16
+  characters a second to start; to be measured), with flow control, CR+LF line endings and only safe bytes. `type()` blocks until the
+  machine has had time to finish, so the Conductor pauses listening, calls it, and resumes (half-duplex); the port knows nothing about
+  listening. The same port reads the keyboard: `read_line()` returns what someone types when they press C Rtn. In the CadetWriter's default
+  full-duplex mode the Pi echoes each key (`echoplex`), a Backspace overstrikes but edits the line, and keys pressed during a portent are
+  thrown away (`no_input_during_output`). The `ConsoleTypewriter` is the same code on the terminal, for development.
+- (open) How a typed line joins the pipeline as a hinge, and the small score bonus or lower bar, are the Conductor's and the trigger's.
 - The output validation hook (`scripts/dev/corpus/validate_output.py`) is a deliberate stub. Checking for verbatim
   overlap with the corpus was judged the wrong measure: false positives on quotes that land, false negatives on
   near-copies, blind to echoing the hinge.
@@ -465,8 +471,8 @@ src/pom/
   voice/       oracle_model_client, portent_writer               built
   monitor/     trigger_history (the last hour, memory only),     built
                monitor_site (the web page, Flask, password)      built; not yet fed by the pipeline
-  output/      typewriter_formatter                              built
-               serial wrapper, reply selection                   planned
+  output/      typewriter_formatter, typewriter_port             built
+               reply selection                                   planned
   input/       keyboard                                          planned
   conductor                                                      planned; the only module that knows the whole pipeline
 ```
@@ -496,7 +502,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
    Look into why nothing is cached when convenient.
 2. (Decided 2026-10-27) The hinge is the sentence that triggered. The hand-off is the Conductor's.
 3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/listen_to_room.py`).
-4. Output side: the formatter is built; the serial wrapper and reply selection are next.
+4. Output side: the formatter and the serial port are built; reply selection is next.
 5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
 6. Paper guards; "failing loudly".
 7. Run it on the Pi; test in a real room (a quiet one too) and retune from that.

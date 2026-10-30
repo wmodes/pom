@@ -9,6 +9,19 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **The TypewriterPort and the ConsoleTypewriter** (`src/pom/output/typewriter_port.py`): the last step after the formatter. `type(text)` sends a portent to the typewriter over a serial
+  port (pyserial, new in `requirements.txt`), paced at `characters_per_second` (16) from a schedule that does not drift, with XON/XOFF or RTS/CTS flow control, a newline sent as the CadetWriter's
+  line ending (CR+LF by default: a bare LF only feeds the paper), only printable ASCII and newlines let through (an ESC would start a CadetWriter escape sequence), and a wait at the end
+  for the machine to finish. A port that is missing or fails halfway gives a report and a warning, never an exception, and is reopened next time. The ConsoleTypewriter is the same code typing on the
+  terminal, so everything can be tried without the machine.
+- **The keyboard comes back through the same port**: `read_line(timeout)` returns a line typed on the typewriter when C Rtn is pressed. With `echoplex` (the old terminal name for the host echoing
+  what it receives; the CadetWriter stays in its default full duplex) each key is echoed as it arrives, Backspace moves the carriage left and edits the line (a retype overstrikes; the CadetWriter
+  does not use a correction ribbon), and C Rtn is echoed as the line ending. With `no_input_during_output` keys typed during a portent, and any half-typed line, are thrown away when it finishes.
+  The portent and the keyboard share the line under a lock, so they never interleave. Neither the text nor the keys typed are logged or reported. 76 tests; 78 mutants checked.
+- **`[terminal]` in the config**: `port` (`/dev/ttyACM0`), `baud` (9600), `flow_control` (`xon_xoff`), `end_of_line` (`crlf`), `characters_per_second` (16), `finish_wait_seconds` (2), `echoplex` (true)
+  and `no_input_during_output` (true). The defaults are the CadetWriter's own (its user guide, section 3); `end_of_line` and `flow_control` must match its settings. A bad boolean now falls
+  back to that setting's own default, not always false. 26 config tests; 17 mutants checked.
+- **The playground `scripts/dev/output/type_text_on_typewriter.py`** formats text and types it on the screen at the typewriter's pace (`--fast`, `--cps`), on a real port with `--port`, and waits for a typed-back line with `--reply SECONDS`.
 - **The TypewriterFormatter** (`src/pom/output/`): a portent in, text the Wheelwriter can print out. It removes the triple-backtick fences
   (the prompt shows the model its exemplars and the hinge in fences, so a model may echo them) and types a fenced quotation indented
   4 spaces with a blank line before and after, as a block quote would be set. Curly quotes, dashes, accents and ligatures become plain ASCII

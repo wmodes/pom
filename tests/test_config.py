@@ -921,3 +921,71 @@ def test_the_fallback_for_a_too_short_line_keeps_the_composed_settings(tmp_path)
     text = '[output]\nmargin_inches = 4\nkeep_composed_characters = "|"\nascii_printwheel = true\n'
     output = Config.load(write(tmp_path, text), environ={}).output
     assert output.keep_composed_characters == "|" and output.ascii_printwheel is True and output.line_width == 65
+
+
+# --- The [terminal] section ----------------------------------------------------------------
+
+def test_the_terminal_defaults_are_the_cadetwriters_own():
+    from pom.config import TerminalSettings
+    config = Config.load(environ={})
+    assert config.terminal == TerminalSettings() and config.report.ok
+    terminal = config.terminal
+    assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("/dev/ttyACM0", 9600, "xon_xoff", "crlf")
+    assert (terminal.characters_per_second, terminal.finish_wait_seconds) == (16.0, 2.0)
+    assert (terminal.echoplex, terminal.no_input_during_output) == (True, True)
+
+
+def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
+    from pom.config import TerminalSettings
+    text = ('[terminal]\nport = "/dev/ttyUSB0"\nbaud = 115200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
+            "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\nno_input_during_output = false\n")
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, False) and config.report.ok
+
+
+@pytest.mark.parametrize("key, value", [
+    ("port", "5"), ("baud", "1234"), ("baud", '"9600"'), ("baud", "true"), ("baud", "9600.0"), ("flow_control", '"hardware"'),
+    ("end_of_line", '"newline"'), ("characters_per_second", "0"), ("characters_per_second", '"fast"'),
+    ("finish_wait_seconds", "-1"), ("finish_wait_seconds", "true"), ("echoplex", '"maybe"'), ("no_input_during_output", "3"),
+])
+def test_a_bad_terminal_value_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import TerminalSettings
+    config = Config.load(write(tmp_path, f"[terminal]\n{key} = {value}\n"), environ={})
+    assert config.terminal == TerminalSettings()
+    assert len(config.report.warnings) == 1 and f"terminal.{key}" in config.report.warnings[0]
+
+
+@pytest.mark.parametrize("baud", [50, 9600, 230400])
+def test_every_standard_baud_rate_is_accepted(tmp_path, baud):
+    assert Config.load(write(tmp_path, f"[terminal]\nbaud = {baud}\n"), environ={}).terminal.baud == baud
+
+
+def test_the_terminal_choices_and_defaults_are_the_ones_the_port_uses():
+    from pom import config as settings
+    from pom.output import typewriter_port as port
+    assert settings.TERMINAL_BAUD_RATES == port.BAUD_RATES and settings.TERMINAL_FLOW_CONTROLS == port.FLOW_CONTROLS
+    assert settings.TERMINAL_END_OF_LINES == tuple(port.END_OF_LINES)
+    assert (settings.DEFAULT_TERMINAL_BAUD, settings.DEFAULT_TERMINAL_FLOW_CONTROL, settings.DEFAULT_TERMINAL_END_OF_LINE) == (
+        port.DEFAULT_BAUD, port.DEFAULT_FLOW_CONTROL, port.DEFAULT_END_OF_LINE)
+    assert (settings.DEFAULT_TERMINAL_CHARACTERS_PER_SECOND, settings.DEFAULT_TERMINAL_FINISH_WAIT_SECONDS) == (
+        port.DEFAULT_CHARACTERS_PER_SECOND, port.DEFAULT_FINISH_WAIT_SECONDS)
+
+
+def test_the_committed_config_sets_every_terminal_key():
+    import tomllib
+    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
+        section = tomllib.load(f)["terminal"]
+    assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
+                            "echoplex", "no_input_during_output"}
+
+
+def test_a_config_built_without_terminal_settings_has_the_defaults():
+    from pom.config import TerminalSettings
+    assert Config().terminal == TerminalSettings()
+
+
+def test_a_bad_flag_falls_back_to_that_flags_own_default_with_the_right_word_in_the_warning(tmp_path):
+    config = Config.load(write(tmp_path, '[terminal]\nechoplex = "maybe"\n[monitor]\nenabled = "maybe"\n'), environ={})
+    assert config.terminal.echoplex is True and config.monitor.enabled is False
+    assert any("terminal.echoplex" in w and "using true" in w for w in config.report.warnings)
+    assert any("monitor.enabled" in w and "using false" in w for w in config.report.warnings)

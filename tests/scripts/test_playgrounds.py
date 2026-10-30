@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[2]
 PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/sort_whisper_text.py", "scripts/dev/listening/listen_to_room.py",
                "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/voice/write_portent_from_hinge.py",
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_triggers.py",
-               "scripts/dev/output/format_text_for_typewriter.py"]
+               "scripts/dev/output/format_text_for_typewriter.py",
+               "scripts/dev/output/type_text_on_typewriter.py"]
 
 
 def run(script, *args, env=None):
@@ -96,3 +97,29 @@ def test_the_format_playground_swaps_the_composed_characters_unless_told_to_keep
     kept = run("scripts/dev/output/format_text_for_typewriter.py", "--keep", "`~", "a `b` ~ c < d").stdout.splitlines()
     ascii_wheel = run("scripts/dev/output/format_text_for_typewriter.py", "--ascii-wheel", "a `b` ~ c < d").stdout.splitlines()
     assert swapped[1] == "a 'b' - c < d" and kept[1] == "a `b` ~ c < d" and ascii_wheel[1] == "a `b` ~ c < d"
+
+
+def test_the_type_playground_types_the_formatted_text_on_the_screen():
+    result = run("scripts/dev/output/type_text_on_typewriter.py", "--fast", "Say it:\n```\n\"Go.\"\n```\nDone.")
+    assert result.returncode == 0
+    assert 'Say it:\n\n    "Go."\n\nDone.' in result.stdout and "all typed" in result.stdout
+
+
+def test_the_type_playground_says_so_when_the_real_port_will_not_open():
+    result = run("scripts/dev/output/type_text_on_typewriter.py", "--fast", "--port", "/dev/does-not-exist", "Hello")
+    assert result.returncode == 0 and "NOT all typed" in result.stdout and "would not open" in result.stdout
+
+
+def test_the_type_playground_throws_away_keys_typed_before_the_portent_ends():
+    result = subprocess.run([sys.executable, str(ROOT / "scripts/dev/output/type_text_on_typewriter.py"), "--fast", "--reply", "1", "Hello"],
+                            input="typed over the portent\n", capture_output=True, text=True, timeout=60)
+    assert "nothing typed back" in result.stdout
+
+
+def test_the_type_playground_returns_a_line_typed_after_the_portent():
+    import time
+    process = subprocess.Popen([sys.executable, str(ROOT / "scripts/dev/output/type_text_on_typewriter.py"), "--fast", "--reply", "20", "Hello"],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    time.sleep(3)                                            # the portent is typed (fast) long before this
+    output, _ = process.communicate("a reply\n", timeout=60)
+    assert "typed back: 'a reply'" in output

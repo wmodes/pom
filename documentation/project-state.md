@@ -126,7 +126,8 @@ src/pom/
     portent_writer.py  built   a hinge in, a Portent out (joins the prompt builder and the model client; seedable exemplars)
   output/
     typewriter_formatter.py built  portent in, printable wrapped text out (fences removed, quote indented, ASCII, line feeds after)
-                       planned reply selection, serial port wrapper (pauses listening)
+    typewriter_port.py   built     text to the typewriter over serial, paced; keyboard lines back (echoplex); ConsoleTypewriter stand-in
+                       planned reply selection
   input/               planned keyboard, same path as speech with a small score bonus
   conductor            planned the only module that knows the whole pipeline; hands the triggering sentence on as the hinge
 ```
@@ -263,7 +264,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    known-good `probe_hearing_run.sh` run. The code matches the experiment on a recorded meeting (all 705 things heard
    identical), but the new `MicSource` has only met stand-in `arecord` programs. One known limit: the sound pass for
    lyrics hears about two seconds, not ten (see the design doc).
-2. **The Output side:** the serial wrapper and the "stop listening while printing" signal. (The `TypewriterFormatter` is built:
+2. **The Output side:** the "stop listening while printing" signal belongs to the Conductor. (The `TypewriterPort` is built too: paced serial, flow control, CR+LF, keyboard lines back with echoplex; config `[terminal]`; tested on fakes only, not yet on the machine. The `TypewriterFormatter` is built:
    fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[output]` line width, `linefeeds_after_portent` line feeds at the end.)
 3. **The Conductor,** with the half-duplex state and its watchdog; the hand-off of the triggering sentence to the
    PromptBuilder; the entry point; the startup duties in `startup.py` (mic gain, scorer warm-up, checks for whisper, the

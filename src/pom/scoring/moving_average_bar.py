@@ -75,6 +75,7 @@ class MovingAverageBar(TriggerBar):
         starting = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number")
         low, high = self._valid_range(score_range)
         self._floor = low + floor * (high - low)
+        self._half_life, self._starting_bar = half_life, starting
         self._weight = 1.0 - 0.5 ** (1.0 / half_life)            # how far each score moves the average toward itself
         self._average = starting / (1.0 + self._fraction)         # so the bar (average x (1 + fraction)) starts at the starting line
         self.counted = 0
@@ -114,6 +115,11 @@ class MovingAverageBar(TriggerBar):
     def window_size_at(self, now: float) -> int:
         """How many scores have been averaged so far (there is no window; this is for display)."""
         return self.counted
+
+    def describe(self) -> str:
+        """For example: 25% above a decaying average of scores (half-life 10 scores, ignoring scores under 0.45), starting at 6.8."""
+        return (f"{self._fraction * 100:g}% above a decaying average of scores (half-life {self._half_life:g} scores, ignoring scores "
+                f"under {self._floor:.2f}), starting at {self._starting_bar:g}")
 
     def ignores(self, score: float) -> bool:
         """True for a score below the floor, and for anything that is not a number."""

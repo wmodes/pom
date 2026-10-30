@@ -46,6 +46,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`describe()` on every bar**: one line saying how it works and how it is set (for example "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"), for playgrounds and logs. 5 tests.
 - **`MovingAverageBar`** (`pom/scoring/moving_average_bar.py`, 59 tests, mutation-checked: 34 of 34 caught), the first trigger method restored from git history (59eb8fc^) so it can still be chosen: a floor below which scores are ignored, a decaying average (half-life in scores), the bar a
   fraction above the average. New: the average starts at `starting_bar / (1 + fraction)` so there is no warm-up. Not wired in yet.
 - **`PercentileBar`** (`pom/scoring/percentile_bar.py`, 61 tests, mutation-checked: 41 of 43 caught, the other two equivalent), today's percentile rule moved into a bar of its own: a nearest-rank percentile of a window of time (the larger of `window_seconds` and the last

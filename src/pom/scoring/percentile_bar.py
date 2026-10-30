@@ -118,6 +118,12 @@ class PercentileBar(TriggerBar):
         self._recent.append((now, float(score)))
         self._forget_old(now)
 
+    def describe(self) -> str:
+        """For example: the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8."""
+        return (f"the {self._percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
+                f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}"
+                + (", triggering scores left out" if self._exclude_triggers else ""))
+
     # --- The window -----------------------------------------------------------------
 
     def _window(self, now: float) -> Optional[List[float]]:

@@ -275,6 +275,16 @@ class TestAgainstAPlainReference:
         assert got == self.reference(events, 120, 12, percentile, 6.8)
 
 
+class TestDescribing:
+    def test_it_says_how_it_works_in_one_line(self):
+        text = PercentileBar(99.5, 300, 20, 6.8).describe()
+        assert text == "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"
+
+    def test_it_mentions_leaving_triggers_out_only_when_it_does(self):
+        assert "triggering scores left out" in PercentileBar(exclude_triggers=True).describe()
+        assert "triggering scores left out" not in PercentileBar().describe()
+
+
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, 100.1, 101, "99", None, True, [99], float("nan"), float("inf")])
     def test_a_bad_percentile_means_the_default_with_a_warning(self, bad):

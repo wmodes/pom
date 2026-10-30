@@ -143,6 +143,12 @@ class TestTheWindowSize:
         assert b.window_size_at(0.0) == 3
 
 
+class TestDescribing:
+    def test_it_says_how_it_works_in_one_line(self):
+        assert MovingAverageBar(0.25, 10, 0.05, 6.8).describe() == \
+            "25% above a decaying average of scores (half-life 10 scores, ignoring scores under 0.45), starting at 6.8"
+
+
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [-0.1, "0.25", None, True, [1], float("nan"), float("inf")])
     def test_a_bad_fraction_means_the_default_with_a_warning(self, bad):

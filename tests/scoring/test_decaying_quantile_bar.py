@@ -275,6 +275,16 @@ class TestWhatIsIgnored:
         assert b.window_size_at(0.0) == 1
 
 
+class TestDescribing:
+    def test_it_says_how_it_works_in_one_line(self):
+        assert DecayingQuantileBar(99.5, 300, 6.8).describe() == \
+            "the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8"
+
+    def test_it_mentions_leaving_triggers_out_only_when_it_does(self):
+        assert "triggering scores left out" in DecayingQuantileBar(exclude_triggers=True).describe()
+        assert "triggering scores left out" not in DecayingQuantileBar().describe()
+
+
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, 100.1, "99", None, True, [99], float("nan"), float("inf")])
     def test_a_bad_percentile_means_the_default_with_a_warning(self, bad):

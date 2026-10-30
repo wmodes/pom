@@ -127,6 +127,11 @@ class DecayingQuantileBar(TriggerBar):
         self._memory.append((now, float(score)))
         self._forget_old(now)
 
+    def describe(self) -> str:
+        """For example: the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8."""
+        return (f"the {self._percentile:g}th percentile of scores that count half as much every {self._half_life:g} s, "
+                f"starting at {self._starting_bar:g}" + (", triggering scores left out" if self._exclude_triggers else ""))
+
     # --- The arithmetic -------------------------------------------------------------
 
     def _start(self, now: float) -> None:

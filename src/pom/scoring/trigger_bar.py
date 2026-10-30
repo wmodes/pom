@@ -10,6 +10,7 @@ own class. They all answer the same four questions, so the tracker does not care
   * `add(score, now, triggered)`: takes in a score that was judged, and whether it triggered. A bar may leave a triggering score out
     of what it remembers (`exclude_triggers`), which is why it is told.
   * `ignores(score)`: True for a score the bar wants nothing to do with (a score under a floor). Most bars ignore nothing.
+  * `describe()`: one line saying how this bar works and how it is set, for a playground or a log (numbers only).
 
 `now` is seconds, from the same clock for every call (live it is a clock reading; in a replay it is the place in the recording).
 The tracker never lets it run backwards.
@@ -35,6 +36,10 @@ class TriggerBar(ABC):
     @abstractmethod
     def add(self, score: float, now: float, triggered: bool) -> None:
         """Takes in a judged score at `now`; `triggered` says whether it fired."""
+
+    @abstractmethod
+    def describe(self) -> str:
+        """One line saying how the bar works and how it is set, for a playground or a log."""
 
     def ignores(self, score: float) -> bool:
         """True if this score should be left out of everything (default: no score is)."""

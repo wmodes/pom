@@ -23,7 +23,8 @@ MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_stor
            "pom/listening/listener.py", "pom/voice/portent_writer.py", "pom/listening/mac_mic_source.py",
            "pom/scoring/hinge_finder.py",
            "pom/monitor/trigger_history.py", "pom/monitor/monitor_site.py",
-           "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py"]
+           "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py",
+           "pom/scoring/moving_average_bar.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 
 

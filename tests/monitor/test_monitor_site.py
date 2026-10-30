@@ -301,6 +301,63 @@ class TestTheDetailPage:
         assert 'href="/"' in get(client, f"/trigger/{record.id}").get_data(as_text=True)
 
 
+class TestMovingBetweenTriggers:
+    @staticmethod
+    def links(client, record_id):
+        """The numbers behind the Newer and Older links of a trigger's page (None for a link that is not there)."""
+        import re
+        page = get(client, f"/trigger/{record_id}").get_data(as_text=True)
+        newer = re.search(r'href="/trigger/(\d+)" rel="prev"', page)
+        older = re.search(r'href="/trigger/(\d+)" rel="next"', page)
+        return (int(newer[1]) if newer else None), (int(older[1]) if older else None)
+
+    def test_a_trigger_in_the_middle_links_both_ways(self):
+        _, history, client, _ = make()
+        for text in ("one", "two", "three"):
+            add(history, text)
+        assert self.links(client, 2) == (3, 1)
+
+    def test_the_newest_has_no_newer_and_the_oldest_no_older(self):
+        _, history, client, _ = make()
+        for text in ("one", "two", "three"):
+            add(history, text)
+        assert self.links(client, 3) == (None, 2)
+        assert self.links(client, 1) == (2, None)
+
+    def test_a_lone_trigger_links_nowhere(self):
+        _, history, client, _ = make()
+        add(history)
+        assert self.links(client, 1) == (None, None)
+
+    def test_the_labels_are_always_shown_even_without_a_link(self):
+        _, history, client, _ = make()
+        add(history)
+        page = get(client, "/trigger/1").get_data(as_text=True)
+        assert "Newer" in page and "Older" in page
+
+    def test_a_neighbour_that_has_expired_is_not_linked(self):
+        clock = Clock()
+        _, history, client, _ = make(clock)
+        add(history, "old")
+        clock.now += 3000
+        add(history, "new")
+        clock.now += 700                                       # the first is now 3700 s old and gone
+        assert self.links(client, 2) == (None, None)
+
+    def test_a_trigger_that_expires_while_its_page_is_made_has_no_neighbours_and_no_error(self):
+        site, history, _, _ = make()
+        add(history)
+        assert site._neighbours(99) == (None, None)
+
+    def test_the_numbers_are_the_triggers_not_their_places(self):
+        clock = Clock()
+        history = TriggerHistory(max_records=2, clock=clock)
+        _, _, client, _ = make(clock, history=history)
+        for text in ("one", "two", "three"):
+            add(history, text)
+        assert self.links(client, 3) == (None, 2) and self.links(client, 2) == (3, None)
+
+
 class TestTheJsonFeed:
     def test_it_lists_the_triggers_newest_first_with_their_details(self):
         _, history, client, _ = make()

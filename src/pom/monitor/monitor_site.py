@@ -169,6 +169,8 @@ _DETAIL = """<!doctype html>
 <title>Trigger {{ r.id }}</title><style>{{ style }}</style></head>
 <body><main>
 <p><a href="/">&larr; all triggers</a></p>
+<p class="nav">{% if newer %}<a href="/trigger/{{ newer }}" rel="prev">&larr; Newer</a>{% else %}<span class="muted">&larr; Newer</span>{% endif %}
+ &nbsp;·&nbsp; {% if older %}<a href="/trigger/{{ older }}" rel="next">Older &rarr;</a>{% else %}<span class="muted">Older &rarr;</span>{% endif %}</p>
 <h1>Trigger {{ r.id }} <span class="muted">· {{ time }} ({{ ago }})</span></h1>
 <h2>Hinge</h2>
 <pre>{{ hinge }}</pre>
@@ -301,6 +303,14 @@ class MonitorSite:
     def _bar_text(record: TriggerRecord) -> str:
         return f"{record.bar:.2f}" if record.bar is not None else "none yet"
 
+    def _neighbours(self, record_id: int):
+        """The numbers of the next newer and the next older trigger still on the page (None where there is none)."""
+        ids = [record.id for record in self._history.recent()]            # newest first
+        if record_id not in ids:
+            return None, None
+        at = ids.index(record_id)
+        return (ids[at - 1] if at > 0 else None), (ids[at + 1] if at + 1 < len(ids) else None)
+
     def _row(self, record: TriggerRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),
                 "score": f"{record.score:.2f}", "bar": self._bar_text(record), "window_size": record.window_size,
@@ -344,8 +354,9 @@ class MonitorSite:
             if record is None:
                 abort(404)
             portent = record.portent
+            newer, older = self._neighbours(record_id)
             return render_template_string(
-                _DETAIL, style=_STYLE, r=record, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
+                _DETAIL, style=_STYLE, r=record, newer=newer, older=older, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
                 hinge=self._hinge_text(record, short=False), score=f"{record.score:.2f}", bar=self._bar_text(record),
                 heard_at=f"{int(record.heard_at) // 60} min {int(record.heard_at) % 60:02d} s", portent=portent,
                 seconds=f"{portent.seconds:.1f}" if portent is not None else "")

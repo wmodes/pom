@@ -46,6 +46,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **"Triggers we tried"** in the design doc's trigger section: the five rules considered (a fixed threshold, a moving average, Tukey's fence, a percentile of a timed window, double MAD), what each
+  did well and badly in the replays, and what the attempts taught. Mostly conceptual, with a few figures.
+- **Newer and Older links on a trigger's page** (`MonitorSite`, 7 new tests, mutation-checked on the new lines: 11 of 11 caught). They go to the next trigger up and down the list
+  (the list is newest first), by the triggers' own numbers; a trigger with nothing on one side shows that label greyed, and a neighbour that has expired is not linked.
 - **`serve_fake_triggers.py`**, the playground for the monitoring site (`scripts/dev/monitor/`, 2 smoke tests): the real `MonitorSite` over invented
   triggers and an invented status, so the page can be opened and clicked before the pipeline feeds it. `--live N` adds a trigger every N seconds,
   `--hide-hinges` shows the numbers-only page, `--check` reads the JSON feed once and exits. Password `demo`.

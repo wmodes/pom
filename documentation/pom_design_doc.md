@@ -195,6 +195,54 @@ in bursts, with a 27-minute gap). 100 with ten minutes gave 6.4 (4.0 to 8.1). Th
 the room, not from a constant. The filters must work reasonably well in every room, not perfectly in one; nothing is
 tuned per room.
 
+### Triggers we tried
+
+The same question every time: given the score of a new fragment and the scores of the room lately, is this one worth answering? Each
+rule was replayed on the recorded meetings before it was kept or dropped. In order:
+
+**1. A fixed threshold** (a score of 7 or more).
+- *Worked:* it is the simplest rule there is, and it is easy to explain and to predict.
+- *Did not:* the number means the same in every room, so a lively room fires constantly and a dull one never does. It is the
+  absolute scoring the project is trying to avoid.
+
+**2. A moving average** (a score a fraction above a decaying average of recent scores, with a floor under which scores were ignored).
+- *Worked:* the bar follows the room, and it needs only a few lines of state.
+- *Did not:* an average sits in the middle of the scores, so a large share of them are always above a bar set just over it. It fired on
+  about a third of sentences, and the setting that was meant to control the rate barely moved it. The floor was a hand-picked constant,
+  and it stood for a decision (what counts as too dull to count) that nothing in the data had made.
+
+**3. Tukey's fence** (Q3 plus a multiple of the interquartile range, over a timed window).
+- *Worked:* it is a standard test for "stands out", it needs no floor, and the timed window gave a sensible sense of "the room right now".
+  A cooldown handled bursts. At the textbook setting it was very strict, and a lower multiple brought the rate to about the goal.
+- *Did not:* it predicts where the top of the scores should be from the width of the middle half, and that assumes a bell shape. The
+  scorer's numbers are lumpy: a pile at 1, humps near 3 and 5, almost nothing above 7. The pile stretches the spread, so the bar often
+  landed above the best score the room had actually produced, and once above the top of the scale, where nothing can trigger. The rate
+  also swung from room to room at one setting.
+
+**4. A percentile of a timed window** (the current rule: beat a high percentile of the last few minutes).
+- *Worked:* it makes no assumption about shape. It measures where the top of the window is instead of guessing. The bar is always a score
+  the room really earned, so it can never leave the scale, and across rooms the rate stayed closer to the goal than the fence did.
+- *Did not, or not yet:* with a short window it is really "beat the best score of the window", so a trigger's own score becomes the bar
+  and a strong trigger is followed by a long quiet stretch; one lucky high score holds the bar up. The rate is set mostly by the window's
+  length and not by how much the room talks, until the window holds a couple of hundred scores. Triggers arrive at random, so they can bunch
+  and they can leave long gaps.
+
+**5. Double MAD** (a median, and a spread measured only from the scores above it).
+- *Looked promising:* the pile of low scores sits below the median and cannot widen the upper spread, and medians are robust.
+- *Found in a replay, not built:* with the proposed multiplier the bar was above the scale in more than half of the windows, because the climb
+  from the median to the top is large on these scores, so the same dead zone came back. The rate varied several-fold between rooms, so no one
+  multiplier suits them all. It needs the cooldown and a rule for the first scores that the first draft left out, and its small floor on the
+  spread does not protect a window that is mostly the lowest score. Still under consideration.
+
+**What the attempts taught**
+- The scores are bounded and lumpy, so any bar worked out from the middle of the scores tends to overshoot the top. A bar that measures the top
+  directly behaves better.
+- The rate of triggers is a result, not a setting. Every rule trades how often it fires against how much that depends on the room, and
+  there is no neutral point: a rule that follows the room's talk fires more in a lively room by design.
+- A cooldown is needed whatever the rule: a run of one-line jokes clears any bar one after another.
+- Every rule inherits the scorer's own quirks (an odd stretched spelling can score high), because the trigger only ever sees numbers.
+- All of this was tuned on four video-call meetings and one live room. A quiet real room is the test that is still to come.
+
 **Not built, and not decided:**
 - (proposed) *Paper guards*, so nobody comes back to a pile of paper: nothing triggers unless speech was heard in the
   last 10 minutes (this also keeps whisper's phantom phrases from printing in an empty room, and matters because the

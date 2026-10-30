@@ -324,3 +324,14 @@ quote_indent = 4
 # How many line feeds are typed after each portent, 0 or more. The first ends the last line; the rest are blank lines,
 # so the paper has moved on when the next portent is typed.
 linefeeds_after_portent = 4
+
+# Most print wheels lack nine ASCII characters: < > \ ^ ` { | } ~. The CadetWriter builds them from periods and
+# micro-movements ("period graphics"), which is correct but slow and dotty. < and > can carry meaning and are rare, so
+# they are always typed that way. The other seven are swapped for a look-alike so the typing stays quick (` becomes ',
+# ~ becomes -, { } become ( ), \ and | become /, ^ is left out). List here any of those seven to type as they are
+# instead, for example "^|". Empty swaps all seven.
+keep_composed_characters = ""
+
+# true if the wheel is one of the rare ASCII wheels (IBM/Lexmark Courier 10, P/N 1353909) that has all nine. Then every
+# one is typed as it is, whatever keep_composed_characters says. (This is not CadetWriter's own setting of that name.)
+ascii_printwheel = false

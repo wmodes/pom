@@ -89,3 +89,10 @@ def test_the_format_playground_indents_a_quote_and_wraps_to_the_width():
 def test_the_format_playground_takes_the_wheels_pitch_from_the_command_line():
     result = run("scripts/dev/output/format_text_for_typewriter.py", "--cpi", "12", "word")
     assert result.stdout.splitlines()[0] == "---------|" * 7 + "--------"
+
+
+def test_the_format_playground_swaps_the_composed_characters_unless_told_to_keep_them():
+    swapped = run("scripts/dev/output/format_text_for_typewriter.py", "a `b` ~ c < d").stdout.splitlines()
+    kept = run("scripts/dev/output/format_text_for_typewriter.py", "--keep", "`~", "a `b` ~ c < d").stdout.splitlines()
+    ascii_wheel = run("scripts/dev/output/format_text_for_typewriter.py", "--ascii-wheel", "a `b` ~ c < d").stdout.splitlines()
+    assert swapped[1] == "a 'b' - c < d" and kept[1] == "a `b` ~ c < d" and ascii_wheel[1] == "a `b` ~ c < d"

@@ -865,7 +865,8 @@ def test_the_committed_config_sets_every_output_key():
     import tomllib
     with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
         section = tomllib.load(f)["output"]
-    assert set(section) == {"paper_width_inches", "margin_inches", "characters_per_inch", "quote_indent", "linefeeds_after_portent"}
+    assert set(section) == {"paper_width_inches", "margin_inches", "characters_per_inch", "quote_indent", "linefeeds_after_portent",
+                              "keep_composed_characters", "ascii_printwheel"}
 
 
 def test_the_line_width_is_not_lost_to_floating_point_rounding(tmp_path):
@@ -877,3 +878,46 @@ def test_the_line_width_is_not_lost_to_floating_point_rounding(tmp_path):
 def test_a_config_built_without_output_settings_has_the_defaults():
     from pom.config import OutputSettings
     assert Config().output == OutputSettings()
+
+
+# --- The [output] composed characters ------------------------------------------------------
+
+def test_by_default_no_composed_character_is_kept_and_the_wheel_is_not_ascii():
+    output = Config.load(environ={}).output
+    assert (output.keep_composed_characters, output.ascii_printwheel, output.composed_characters_kept) == ("", False, "")
+
+
+def test_the_listed_composed_characters_are_read_and_are_the_ones_kept(tmp_path):
+    config = Config.load(write(tmp_path, '[output]\nkeep_composed_characters = "^|"\n'), environ={})
+    assert config.output.keep_composed_characters == "^|" and config.output.composed_characters_kept == "^|" and config.report.ok
+
+
+def test_an_ascii_printwheel_keeps_all_the_composed_characters_whatever_is_listed(tmp_path):
+    from pom.config import COMPOSED_CHARACTERS
+    config = Config.load(write(tmp_path, '[output]\nascii_printwheel = true\nkeep_composed_characters = "^"\n'), environ={})
+    assert config.output.ascii_printwheel is True and config.output.composed_characters_kept == COMPOSED_CHARACTERS
+    assert COMPOSED_CHARACTERS == "\\^`{|}~"
+
+
+def test_a_character_that_is_not_swappable_in_the_keep_list_is_left_out_with_a_warning(tmp_path):
+    config = Config.load(write(tmp_path, '[output]\nkeep_composed_characters = "<a^^|"\n'), environ={})
+    assert config.output.keep_composed_characters == "^|"
+    assert len(config.report.warnings) == 1 and "output.keep_composed_characters" in config.report.warnings[0]
+
+
+def test_a_keep_list_that_is_not_text_means_the_default_with_a_warning(tmp_path):
+    config = Config.load(write(tmp_path, "[output]\nkeep_composed_characters = 5\n"), environ={})
+    assert config.output.keep_composed_characters == ""
+    assert len(config.report.warnings) == 1 and "output.keep_composed_characters" in config.report.warnings[0]
+
+
+def test_a_bad_ascii_printwheel_value_means_false_with_a_warning(tmp_path):
+    config = Config.load(write(tmp_path, '[output]\nascii_printwheel = "maybe"\n'), environ={})
+    assert config.output.ascii_printwheel is False
+    assert len(config.report.warnings) == 1 and "output.ascii_printwheel" in config.report.warnings[0]
+
+
+def test_the_fallback_for_a_too_short_line_keeps_the_composed_settings(tmp_path):
+    text = '[output]\nmargin_inches = 4\nkeep_composed_characters = "|"\nascii_printwheel = true\n'
+    output = Config.load(write(tmp_path, text), environ={}).output
+    assert output.keep_composed_characters == "|" and output.ascii_printwheel is True and output.line_width == 65

@@ -34,7 +34,8 @@ of being threaded through by hand. Today there are five:
                committed file), whether it shows the hinge text, and how long a trigger stays on the page.
     [output]   A section (see OutputSettings): how a portent is set on the page. The paper's width, the margins and the
                print wheel's characters per inch give the line width; `quote_indent` indents a quotation and
-               `linefeeds_after_portent` is how far the paper moves on after a portent. The entry point
+               `linefeeds_after_portent` is how far the paper moves on after a portent, and
+               `keep_composed_characters` and `ascii_printwheel` say which characters most wheels lack are typed as they are. The entry point
                builds the TypewriterFormatter from `config.output`.
 
 Where values come from, highest priority first:
@@ -81,7 +82,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
          "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
          "monitor.show_hinges", "monitor.history_seconds", "output.paper_width_inches", "output.margin_inches",
-         "output.characters_per_inch", "output.quote_indent", "output.linefeeds_after_portent"}
+         "output.characters_per_inch", "output.quote_indent", "output.linefeeds_after_portent",
+         "output.keep_composed_characters", "output.ascii_printwheel"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -126,6 +128,11 @@ DEFAULT_OUTPUT_MARGIN_INCHES = 1.0
 DEFAULT_OUTPUT_CHARACTERS_PER_INCH = 10.0
 DEFAULT_OUTPUT_QUOTE_INDENT = 4
 DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT = 4
+DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS = ""
+DEFAULT_OUTPUT_ASCII_PRINTWHEEL = False
+# Seven of the nine ASCII characters most print wheels lack (< and > are the others, and are always typed as they are); the
+# CadetWriter builds them from periods ("period graphics"), and the TypewriterFormatter swaps each for a look-alike unless kept.
+COMPOSED_CHARACTERS = "\\^`{|}~"
 MIN_OUTPUT_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -301,17 +308,28 @@ class OutputSettings:
             so the shortest line, and fits any wheel; the machine's pitch switch must match the wheel).
         quote_indent: How many spaces a quotation is indented, 0 or more.
         linefeeds_after_portent: How many line feeds are typed after a portent, 0 or more: the last line's own, then blank lines.
+        keep_composed_characters: Which of \\ ^ ` { | } ~ (characters most wheels lack, which the CadetWriter builds from periods:
+            slow and dotty) are typed as they are; the rest are swapped for a look-alike. Empty by default. < and > are lacked
+            too but are always typed as they are, so they are not listed.
+        ascii_printwheel: True if the wheel is a rare ASCII one with all nine; then every one is typed as it is.
     """
     paper_width_inches: float = DEFAULT_OUTPUT_PAPER_WIDTH_INCHES
     margin_inches: float = DEFAULT_OUTPUT_MARGIN_INCHES
     characters_per_inch: float = DEFAULT_OUTPUT_CHARACTERS_PER_INCH
     quote_indent: int = DEFAULT_OUTPUT_QUOTE_INDENT
     linefeeds_after_portent: int = DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT
+    keep_composed_characters: str = DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS
+    ascii_printwheel: bool = DEFAULT_OUTPUT_ASCII_PRINTWHEEL
 
     @property
     def line_width(self) -> int:
         """How many characters fit on a line: the width between the margins times the pitch, rounded down."""
         return int((self.paper_width_inches - 2 * self.margin_inches) * self.characters_per_inch + 1e-9)
+
+    @property
+    def composed_characters_kept(self) -> str:
+        """The composed characters to type as they are: all seven with an ASCII print wheel, else the ones listed."""
+        return COMPOSED_CHARACTERS if self.ascii_printwheel else self.keep_composed_characters
 
 
 class Config:
@@ -498,12 +516,17 @@ class Config:
             _whole(values.get("output.quote_indent", DEFAULT_OUTPUT_QUOTE_INDENT), "output.quote_indent",
                    DEFAULT_OUTPUT_QUOTE_INDENT, 0, report),
             _whole(values.get("output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT),
-                   "output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT, 0, report))
+                   "output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT, 0, report),
+            _composed(values.get("output.keep_composed_characters", DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS),
+                      "output.keep_composed_characters", DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS, report),
+            _bool(values.get("output.ascii_printwheel", DEFAULT_OUTPUT_ASCII_PRINTWHEEL), "output.ascii_printwheel", report))
         if output.line_width < MIN_OUTPUT_LINE_WIDTH:
             report.warn(f"output: the paper, margins and pitch leave a line of {output.line_width} characters, under "
                         f"{MIN_OUTPUT_LINE_WIDTH}; using the default paper, margins and pitch")
             output = OutputSettings(quote_indent=output.quote_indent,
-                                    linefeeds_after_portent=output.linefeeds_after_portent)
+                                    linefeeds_after_portent=output.linefeeds_after_portent,
+                                    keep_composed_characters=output.keep_composed_characters,
+                                    ascii_printwheel=output.ascii_printwheel)
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor,
                    output)
 
@@ -632,6 +655,17 @@ def _whole(value, label: str, default: int, minimum: int, report: FaultRecorder)
         return value
     report.warn(f"{label} must be a whole number of at least {minimum}, got {value!r}; using {default}")
     return default
+
+
+def _composed(value, label: str, default: str, report: FaultRecorder) -> str:
+    """Text made only of the composed characters (COMPOSED_CHARACTERS); any other character is a mistake and is left out."""
+    if not isinstance(value, str):
+        report.warn(f"{label} must be text, got {value!r}; using the default")
+        return default
+    kept = "".join(dict.fromkeys(c for c in value if c in COMPOSED_CHARACTERS))
+    if kept != value:
+        report.warn(f"{label} may hold only the characters {COMPOSED_CHARACTERS}, got {value!r}; keeping {kept!r}")
+    return kept
 
 
 def _text(value, label: str, default: str, report: FaultRecorder) -> str:

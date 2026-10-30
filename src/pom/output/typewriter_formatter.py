@@ -17,6 +17,12 @@ Design decisions, and why:
     line before and after (or the model's own blank line, never two). The fence lines (and a language tag after the
     opening fence) are never printed. A fence that is never closed, because the model was cut
     off, quotes everything after it. Fences that sit inside a line, or that are never closed, are handled the same way.
+  * COMPOSED CHARACTERS. Most print wheels lack nine ASCII characters, < > \\ ^ ` { | } ~, and the CadetWriter builds them
+    from periods and micro-movements ("period graphics"): slow and dotty, though correct. < and > can carry meaning and are
+    rare, so they are always typed as they are and CadetWriter does its work. The other seven are swapped for a plain
+    look-alike (` becomes ', ~ becomes -, { } become ( ), \\ and | become /, ^ is dropped) so the typing stays quick,
+    except those the config says to keep (`keep_composed`). An ASCII print wheel has all nine, and then the entry point
+    keeps all seven.
   * PRINTABLE ASCII only (space to tilde). Curly quotes, dashes, ellipses and the like become their plain equivalents;
     accented letters lose the accent; a few letters with no accent to lose are spelled out (ß as ss). Anything else,
     an emoji for one, is dropped. Tabs become spaces.
@@ -45,6 +51,11 @@ _SUBSTITUTES = {
 }
 
 
+# Seven of the nine ASCII characters most print wheels lack, and what stands in for each unless it is kept. (< and > are
+# the other two; they are never swapped.)
+_COMPOSED_STAND_INS = {"`": "'", "~": "-", "{": "(", "}": ")", "\\": "/", "|": "/", "^": ""}
+
+
 class TypewriterFormatter:
     """Makes a portent printable: fences out, ASCII only, wrapped to the line.
 
@@ -53,12 +64,15 @@ class TypewriterFormatter:
         quote_indent: How many spaces a fenced quotation is indented. At least one character of the line is kept for the
             quote itself, so an indent as wide as the line is cut down to fit.
         linefeeds_after: How many line feeds follow the portent, 0 or more (from `config.output.linefeeds_after_portent`).
+        keep_composed: Which of the seven swappable composed characters (see above) to type as they are; every other one is
+            swapped for its stand-in (from `config.output.composed_characters_kept`).
     """
 
-    def __init__(self, line_width: int = 65, quote_indent: int = 4, linefeeds_after: int = 4):
+    def __init__(self, line_width: int = 65, quote_indent: int = 4, linefeeds_after: int = 4, keep_composed: str = ""):
         self.line_width = max(1, line_width)
         self.quote_indent = max(0, min(quote_indent, self.line_width - 1))
         self.linefeeds_after = max(0, linefeeds_after)
+        self._stand_ins = {c: stand_in for c, stand_in in _COMPOSED_STAND_INS.items() if c not in keep_composed}
 
     def format(self, text: str) -> str:
         """The text as it should be typed: lines joined with newlines, then `linefeeds_after` line feeds. Empty text gives ''."""
@@ -74,7 +88,7 @@ class TypewriterFormatter:
 
     def _plain_lines(self, text: str) -> list[str]:
         """The wrapped lines of ordinary text; blank lines are kept (as empty strings) for _tidy to limit."""
-        text = _printable(text).strip(" \t")
+        text = self._printable(text).strip(" \t")
         lines: list[str] = []
         for line in text.split("\n"):
             lines += textwrap.wrap(" ".join(line.split()), self.line_width) or [""]
@@ -84,7 +98,7 @@ class TypewriterFormatter:
         """The lines of a fenced quotation, each indented, with a blank line before and after (_tidy keeps only one)."""
         indent = " " * self.quote_indent
         lines: list[str] = []
-        for line in _printable(quote).strip().split("\n"):
+        for line in self._printable(quote).strip().split("\n"):
             lines += textwrap.wrap(" ".join(line.split()), self.line_width - self.quote_indent) or [""]
         return [""] + [indent + line if line else "" for line in lines] + [""]
 
@@ -100,9 +114,10 @@ class TypewriterFormatter:
         return "\n".join(kept)
 
 
-def _printable(text: str) -> str:
-    """The text as printable ASCII: newlines made uniform, tabs as spaces, look-alikes swapped, the rest dropped."""
-    text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", " ")
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(_SUBSTITUTES.get(character, character) for character in text)
-    return "".join(c for c in text if c == "\n" or " " <= c <= "~")
+    def _printable(self, text: str) -> str:
+        """The text as printable ASCII: newlines made uniform, tabs as spaces, look-alikes and composed characters swapped, the rest dropped."""
+        text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", " ")
+        text = unicodedata.normalize("NFKD", text)
+        text = "".join(_SUBSTITUTES.get(character, character) for character in text)
+        text = "".join(self._stand_ins.get(character, character) for character in text)
+        return "".join(c for c in text if c == "\n" or " " <= c <= "~")

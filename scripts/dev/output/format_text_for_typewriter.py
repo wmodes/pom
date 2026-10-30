@@ -18,7 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
-from pom.config import Config, OutputSettings  # noqa: E402
+from pom.config import COMPOSED_CHARACTERS, Config, OutputSettings  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 from pom.output import TypewriterFormatter  # noqa: E402
 
@@ -37,6 +37,8 @@ def main():
     parser.add_argument("--cpi", type=float, help="the wheel's characters per inch, instead of the config's")
     parser.add_argument("--indent", type=int, help="spaces to indent a quotation (default: from the config)")
     parser.add_argument("--feeds", type=int, help="line feeds after the portent (default: from the config)")
+    parser.add_argument("--keep", help="the composed characters to type as they are, for example '<>' (default: from the config)")
+    parser.add_argument("--ascii-wheel", action="store_true", help="the wheel has all of ASCII: nothing is swapped")
     args = parser.parse_args()
 
     configure_logging("WARNING")
@@ -48,7 +50,10 @@ def main():
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
     feeds = output.linefeeds_after_portent if args.feeds is None else args.feeds
-    typed = TypewriterFormatter(width, indent, feeds).format(raw)
+    keep = output.composed_characters_kept if args.keep is None else args.keep
+    if args.ascii_wheel:
+        keep = COMPOSED_CHARACTERS
+    typed = TypewriterFormatter(width, indent, feeds, keep).format(raw)
     body = typed.rstrip("\n")
     lines = body.split("\n") if body else []
     print(ruler(width))

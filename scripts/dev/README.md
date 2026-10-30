@@ -19,6 +19,6 @@ into one built part of the Printer and see what it does, using the real modules 
   `--hide-hinges` shows the numbers-only page) so you can open it, click a trigger and watch it update. Password: `demo`.
 - `output/`: `format_text_for_typewriter.py` shows how the TypewriterFormatter sets text for the typewriter: type or pipe text in (quote the
   heredoc, `<<'EOT'`, or the shell runs anything in backticks) and see it between rulers, with the quote indented. `--cpi 12`, `--width`,
-  `--indent` and `--feeds` change what `[output]` in the config sets.
+  `--indent`, `--feeds`, `--keep` and `--ascii-wheel` change what `[output]` in the config sets.
 - `voice/`: `write_portent_from_hinge.py` takes the hinges you type and prints the portent the oracle model writes, with the exemplars it was
   given (it needs the oracle model's llama-server, or starts one).

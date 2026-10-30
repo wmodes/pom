@@ -395,7 +395,9 @@ Whether to start them depends on how far the prompted oracle model gets.
   (the prompt shows the model its exemplars and the hinge in fences, so it may echo them); a fenced piece is a quotation and
   is typed indented four spaces with a blank line on each side, since the typewriter has no italics. It swaps curly quotes,
   dashes and accents for plain ASCII and drops what has no plain form, wraps to the line width, and ends the text with
-  `linefeeds_after_portent` line feeds (4) so the paper has moved on for the next portent. The line width is worked out
+  `linefeeds_after_portent` line feeds (4) so the paper has moved on for the next portent. Most wheels lack nine ASCII characters
+  (`< > \ ^ ` { | } ~`); the CadetWriter builds them from periods, slowly. `<` and `>` are left to it; the other seven are swapped for
+  a look-alike (`'`, `-`, `( )`, `/`) unless `keep_composed_characters` says otherwise, and `ascii_printwheel` keeps all of them. The line width is worked out
   in `[output]` from the paper width, the margins and the wheel's characters per inch (8.5 inch paper with 1 inch margins:
   65 characters at 10 cpi, 78 at 12, 97 at 15; 10 is the default, the widest letters, so it fits any wheel).
 - (planned) The serial port wrapper that paces the text (about 16 characters a second). It tells the Conductor when printing

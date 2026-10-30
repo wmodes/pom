@@ -176,3 +176,47 @@ def test_the_longest_line_never_passes_the_width():
             + "Supercalifragilisticexpialidocious" * 2)
     typed = fmt(text, 30, indent=6)
     assert max(len(line) for line in typed.split("\n")) <= 30
+
+
+# --- Composed characters (the ones most print wheels lack) --------------------------------
+
+@pytest.mark.parametrize("text, expected", [
+    ("`thing`", "'thing'"), ("a~b", "a-b"), ("{x}", "(x)"), ("a\\b", "a/b"), ("a|b", "a/b"), ("up^ward", "upward"),
+])
+def test_the_composed_characters_with_a_stand_in_are_swapped_by_default(text, expected):
+    assert fmt(text, 40) == expected
+
+
+def test_less_than_and_greater_than_are_always_typed_as_they_are():
+    assert fmt("if x < 3 and y > 4", 40) == "if x < 3 and y > 4"
+    assert TypewriterFormatter(40, 4, 0, "").format("a<b>c") == "a<b>c"
+
+
+@pytest.mark.parametrize("kept, text, expected", [
+    ("^", "a^b ~", "a^b -"), ("|", "a|b \\", "a|b /"), ("`~", "`a~ {b}", "`a~ (b)"),
+    ("\\^`{|}~", "`~{}\\|^", "`~{}\\|^"), ("", "`~{}\\|^", "'-()//"),
+])
+def test_the_kept_composed_characters_are_typed_as_they_are_and_the_rest_swapped(kept, text, expected):
+    assert TypewriterFormatter(40, 4, 0, kept).format(text) == expected
+
+
+def test_keeping_a_character_that_is_not_swapped_anyway_changes_nothing():
+    assert TypewriterFormatter(40, 4, 0, "<>x").format("a<b `c`") == "a<b 'c'"
+
+
+def test_a_backtick_in_a_fence_is_the_fence_not_a_composed_character():
+    assert fmt("a\n```\nquote `inner`\n```\nb", 30) == "a\n\n    quote 'inner'\n\nb"
+
+
+def test_composed_characters_in_a_quote_are_swapped_too():
+    assert fmt("```a~b```", 30) == "    a-b"
+
+
+def test_a_stand_in_that_is_nothing_leaves_no_double_space():
+    assert fmt("up ^ down", 30) == "up down"
+
+
+def test_the_stand_ins_cover_exactly_the_composed_characters_the_config_names():
+    from pom.config import COMPOSED_CHARACTERS
+    from pom.output.typewriter_formatter import _COMPOSED_STAND_INS
+    assert set(_COMPOSED_STAND_INS) == set(COMPOSED_CHARACTERS)

@@ -122,7 +122,7 @@ Output the score as a single digit | the sentence | what content you found that 
 #                        floor below which scores are ignored.
 [trigger]
 
-algorithm = "percentile"
+algorithm = "decaying_quantile"
 
 # Where the bar begins, before the room has said enough for one to be worked out from its own scores. It fades as the room
 # speaks, so it is a starting point and not a limit. There is no silent warm-up: a score above it can trigger in the first

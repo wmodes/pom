@@ -9,6 +9,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The shipped trigger algorithm is now `decaying_quantile`** (EWMQ: 5 minute half-life, percentile 99.5, 60 s cooldown, starting bar 6.8, `exclude_triggers` off). On the five recordings it gave about 7.9 triggers an hour (busy) and 3.6 (a quiet
+  room, with gaps up to 41 minutes), against 10.1 and 6.4 for the percentile rule; a lower zinger rarely follows a higher one within 3 minutes (0.1 an hour) until `exclude_triggers` is turned on. The percentile rule is one line away.
+  The test that pinned the shipped algorithm now only checks it is one the factory knows.
 - **The trigger's algorithm is selectable** (`[trigger] algorithm = "percentile" | "decaying_quantile" | "moving_average"`, default `percentile`, so nothing changes until it is switched). `ConvoInterestTracker(bar, cooldown_seconds)`
   now takes a `TriggerBar` and keeps only what every way shares (the trigger decision, the cooldown, the clock); `tracker_from_settings(config.trigger)` builds the bar the config names, each bar reading only its own keys.
   New settings: `starting_bar` (6.8, shared: the bar begins there and slides to the room's own level, replacing the silent warm-up), `exclude_triggers` (off; leaves a triggering score out of the bar's memory),

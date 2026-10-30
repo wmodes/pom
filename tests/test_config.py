@@ -530,8 +530,10 @@ def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
         assert tracker.report.ok and tracker._bar.report.ok
 
 
-def test_the_shipped_algorithm_is_the_percentile_one():
-    assert Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={}).trigger.algorithm == "percentile"
+def test_the_shipped_algorithm_is_one_the_factory_knows():
+    """Which algorithm is shipped is a tuning choice, so it is not pinned."""
+    from pom.scoring import ALGORITHMS
+    assert Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={}).trigger.algorithm in ALGORITHMS
 
 
 # --- The [listening] section ---------------------------------------------------------------

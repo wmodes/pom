@@ -23,7 +23,8 @@ of being threaded through by hand. Today there are five:
     [trigger]  A section (see TriggerSettings): when the Printer responds, when a score is above a bar worked out from the
                room's recent scores. `algorithm` picks how ("percentile", "decaying_quantile" or "moving_average"; each reads only
                its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a trigger the next
-               may come (60; 0 for none). The entry point builds the ConvoInterestTracker with `tracker_from_settings(config.trigger)`.
+               may come (60; 0 for none), `typed_score_multiplier` the lift a typed line's score gets (1.5) and
+               `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the ConvoInterestTracker with `tracker_from_settings(config.trigger)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `step`, `hold`,
                `rewind` and `max_buffer`, and the Listener's sound pass and caption memory. The defaults are the
@@ -81,7 +82,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.percentile",
          "trigger.cooldown_seconds", "trigger.algorithm", "trigger.starting_bar", "trigger.exclude_triggers",
          "trigger.half_life_seconds", "trigger.average_fraction", "trigger.average_half_life_scores",
-         "trigger.average_floor_fraction", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
+         "trigger.average_floor_fraction", "trigger.typed_score_multiplier", "trigger.typed_lines_affect_bar",
+         "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
          "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
@@ -112,6 +114,7 @@ DEFAULT_TRIGGER_HALF_LIFE_SECONDS = 300.0
 DEFAULT_TRIGGER_AVERAGE_FRACTION = 0.25
 DEFAULT_TRIGGER_AVERAGE_HALF_LIFE_SCORES = 10.0
 DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION = 0.05
+DEFAULT_TRIGGER_TYPED_SCORE_MULTIPLIER = 1.5
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
 DEFAULT_LISTENING_DEVICE = "plughw:0,0"
@@ -243,6 +246,10 @@ class TriggerSettings:
         average_floor_fraction: How far up the 0 to 9 scale the floor sits; scores below it are ignored. From 0 up to but not
             including 1. (moving_average)
         algorithm: "percentile", "decaying_quantile" or "moving_average".
+        typed_score_multiplier: What a typed line's score is multiplied by before it meets the bar, 0 or more (1 is no bonus). A typed
+            line is someone speaking to the Printer directly, so it is given a lift; the product is not capped at 9. (all)
+        typed_lines_affect_bar: True lets a typed line's score affect the bar, feeding what it is built from like the room's own scores. False keeps
+            the bar a picture of the room alone. A typed line never has a cooldown either way. (all)
     """
     percentile: float = DEFAULT_TRIGGER_PERCENTILE
     window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
@@ -255,6 +262,8 @@ class TriggerSettings:
     average_half_life_scores: float = DEFAULT_TRIGGER_AVERAGE_HALF_LIFE_SCORES
     average_floor_fraction: float = DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION
     algorithm: str = DEFAULT_TRIGGER_ALGORITHM
+    typed_score_multiplier: float = DEFAULT_TRIGGER_TYPED_SCORE_MULTIPLIER
+    typed_lines_affect_bar: bool = False
 
 
 @dataclass(frozen=True)
@@ -517,7 +526,10 @@ class Config:
             _below_one(values.get("trigger.average_floor_fraction", DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION),
                        "trigger.average_floor_fraction", DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION, report),
             _choice(values.get("trigger.algorithm", DEFAULT_TRIGGER_ALGORITHM), "trigger.algorithm",
-                    DEFAULT_TRIGGER_ALGORITHM, TRIGGER_ALGORITHMS, report))
+                    DEFAULT_TRIGGER_ALGORITHM, TRIGGER_ALGORITHMS, report),
+            _number(values.get("trigger.typed_score_multiplier", DEFAULT_TRIGGER_TYPED_SCORE_MULTIPLIER),
+                    "trigger.typed_score_multiplier", DEFAULT_TRIGGER_TYPED_SCORE_MULTIPLIER, 0.0, report),
+            _bool(values.get("trigger.typed_lines_affect_bar", False), "trigger.typed_lines_affect_bar", report))
         whisper_url = _text(values.get("listening.whisper_url", DEFAULT_LISTENING_WHISPER_URL), "listening.whisper_url",
                             DEFAULT_LISTENING_WHISPER_URL, report)
         if "POM_WHISPER_URL" in environ:

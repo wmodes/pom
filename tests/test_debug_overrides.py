@@ -21,7 +21,7 @@ MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_stor
            "pom/listening/whisper_server_client.py", "pom/listening/wav_source.py", "pom/listening/mic_source.py",
            "pom/listening/rolling_cutter.py",
            "pom/listening/listener.py", "pom/voice/portent_writer.py", "pom/listening/mac_mic_source.py",
-           "pom/scoring/hinge_finder.py",
+           "pom/scoring/hinge_finder.py", "pom/scoring/typed_line_scorer.py",
            "pom/monitor/trigger_history.py", "pom/monitor/monitor_site.py",
            "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py",
            "pom/scoring/moving_average_bar.py",

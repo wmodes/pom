@@ -139,6 +139,16 @@ cooldown_seconds = 60
 # after a great one can still fire. (percentile and decaying_quantile)
 exclude_triggers = true
 
+# A line typed on the typewriter's keyboard is someone talking to the Printer directly, so it is judged against the same
+# bar as the room's sentences but gets a lift: its score is multiplied by this before it meets the bar. 1 is no lift;
+# 0 or more. The product is not capped at 9, so a typed 7 (10.5) beats any spoken 9. A typed line has no cooldown, and a
+# typed line that does not clear the bar is simply ignored (nothing is printed).
+typed_score_multiplier = 1.5
+
+# true lets a typed line's score affect the bar, feeding what it is built from as the room's own scores do. false (the default)
+# keeps the bar a picture of the room alone: it listens to the room, and typed lines change nothing about it.
+typed_lines_affect_bar = false
+
 # --- percentile and decaying_quantile ---
 
 # How much of the room's recent scores a score must beat. 100 means beating the best score; 99.5 lets about one score in 200

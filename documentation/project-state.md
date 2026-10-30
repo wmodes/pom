@@ -37,9 +37,9 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   unpushed. The Pi's checkout (`~/pom`) was last pulled at `b0b68e9`, with the 4B and 9B model files in `data/models/`.
 - **Playgrounds** (`scripts/dev/`, small tools that use the real modules): `listening/sort_whisper_text.py`, `listening/listen_to_room.py` (the
   microphone or a recording through the Listener, Scorer and trigger), `scoring/score_typed_sentences.py` (type sentences, see scores and
-  the trigger), `voice/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
+  the trigger), `scoring/score_typed_lines.py` (the typed-line path: score, lift, answer or silence), `voice/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
   live from the microphone, `--mac-mic` on a Mac).
-- **Not built yet:** the Output side, Input (typed text), the Conductor,
+- **Not built yet:** the Conductor (including the wiring of typed lines),
   the entry point, the paper guards, "failing loudly", and the Printer running as a service on the Pi. Track B (the fine-tuned
   voice) and the curated hinge pairs have not been started.
 
@@ -138,7 +138,7 @@ The reasoning and the numbers are in `pom_design_doc.md`. In short:
 
 - **The pipeline:** whisper (cutting the audio itself) -> the three-way sort (words / ambient captions / nothing) ->
   SegmentFragmenter -> Scorer -> ConvoInterestTracker -> the triggering sentence is the hinge -> PromptBuilder -> oracle
-  model -> Output. Typed input takes the same path with a small bonus (how the bonus works is open).
+  model -> Output. Typed input has its own way in: the TypedLineScorer scores the line, multiplies it by `typed_score_multiplier` (1.5), and the same bar judges it (no cooldown; below the bar it is ignored; it stays out of the bar unless `typed_lines_affect_bar`).
 - **The scorer** is a small local model scoring one sentence, no context, so a sentence scores the same whatever came
   before. Scores are relative and run low (almost nothing above 7), which is why the trigger works from the room's own
   recent scores and not a fixed threshold.
@@ -277,7 +277,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    down, the Printer can never respond, and a log line is not loud when someone is switching a printer on. Decide what loud
    means (a beep, an email to Wes, something at the venue).
 5. **A real-room test,** a quiet room too, then retune from that. The trigger settings were tuned on four chatty meetings.
-6. Later: Input (typed text and its score bonus), the curated hinge pairs, Track B if wanted.
+6. Later: the Conductor's typed-input wiring, the curated hinge pairs, Track B if wanted.
 7. Open and small: Wes's spot-check of about 20 bake-off ratings; a prompt tuned for the top two oracle models; defining
    "interesting" ourselves before asking the model (Wes, 2026-10-22, deferred); `ratings/report.md` still says Stheno 4.72
    (it is 4.73); a "silence" tic that repeats across portents would not show up in the one-at-a-time ratings.

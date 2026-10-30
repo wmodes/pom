@@ -69,6 +69,7 @@ microphone -> whisper-driven cutting -> whisper -> sort: words / captions / noth
 | Trigger (`ConvoInterestTracker`) | Built; used by the hearing-debug probe, not yet by a Conductor |
 | Hinge (the sentence that triggered) | Decided; nothing to build but the hand-off |
 | PromptBuilder, `OracleModelClient` | Built |
+| Input: typed line scoring (`TypedLineScorer`) | Built |
 | Output: formatter (`TypewriterFormatter`) | Built |
 | Output: serial port (`TypewriterPort`) and the keyboard coming back | Built |
 | Output: pausing listening while it types | Planned (the Conductor) |
@@ -285,7 +286,7 @@ rule was replayed on the recorded meetings before it was kept or dropped. In ord
 - (open) The retired design had a target print rate that followed room activity (0 silent, about 4 with a little
   talking, about 8 busy) and a rate governor. The fence plus the cooldown replaced them; the rate is now a result to
   watch, not a quantity steered. If a real room shows the rate drifting, a governor can come back.
-- (open) How typed input joins: a small score bonus (as first planned) or a lower bar.
+- Typed input has its own way in (the TypedLineScorer, not the Listener): the Scorer scores the line, `typed_score_multiplier` (1.5, uncapped) lifts it, and the same bar judges it. No cooldown, and a line under the bar is silently ignored. By default it stays out of the bar (`typed_lines_affect_bar`), which listens to the room.
 - (open) Everything above is tuned on four chatty meetings. A real room, especially a quiet one, is the real test.
 
 ## The hinge
@@ -407,7 +408,7 @@ Whether to start them depends on how far the prompted oracle model gets.
   listening. The same port reads the keyboard: `read_line()` returns what someone types when they press C Rtn. In the CadetWriter's default
   full-duplex mode the Pi echoes each key (`echoplex`), a Backspace overstrikes but edits the line, and keys pressed during a portent are
   thrown away (`no_input_during_output`). The `ConsoleTypewriter` is the same code on the terminal, for development.
-- (open) How a typed line joins the pipeline as a hinge, and the small score bonus or lower bar, are the Conductor's and the trigger's.
+- The TypedLineScorer (`src/pom/scoring/`) turns a typed line into a `ScoredSentence` (kind `typed`), judged by `ConvoInterestTracker.record_direct()`. Serializing its calls with the HingeFinder's thread, and handing a typed hinge to the oracle, are the Conductor's.
 - The output validation hook (`scripts/dev/corpus/validate_output.py`) is a deliberate stub. Checking for verbatim
   overlap with the corpus was judged the wrong measure: false positives on quotes that land, false negatives on
   near-copies, blind to echoing the hinge.
@@ -515,7 +516,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
   models; a human spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
 - How the trigger behaves in a real, quiet room; the paper guards.
 - How the Conductor enforces half-duplex without lockfiles.
-- How typed input joins the trigger.
+- How the Conductor serializes the typed path and the listening thread (the tracker has no lock).
 - Mic placement and cable routing.
 - What "failing loudly" means.
 - Whether Track B and the hinge pairs are worth building.

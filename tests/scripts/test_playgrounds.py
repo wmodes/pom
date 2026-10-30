@@ -8,7 +8,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/sort_whisper_text.py", "scripts/dev/listening/listen_to_room.py",
-               "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/voice/write_portent_from_hinge.py",
+               "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/scoring/score_typed_lines.py",
+               "scripts/dev/voice/write_portent_from_hinge.py",
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_triggers.py",
                "scripts/dev/output/format_text_for_typewriter.py",
                "scripts/dev/output/type_text_on_typewriter.py"]
@@ -44,6 +45,12 @@ def test_the_sort_playground_reads_standard_input_too():
 def test_the_score_playground_says_so_when_the_scorer_model_is_not_answering():
     result = run("scripts/dev/scoring/score_typed_sentences.py", "Hello there.", env={"POM_SCORER_URL": "http://127.0.0.1:9/v1/chat/completions"})
     assert result.returncode == 0 and "NOT answering" in result.stdout and "unscored" in result.stdout
+
+
+def test_the_typed_line_playground_says_so_when_the_scorer_model_is_not_answering():
+    result = run("scripts/dev/scoring/score_typed_lines.py", "Hello there.", env={"POM_SCORER_URL": "http://127.0.0.1:9/v1/chat/completions"})
+    assert result.returncode == 0 and "NOT answering" in result.stdout and "silence" in result.stdout
+    assert "Hello there" not in result.stdout          # what was typed is not echoed back
 
 
 def test_the_hear_playground_stops_politely_when_whisper_is_not_answering():

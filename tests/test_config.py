@@ -455,6 +455,22 @@ def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
     assert config.report.ok
 
 
+def test_the_typed_line_settings_start_as_a_lift_of_one_and_a_half_that_stays_out_of_the_bar():
+    s = TriggerSettings()
+    assert s.typed_score_multiplier == 1.5 and s.typed_lines_affect_bar is False
+
+
+def test_the_typed_line_settings_are_read_from_the_section(tmp_path):
+    config = Config.load(write(tmp_path, "[trigger]\ntyped_score_multiplier = 2\ntyped_lines_affect_bar = true\n"), environ={})
+    assert config.trigger.typed_score_multiplier == 2.0 and config.trigger.typed_lines_affect_bar is True and config.report.ok
+
+
+def test_a_typed_score_multiplier_of_zero_and_one_are_accepted(tmp_path):
+    for text, expected in (("0", 0.0), ("1", 1.0)):
+        config = Config.load(write(tmp_path, f"[trigger]\ntyped_score_multiplier = {text}\n"), environ={})
+        assert config.trigger.typed_score_multiplier == expected and config.report.ok
+
+
 def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     text = ("[trigger]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
             "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
@@ -480,7 +496,10 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("average_half_life_scores", "0"), ("average_half_life_scores", "-2"), ("average_half_life_scores", '"10"'),
     ("average_half_life_scores", "true"), ("average_half_life_scores", "inf"),
     ("average_floor_fraction", "-0.01"), ("average_floor_fraction", "1"), ("average_floor_fraction", "1.5"),
-    ("average_floor_fraction", '"0.05"'), ("average_floor_fraction", "true"), ("average_floor_fraction", "false")])
+    ("average_floor_fraction", '"0.05"'), ("average_floor_fraction", "true"), ("average_floor_fraction", "false"),
+    ("typed_score_multiplier", "-0.1"), ("typed_score_multiplier", '"1.5"'), ("typed_score_multiplier", "true"),
+    ("typed_score_multiplier", "[1.5]"),
+    ("typed_lines_affect_bar", "5"), ("typed_lines_affect_bar", '"maybe"'), ("typed_lines_affect_bar", "[true]")])
 def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
     assert config.trigger == TriggerSettings()

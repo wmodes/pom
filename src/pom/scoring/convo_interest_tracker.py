@@ -51,6 +51,7 @@ class ScoreEffect(Enum):
     COUNTED = "counted"        # handed to the bar
     TRIGGERED = "triggered"    # stood above the bar (and was handed to the bar too)
     COOLING_DOWN = "cooling down"    # stood above the bar, but a trigger was too recent (handed to the bar too)
+    JUDGED = "judged"          # a direct score (typed) that did not stand above the bar and was kept out of it
 
 
 class ConvoInterestTracker:
@@ -134,4 +135,27 @@ class ConvoInterestTracker:
         self.counted += 1
         effect = ScoreEffect.TRIGGERED if triggered else ScoreEffect.COOLING_DOWN if cooling else ScoreEffect.COUNTED
         _log.debug("score %s: bar %s, %d counted", effect.value, "none" if level is None else f"{level:.3f}", self.counted)
+        return effect
+
+    def record_direct(self, score: Optional[float], now: float, affects_bar: bool = False) -> ScoreEffect:
+        """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
+
+        Such a score is held to the same bar as the room's, but it takes no part in the room's rhythm: no cooldown applies to it,
+        and a trigger it causes does not start one. Whether it also affects the bar (feeds what it is built from) is `affects_bar`: False (the
+        default) keeps the bar a picture of the room alone, so the score changes nothing here.
+
+        A score or time that is not a number, or one the bar ignores, is IGNORED. Otherwise it is TRIGGERED if above the bar. If not, it is
+        COUNTED when it affected the bar and JUDGED when it did not.
+        """
+        if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+            return ScoreEffect.IGNORED
+        now = self._steady(now)
+        level = self._bar.level_at(now)
+        triggered = level is not None and score > level
+        if affects_bar:
+            self._bar.add(float(score), now, triggered)
+            self._last_time = now
+            self.counted += 1
+        effect = ScoreEffect.TRIGGERED if triggered else ScoreEffect.COUNTED if affects_bar else ScoreEffect.JUDGED
+        _log.debug("direct score %s: bar %s", effect.value, "none" if level is None else f"{level:.3f}")
         return effect

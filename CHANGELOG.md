@@ -9,6 +9,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **The TypedLineScorer** (`src/pom/scoring/typed_line_scorer.py`): a line typed at the terminal's keyboard goes in, a `ScoredSentence` (kind `typed`) comes out, so the Conductor and the monitoring
+  site take it like any hinge. It has its own way in and never touches the Listener. The Scorer scores the line (one sentence, no context), the score is multiplied by `typed_score_multiplier` (1.5;
+  not capped at 9, so a typed 7 beats any spoken 9) and the same bar judges it. A line that does not clear the bar is ignored: nothing is printed. A typed line has no cooldown and a typed
+  trigger does not start the room's. By default a typed score stays out of the bar, which stays a picture of the room (`typed_lines_affect_bar`, false). The new `ConvoInterestTracker.record_direct()` and
+  `ScoreEffect.JUDGED` do the judging; the typed text is never logged or reported. Two new `[trigger]` settings, and the playground `scripts/dev/scoring/score_typed_lines.py`.
 - **The TypewriterPort and the ConsoleTypewriter** (`src/pom/output/typewriter_port.py`): the last step after the formatter. `type(text)` sends a portent to the typewriter over a serial
   port (pyserial, new in `requirements.txt`), paced at `characters_per_second` (16) from a schedule that does not drift, with XON/XOFF or RTS/CTS flow control, a newline sent as the CadetWriter's
   line ending (CR+LF by default: a bare LF only feeds the paper), only printable ASCII and newlines let through (an ESC would start a CadetWriter escape sequence), and a wait at the end

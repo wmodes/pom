@@ -365,3 +365,87 @@ class TestLogging:
             t, _ = tracker(level=None)
             t.record(9.0, 1.0)
         assert "bar none" in caplog.text
+
+
+class TestRecordDirect:
+    """A score handed to the Printer directly (a typed line): held to the bar, with no cooldown, and kept out of the bar by default."""
+
+    def test_the_judged_effect_is_named_judged(self):
+        assert ScoreEffect.JUDGED.value == "judged"
+
+    def test_a_score_above_the_bar_triggers(self):
+        t, _ = tracker(level=5.0)
+        assert t.record_direct(5.1, 1.0) is ScoreEffect.TRIGGERED
+
+    def test_a_score_at_the_bar_does_not_trigger_and_is_only_judged(self):
+        t, _ = tracker(level=5.0)
+        assert t.record_direct(5.0, 1.0) is ScoreEffect.JUDGED
+
+    def test_a_score_below_the_bar_is_only_judged(self):
+        t, _ = tracker(level=5.0)
+        assert t.record_direct(1.0, 1.0) is ScoreEffect.JUDGED
+
+    def test_with_no_bar_nothing_triggers(self):
+        t, _ = tracker(level=None)
+        assert t.record_direct(9.0, 1.0) is ScoreEffect.JUDGED
+
+    def test_by_default_it_changes_nothing_in_the_bar_or_the_count(self):
+        t, bar = tracker(level=5.0)
+        t.record_direct(9.0, 1.0)
+        t.record_direct(1.0, 2.0)
+        assert bar.added == [] and t.counted == 0
+
+    def test_affecting_the_bar_hands_it_the_score_and_says_whether_it_triggered(self):
+        t, bar = tracker(level=5.0)
+        t.record_direct(9.0, 1.0, affects_bar=True)
+        t.record_direct(1.0, 2.0, affects_bar=True)
+        assert bar.added == [(9.0, 1.0, True), (1.0, 2.0, False)] and t.counted == 2
+
+    def test_affecting_the_bar_gives_counted_when_it_does_not_trigger(self):
+        t, _ = tracker(level=5.0)
+        assert t.record_direct(1.0, 1.0, affects_bar=True) is ScoreEffect.COUNTED
+
+    def test_it_has_no_cooldown_of_its_own(self):
+        t, _ = tracker(level=5.0, cooldown=60)
+        assert [t.record_direct(9.0, now) for now in (1.0, 2.0, 3.0)] == [ScoreEffect.TRIGGERED] * 3
+
+    def test_a_typed_trigger_does_not_start_the_rooms_cooldown(self):
+        t, _ = tracker(level=5.0, cooldown=60)
+        t.record_direct(9.0, 1.0)
+        assert t.record(9.0, 2.0) is ScoreEffect.TRIGGERED
+
+    def test_the_rooms_cooldown_does_not_hold_a_typed_score_back(self):
+        t, _ = tracker(level=5.0, cooldown=60)
+        t.record(9.0, 1.0)
+        assert t.record_direct(9.0, 2.0) is ScoreEffect.TRIGGERED
+
+    @pytest.mark.parametrize("score,now", [(None, 1.0), ("9", 1.0), (True, 1.0), (float("nan"), 1.0), (float("inf"), 1.0),
+                                          (9.0, None), (9.0, "1"), (9.0, float("nan"))])
+    def test_a_score_or_time_that_is_not_a_number_is_ignored(self, score, now):
+        t, bar = tracker(level=5.0)
+        assert t.record_direct(score, now, affects_bar=True) is ScoreEffect.IGNORED and bar.added == [] and t.counted == 0
+
+    def test_a_score_the_bar_ignores_is_ignored(self):
+        t, bar = tracker(level=5.0, ignored=(9.0,))
+        assert t.record_direct(9.0, 1.0, affects_bar=True) is ScoreEffect.IGNORED and bar.added == []
+
+    def test_the_bar_is_asked_at_a_time_that_never_runs_backwards(self):
+        t, bar = tracker(level=5.0)
+        t.record(1.0, 10.0)
+        bar.asked.clear()
+        t.record_direct(1.0, 4.0)
+        assert bar.asked == [10.0]
+
+    def test_affecting_the_bar_moves_the_tracker_time_forward(self):
+        t, bar = tracker(level=5.0)
+        t.record_direct(1.0, 8.0, affects_bar=True)
+        bar.asked.clear()
+        t.trigger_level_at(2.0)
+        assert bar.asked == [8.0]
+
+    def test_not_affecting_leaves_the_tracker_time_where_it_was(self):
+        t, bar = tracker(level=5.0)
+        t.record_direct(1.0, 8.0)
+        bar.asked.clear()
+        t.trigger_level_at(2.0)
+        assert bar.asked == [2.0]

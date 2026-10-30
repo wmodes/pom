@@ -195,6 +195,28 @@ in bursts, with a 27-minute gap). 100 with ten minutes gave 6.4 (4.0 to 8.1). Th
 the room, not from a constant. The filters must work reasonably well in every room, not perfectly in one; nothing is
 tuned per room.
 
+### What the trigger must do
+
+Whatever rule is used, it is judged against these. They came out of the replays and the arguments about them, and they are the
+reason some rules were dropped.
+
+1. **About six an hour on average, at random.** Timing should not be evenly spaced: triggers may bunch, several may come in the
+   first twenty minutes, and a quiet stretch may follow. The average is the target, not the spacing.
+2. **Two good triggers can follow each other.** A strong trigger must not hold the bar so high that an almost-as-strong one cannot
+   fire soon after it. (An 8.9 should not shut out a 7.2 that is still well above the room's usual high tide.) The cooldown is the
+   only thing allowed to space them.
+3. **Responsive to room heat.** Any trigger scheme must respond to changes in the room's heat in the five-to-ten-minute range. Rooms
+   change tenor on that time scale, so the memory behind the bar has to be about that long, and a bar that adapts more slowly stops
+   being responsive.
+4. **A quiet room is not silenced by one good trigger.** With few scores in the window, one strong score must not hold the bar for the
+   better part of an hour.
+5. **Nothing absolute.** No fixed floor, no score that counts everywhere, nothing tuned for one room: the bar comes from what the
+   room is doing.
+6. **A burst of one-liners gives one trigger.** A short cooldown (60 s) stays, because a run of jokes clears any bar one after another.
+
+Where the current rule stands: a short window with a high percentile is really "beat the best of the window", which fails 2 and
+makes the timing too regular (1), and a long window fixes those and fails 3 and 4. A rule that meets all six is still being looked for.
+
 ### Triggers we tried
 
 The same question every time: given the score of a new fragment and the scores of the room lately, is this one worth answering? Each

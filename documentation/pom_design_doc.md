@@ -212,10 +212,11 @@ reason some rules were dropped.
    better part of an hour.
 5. **Nothing absolute.** No fixed floor, no score that counts everywhere, nothing tuned for one room: the bar comes from what the
    room is doing.
-6. **A burst of one-liners gives one trigger.** A short cooldown (60 s) stays, because a run of jokes clears any bar one after another.
+Practical choice, not a requirement: a short cooldown (60 s) stays, because a run of one-line jokes clears any bar one after another
+and one meeting had six triggers in eight seconds. It is the only thing allowed to space two good triggers (see 2).
 
 Where the current rule stands: a short window with a high percentile is really "beat the best of the window", which fails 2 and
-makes the timing too regular (1), and a long window fixes those and fails 3 and 4. A rule that meets all six is still being looked for.
+makes the timing too regular (1), and a long window fixes those and fails 3 and 4. A rule that meets all five is still being looked for.
 
 ### Triggers we tried
 

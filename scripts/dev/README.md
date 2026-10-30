@@ -12,7 +12,7 @@ into one built part of the Printer and see what it does, using the real modules 
   microphone or a recording, scoring what it hears and marking what would trigger (it needs whisper-server running).
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether the trigger would fire (it needs
   the scorer model's llama-server).
-- `pipeline/`: `listening_to_portent.py` runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
+- `pipeline/`: `listening_to_portent.py` (`--monitor` also serves the monitoring site, fed by every trigger) runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
   the Pi's by default) or a recording goes through the Listener, the scorer and the trigger, and when the trigger fires the
   hinge is sent to the oracle and the portent is printed where the typewriter would. It needs whisper and both llama-servers running.
 - `monitor/`: `serve_fake_triggers.py` serves the monitoring site with invented triggers (`--live 15` adds one every 15 seconds,

@@ -57,6 +57,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`listening_to_portent.py --monitor`**: the real `MonitorSite` runs beside the pipeline and every trigger is added to its `TriggerHistory` as it happens (hinge, score, the bar and window as they stood, the exemplars and the portent), with the status tiles
+  (bar now, effective window, sentences scored and heard, whisper, scorer and oracle up or down, checked at most every 15 s) and the trigger algorithm. It needs a password under `[monitor]` in the gitignored `pom.local.toml`; the page keeps `history_seconds` of triggers in memory only.
+  A trigger appears once its portent is written. A finished recording leaves the site up until ctrl-C. New `--config` option. Tried for real on a recorded meeting: the page, the JSON feed, the services and the password check all worked. 2 smoke tests.
 - **The monitoring site reports the trigger algorithm**: `MonitorStatus` gains `algorithm` and `trigger_description`; the page shows "Trigger rule: decaying_quantile - a score above the 99.5th percentile of scores that count half as much every 300 s, ..." under the tiles and on each trigger's page,
   and `/api/triggers` carries both in `stats`. Empty means nothing is said. 12 tests; 22 mutants checked.
 - **`describe()` on every bar**: one line saying how it works and how it is set (for example "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"), for playgrounds and logs. 5 tests.

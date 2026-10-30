@@ -62,3 +62,15 @@ def test_the_whole_pipeline_playground_wants_one_sound_source_only():
 def test_the_fake_trigger_site_serves_its_feed_and_exits():
     result = run("scripts/dev/monitor/serve_fake_triggers.py", "--check")
     assert result.returncode == 0 and "the site answered: 5 triggers" in result.stdout, result.stderr
+
+
+def test_the_whole_pipeline_playground_wants_a_password_for_the_monitor(tmp_path):
+    config = tmp_path / "pom.toml"
+    config.write_text("[monitor]\npassword = \"\"\n", encoding="utf-8")
+    result = run("scripts/dev/pipeline/listening_to_portent.py", "--monitor", "--config", str(config), "--wav", "nothing.wav")
+    assert result.returncode != 0 and "--monitor needs a password" in (result.stdout + result.stderr)
+
+
+def test_the_monitor_flag_is_offered():
+    result = run("scripts/dev/pipeline/listening_to_portent.py", "--help")
+    assert "--monitor" in result.stdout and "--config" in result.stdout

@@ -23,13 +23,20 @@ Usage:
     listening_to_portent.py                                      # the Pi's microphone (arecord, listening.device)
     listening_to_portent.py --wav meeting.wav --speed 0          # a 16 kHz mono recording, as fast as possible
     listening_to_portent.py --mac-mic --max-portents 1           # stop after the first portent
+    listening_to_portent.py --mac-mic --monitor                  # also serve the monitoring site (see below)
 
 The config is read again before every portent, so a change to the oracle prompt shows at once.
+
+With --monitor the real MonitorSite runs beside the pipeline and every trigger is added to it as it happens: open the address it prints,
+with any user name and the password from [monitor] in config/pom.local.toml (git ignores that file; the site will not start without a
+password). The page keeps the last `history_seconds` of triggers in memory only and shows the trigger algorithm, the bar and the services.
+A trigger appears once its portent has been written (or has failed). When a recording ends the site stays up until ctrl-C.
 """
 import argparse
 import random
 import sys
 import textwrap
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -41,6 +48,7 @@ from pom.config import Config                                                   
 from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector                                    # noqa: E402
 from pom.listening import (Listener, MacMicSource, MicSource, SegmentFragmenter, WavSource,         # noqa: E402
                            WhisperServerClient)
+from pom.monitor import MonitorSite, MonitorStatus, TriggerHistory                                  # noqa: E402
 from pom.log_setup import configure_logging                                                         # noqa: E402
 from pom.prompt import PromptBuilder                                                                # noqa: E402
 from pom.scoring import (HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
@@ -76,20 +84,46 @@ def answers(url: str) -> bool:
         return False
 
 
+def reachable(url: str) -> bool:
+    """True if something answers an HTTP request at this address (the whisper-server's front page, for instance)."""
+    try:
+        with urllib.request.urlopen(url, timeout=3):
+            return True
+    except (urllib.error.URLError, OSError):
+        return False
+
+
+class ServiceWatch:
+    """Which servers answer, checked at most every `every` seconds so the monitoring page's polling does not hammer them."""
+
+    def __init__(self, checks, every: float = 15.0):
+        self._checks, self._every, self._at, self._last = checks, every, None, {}
+
+    def __call__(self) -> dict:
+        now = time.monotonic()
+        if self._at is None or now - self._at >= self._every:
+            self._last, self._at = {name: bool(check()) for name, check in self._checks.items()}, now
+        return dict(self._last)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--config", default=str(CONFIG_PATH), help="the config file to read")
     parser.add_argument("--wav", help="play this 16 kHz mono recording instead of listening to a microphone")
     parser.add_argument("--speed", type=float, default=1.0, help="recording speed: 1 is real time, 0 is as fast as possible")
     parser.add_argument("--mac-mic", nargs="?", const="default", metavar="DEVICE",
                         help="listen to this Mac's microphone through ffmpeg: the system default input, or the named one")
     parser.add_argument("--max-portents", type=int, default=0, help="stop after this many portents (0 means keep going)")
+    parser.add_argument("--monitor", action="store_true", help="also serve the monitoring site, fed by every trigger")
     args = parser.parse_args()
     if args.wav and args.mac_mic:
         sys.exit("give --wav or --mac-mic, not both")
 
     configure_logging("WARNING")
-    config = Config.load(CONFIG_PATH)
+    config = Config.load(args.config)
     heard_settings, trigger, scoring = config.listening, config.trigger, config.scorer
+    if args.monitor and not config.monitor.password:
+        sys.exit("--monitor needs a password: put  password = \"...\"  under [monitor] in config/pom.local.toml (git ignores that file)")
     client = WhisperServerClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
@@ -122,10 +156,26 @@ def main() -> None:
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")
 
+    history, site, snapshot = None, None, dict(bar=None, window=0, heard=0, scored=0)
+    if args.monitor:
+        monitor = config.monitor
+        watch = ServiceWatch({"whisper": lambda: reachable(heard_settings.whisper_url), "scorer": lambda: answers(scoring.url),
+                              "oracle": lambda: answers(config.oracle.url)})
+        history = TriggerHistory(monitor.history_seconds)
+        # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
+        site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, status_source=lambda: MonitorStatus(
+            bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
+            services=watch(), algorithm=trigger.algorithm, trigger_description=tracker.describe()))
+        if not site.start(monitor.host, monitor.port):
+            sys.exit("the monitoring site did not start: " + "; ".join(site.report.lines()))
+
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
     print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
     print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
+    if site is not None:
+        print(f"  monitoring site: http://{'<this machine>' if config.monitor.host == '0.0.0.0' else config.monitor.host}:{site.port}  "
+              f"(any user name; the password is [monitor] password; hinges {'shown' if config.monitor.show_hinges else 'hidden'})")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
 
@@ -140,15 +190,19 @@ def main() -> None:
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
             print(f"\n[{when}] {sentence.kind:<6} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "
                   f"{standing(sentence)}", flush=True)
+            snapshot.update(heard=snapshot["heard"] + 1, scored=snapshot["scored"] + (sentence.score is not None),
+                            bar=tracker.trigger_level_at(sentence.heard_at), window=tracker.window_size_at(sentence.heard_at))
             if not sentence.is_hinge:
                 continue
 
             print(f"\n  >>> HINGE: {sentence.text}")
             print("  >>> the oracle is writing; the Printer is not listening meanwhile ...", flush=True)
-            oracle = Config.load(CONFIG_PATH).oracle                 # read again, so prompt edits show at once
+            oracle = Config.load(args.config).oracle                 # read again, so prompt edits show at once
             writer = PortentWriter(PromptBuilder(oracle.prompt, selector),
                                    OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature), rng)
             portent = writer.write(sentence.text)
+            if history is not None:
+                history.add(sentence.text, sentence.score, sentence.trigger_level, sentence.window_size, sentence.heard_at, portent)
             if portent is None:
                 print("  >>> no portent this time:", *writer.report_lines(), sep="\n      ")
                 continue
@@ -158,10 +212,16 @@ def main() -> None:
                   f"exemplars: {', '.join(chunk.id for chunk in portent.exemplars) or 'none'})", flush=True)
             if args.max_portents and portents >= args.max_portents:
                 break
+        if site is not None:
+            print("\n  the recording is finished; the monitoring site stays up until ctrl-C", flush=True)
+            while True:
+                time.sleep(3600)
     except KeyboardInterrupt:
         print()
     finally:
         finder.close()
+        if site is not None:
+            site.stop()
     lines = [*source.report.lines(), *finder.report_lines(), *scorer_client.report.lines(),
              *(writer.report_lines() if writer is not None else [])]
     for line in lines:

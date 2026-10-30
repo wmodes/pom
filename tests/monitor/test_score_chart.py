@@ -71,6 +71,40 @@ class TestNoScoresYet:
         assert not list(root.iter(NS + "circle")) and not list(root.iter(NS + "path")) and not list(root.iter(NS + "line"))
 
 
+class TestTheVerticalGrid:
+    def lines(self, seconds=1800, **kw):
+        return find(parse(render_score_chart([point(0), point(seconds)], seconds=seconds, **kw)), "line", "vgrid")
+
+    def test_there_is_a_vertical_line_every_five_minutes_back_from_now(self):
+        lines = self.lines(1800)
+        xs = sorted(float(line.get("x1")) for line in lines)
+        assert len(lines) == 7
+        assert xs == pytest.approx([x_of(1800 - k * 300, 1800) for k in range(6, -1, -1)], abs=0.06)
+
+    def test_the_lines_are_vertical_and_span_the_plot(self):
+        for line in self.lines(1800):
+            assert line.get("x1") == line.get("x2")
+            assert float(line.get("y1")) == TOP and float(line.get("y2")) == pytest.approx(TOP + PLOT_H, abs=0.06)
+
+    def test_the_first_is_at_now_and_the_last_at_the_start_of_the_window(self):
+        xs = sorted(float(line.get("x1")) for line in self.lines(1800))
+        assert xs[-1] == pytest.approx(WIDTH - RIGHT, abs=0.06) and xs[0] == pytest.approx(LEFT, abs=0.06)
+
+    def test_a_shorter_window_has_fewer_lines(self):
+        assert len(self.lines(900)) == 4 and len(self.lines(300)) == 2
+
+    def test_there_are_twice_as_many_lines_as_time_labels(self):
+        root = parse(render_score_chart([point(0), point(1800)]))
+        labels = [t for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")]
+        assert len(find(root, "line", "vgrid")) == 7 and len(labels) == 4
+
+    def test_the_horizontal_grid_is_still_the_four_lines(self):
+        assert len(find(parse(render_score_chart([point(0), point(1800)])), "line", "grid")) == 4
+
+    def test_an_empty_chart_has_no_lines(self):
+        assert not find(parse(render_score_chart([])), "line", "vgrid")
+
+
 class TestTheDots:
     def test_each_sentence_is_a_dot_at_its_score_and_time(self):
         root = parse(render_score_chart([point(0, score=6.0), point(900, score=2.0)]))

@@ -107,8 +107,8 @@ def _snippet(text: str) -> str:
 
 
 _STYLE = """
-:root { --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#dcd6c9; --card:#fff; --good:#1f7a3a; --bad:#b3261e; --accent:#7a3b12; }
-@media (prefers-color-scheme: dark) { :root { --bg:#16140f; --fg:#ece7dc; --muted:#a39d90; --line:#3a352b; --card:#1f1c15; --good:#5cc27a; --bad:#ff8a80; --accent:#e0a36b; } }
+:root { --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#dcd6c9; --card:#fff; --good:#1f7a3a; --bad:#b3261e; --accent:#7a3b12; --dot:#000; --bar:#d62828; }
+@media (prefers-color-scheme: dark) { :root { --bg:#16140f; --fg:#ece7dc; --muted:#a39d90; --line:#3a352b; --card:#1f1c15; --good:#5cc27a; --bad:#ff8a80; --accent:#e0a36b; --dot:#f2efe6; --bar:#ff6b6b; } }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
 main { max-width: 56rem; margin: 0 auto; padding: 1rem 16px 3rem; }
@@ -123,9 +123,9 @@ th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--lin
 th { color:var(--muted); font-weight:600; font-size:.85rem; } td.num { text-align:right; font-variant-numeric: tabular-nums; }
 pre { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.7rem .9rem; white-space: pre-wrap; word-wrap: break-word; font: inherit; }
 .chartbox { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.4rem .5rem; margin:.6rem 0 .2rem; }
-.chart { width:100%; height:auto; display:block; } .chart .grid { stroke:var(--line); stroke-width:1; }
-.chart .key { fill:var(--muted); font:10px system-ui, sans-serif; } .chart .dot { fill:var(--muted); opacity:.65; }
-.chart .bar { stroke:var(--accent); stroke-width:1.6; fill:none; } .chart .hit { fill:#e8872f; stroke:var(--bg); stroke-width:1; }
+.chart { width:100%; height:auto; display:block; } .chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }
+.chart .key { fill:var(--muted); font:10px system-ui, sans-serif; } .chart .dot { fill:var(--dot); }
+.chart .bar { stroke:var(--bar); stroke-width:1.6; fill:none; } .chart .hit { fill:#e8872f; stroke:var(--bg); stroke-width:1; }
 .small { font-size:.8rem; }
 .muted { color: var(--muted); } .facts td:first-child { color:var(--muted); width:11rem; }
 @media (max-width: 40rem) { .hide-narrow { display:none; } }
@@ -173,7 +173,7 @@ _INDEX = """<!doctype html>
 {% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
 {% if s.algorithm or s.trigger_description %}<p class="rule"><span class="muted">Trigger rule:</span> <b>{{ s.algorithm }}</b>{% if s.trigger_description %} <span class="muted">&mdash; a score above {{ s.trigger_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
-<p class="muted small">Grey dots: scored sentences. Line: the bar each one had to beat. Orange: triggers (click one). The last 30 minutes.</p>{% endif %}
+<p class="muted small">Black dots: scored sentences. Red line: the bar each one had to beat. Orange: triggers (click one). The last 30 minutes.</p>{% endif %}
 <h2>Triggers, newest first</h2>
 {% if rows %}
 <table><thead><tr><th>Time</th><th class="num">Score</th><th class="num">Bar</th><th class="hide-narrow num">Window</th><th>Hinge</th></tr></thead><tbody>

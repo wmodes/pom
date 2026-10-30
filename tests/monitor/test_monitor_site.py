@@ -333,6 +333,19 @@ class TestTheChart:
         assert '<svg class="chart"' in page and 'id="chart"' in page
         assert page.index('id="chart"') < page.index("Triggers, newest first")
 
+    def test_the_chart_is_black_dots_and_a_red_bar_on_solid_grid_paper(self):
+        trace, _, client = self.with_trace()
+        page = get(client, "/").get_data(as_text=True)
+        assert "--dot:#000;" in page and "--bar:#d62828;" in page
+        assert ".chart .dot { fill:var(--dot); }" in page and ".chart .bar { stroke:var(--bar);" in page
+        assert ".chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }" in page and "dasharray" not in page
+
+    def test_in_dark_mode_the_dots_and_the_bar_stay_visible(self):
+        trace, _, client = self.with_trace()
+        page = get(client, "/").get_data(as_text=True)
+        dark = page[page.index("prefers-color-scheme: dark"):]
+        assert "--dot:#f2efe6;" in dark and "--bar:#ff6b6b;" in dark
+
     def test_the_chart_appears_once(self):
         trace, _, client = self.with_trace()
         trace.add(3.0, 5.0, 1.0)
@@ -341,7 +354,8 @@ class TestTheChart:
     def test_there_is_a_caption_that_says_what_the_marks_are(self):
         trace, _, client = self.with_trace()
         page = get(client, "/").get_data(as_text=True)
-        assert "Grey dots: scored sentences." in page and "The last 30 minutes." in page
+        assert "Black dots: scored sentences." in page and "Red line: the bar each one had to beat." in page
+        assert "Orange: triggers (click one)." in page and "The last 30 minutes." in page
 
     def test_without_a_trace_there_is_no_chart_and_no_route(self):
         _, history, client, _ = make()

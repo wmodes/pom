@@ -9,6 +9,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The chart looks like graph paper**: black dots for the sentences (off-white in dark mode), the bar as a red line (a lighter red in dark mode), triggers still orange, and solid vertical lines every 5 minutes to match the horizontal ones (the time labels stay every 10). The caption says so. Chosen from a live preview. 9 new chart tests, 3 new page tests; 19 mutants checked.
 - **The EWMQ bar's "window" is the effective size**: `DecayingQuantileBar.window_size_at` now gives the scores' worth of weight the real scores carry (a score counts 1 when heard and half that a half-life later), to the nearest whole score, so a busy room shows about 100 at a 5 minute half-life
   and not the 600 or so scores kept in memory for 40 minutes. 8 mutants checked.
 - **The shipped trigger algorithm is now `decaying_quantile`** (EWMQ: 5 minute half-life, percentile 99.5, 60 s cooldown, starting bar 6.8, `exclude_triggers` off). On the five recordings it gave about 7.9 triggers an hour (busy) and 3.6 (a quiet

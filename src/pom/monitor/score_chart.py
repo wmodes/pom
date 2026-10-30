@@ -2,8 +2,10 @@
 
 `render_score_chart(points, trigger_ids)` takes the points of a ScoreTrace and returns one `<svg>` element, the width of the text:
 
-  * every scored sentence is a small grey dot, on a fixed 0 to 9 scale with light gridlines at 0, 3, 6 and 9;
-  * the bar each sentence was judged against is a line that steps from one sentence to the next, so it rises and falls with the room;
+  * every scored sentence is a small dot (black on the page), on a fixed 0 to 9 scale with gridlines at 0, 3, 6 and 9, and vertical
+    gridlines every five minutes, so it reads like graph paper;
+  * the bar each sentence was judged against is a line (red on the page) that steps from one sentence to the next, so it rises and
+    falls with the room;
   * each trigger is a larger orange dot, and where its record is known (`trigger_ids`, by the audio time it was heard) the dot is a link
     to that trigger's page, with the score and the bar as its tooltip.
   * the time axis runs back from the newest point ("now", "-10 min", ...), over the last `seconds` (30 minutes to begin with).
@@ -12,7 +14,7 @@ Design decisions, and why:
   * NUMBERS ONLY. The chart is built from scores, bars and times; no words from the room can reach it, so it is shown whether or not
     hinges are hidden. Every number in the markup is formatted here, never passed through from outside.
   * It is a pure function that returns a string, so it can be tested exactly and the page can draw it on the server with no script and
-    no charting library. The colours come from the page's own CSS (classes `grid`, `dot`, `bar`, `hit`, and `key` for text), so the chart
+    no charting library. The colours come from the page's own CSS (classes `grid` and `vgrid`, `dot`, `bar`, `hit`, and `key` for text), so the chart
     follows light and dark mode.
   * The scale is fixed (0 to 9, what the scorer answers) and not fitted to the data, so the bar's height means the same in every room and
     a quiet stretch looks quiet. A score outside it is drawn at the edge.
@@ -29,6 +31,7 @@ LEFT, RIGHT, TOP, BOTTOM = 24, 6, 8, 18
 SCORE_MAX = 9.0
 GRID_AT = (0, 3, 6, 9)
 TICK_EVERY = 600.0                       # a label on the time axis every ten minutes
+MINOR_EVERY = 300.0                      # and a faint vertical line every five
 
 
 def _x(at: float, t_end: float, seconds: float, plot_width: float) -> float:
@@ -66,6 +69,11 @@ def render_score_chart(points: Sequence[TracePoint], trigger_ids: Optional[Mappi
         y = _y(value, plot_height)
         parts.append(f'<line class="grid" x1="{LEFT}" x2="{width - RIGHT}" y1="{y:.1f}" y2="{y:.1f}"/>'
                      f'<text class="key" x="{LEFT - 4}" y="{y + 3:.1f}" text-anchor="end">{value}</text>')
+    minor = 0
+    while minor * MINOR_EVERY <= seconds:
+        x = _x(t_end - minor * MINOR_EVERY, t_end, seconds, plot_width)
+        parts.append(f'<line class="vgrid" x1="{x:.1f}" x2="{x:.1f}" y1="{TOP}" y2="{TOP + plot_height:.1f}"/>')
+        minor += 1
     tick = 0
     while tick * TICK_EVERY <= seconds:
         x = _x(t_end - tick * TICK_EVERY, t_end, seconds, plot_width)

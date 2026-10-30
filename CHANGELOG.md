@@ -9,6 +9,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Oracle `temperature` back to 0.8** in `config/pom.toml` (it was 0.3 since the `[oracle]` section was made). At 0.3 the model takes the
+  likeliest words, and the portents stayed close to the one exemplar's register and to the hinge's own words; 0.8 is also the
+  `OracleModelClient` default. Whether it makes the portents more lyrical and sideways is still to be seen.
 - **Two playgrounds now just call the new modules** (`listen_to_room.py` calls the `HingeFinder`, `write_portent_from_hinge.py` calls the
   `PortentWriter`), so the wiring lives in `src` and is no longer copied in scripts. Checked against the old versions first: on the
   first 15 minutes of the live-room recording `listen_to_room.py` gave all 233 sentences with the same score, scorer, trigger mark and

@@ -231,4 +231,4 @@ timeout = 120
 max_tokens = 300
 
 # How adventurous the model's word choice is. 0 always takes the likeliest word; higher is more varied.
-temperature = 0.3
+temperature = 0.8

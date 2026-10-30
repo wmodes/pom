@@ -46,6 +46,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`serve_fake_triggers.py`**, the playground for the monitoring site (`scripts/dev/monitor/`, 2 smoke tests): the real `MonitorSite` over invented
+  triggers and an invented status, so the page can be opened and clicked before the pipeline feeds it. `--live N` adds a trigger every N seconds,
+  `--hide-hinges` shows the numbers-only page, `--check` reads the JSON feed once and exits. Password `demo`.
 - **`MonitorSite`** (`pom/monitor/monitor_site.py`, 80 new tests, mutation-checked: 64 of 64 caught) and **`[monitor]` in the config** (19 new tests, 19 of 19 caught), the
   monitoring site. A Flask page of the last hour of triggers: summary tiles (triggers in the hour and at that pace, the last one, the bar now,
   scores in the window, sentences scored and heard, uptime, which servers are up), then the triggers newest first, and for each a detail page

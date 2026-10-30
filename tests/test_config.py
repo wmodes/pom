@@ -798,7 +798,9 @@ def test_the_monitor_section_merges_key_by_key_with_the_local_file(tmp_path):
 
 
 def test_the_shipped_monitor_section_is_off_and_has_no_password():
-    """The committed file goes to a public repository and the Pi: the site must be off and the password empty."""
-    shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
-    assert shipped.report.ok
-    assert shipped.monitor.enabled is False and shipped.monitor.password == ""
+    """The committed file goes to a public repository and the Pi: the site must be off and the password empty. Read the committed
+    file alone (a pom.local.toml next to it, which git ignores, may well hold a password on this machine)."""
+    import tomllib
+    with open(Path(__file__).parent.parent / "config" / "pom.toml", "rb") as committed:
+        monitor = tomllib.load(committed)["monitor"]
+    assert monitor["enabled"] is False and monitor["password"] == ""

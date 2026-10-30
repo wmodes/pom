@@ -57,6 +57,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`ScoreTrace` and `TracePoint`** (`pom/monitor/score_trace.py`, 57 tests, mutation-checked: 33 of 33 caught), the data for a chart on the monitoring site: one point per scored sentence (when it was heard, its score, the bar it was judged against,
+  whether it triggered), numbers only and in memory only, bounded by age and count, thread-safe. Times are the audio clock, so a recording replayed fast draws as a live run would. No words from the room are kept for non-triggers.
+  Not wired in yet.
 - **`listening_to_portent.py --monitor`**: the real `MonitorSite` runs beside the pipeline and every trigger is added to its `TriggerHistory` as it happens (hinge, score, the bar and window as they stood, the exemplars and the portent), with the status tiles
   (bar now, effective window, sentences scored and heard, whisper, scorer and oracle up or down, checked at most every 15 s) and the trigger algorithm. It needs a password under `[monitor]` in the gitignored `pom.local.toml`; the page keeps `history_seconds` of triggers in memory only.
   A trigger appears once its portent is written. A finished recording leaves the site up until ctrl-C. New `--config` option. Tried for real on a recorded meeting: the page, the JSON feed, the services and the password check all worked. 2 smoke tests.

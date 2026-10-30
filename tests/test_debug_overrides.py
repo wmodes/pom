@@ -24,7 +24,8 @@ MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_stor
            "pom/scoring/hinge_finder.py",
            "pom/monitor/trigger_history.py", "pom/monitor/monitor_site.py",
            "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py",
-           "pom/scoring/moving_average_bar.py"]
+           "pom/scoring/moving_average_bar.py",
+           "pom/monitor/score_trace.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Play with the whole listening side: the microphone (or a recording) through the Listener, the Scorer and the trigger.
 
-Sound goes through the real Listener (whisper's own voice detection cutting the audio), each thing heard is cut into
-sentences by the real SegmentFragmenter, each sentence is scored by the real Scorer, and the real ConvoInterestTracker
-says which ones would trigger the Printer. It needs a whisper-server running (the address is `listening.whisper_url`) and
-the scorer model's llama-server; the settings are all in config/pom.toml.
+It is the real HingeFinder (the Listener, the SegmentFragmenter, the Scorer and the ConvoInterestTracker joined) and nothing
+else: every sentence it hears is shown with its score and where the trigger stands, and the ones that would trigger the
+Printer are marked. It needs a whisper-server running (the address is `listening.whisper_url`) and the scorer model's
+llama-server; the settings are all in config/pom.toml.
 
 Nothing you say is kept. The words are shown here and nowhere else, so do not redirect this output to a file.
 
@@ -25,9 +25,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config  # noqa: E402
 from pom.listening import Listener, MicSource, SegmentFragmenter, WavSource, WhisperServerClient  # noqa: E402
-from pom.listening.segment_fragmenter import FragmentLevel  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import ConvoInterestTracker, ScoreEffect, Scorer, ScorerModelClient, WordTagger  # noqa: E402
+from pom.scoring import (ConvoInterestTracker, HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
+                         WordTagger)
 
 
 def stamp(seconds: float) -> str:
@@ -36,14 +36,15 @@ def stamp(seconds: float) -> str:
     return f"+{whole // 3600:02d}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
 
 
-def standing(effect: ScoreEffect, bar, held: int, counted: int, needed: int) -> str:
+def standing(sentence, needed: int) -> str:
     """Where a score stands, for the end of its line."""
-    if effect is ScoreEffect.IGNORED:
+    if sentence.effect is ScoreEffect.IGNORED:
         return "[no score]"
-    if bar is None:
-        return f"[warming up {counted}/{needed}]"
-    return (("<-- would trigger  " if effect is ScoreEffect.TRIGGERED else "") + f"[window {held} scores, bar {bar:.2f}" +
-            ("; cooling down" if effect is ScoreEffect.COOLING_DOWN else "") + "]")
+    if sentence.trigger_level is None:
+        return f"[warming up {sentence.counted}/{needed}]"
+    return (("<-- would trigger  " if sentence.is_hinge else "") +
+            f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
+            ("; cooling down" if sentence.effect is ScoreEffect.COOLING_DOWN else "") + "]")
 
 
 def main():
@@ -72,7 +73,7 @@ def main():
                     fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
-    fragmenter = SegmentFragmenter()
+    finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
@@ -80,30 +81,24 @@ def main():
           f"a whisper run every {heard_settings.step:g} s")
     print(f"  trigger: a score above the {trigger.percentile:g}th percentile of the last {trigger.window_seconds:g} s of scores "
           f"(at least the last {trigger.min_scores}), at most one every {trigger.cooldown_seconds:g} s")
+    print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
 
     try:
-        for heard in listener.hear():
-            when = stamp(heard.ends_at)
-            if heard.ambient:
-                print(f"\n[{when}] ambient, not scored: {', '.join(heard.ambient)}", flush=True)
-            if not heard.words:
+        for sentence in finder.find():
+            when = stamp(sentence.heard_at)
+            if sentence.score is None and sentence.effect is None:
+                print(f"\n[{when}] ambient, not scored: {sentence.text}", flush=True)
                 continue
-            print(f"\n[{when}] heard ({heard.kind}): \"{heard.words}\"", flush=True)
-            for fragment in fragmenter.split(heard.words, heard_at=heard.ends_at):
-                if fragment.level is not FragmentLevel.SENTENCE:
-                    continue
-                scored = scorer.score(fragment)
-                bar, held = tracker.trigger_level_at(heard.ends_at), tracker.window_size_at(heard.ends_at)
-                effect = tracker.record(scored.score, heard.ends_at)
-                shown = f"{scored.score:5.2f}" if scored.score is not None else "  -  "
-                print(f"  {shown}  {scored.scored_by.value:<16} {fragment.text}   "
-                      f"{standing(effect, bar, held, tracker.counted, trigger.min_scores)}", flush=True)
+            shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
+            print(f"\n[{when}] {sentence.kind:<7} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "
+                  f"{standing(sentence, trigger.min_scores)}", flush=True)
     except KeyboardInterrupt:
         print()
-        listener.close()
-    for line in [*source.report.lines(), *listener.report.lines(), *scorer_client.report.lines(), *tracker.report.lines()]:
+    finally:
+        finder.close()
+    for line in [*source.report.lines(), *finder.report_lines(), *scorer_client.report.lines()]:
         print(line)
 
 

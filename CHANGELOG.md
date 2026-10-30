@@ -9,6 +9,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **Two playgrounds now just call the new modules** (`listen_to_room.py` calls the `HingeFinder`, `write_portent_from_hinge.py` calls the
+  `PortentWriter`), so the wiring lives in `src` and is no longer copied in scripts. Checked against the old versions first: on the
+  first 15 minutes of the live-room recording `listen_to_room.py` gave all 233 sentences with the same score, scorer, trigger mark and
+  window note (3 would-trigger marks); `write_portent_from_hinge.py` gave the same exemplars for the same hinges, with and without a
+  seed. Small differences: `listen_to_room.py` prints one line per sentence (no separate line for the whole segment heard), each
+  caption on its own line, and follows `consider_ambient_sounds`; `write_portent_from_hinge.py` shows the exemplars only when a
+  portent was written, since the `Portent` carries them.
 - **The trigger is set to the 99.5th percentile of the last twenty minutes** (`percentile = 99.5`, `window_seconds = 1200`, both the shipped
   config and the defaults of the tracker and `Config`). 100 (beat the best of ten minutes) fit the five recordings best (6.4 an
   hour, 4.0 to 8.1 by meeting), but a single lucky high score then holds the bar up for the whole window; 99.5 gives 6.7 an hour

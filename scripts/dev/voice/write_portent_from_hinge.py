@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Play with the oracle: type a hinge, get a portent, from the real PromptBuilder and OracleModelClient.
+"""Play with the oracle: type a hinge, get a portent, from the real PortentWriter.
 
 Nothing here is its own version of the oracle: the prompt comes from `oracle.prompt` in config/pom.toml (and
-config/pom.local.toml), the exemplars are drawn by the real ExemplarSelector, the prompt is built by the real
-PromptBuilder, and the portent comes from the real OracleModelClient. What you see here is what the Printer will do when it
-is wired up. The only thing this script adds is the typing of the hinge, which the trigger supplies.
+config/pom.local.toml), and the real PortentWriter draws the exemplars (ExemplarSelector), builds the prompt
+(PromptBuilder) and gets the portent (OracleModelClient). What you see here is what the Printer does. The only thing this
+script adds is the typing of the hinge, which the trigger supplies.
 
 It starts a llama-server for the model you name, on the port of `oracle.url`, and stops it when you quit. Use `--server` to
 talk to one that is already running instead.
@@ -43,7 +43,7 @@ from pom.config import Config                                      # noqa: E402
 from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
-from pom.voice import OracleModelClient                            # noqa: E402
+from pom.voice import OracleModelClient, PortentWriter              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
 CHUNKS = ROOT / "corpus" / "chunks"
@@ -124,18 +124,14 @@ def main() -> None:
             if not hinge:
                 break
             oracle = Config.load(CONFIG_PATH).oracle                       # read again, so prompt edits show at once
-            builder = PromptBuilder(oracle.prompt, selector)
-            client = OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature)
-            rng.seed(args.seed if args.seed is not None else seed_for(hinge))
-            prompt = builder.build(hinge)
-            if prompt is not None:
-                print("\n".join(exemplar_columns(prompt.exemplars, shutil.get_terminal_size().columns)) or "exemplars: none")
-                portent = client.portent(prompt.text)
-                if portent is not None:
-                    print(f"\n{portent}\n")
-                    print(f"({len(portent.split())} words, {client.last_seconds:.1f} s"
-                          f"{', cut off at max_tokens' if client.last_cut_off else ''})")
-            for line in [*builder.report.lines(), *client.report.lines()]:
+            writer = PortentWriter(PromptBuilder(oracle.prompt, selector),
+                                   OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature), rng)
+            portent = writer.write(hinge, seed=args.seed if args.seed is not None else seed_for(hinge))
+            if portent is not None:
+                print("\n".join(exemplar_columns(list(portent.exemplars), shutil.get_terminal_size().columns)) or "exemplars: none")
+                print(f"\n{portent.text}\n")
+                print(f"({portent.words} words, {portent.seconds:.1f} s{', cut off at max_tokens' if portent.cut_off else ''})")
+            for line in writer.report_lines():
                 print(line)
     except KeyboardInterrupt:
         print()

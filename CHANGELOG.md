@@ -46,6 +46,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`TriggerBar` and `DecayingQuantileBar`** (`pom/scoring/`, 97 tests, mutation-checked: 43 of 44 caught, the last is equivalent), the first step of making the trigger's algorithm selectable. `TriggerBar` is the small contract a bar
+  keeps (`level_at`, `window_size_at`, `add`, `ignores`); `DecayingQuantileBar` is EWMQ: scores weighted by 2 ** (-age / half_life_seconds), the bar their `percentile` read by linear interpolation through the
+  cumulative weight (so 99.5 works with a few dozen scores, and a faded score hardly matters), a `starting_bar` that blends in with a fading weight so there is no warm-up period, and an opt-in `exclude_triggers`
+  that leaves a triggering score out of what the bar remembers. Not wired into the tracker or the config yet; the percentile rule still runs.
 - **"What the trigger must do"** in the design doc's trigger section: four requirements the rule is judged against (two good triggers can follow each other; responsive to room heat in the five-to-ten-minute range;
   a quiet room is not silenced by one good trigger; nothing absolute), the rate of about six an hour at random as a tuned preference, and the 60 s cooldown as a practical choice.
 - **"Triggers we tried"** in the design doc's trigger section: the five rules considered (a fixed threshold, a moving average, Tukey's fence, a percentile of a timed window, double MAD), what each

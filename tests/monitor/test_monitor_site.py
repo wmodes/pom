@@ -11,7 +11,7 @@ import urllib.request
 import pytest
 
 from pom.corpus import Chunk
-from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, TriggerHistory
+from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TriggerHistory
 from pom.voice import Portent
 
 PASSWORD = "open sesame"
@@ -317,6 +317,104 @@ class TestTheTriggerRule:
         record = add(history)
         get(client, f"/trigger/{record.id}")
         assert len(calls) == 1
+
+
+class TestTheChart:
+    @staticmethod
+    def with_trace(**options):
+        trace = ScoreTrace()
+        site, history, client, clock = make(trace=trace, **options)
+        return trace, history, client
+
+    def test_the_index_has_the_chart_above_the_list(self):
+        trace, history, client = self.with_trace()
+        trace.add(3.0, 5.0, 10.0)
+        page = get(client, "/").get_data(as_text=True)
+        assert '<svg class="chart"' in page and 'id="chart"' in page
+        assert page.index('id="chart"') < page.index("Triggers, newest first")
+
+    def test_the_chart_appears_once(self):
+        trace, _, client = self.with_trace()
+        trace.add(3.0, 5.0, 1.0)
+        assert get(client, "/").get_data(as_text=True).count('<svg class="chart"') == 1
+
+    def test_there_is_a_caption_that_says_what_the_marks_are(self):
+        trace, _, client = self.with_trace()
+        page = get(client, "/").get_data(as_text=True)
+        assert "Grey dots: scored sentences." in page and "The last 30 minutes." in page
+
+    def test_without_a_trace_there_is_no_chart_and_no_route(self):
+        _, history, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        assert 'id="chart"' not in page and "<svg" not in page
+        assert get(client, "/chart.svg").status_code == 404
+
+    def test_an_empty_trace_says_no_scores_yet(self):
+        _, _, client = self.with_trace()
+        assert "No scores yet." in get(client, "/").get_data(as_text=True)
+
+    def test_the_scores_and_the_bar_are_drawn(self):
+        trace, _, client = self.with_trace()
+        for i in range(5):
+            trace.add(2.0 + i, 6.0, float(i))
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        assert svg.count('class="dot"') == 5 and 'class="bar"' in svg
+
+    def test_the_chart_route_is_an_svg_behind_the_password(self):
+        trace, _, client = self.with_trace()
+        trace.add(3.0, 5.0, 1.0)
+        response = get(client, "/chart.svg")
+        assert response.status_code == 200 and response.mimetype == "image/svg+xml" and response.get_data(as_text=True).startswith("<svg")
+        assert client.get("/chart.svg").status_code == 401
+
+    def test_a_trigger_dot_links_to_the_trigger_page_by_its_heard_time(self):
+        trace, history, client = self.with_trace()
+        trace.add(3.0, 5.0, 100.0)
+        trace.add(7.0, 5.0, 130.0, True)
+        record = add(history, "a hinge", heard_at=130.0)
+        assert f'href="/trigger/{record.id}"' in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_a_trigger_still_being_written_is_drawn_without_a_link(self):
+        trace, history, client = self.with_trace()
+        trace.add(7.0, 5.0, 130.0, True)
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        assert 'class="hit"' in svg and "/trigger/" not in svg
+
+    def test_only_the_last_half_hour_is_drawn(self):
+        trace, _, client = self.with_trace()
+        trace.add(3.0, 5.0, 0.0)
+        trace.add(3.0, 5.0, 2500.0)
+        trace.add(3.0, 5.0, 2600.0)
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 2
+
+    def test_the_chart_changes_as_scores_arrive(self):
+        trace, _, client = self.with_trace()
+        trace.add(3.0, 5.0, 1.0)
+        before = get(client, "/chart.svg").get_data(as_text=True)
+        trace.add(4.0, 5.0, 2.0)
+        assert get(client, "/chart.svg").get_data(as_text=True) != before
+
+    def test_the_chart_is_drawn_even_when_the_hinges_are_hidden(self):
+        trace, history, client = self.with_trace(show_hinges=False)
+        trace.add(3.0, 5.0, 1.0)
+        assert '<svg class="chart"' in get(client, "/").get_data(as_text=True)
+
+    def test_no_hinge_text_can_reach_the_chart(self):
+        trace, history, client = self.with_trace()
+        trace.add(7.0, 5.0, 130.0, True)
+        add(history, "My neighbour owes me forty dollars.", heard_at=130.0)
+        assert "neighbour" not in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_the_page_script_refreshes_the_chart_from_the_route(self):
+        trace, _, client = self.with_trace()
+        page = get(client, "/").get_data(as_text=True)
+        assert "fetch('/chart.svg'" in page and "getElementById('chart')" in page
+        assert page.count("drawChart()") >= 2                  # defined, and called by the poll
+
+    def test_the_security_headers_still_allow_the_page_to_fetch_the_chart(self):
+        trace, _, client = self.with_trace()
+        csp = get(client, "/").headers["Content-Security-Policy"]
+        assert "connect-src 'self'" in csp and "default-src 'none'" in csp
 
 
 class TestTheDetailPage:

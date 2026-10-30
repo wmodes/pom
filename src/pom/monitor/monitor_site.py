@@ -14,6 +14,9 @@ Design decisions, and why:
     portent are untrusted words. The only script is a few lines inline, and a Content-Security-Policy allows nothing else.
   * The page updates itself: a few lines of script ask `/api/triggers` every few seconds, update the numbers in place, and
     reload the page when a newer trigger has arrived. There are no websockets. The same feed is a plain JSON document.
+  * THE CHART. With a ScoreTrace the page draws the last 30 minutes of scores and the bar above "Triggers, newest first" (see
+    score_chart), as inline SVG made on the server; the same script refreshes it from `/chart.svg` on each poll. It is numbers only,
+    so it is drawn whether or not hinges are hidden, and its trigger dots link to the trigger pages.
   * Nothing here may stop the oracle (see pom/__init__.py). A missing password, a port that is taken, or a status function
     that fails is recorded in `report` (CRITICAL for the first two: the site is not running) and never raises.
     `strict=True` raises MonitorSiteError instead, for tests and dev tools.
@@ -36,6 +39,8 @@ from werkzeug.serving import make_server
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
+from pom.monitor.score_chart import DEFAULT_SECONDS as CHART_SECONDS, render_score_chart
+from pom.monitor.score_trace import ScoreTrace
 from pom.monitor.trigger_history import TriggerHistory, TriggerRecord
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -117,6 +122,11 @@ table { width:100%; border-collapse: collapse; background:var(--card); border:1p
 th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--line); vertical-align: top; }
 th { color:var(--muted); font-weight:600; font-size:.85rem; } td.num { text-align:right; font-variant-numeric: tabular-nums; }
 pre { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.7rem .9rem; white-space: pre-wrap; word-wrap: break-word; font: inherit; }
+.chartbox { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.4rem .5rem; margin:.6rem 0 .2rem; }
+.chart { width:100%; height:auto; display:block; } .chart .grid { stroke:var(--line); stroke-width:1; }
+.chart .key { fill:var(--muted); font:10px system-ui, sans-serif; } .chart .dot { fill:var(--muted); opacity:.65; }
+.chart .bar { stroke:var(--accent); stroke-width:1.6; fill:none; } .chart .hit { fill:#e8872f; stroke:var(--bg); stroke-width:1; }
+.small { font-size:.8rem; }
 .muted { color: var(--muted); } .facts td:first-child { color:var(--muted); width:11rem; }
 @media (max-width: 40rem) { .hide-narrow { display:none; } }
 """
@@ -125,7 +135,12 @@ _SCRIPT = """
 (function () {
   var newest = %(newest)s;
   function set(name, value) { var el = document.querySelector('[data-stat="' + name + '"]'); if (el) el.textContent = value; }
+  function drawChart() {
+    var box = document.getElementById('chart');
+    if (box) { fetch('/chart.svg', {cache: 'no-store'}).then(function (r) { return r.text(); }).then(function (svg) { box.innerHTML = svg; }); }
+  }
   function poll() {
+    drawChart();
     fetch('/api/triggers', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (data) {
       var s = data.stats;
       set('in_history', s.triggers_in_history); set('per_hour', s.triggers_per_hour); set('since_start', s.triggers_since_start);
@@ -157,6 +172,8 @@ _INDEX = """<!doctype html>
 </div>
 {% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
 {% if s.algorithm or s.trigger_description %}<p class="rule"><span class="muted">Trigger rule:</span> <b>{{ s.algorithm }}</b>{% if s.trigger_description %} <span class="muted">&mdash; a score above {{ s.trigger_description }}</span>{% endif %}</p>{% endif %}
+{% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
+<p class="muted small">Grey dots: scored sentences. Line: the bar each one had to beat. Orange: triggers (click one). The last 30 minutes.</p>{% endif %}
 <h2>Triggers, newest first</h2>
 {% if rows %}
 <table><thead><tr><th>Time</th><th class="num">Score</th><th class="num">Bar</th><th class="hide-narrow num">Window</th><th>Hinge</th></tr></thead><tbody>
@@ -207,7 +224,7 @@ class MonitorSite:
 
     def __init__(self, history: TriggerHistory, password: str, show_hinges: bool = True,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
-                 clock: Callable[[], float] = time.time, strict: bool = False):
+                 clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None):
         """Args:
             history: Where the triggers are read from.
             password: The site's password; the site does not run without one.
@@ -215,11 +232,13 @@ class MonitorSite:
             status_source: A function returning the MonitorStatus now; optional.
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise MonitorSiteError on any problem instead of recording it.
+            trace: A ScoreTrace to draw the chart from; without one the page has no chart.
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
         self._show_hinges = bool(show_hinges)
         self._status_source = status_source
+        self._trace = trace
         self._clock = clock
         self._started_at = clock()
         self._server = None
@@ -319,6 +338,13 @@ class MonitorSite:
         at = ids.index(record_id)
         return (ids[at - 1] if at > 0 else None), (ids[at + 1] if at + 1 < len(ids) else None)
 
+    def _chart(self) -> str:
+        """The chart as SVG, or "" if there is no trace. Trigger dots link to the records still on the page."""
+        if self._trace is None:
+            return ""
+        links = {record.heard_at: record.id for record in self._history.recent()}
+        return render_score_chart(self._trace.recent(CHART_SECONDS), links, CHART_SECONDS)
+
     def _row(self, record: TriggerRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),
                 "score": f"{record.score:.2f}", "bar": self._bar_text(record), "window_size": record.window_size,
@@ -352,9 +378,15 @@ class MonitorSite:
             stats = self._stats(records)
             now = self._clock()
             script = _SCRIPT % {"newest": records[0].id if records else "null", "every": POLL_SECONDS}
-            return render_template_string(_INDEX, style=_STYLE, script=script, s=stats,
+            return render_template_string(_INDEX, style=_STYLE, script=script, s=stats, chart=self._chart(),
                                           services=list(stats["services"].items()),
                                           rows=[self._row(record, now) for record in records])
+
+        @app.get("/chart.svg")
+        def chart_svg():
+            if self._trace is None:
+                abort(404)
+            return Response(self._chart(), mimetype="image/svg+xml")
 
         @app.get("/trigger/<int:record_id>")
         def detail(record_id: int):

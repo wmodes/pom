@@ -296,3 +296,31 @@ show_hinges = true
 
 # How many seconds a trigger stays on the page. It is kept in memory only, so a restart empties it. Above 0.
 history_seconds = 3600
+
+
+# ================================================
+# OUTPUT: how a portent is set on the page
+# ================================================
+
+# The TypewriterFormatter wraps each portent to a line of characters. The width is worked out from the paper and the
+# print wheel: (paper width - 2 x margin) x characters per inch, rounded down. 8.5 inch paper with 1 inch margins at 10
+# characters per inch is 65 characters; at 12 it is 78, and at 15 it is 97.
+[output]
+
+# The paper's width in inches, above 0.
+paper_width_inches = 8.5
+
+# The margin on each side in inches, 0 or more. These are the margins the typewriter is set to; the Printer does not
+# set them. The paper, margins and pitch must leave a line of at least 20 characters.
+margin_inches = 1.0
+
+# The print wheel's pitch: 10, 12 or 15 on the Wheelwriter. The machine's pitch switch must match the wheel. 10 is the
+# widest letters, so the shortest line, and fits any wheel.
+characters_per_inch = 10
+
+# How many spaces a quotation (text the model put in triple backticks) is indented. 0 or more.
+quote_indent = 4
+
+# How many line feeds are typed after each portent, 0 or more. The first ends the last line; the rest are blank lines,
+# so the paper has moved on when the next portent is typed.
+linefeeds_after_portent = 4

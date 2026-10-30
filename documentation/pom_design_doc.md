@@ -69,7 +69,8 @@ microphone -> whisper-driven cutting -> whisper -> sort: words / captions / noth
 | Trigger (`ConvoInterestTracker`) | Built; used by the hearing-debug probe, not yet by a Conductor |
 | Hinge (the sentence that triggered) | Decided; nothing to build but the hand-off |
 | PromptBuilder, `OracleModelClient` | Built |
-| Output (formatter, serial, pause listening) | Planned |
+| Output: formatter (`TypewriterFormatter`) | Built |
+| Output: serial port, pause listening | Planned |
 | Input (keyboard) | Planned |
 | Conductor | Planned |
 
@@ -390,8 +391,15 @@ Whether to start them depends on how far the prompted oracle model gets.
 
 ## Output
 
-- (planned) A formatter for the typewriter's character set (printable ASCII) and line width, and a serial port wrapper
-  that paces the text. It tells the Conductor when printing starts and ends, so listening pauses (half-duplex).
+- Built: the `TypewriterFormatter` (`src/pom/output/`) makes a portent printable. It takes out the triple-backtick fences
+  (the prompt shows the model its exemplars and the hinge in fences, so it may echo them); a fenced piece is a quotation and
+  is typed indented four spaces with a blank line on each side, since the typewriter has no italics. It swaps curly quotes,
+  dashes and accents for plain ASCII and drops what has no plain form, wraps to the line width, and ends the text with
+  `linefeeds_after_portent` line feeds (4) so the paper has moved on for the next portent. The line width is worked out
+  in `[output]` from the paper width, the margins and the wheel's characters per inch (8.5 inch paper with 1 inch margins:
+  65 characters at 10 cpi, 78 at 12, 97 at 15; 10 is the default, the widest letters, so it fits any wheel).
+- (planned) The serial port wrapper that paces the text (about 16 characters a second). It tells the Conductor when printing
+  starts and ends, so listening pauses (half-duplex).
 - The output validation hook (`scripts/dev/corpus/validate_output.py`) is a deliberate stub. Checking for verbatim
   overlap with the corpus was judged the wrong measure: false positives on quotes that land, false negatives on
   near-copies, blind to echoing the hinge.
@@ -455,7 +463,8 @@ src/pom/
   voice/       oracle_model_client, portent_writer               built
   monitor/     trigger_history (the last hour, memory only),     built
                monitor_site (the web page, Flask, password)      built; not yet fed by the pipeline
-  output/      formatter, serial wrapper, reply selection        planned
+  output/      typewriter_formatter                              built
+               serial wrapper, reply selection                   planned
   input/       keyboard                                          planned
   conductor                                                      planned; the only module that knows the whole pipeline
 ```
@@ -485,7 +494,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
    Look into why nothing is cached when convenient.
 2. (Decided 2026-10-27) The hinge is the sentence that triggered. The hand-off is the Conductor's.
 3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/listen_to_room.py`).
-4. Output side: formatter, serial wrapper, reply selection.
+4. Output side: the formatter is built; the serial wrapper and reply selection are next.
 5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
 6. Paper guards; "failing loudly".
 7. Run it on the Pi; test in a real room (a quiet one too) and retune from that.

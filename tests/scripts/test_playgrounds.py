@@ -9,7 +9,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/sort_whisper_text.py", "scripts/dev/listening/listen_to_room.py",
                "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/voice/write_portent_from_hinge.py",
-               "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_triggers.py"]
+               "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_triggers.py",
+               "scripts/dev/output/format_text_for_typewriter.py"]
 
 
 def run(script, *args, env=None):
@@ -74,3 +75,17 @@ def test_the_whole_pipeline_playground_wants_a_password_for_the_monitor(tmp_path
 def test_the_monitor_flag_is_offered():
     result = run("scripts/dev/pipeline/listening_to_portent.py", "--help")
     assert "--monitor" in result.stdout and "--config" in result.stdout
+
+
+def test_the_format_playground_indents_a_quote_and_wraps_to_the_width():
+    text = 'Say it:\n```\n"Go now."\n```\nDone.'
+    result = run("scripts/dev/output/format_text_for_typewriter.py", "--width", "30", "--indent", "4", "--feeds", "1", text)
+    assert result.returncode == 0
+    lines = result.stdout.splitlines()
+    assert lines[1:6] == ["Say it:", "", '    "Go now."', "", "Done."]
+    assert "5 lines" in lines[-1] and "1 line feeds after" in lines[-1]
+
+
+def test_the_format_playground_takes_the_wheels_pitch_from_the_command_line():
+    result = run("scripts/dev/output/format_text_for_typewriter.py", "--cpi", "12", "word")
+    assert result.stdout.splitlines()[0] == "---------|" * 7 + "--------"

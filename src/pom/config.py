@@ -32,6 +32,10 @@ of being threaded through by hand. Today there are five:
     [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of triggers. Whether it
                runs, the address and port it listens on, its password (set it in config/pom.local.toml, never in the
                committed file), whether it shows the hinge text, and how long a trigger stays on the page.
+    [output]   A section (see OutputSettings): how a portent is set on the page. The paper's width, the margins and the
+               print wheel's characters per inch give the line width; `quote_indent` indents a quotation and
+               `linefeeds_after_portent` is how far the paper moves on after a portent. The entry point
+               builds the TypewriterFormatter from `config.output`.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
@@ -76,7 +80,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
          "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
-         "monitor.show_hinges", "monitor.history_seconds"}
+         "monitor.show_hinges", "monitor.history_seconds", "output.paper_width_inches", "output.margin_inches",
+         "output.characters_per_inch", "output.quote_indent", "output.linefeeds_after_portent"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -116,6 +121,12 @@ DEFAULT_MONITOR_HOST = "0.0.0.0"
 DEFAULT_MONITOR_PORT = 8080
 DEFAULT_MONITOR_SHOW_HINGES = True
 DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
+DEFAULT_OUTPUT_PAPER_WIDTH_INCHES = 8.5
+DEFAULT_OUTPUT_MARGIN_INCHES = 1.0
+DEFAULT_OUTPUT_CHARACTERS_PER_INCH = 10.0
+DEFAULT_OUTPUT_QUOTE_INDENT = 4
+DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT = 4
+MIN_OUTPUT_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -279,6 +290,30 @@ class MonitorSettings:
     history_seconds: float = DEFAULT_MONITOR_HISTORY_SECONDS
 
 
+@dataclass(frozen=True)
+class OutputSettings:
+    """The `[output]` section: how a portent is set on the page.
+
+    Attributes:
+        paper_width_inches: The paper's width, above 0 (8.5 for US letter).
+        margin_inches: The margin on each side, 0 or more. The margins plus a usable width of at least 20 characters must fit the paper.
+        characters_per_inch: The print wheel's pitch, above 0: 10, 12 or 15 on the Wheelwriter (10 is the widest letters,
+            so the shortest line, and fits any wheel; the machine's pitch switch must match the wheel).
+        quote_indent: How many spaces a quotation is indented, 0 or more.
+        linefeeds_after_portent: How many line feeds are typed after a portent, 0 or more: the last line's own, then blank lines.
+    """
+    paper_width_inches: float = DEFAULT_OUTPUT_PAPER_WIDTH_INCHES
+    margin_inches: float = DEFAULT_OUTPUT_MARGIN_INCHES
+    characters_per_inch: float = DEFAULT_OUTPUT_CHARACTERS_PER_INCH
+    quote_indent: int = DEFAULT_OUTPUT_QUOTE_INDENT
+    linefeeds_after_portent: int = DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT
+
+    @property
+    def line_width(self) -> int:
+        """How many characters fit on a line: the width between the margins times the pitch, rounded down."""
+        return int((self.paper_width_inches - 2 * self.margin_inches) * self.characters_per_inch + 1e-9)
+
+
 class Config:
     """The project's shared settings, plus a report of anything that had to be recovered from.
 
@@ -293,6 +328,7 @@ class Config:
         trigger: The `[trigger]` section, as a TriggerSettings.
         listening: The `[listening]` section, as a ListeningSettings.
         monitor: The `[monitor]` section, as a MonitorSettings.
+        output: The `[output]` section, as an OutputSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -300,13 +336,15 @@ class Config:
                  report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None,
-                 listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None):
+                 listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
+                 output: Optional[OutputSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
         self.trigger = trigger if trigger is not None else TriggerSettings()
         self.listening = listening if listening is not None else ListeningSettings()
         self.monitor = monitor if monitor is not None else MonitorSettings()
+        self.output = output if output is not None else OutputSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -450,7 +488,24 @@ class Config:
             _bool(values.get("monitor.show_hinges", DEFAULT_MONITOR_SHOW_HINGES), "monitor.show_hinges", report),
             _positive(values.get("monitor.history_seconds", DEFAULT_MONITOR_HISTORY_SECONDS), "monitor.history_seconds",
                       DEFAULT_MONITOR_HISTORY_SECONDS, report))
-        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor)
+        output = OutputSettings(
+            _positive(values.get("output.paper_width_inches", DEFAULT_OUTPUT_PAPER_WIDTH_INCHES),
+                      "output.paper_width_inches", DEFAULT_OUTPUT_PAPER_WIDTH_INCHES, report),
+            _number(values.get("output.margin_inches", DEFAULT_OUTPUT_MARGIN_INCHES), "output.margin_inches",
+                    DEFAULT_OUTPUT_MARGIN_INCHES, 0.0, report),
+            _positive(values.get("output.characters_per_inch", DEFAULT_OUTPUT_CHARACTERS_PER_INCH),
+                      "output.characters_per_inch", DEFAULT_OUTPUT_CHARACTERS_PER_INCH, report),
+            _whole(values.get("output.quote_indent", DEFAULT_OUTPUT_QUOTE_INDENT), "output.quote_indent",
+                   DEFAULT_OUTPUT_QUOTE_INDENT, 0, report),
+            _whole(values.get("output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT),
+                   "output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT, 0, report))
+        if output.line_width < MIN_OUTPUT_LINE_WIDTH:
+            report.warn(f"output: the paper, margins and pitch leave a line of {output.line_width} characters, under "
+                        f"{MIN_OUTPUT_LINE_WIDTH}; using the default paper, margins and pitch")
+            output = OutputSettings(quote_indent=output.quote_indent,
+                                    linefeeds_after_portent=output.linefeeds_after_portent)
+        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor,
+                   output)
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:

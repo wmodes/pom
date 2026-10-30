@@ -7,6 +7,20 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ## [Unreleased]
 
+### Added
+
+- **The TypewriterFormatter** (`src/pom/output/`): a portent in, text the Wheelwriter can print out. It removes the triple-backtick fences
+  (the prompt shows the model its exemplars and the hinge in fences, so a model may echo them) and types a fenced quotation indented
+  4 spaces with a blank line before and after, as a block quote would be set. Curly quotes, dashes, accents and ligatures become plain ASCII
+  and anything with no plain form (an emoji) is dropped. Lines wrap to the line width, a word too long is cut at the margin, and the text ends with
+  `linefeeds_after_portent` line feeds. An unclosed fence (the model was cut off) quotes the rest. A census of 60 portents from the running
+  9B found no fences, so this is a safeguard, not a fix for a seen problem. 52 tests; 42 mutants checked.
+- **`[output]` in the config**: `paper_width_inches` (8.5), `margin_inches` (1.0), `characters_per_inch` (10; 12 or 15 for other wheels), `quote_indent` (4)
+  and `linefeeds_after_portent` (4). The line width is worked out from the first three (65 at 10 cpi, 78 at 12, 97 at 15) and rounds down
+  without losing a character to floating point; margins that leave under 20 characters fall back to the default paper, margins and pitch with a warning.
+  `OutputSettings.line_width` gives it. 21 mutants checked.
+- **The playground `scripts/dev/output/format_text_for_typewriter.py`** shows the formatter between rulers (`--cpi`, `--width`, `--indent`, `--feeds`).
+
 ### Changed
 
 - **The shipped trigger leaves triggering scores out of the bar** (`exclude_triggers = true`). The zinger that fired no longer becomes the room's best score and holds the bar up, so a good score soon after a great one can still fire, and a quiet room stays alive. Replayed on the five recordings

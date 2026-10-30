@@ -804,3 +804,76 @@ def test_the_shipped_monitor_section_is_off_and_has_no_password():
     with open(Path(__file__).parent.parent / "config" / "pom.toml", "rb") as committed:
         monitor = tomllib.load(committed)["monitor"]
     assert monitor["enabled"] is False and monitor["password"] == ""
+
+
+# --- The [output] section ------------------------------------------------------------------
+
+def test_the_output_defaults_are_a_65_character_line_for_letter_paper_at_10_pitch():
+    from pom.config import OutputSettings
+    config = Config.load(environ={})
+    assert config.output == OutputSettings() and config.report.ok
+    assert (config.output.paper_width_inches, config.output.margin_inches, config.output.characters_per_inch) == (8.5, 1.0, 10.0)
+    assert (config.output.quote_indent, config.output.linefeeds_after_portent, config.output.line_width) == (4, 4, 65)
+
+
+def test_all_the_output_values_are_read_from_the_section(tmp_path):
+    from pom.config import OutputSettings
+    text = ("[output]\npaper_width_inches = 11\nmargin_inches = 0.5\ncharacters_per_inch = 12\n"
+            "quote_indent = 6\nlinefeeds_after_portent = 2\n")
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.output == OutputSettings(11.0, 0.5, 12.0, 6, 2) and config.report.ok
+    assert config.output.line_width == 120
+
+
+@pytest.mark.parametrize("cpi, width", [(10, 65), (12, 78), (15, 97)])
+def test_the_line_width_for_letter_paper_with_1_inch_margins_at_each_pitch(tmp_path, cpi, width):
+    config = Config.load(write(tmp_path, f"[output]\ncharacters_per_inch = {cpi}\n"), environ={})
+    assert config.output.line_width == width
+
+
+def test_zero_for_the_indent_and_the_line_feeds_is_allowed(tmp_path):
+    config = Config.load(write(tmp_path, "[output]\nquote_indent = 0\nlinefeeds_after_portent = 0\nmargin_inches = 0\n"), environ={})
+    assert (config.output.quote_indent, config.output.linefeeds_after_portent, config.output.margin_inches) == (0, 0, 0.0)
+    assert config.report.ok
+
+
+@pytest.mark.parametrize("key, value", [
+    ("paper_width_inches", "0"), ("paper_width_inches", '"wide"'), ("margin_inches", "-1"), ("margin_inches", "true"),
+    ("characters_per_inch", "0"), ("characters_per_inch", '"ten"'), ("quote_indent", "-1"), ("quote_indent", "2.5"),
+    ("linefeeds_after_portent", "-1"), ("linefeeds_after_portent", "true"),
+])
+def test_a_bad_output_value_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import OutputSettings
+    config = Config.load(write(tmp_path, f"[output]\n{key} = {value}\n"), environ={})
+    assert config.output == OutputSettings()
+    assert len(config.report.warnings) == 1 and f"output.{key}" in config.report.warnings[0]
+
+
+def test_margins_that_leave_too_short_a_line_mean_the_default_paper_and_pitch_with_a_warning(tmp_path):
+    from pom.config import OutputSettings
+    config = Config.load(write(tmp_path, "[output]\nmargin_inches = 4\nquote_indent = 6\nlinefeeds_after_portent = 1\n"), environ={})
+    assert config.output == OutputSettings(quote_indent=6, linefeeds_after_portent=1)
+    assert len(config.report.warnings) == 1 and "20" in config.report.warnings[0]
+
+
+def test_a_line_of_exactly_the_shortest_width_is_allowed(tmp_path):
+    config = Config.load(write(tmp_path, "[output]\npaper_width_inches = 4\nmargin_inches = 1\ncharacters_per_inch = 10\n"), environ={})
+    assert config.output.line_width == 20 and config.report.ok
+
+
+def test_the_committed_config_sets_every_output_key():
+    import tomllib
+    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
+        section = tomllib.load(f)["output"]
+    assert set(section) == {"paper_width_inches", "margin_inches", "characters_per_inch", "quote_indent", "linefeeds_after_portent"}
+
+
+def test_the_line_width_is_not_lost_to_floating_point_rounding(tmp_path):
+    # (8 - 2 x 2.2) x 15 comes to 53.99999999999999 in floating point; the line is 54 characters
+    text = "[output]\npaper_width_inches = 8\nmargin_inches = 2.2\ncharacters_per_inch = 15\n"
+    assert Config.load(write(tmp_path, text), environ={}).output.line_width == 54
+
+
+def test_a_config_built_without_output_settings_has_the_defaults():
+    from pom.config import OutputSettings
+    assert Config().output == OutputSettings()

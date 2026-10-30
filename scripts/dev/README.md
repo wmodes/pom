@@ -17,5 +17,8 @@ into one built part of the Printer and see what it does, using the real modules 
   hinge is sent to the oracle and the portent is printed where the typewriter would. It needs whisper and both llama-servers running.
 - `monitor/`: `serve_fake_triggers.py` serves the monitoring site with invented triggers (`--live 15` adds one every 15 seconds,
   `--hide-hinges` shows the numbers-only page) so you can open it, click a trigger and watch it update. Password: `demo`.
+- `output/`: `format_text_for_typewriter.py` shows how the TypewriterFormatter sets text for the typewriter: type or pipe text in (quote the
+  heredoc, `<<'EOT'`, or the shell runs anything in backticks) and see it between rulers, with the quote indented. `--cpi 12`, `--width`,
+  `--indent` and `--feeds` change what `[output]` in the config sets.
 - `voice/`: `write_portent_from_hinge.py` takes the hinges you type and prints the portent the oracle model writes, with the exemplars it was
   given (it needs the oracle model's llama-server, or starts one).

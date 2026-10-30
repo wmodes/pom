@@ -9,6 +9,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The trigger is set to the 99.5th percentile of the last twenty minutes** (`percentile = 99.5`, `window_seconds = 1200`, both the shipped
+  config and the defaults of the tracker and `Config`). 100 (beat the best of ten minutes) fit the five recordings best (6.4 an
+  hour, 4.0 to 8.1 by meeting), but a single lucky high score then holds the bar up for the whole window; 99.5 gives 6.7 an hour
+  (3.4 to 9.3), the live room 9.3 (15 triggers in 96 minutes). Below 100 the rate follows how much the room talks, about one
+  sentence in two hundred. Defaults pinned by tests and mutation-checked (5 of 5).
 - **The trigger is a percentile, not Tukey's fence** (`[trigger] percentile`, default 100, replaces `fence_multiple`; `window_seconds`
   now 600; `ConvoInterestTracker(percentile, window_seconds, min_scores, cooldown_seconds)`; the tracker tests rewritten, 96 to 117,
   mutation-checked: 21 of 21 and 10 of 10 for the setting). The bar is now the `percentile` of the window by nearest rank, always

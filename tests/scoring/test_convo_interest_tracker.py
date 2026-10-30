@@ -35,7 +35,7 @@ def warmed_up(**options):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (100.0, 600.0, 20, 60.0)
+        assert (DEFAULT_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_COOLDOWN_SECONDS) == (99.5, 1200.0, 20, 60.0)
 
     def test_good_settings_are_quiet(self):
         assert ConvoInterestTracker().report.ok
@@ -61,10 +61,15 @@ class TestThePercentileBar:
         feed(t, list(range(1, 251)))                                        # 64.4% of 250 is exactly 161
         assert t.trigger_level_at(250) == 161.0
 
-    def test_the_default_percentile_is_the_best_score(self):
+    def test_the_default_percentile_is_995_and_five_scores_are_too_few_to_tell_it_from_the_best(self):
         t = ConvoInterestTracker(min_scores=5)
         feed(t, [1, 2, 3, 4, 5])
         assert t.trigger_level_at(5) == 5.0
+
+    def test_with_two_hundred_scores_995_lets_one_stand_above_the_bar(self):
+        t = ConvoInterestTracker(percentile=99.5, window_seconds=1000, min_scores=2)
+        feed(t, list(range(1, 201)))
+        assert t.trigger_level_at(200) == 199.0                            # the best is 200; one score in 200 is above 199
 
     def test_the_bar_follows_the_window_as_it_is_now(self):
         t = warmed_up()
@@ -336,7 +341,7 @@ class TestBadSettings:
         t = tracker(percentile=bad)
         assert len(t.report.warnings) == 1 and "percentile" in t.report.warnings[0]
         feed(t, [1, 2, 3, 4, 5])
-        assert t.trigger_level_at(5) == 5.0                            # the default of 100: the best score
+        assert t.trigger_level_at(5) == 5.0                            # the default of 99.5: five scores cannot tell it from the best
 
     @pytest.mark.parametrize("bad", [0, -1, "60", None, True, [60], float("nan"), float("inf")])
     def test_a_bad_window_means_the_default_with_a_warning(self, bad):

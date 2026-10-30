@@ -424,7 +424,7 @@ def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
 
 def test_the_trigger_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.trigger == TriggerSettings() and config.trigger.percentile == 100.0 and config.report.ok
+    assert config.trigger == TriggerSettings() and config.trigger.percentile == 99.5 and config.report.ok
 
 
 def test_the_trigger_defaults_match_the_trackers_defaults():
@@ -434,7 +434,7 @@ def test_the_trigger_defaults_match_the_trackers_defaults():
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(100.0, 600.0, 20, 60.0)
+    assert TriggerSettings() == TriggerSettings(99.5, 1200.0, 20, 60.0)
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
@@ -473,7 +473,7 @@ def test_an_unknown_or_removed_trigger_key_is_warned_about(tmp_path, key):
 def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
     main = write(tmp_path, "[trigger]\npercentile = 95\nmin_scores = 8\n")
     (tmp_path / "pom.local.toml").write_text("[trigger]\npercentile = 90\n", encoding="utf-8")
-    assert Config.load(main, environ={}).trigger == TriggerSettings(90.0, 600.0, 8, 60.0)
+    assert Config.load(main, environ={}).trigger == TriggerSettings(90.0, 1200.0, 8, 60.0)
 
 
 def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):

@@ -55,13 +55,13 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **content word** †: a word that is not filler, a stopword or a number. A fragment with too few
   content words skips the scorer model.
 - **window** †: the room's recent scores the trigger is judged against: the scores heard in the last
-  `window_seconds` (600, the last ten minutes), or the last `min_scores` (20) if the room is so quiet that
+  `window_seconds` (1200, the last twenty minutes), or the last `min_scores` (20) if the room is so quiet that
   fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
 - **bar** †: the score a new score must be above to trigger: the `percentile` of the window's scores, by nearest rank
   (always a score the room really earned). 100 puts it at the best score of the window, so a sentence has to beat
   everything said lately; 90 puts it at the top tenth. (Tukey's fence, Q3 + a multiple of the IQR, was used before and
   replaced.)
-- **percentile** †: how much of the window a score must beat to trigger (`percentile`, 100 to begin with).
+- **percentile** †: how much of the window a score must beat to trigger (`percentile`, 99.5 to begin with; 100 is the best score).
 - **trigger** †: the moment a score is above the bar, once the window holds `min_scores` scores and the
   cooldown is over. The score is compared with the bar as it stood before that score was added. Then the Printer
   responds.

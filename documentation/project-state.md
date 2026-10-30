@@ -21,9 +21,9 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   `ScorerModelClient`, `Scorer`); the `ConvoInterestTracker` (the trigger); the `PromptBuilder`; the `OracleModelClient`.
 - **Decided:**
   - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score.
-  - **Trigger:** a percentile of the last ten minutes of scores (the larger of 10 minutes or the last 20 scores), `percentile`
-    100 (a score must beat the best of the window), 60 s cooldown, no floor. Replayed on five recorded meetings (four Zoom,
-    one live room) it gives about 6.4 triggers an hour. The goal is about six an hour. Tukey's fence was tried first and replaced
+  - **Trigger:** a percentile of the last twenty minutes of scores (the larger of 20 minutes or the last 20 scores), `percentile`
+    99.5 (about one score in 200 stands above the bar), 60 s cooldown, no floor. Replayed on five recorded meetings (four Zoom,
+    one live room) it gives about 6.7 triggers an hour (3.4 to 9.3 by meeting; the live room 9.3). The goal is about six an hour. Tukey's fence was tried first and replaced
     (2026-10-29): it sat above the window's best score in two windows out of three.
   - **Hinge:** the sentence that triggered (Wes, 2026-10-27). No separate hinge picker.
   - **Oracle model:** Qwen3.5-9B, with Gemma 2 9B as the named alternate. On the Pi a typical portent takes 35 to 40 s

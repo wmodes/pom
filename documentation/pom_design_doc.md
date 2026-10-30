@@ -156,13 +156,14 @@ downloaded per machine.
 
 The rule is a percentile of the room's recent scores. It makes no assumption about their shape:
 
-- **The window**: the scores heard in the last `window_seconds` (600, ten minutes), or the last `min_scores` (20)
+- **The window**: the scores heard in the last `window_seconds` (1200, twenty minutes), or the last `min_scores` (20)
   if the room is so quiet that fewer were heard in that time; whichever is larger. It is a length of time, not a count,
-  so a busy room and a quiet one both get "the last ten minutes". Every score joins it, the lowest included. There is
+  so a busy room and a quiet one both get "the last twenty minutes". Every score joins it, the lowest included. There is
   no floor.
-- **The bar**: the `percentile` (100) of the window's scores, by nearest rank: line the scores up and take the lowest
+- **The bar**: the `percentile` (99.5) of the window's scores, by nearest rank: line the scores up and take the lowest
   one with at least that share of the window at or below it. It is always a score the room really earned. At 100 it is the
-  best score of the window, so a sentence has to beat everything said lately; at 90 it is the top tenth.
+  best score of the window, so a sentence has to beat everything said lately; at 99.5 about one score in two hundred stands
+  above it; at 90 it is the top tenth.
 - **The trigger**: a score triggers when it is strictly above the bar as it stood before that score joined, the window
   holds at least `min_scores` scores, and at least `cooldown_seconds` (60) have passed since the last trigger. A score
   above the bar inside the cooldown is held back (it still joins the window and does not restart the cooldown).
@@ -178,13 +179,15 @@ range). It does not suit these scores: they are lumpy, a pile at 1, humps near 3
 spread between the lumps stretches the interquartile range and the bar lands above the real top. At a multiple of 0.8
 the bar was above the best score of its own window in two windows out of three, it reached 9.85 on a scale that ends at
 9 in a live call, and it gave 12.5 triggers an hour in a live room against 4 to 9 in the Zoom meetings. A percentile
-measures where the top of the window actually is instead of predicting it from the middle. With 100 and a ten-minute
-window the rate is about one a window, whatever the room's mood, and varies less between rooms. The cooldown exists
+measures where the top of the window actually is instead of predicting it from the middle. 100 (beat the best of ten
+minutes) fit the recordings best, but one lucky high score then holds the bar up for the whole window, so the shipped
+setting is 99.5 over twenty minutes, which gives a similar rate without that dependence. Below 100 the rate follows how
+much the room talks (about one sentence in two hundred); at 100 it follows the window instead. The cooldown exists
 because one meeting had six triggers in eight seconds (a run of one-line jokes).
 
-**Result with the shipped settings** (5 recorded meetings, four Zoom calls and one live room, 7.1 hours): about 6.4 triggers
-an hour, one every 9 minutes, between 4.0 and 8.1 an hour by meeting. With the talk thinned to a fifth, about 4 an hour.
-The goal is about 6 an hour. The settings were tuned on these recordings only; a quiet real room is still the open test.
+**Result with the shipped settings** (5 recorded meetings, four Zoom calls and one live room, 7.1 hours): about 6.7 triggers
+an hour, one every 9 minutes, between 3.4 and 9.3 an hour by meeting (the live room is the 9.3: 15 triggers in 96 minutes,
+in bursts, with a 27-minute gap). 100 with ten minutes gave 6.4 (4.0 to 8.1). The goal is about 6 an hour. The settings were tuned on these recordings only; a quiet real room is still the open test.
 
 **Principles behind it.** Absolute scoring is the enemy of emergence: thresholds should come from what is happening in
 the room, not from a constant. The filters must work reasonably well in every room, not perfectly in one; nothing is
@@ -424,7 +427,7 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 - **Scorer**: word lists -> a small local language model (Qwen3-4B), one sentence per request, no context, a 0 to 9
   probability-weighted score.
 - **Trigger**: a pool of faded scores against a moving threshold with a rate governor, activity curve and no cooldown
-  -> a percentile of the last ten minutes of scores (100: beat the best) with a 60 s cooldown and no floor.
+  -> a percentile (99.5) of the last twenty minutes of scores with a 60 s cooldown and no floor.
 - **Hearing**: cutting by loudness with a moving noise floor -> whisper's own voice detection on a rolling buffer; the
   three-way sort of whisper's output (words, ambient captions, nothing).
 - **Voice**: two tracks behind an interface -> the oracle model, a prompted stock model with a human-written prompt (Track B

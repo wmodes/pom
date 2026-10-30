@@ -46,8 +46,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
-- **"What the trigger must do"** in the design doc's trigger section: five requirements the rule is judged against (about six an hour on average and at random; two good triggers can follow each other;
-  responsive to room heat in the five-to-ten-minute range; a quiet room is not silenced by one good trigger; nothing absolute), and the 60 s cooldown as a practical choice.
+- **"What the trigger must do"** in the design doc's trigger section: four requirements the rule is judged against (two good triggers can follow each other; responsive to room heat in the five-to-ten-minute range;
+  a quiet room is not silenced by one good trigger; nothing absolute), the rate of about six an hour at random as a tuned preference, and the 60 s cooldown as a practical choice.
 - **"Triggers we tried"** in the design doc's trigger section: the five rules considered (a fixed threshold, a moving average, Tukey's fence, a percentile of a timed window, double MAD), what each
   did well and badly in the replays, and what the attempts taught. Mostly conceptual, with a few figures.
 - **Newer and Older links on a trigger's page** (`MonitorSite`, 7 new tests, mutation-checked on the new lines: 11 of 11 caught). They go to the next trigger up and down the list

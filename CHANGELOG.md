@@ -60,6 +60,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`listening_to_portent.py --monitor` feeds the chart**: every scored sentence goes into a `ScoreTrace` (score, the bar it was judged against, audio time, whether it triggered; numbers only, kept for `history_seconds`) that the site draws, so the page now shows the room's scores and the bar riding over them live.
 - **The chart on the monitoring page**: with a `ScoreTrace` (new `trace=` argument of `MonitorSite`) the page draws the last 30 minutes of scores and the bar above "Triggers, newest first", as server-made inline SVG with a one-line caption; the page script refreshes it from the new `/chart.svg` route
   on every 5 s poll, and its trigger dots link to the trigger pages. Numbers only, so it is drawn even when hinges are hidden. Without a trace there is no chart. 17 tests; 17 mutants checked (3 are equivalent).
 - **`render_score_chart`** (`pom/monitor/score_chart.py`, 36 tests, mutation-checked: 33 of 36 caught, the other three are the drawing's own size constants), the chart for the monitoring site as a pure function from `ScoreTrace` points to an inline SVG: grey dots for every scored sentence on a fixed 0 to 9 scale,

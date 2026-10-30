@@ -48,7 +48,7 @@ from pom.config import Config                                                   
 from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector                                    # noqa: E402
 from pom.listening import (Listener, MacMicSource, MicSource, SegmentFragmenter, WavSource,         # noqa: E402
                            WhisperServerClient)
-from pom.monitor import MonitorSite, MonitorStatus, TriggerHistory                                  # noqa: E402
+from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TriggerHistory                      # noqa: E402
 from pom.log_setup import configure_logging                                                         # noqa: E402
 from pom.prompt import PromptBuilder                                                                # noqa: E402
 from pom.scoring import (HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
@@ -156,14 +156,14 @@ def main() -> None:
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")
 
-    history, site, snapshot = None, None, dict(bar=None, window=0, heard=0, scored=0)
+    history, trace, site, snapshot = None, None, None, dict(bar=None, window=0, heard=0, scored=0)
     if args.monitor:
         monitor = config.monitor
         watch = ServiceWatch({"whisper": lambda: reachable(heard_settings.whisper_url), "scorer": lambda: answers(scoring.url),
                               "oracle": lambda: answers(config.oracle.url)})
-        history = TriggerHistory(monitor.history_seconds)
+        history, trace = TriggerHistory(monitor.history_seconds), ScoreTrace(monitor.history_seconds)
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
-        site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, status_source=lambda: MonitorStatus(
+        site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, status_source=lambda: MonitorStatus(
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
             services=watch(), algorithm=trigger.algorithm, trigger_description=tracker.describe()))
         if not site.start(monitor.host, monitor.port):
@@ -192,6 +192,8 @@ def main() -> None:
                   f"{standing(sentence)}", flush=True)
             snapshot.update(heard=snapshot["heard"] + 1, scored=snapshot["scored"] + (sentence.score is not None),
                             bar=tracker.trigger_level_at(sentence.heard_at), window=tracker.window_size_at(sentence.heard_at))
+            if trace is not None and sentence.score is not None:
+                trace.add(sentence.score, sentence.trigger_level, sentence.heard_at, sentence.is_hinge)      # numbers only, for the chart
             if not sentence.is_hinge:
                 continue
 

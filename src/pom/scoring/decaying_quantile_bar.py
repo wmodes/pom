@@ -112,10 +112,13 @@ class DecayingQuantileBar(TriggerBar):
         return share * self._starting_bar + (1.0 - share) * self._quantile(entries)
 
     def window_size_at(self, now: float) -> int:
-        """How many real scores are in memory at `now` (the starting line is not counted)."""
-        if _is_number(now):
-            self._forget_old(now)
-        return len(self._memory)
+        """How many scores' worth of weight the real scores carry at `now`, to the nearest whole score (the starting line is not
+        counted). A score counts for 1 when it is heard and for half that a half-life later, so this is the size of the window the
+        bar is really built from (about 100 in a busy room at a 5 minute half-life), not the 40 minutes of scores kept in memory."""
+        if not _is_number(now):
+            return 0
+        self._forget_old(now)
+        return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
 
     def add(self, score: float, now: float, triggered: bool) -> None:
         """Takes in a judged score. A triggering score is left out when `exclude_triggers` is on."""

@@ -6,7 +6,8 @@ own class. They all answer the same four questions, so the tracker does not care
 
   * `level_at(now)`: the score a new score must be above to trigger, as the room stands at `now`. None means there is no bar yet
     (a bar with no data and no starting line), and nothing triggers.
-  * `window_size_at(now)`: how many real scores the bar is built from at `now`, for display. Starting-line scores do not count.
+  * `window_size_at(now)`: how many real scores the bar is built from at `now`, for display (a bar that fades scores counts them by
+    their weight). Starting-line scores do not count.
   * `add(score, now, triggered)`: takes in a score that was judged, and whether it triggered. A bar may leave a triggering score out
     of what it remembers (`exclude_triggers`), which is why it is told.
   * `ignores(score)`: True for a score the bar wants nothing to do with (a score under a floor). Most bars ignore nothing.

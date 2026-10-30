@@ -245,10 +245,29 @@ class TestTheWindowSize:
         feed(b, [1, 2, 3])
         assert b.window_size_at(3.0) == 3
 
+    def test_a_score_counts_for_half_after_one_half_life(self):
+        b = DecayingQuantileBar(half_life_seconds=10)
+        feed(b, [3.0] * 4, step=0.0)                          # four scores heard at once
+        assert b.window_size_at(0.0) == 4 and b.window_size_at(10.0) == 2 and b.window_size_at(20.0) == 1
+
+    def test_the_count_is_to_the_nearest_whole_score(self):
+        b = DecayingQuantileBar(half_life_seconds=10)
+        b.add(3.0, 0.0, False)
+        assert b.window_size_at(5.0) == 1                     # 0.71 rounds up
+        assert b.window_size_at(20.0) == 0                    # 0.25 rounds down
+
+    def test_a_busy_room_has_a_window_of_about_a_hundred_at_a_five_minute_half_life(self):
+        b = DecayingQuantileBar(half_life_seconds=300)
+        feed(b, [3.0] * 1200, step=60 / 14)                   # fourteen scores a minute for twenty minutes
+        assert 95 <= b.window_size_at(1200 * 60 / 14) <= 107   # not the 1200 scores heard
+
     def test_scores_older_than_eight_half_lives_are_forgotten(self):
         b = DecayingQuantileBar(half_life_seconds=10)
         b.add(5.0, 0.0, False)
-        assert b.window_size_at(80.0) == 1 and b.window_size_at(80.1) == 0
+        b.window_size_at(80.0)
+        assert len(b._memory) == 1
+        b.window_size_at(80.1)
+        assert len(b._memory) == 0
 
     def test_memory_is_bounded(self):
         b = DecayingQuantileBar(half_life_seconds=10)
@@ -268,6 +287,12 @@ class TestWhatIsIgnored:
         b = DecayingQuantileBar()
         b.add(5.0, junk, False)
         assert b.window_size_at(0.0) == 0 and b.level_at(junk) is None
+
+    @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
+    def test_a_window_size_asked_with_a_time_that_is_not_a_number_is_zero(self, junk):
+        b = DecayingQuantileBar()
+        feed(b, [1, 2, 3])
+        assert b.window_size_at(junk) == 0
 
     def test_a_zero_is_a_real_score(self):
         b = DecayingQuantileBar()

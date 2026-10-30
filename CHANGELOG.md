@@ -9,6 +9,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The EWMQ bar's "window" is the effective size**: `DecayingQuantileBar.window_size_at` now gives the scores' worth of weight the real scores carry (a score counts 1 when heard and half that a half-life later), to the nearest whole score, so a busy room shows about 100 at a 5 minute half-life
+  and not the 600 or so scores kept in memory for 40 minutes. 8 mutants checked.
 - **The shipped trigger algorithm is now `decaying_quantile`** (EWMQ: 5 minute half-life, percentile 99.5, 60 s cooldown, starting bar 6.8, `exclude_triggers` off). On the five recordings it gave about 7.9 triggers an hour (busy) and 3.6 (a quiet
   room, with gaps up to 41 minutes), against 10.1 and 6.4 for the percentile rule; a lower zinger rarely follows a higher one within 3 minutes (0.1 an hour) until `exclude_triggers` is turned on. The percentile rule is one line away.
   The test that pinned the shipped algorithm now only checks it is one the factory knows.

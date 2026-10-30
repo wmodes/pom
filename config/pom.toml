@@ -137,7 +137,7 @@ cooldown_seconds = 60
 # A triggering score is normally part of what the bar is built from, so the zinger that fired becomes the room's best and
 # holds the bar up for a while. true leaves it out: the bar then stays at the room's usual high tide, and a good score soon
 # after a great one can still fire. (percentile and decaying_quantile)
-exclude_triggers = false
+exclude_triggers = true
 
 # --- percentile and decaying_quantile ---
 

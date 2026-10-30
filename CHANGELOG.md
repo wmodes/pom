@@ -9,6 +9,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The shipped trigger leaves triggering scores out of the bar** (`exclude_triggers = true`). The zinger that fired no longer becomes the room's best score and holds the bar up, so a good score soon after a great one can still fire, and a quiet room stays alive. Replayed on the five recordings
+  with EWMQ at 5 minutes and percentile 99.5: about 13.5 triggers an hour in busy rooms (7.9 before), 11.1 in a quiet one (3.6 before), and a lower zinger within 3 minutes of a higher one 2.2 times an hour (0.1 before). The rate is higher; percentile and half-life are the levers for it.
 - **The chart looks like graph paper**: black dots for the sentences (off-white in dark mode), the bar as a red line (a lighter red in dark mode), triggers still orange, and solid vertical lines every 5 minutes to match the horizontal ones (the time labels stay every 10). The caption says so. Chosen from a live preview. 9 new chart tests, 3 new page tests; 19 mutants checked.
 - **The EWMQ bar's "window" is the effective size**: `DecayingQuantileBar.window_size_at` now gives the scores' worth of weight the real scores carry (a score counts 1 when heard and half that a half-life later), to the nearest whole score, so a busy room shows about 100 at a 5 minute half-life
   and not the 600 or so scores kept in memory for 40 minutes. 8 mutants checked.

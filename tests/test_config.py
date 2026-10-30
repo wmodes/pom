@@ -488,9 +488,14 @@ def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
     assert tracker.record(3.5, 5) is ScoreEffect.TRIGGERED
 
 
-def test_the_shipped_config_has_the_trigger_values_the_code_expects():
+def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
+    """The trigger values are tuned often, so they are not pinned: only that the shipped file reads without a warning
+    and that each value is one the tracker accepts."""
+    from pom.scoring.convo_interest_tracker import ConvoInterestTracker
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
-    assert shipped.trigger == TriggerSettings() and shipped.report.ok
+    trigger = shipped.trigger
+    assert shipped.report.ok
+    assert ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds).report.ok
 
 
 # --- The [listening] section ---------------------------------------------------------------

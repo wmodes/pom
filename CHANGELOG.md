@@ -9,6 +9,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The shipped trigger values are no longer pinned by a test** (`percentile`, `window_seconds`, `min_scores`, `cooldown_seconds` in `config/pom.toml`). They are tuned
+  often, and the test that made them equal the code's defaults turned the suite red at every change. It now checks only that the shipped
+  file loads without a warning and that the tracker accepts the values. The `[listening]` values stay pinned.
 - **The trigger window is five minutes** (`window_seconds = 300`, in `config/pom.toml`, the defaults of the tracker and `Config`, and the tests that pin
   them), with the percentile still 99.5. Wes lowered it to make the Printer answer more often. Replayed on the five recordings it gives about
   9.8 triggers an hour (8.1 to 11.2 by meeting; the live room 11.2, 18 in 96 minutes, one every 5.4 minutes, the longest gap 14 minutes),

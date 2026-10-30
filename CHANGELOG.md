@@ -57,6 +57,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`render_score_chart`** (`pom/monitor/score_chart.py`, 36 tests, mutation-checked: 33 of 36 caught, the other three are the drawing's own size constants), the chart for the monitoring site as a pure function from `ScoreTrace` points to an inline SVG: grey dots for every scored sentence on a fixed 0 to 9 scale,
+  the bar as a stepping line (broken where there was no bar), larger orange dots for triggers (linked to their pages where the record is known), a time axis back from now. Numbers only. Not on the page yet.
 - **`ScoreTrace` and `TracePoint`** (`pom/monitor/score_trace.py`, 57 tests, mutation-checked: 33 of 33 caught), the data for a chart on the monitoring site: one point per scored sentence (when it was heard, its score, the bar it was judged against,
   whether it triggered), numbers only and in memory only, bounded by age and count, thread-safe. Times are the audio clock, so a recording replayed fast draws as a live run would. No words from the room are kept for non-triggers.
   Not wired in yet.

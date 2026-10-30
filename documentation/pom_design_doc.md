@@ -152,7 +152,10 @@ downloaded per machine.
 
 ## The Trigger: when does the Printer speak?
 
-**Built**: `ConvoInterestTracker` (`src/pom/scoring/convo_interest_tracker.py`), settings in `[trigger]`.
+**Built**: `ConvoInterestTracker` (`src/pom/scoring/convo_interest_tracker.py`), settings in `[trigger]`. The way the bar is worked out is selectable
+(`algorithm`): the percentile rule described below (`PercentileBar`, the default), a decaying quantile (`DecayingQuantileBar`, EWMQ), or the first
+method, a decaying moving average (`MovingAverageBar`). The tracker keeps what they share (the trigger decision, the cooldown, the clock) and a small
+factory builds the bar from the settings. Every bar starts at `starting_bar` and slides to the room's own level, so there is no warm-up silence.
 
 The rule is a percentile of the room's recent scores. It makes no assumption about their shape:
 

@@ -43,8 +43,8 @@ from pom.listening import (Listener, MacMicSource, MicSource, SegmentFragmenter,
                            WhisperServerClient)
 from pom.log_setup import configure_logging                                                         # noqa: E402
 from pom.prompt import PromptBuilder                                                                # noqa: E402
-from pom.scoring import (ConvoInterestTracker, HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
-                         WordTagger)
+from pom.scoring import (HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
+                         WordTagger, tracker_from_settings)
 from pom.voice import OracleModelClient, PortentWriter                                              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
@@ -58,12 +58,10 @@ def stamp(seconds: float) -> str:
     return f"+{whole // 3600:02d}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
 
 
-def standing(sentence, needed: int) -> str:
+def standing(sentence) -> str:
     """Where a score stands, for the end of its line."""
-    if sentence.effect is ScoreEffect.IGNORED:
+    if sentence.effect is ScoreEffect.IGNORED or sentence.trigger_level is None:
         return "[no score]"
-    if sentence.trigger_level is None:
-        return f"[warming up {sentence.counted}/{needed}]"
     return (f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
             ("; cooling down" if sentence.effect is ScoreEffect.COOLING_DOWN else "") + "]")
 
@@ -115,7 +113,7 @@ def main() -> None:
     scorer = Scorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     fragment_filter_score=scoring.fragment_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
-    tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
+    tracker = tracker_from_settings(trigger)
     finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     rng = random.Random()
@@ -126,8 +124,7 @@ def main() -> None:
 
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
-    print(f"  trigger: a score above the {trigger.percentile:g}th percentile of the last {trigger.window_seconds:g} s of scores "
-          f"(at least the last {trigger.min_scores}), at most one every {trigger.cooldown_seconds:g} s")
+    print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
     print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
@@ -142,7 +139,7 @@ def main() -> None:
                 continue
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
             print(f"\n[{when}] {sentence.kind:<6} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "
-                  f"{standing(sentence, trigger.min_scores)}", flush=True)
+                  f"{standing(sentence)}", flush=True)
             if not sentence.is_hinge:
                 continue
 

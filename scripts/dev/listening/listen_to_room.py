@@ -26,8 +26,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config  # noqa: E402
 from pom.listening import Listener, MicSource, SegmentFragmenter, WavSource, WhisperServerClient  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import (ConvoInterestTracker, HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
-                         WordTagger)
+from pom.scoring import (HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
+                         WordTagger, tracker_from_settings)
 
 
 def stamp(seconds: float) -> str:
@@ -36,12 +36,10 @@ def stamp(seconds: float) -> str:
     return f"+{whole // 3600:02d}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
 
 
-def standing(sentence, needed: int) -> str:
+def standing(sentence) -> str:
     """Where a score stands, for the end of its line."""
-    if sentence.effect is ScoreEffect.IGNORED:
+    if sentence.effect is ScoreEffect.IGNORED or sentence.trigger_level is None:
         return "[no score]"
-    if sentence.trigger_level is None:
-        return f"[warming up {sentence.counted}/{needed}]"
     return (("<-- would trigger  " if sentence.is_hinge else "") +
             f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
             ("; cooling down" if sentence.effect is ScoreEffect.COOLING_DOWN else "") + "]")
@@ -72,15 +70,14 @@ def main():
     scorer = Scorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-    tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds)
+    tracker = tracker_from_settings(trigger)
     finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
     print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
           f"a whisper run every {heard_settings.step:g} s")
-    print(f"  trigger: a score above the {trigger.percentile:g}th percentile of the last {trigger.window_seconds:g} s of scores "
-          f"(at least the last {trigger.min_scores}), at most one every {trigger.cooldown_seconds:g} s")
+    print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
     print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
@@ -93,7 +90,7 @@ def main():
                 continue
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
             print(f"\n[{when}] {sentence.kind:<7} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "
-                  f"{standing(sentence, trigger.min_scores)}", flush=True)
+                  f"{standing(sentence)}", flush=True)
     except KeyboardInterrupt:
         print()
     finally:

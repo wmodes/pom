@@ -69,7 +69,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                  # noqa: E402
 from rolling_cutter import RollingCutter                         # noqa: E402  (next to this file)
 from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
-from pom.scoring import ConvoInterestTracker, ScoreEffect, ScorerModelClient, Scorer, WordTagger   # noqa: E402
+from pom.scoring import ScoreEffect, ScorerModelClient, Scorer, WordTagger, tracker_from_settings   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
 
@@ -401,8 +401,7 @@ class Brain:
         self.client, self.settings, self.trigger = client, settings, config.trigger
         # A new config can mean new prompts, and a score under new wording is not the same measure, so the
         # room's recent scores start over whenever the config is reloaded.
-        self.tracker = ConvoInterestTracker(self.trigger.percentile, self.trigger.window_seconds,
-                                            self.trigger.min_scores, self.trigger.cooldown_seconds)
+        self.tracker = tracker_from_settings(self.trigger)
         problems = config.report.lines() + client.report.lines() + self.tracker.report.lines()
         note = "; ".join(problems)
         if first:
@@ -516,15 +515,15 @@ class Pipeline:
         The bar it had to clear is read before the score goes in, because the tracker judges a score against
         the room's recent scores as they stood before that score was added.
         """
-        tracker, min_scores = self.brain.tracker, self.brain.trigger.min_scores
+        tracker = self.brain.tracker
         with self.tracker_lock:
             bar, held = tracker.trigger_level_at(now), tracker.window_size_at(now)
             effect = tracker.record(score, now)
             counted = tracker.counted
         if effect is ScoreEffect.IGNORED:
             return "   [no score]"
-        if bar is None:                            # this score came before the trigger was allowed to fire
-            return f"   [warming up {counted}/{min_scores}]"
+        if bar is None:
+            return "   [no bar]"
         cooling = "; cooling down" if effect is ScoreEffect.COOLING_DOWN else ""
         return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [window {held} scores, bar {bar:.2f}{cooling}]"
 
@@ -806,9 +805,7 @@ def main() -> None:
     display.line(f"  scorer at {brain.settings.url}; whisper-server at {args.whisper_url}; "
                  f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
     trigger = brain.trigger
-    display.line(f"  trigger: mark a score above the {trigger.percentile:g}th percentile of the room's last {trigger.window_seconds:g} s of scores "
-                 f"(at least the last {trigger.min_scores}); "
-                 f"nothing is marked until {trigger.min_scores} scores are held, and then at most one every {trigger.cooldown_seconds:g} s")
+    display.line(f"  trigger ({trigger.algorithm}): mark a score above {brain.tracker.describe()}")
     display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")

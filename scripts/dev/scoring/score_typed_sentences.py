@@ -15,6 +15,7 @@ Usage:
 Nothing you type is kept: it is scored and forgotten.
 """
 import argparse
+import dataclasses
 import sys
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from pom.config import Config  # noqa: E402
 from pom.listening import SegmentFragmenter  # noqa: E402
 from pom.listening.segment_fragmenter import FragmentLevel  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import ConvoInterestTracker, ScoreEffect, Scorer, ScorerModelClient, WordTagger  # noqa: E402
+from pom.scoring import ScoreEffect, Scorer, ScorerModelClient, WordTagger, tracker_from_settings  # noqa: E402
 
 
 def build(config: Config, min_scores: int):
@@ -37,18 +38,14 @@ def build(config: Config, min_scores: int):
     scorer = Scorer(client, tagger, fragment_filter_score=settings.fragment_filter_score,
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
-    trigger = config.trigger
-    tracker = ConvoInterestTracker(trigger.percentile, trigger.window_seconds,
-                                   min_scores if min_scores else trigger.min_scores, trigger.cooldown_seconds)
-    return scorer, tracker, client
+    trigger = dataclasses.replace(config.trigger, min_scores=min_scores) if min_scores else config.trigger
+    return scorer, tracker_from_settings(trigger), client
 
 
-def standing(effect: ScoreEffect, bar, held: int, counted: int, needed: int) -> str:
+def standing(effect: ScoreEffect, bar, held: int) -> str:
     """Where a score stands, for the end of its line."""
-    if effect is ScoreEffect.IGNORED:
+    if effect is ScoreEffect.IGNORED or bar is None:
         return "[no score]"
-    if bar is None:
-        return f"[warming up {counted}/{needed}]"
     note = f"[window {held} scores, bar {bar:.2f}"
     return ("<-- would trigger  " if effect is ScoreEffect.TRIGGERED else "") + note + \
         ("; cooling down" if effect is ScoreEffect.COOLING_DOWN else "") + "]"
@@ -66,11 +63,8 @@ def main():
     configure_logging("WARNING")
     config = Config.load(args.config)
     scorer, tracker, client = build(config, args.min_scores)
-    needed = args.min_scores or config.trigger.min_scores
     fragmenter = SegmentFragmenter()
-    print(f"scorer at {config.scorer.url}; the trigger needs {needed} scores, then a score above the "
-          f"{config.trigger.percentile:g}th percentile of the last {config.trigger.window_seconds:g} s of scores "
-          f"(or the last {needed}), at most one every {config.trigger.cooldown_seconds:g} s")
+    print(f"scorer at {config.scorer.url}; trigger ({config.trigger.algorithm}): a score above {tracker.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")
 
@@ -86,7 +80,7 @@ def main():
             effect = tracker.record(scored.score, now)
             shown = f"{scored.score:5.2f}" if scored.score is not None else "  -  "
             print(f"  {shown}  {scored.scored_by.value:<16} {fragment.text}   "
-                  f"{standing(effect, bar, held, tracker.counted, needed)}")
+                  f"{standing(effect, bar, held)}")
             now += args.gap
 
     if args.sentences:

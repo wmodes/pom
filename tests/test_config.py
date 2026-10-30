@@ -427,26 +427,39 @@ def test_the_trigger_defaults_when_nothing_is_set():
     assert config.trigger == TriggerSettings() and config.trigger.percentile == 99.5 and config.report.ok
 
 
-def test_the_trigger_defaults_match_the_trackers_defaults():
-    from pom.scoring import convo_interest_tracker as tracker
-    assert TriggerSettings() == TriggerSettings(tracker.DEFAULT_PERCENTILE, tracker.DEFAULT_WINDOW_SECONDS,
-                                                tracker.DEFAULT_MIN_SCORES, tracker.DEFAULT_COOLDOWN_SECONDS)
+def test_the_trigger_defaults_match_the_bars_defaults():
+    from pom.scoring import convo_interest_tracker, decaying_quantile_bar, moving_average_bar, percentile_bar
+    s = TriggerSettings()
+    assert (s.percentile, s.window_seconds, s.min_scores, s.starting_bar) == (
+        percentile_bar.DEFAULT_PERCENTILE, percentile_bar.DEFAULT_WINDOW_SECONDS, percentile_bar.DEFAULT_MIN_SCORES,
+        percentile_bar.DEFAULT_STARTING_BAR)
+    assert (s.percentile, s.half_life_seconds, s.starting_bar) == (
+        decaying_quantile_bar.DEFAULT_PERCENTILE, decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
+        decaying_quantile_bar.DEFAULT_STARTING_BAR)
+    assert (s.average_fraction, s.average_half_life_scores, s.average_floor_fraction, s.starting_bar) == (
+        moving_average_bar.DEFAULT_FRACTION, moving_average_bar.DEFAULT_HALF_LIFE_SCORES, moving_average_bar.DEFAULT_FLOOR_FRACTION,
+        moving_average_bar.DEFAULT_STARTING_BAR)
+    assert s.cooldown_seconds == convo_interest_tracker.DEFAULT_COOLDOWN_SECONDS
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(99.5, 300.0, 20, 60.0)
+    assert TriggerSettings() == TriggerSettings(99.5, 300.0, 20, 60.0, 6.8, False, 300.0, 0.25, 10.0, 0.05, "percentile")
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
-    text = "[trigger]\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
+    text = ("[trigger]\nalgorithm = \"decaying_quantile\"\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
+            "starting_bar = 5.5\nexclude_triggers = true\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
+            "average_half_life_scores = 4\naverage_floor_fraction = 0.1\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(95.0, 120.0, 8, 90.0) and config.report.ok
+    assert config.trigger == TriggerSettings(95.0, 120.0, 8, 90.0, 5.5, True, 180.0, 0.5, 4.0, 0.1, "decaying_quantile")
+    assert config.report.ok
 
 
 def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
-    text = "[trigger]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\n"
+    text = ("[trigger]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
+            "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(0.001, 0.5, 2, 0.0) and config.report.ok
+    assert config.trigger == TriggerSettings(0.001, 0.5, 2, 0.0, -3.0, False, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -457,7 +470,17 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("min_scores", "1"), ("min_scores", "0"), ("min_scores", "-1"), ("min_scores", "2.5"), ("min_scores", '"5"'),
     ("min_scores", "true"),
     ("cooldown_seconds", "-1"), ("cooldown_seconds", '"60"'), ("cooldown_seconds", "true"),
-    ("cooldown_seconds", "nan")])
+    ("cooldown_seconds", "nan"),
+    ("algorithm", '"median"'), ("algorithm", "5"), ("algorithm", "true"), ("algorithm", '"Percentile"'),
+    ("starting_bar", '"6.8"'), ("starting_bar", "true"), ("starting_bar", "inf"), ("starting_bar", "nan"), ("starting_bar", "[6.8]"),
+    ("exclude_triggers", "5"), ("exclude_triggers", '"maybe"'), ("exclude_triggers", "[true]"),
+    ("half_life_seconds", "0"), ("half_life_seconds", "-1"), ("half_life_seconds", '"300"'), ("half_life_seconds", "true"),
+    ("half_life_seconds", "inf"),
+    ("average_fraction", "-0.1"), ("average_fraction", '"0.25"'), ("average_fraction", "true"), ("average_fraction", "[1]"),
+    ("average_half_life_scores", "0"), ("average_half_life_scores", "-2"), ("average_half_life_scores", '"10"'),
+    ("average_half_life_scores", "true"), ("average_half_life_scores", "inf"),
+    ("average_floor_fraction", "-0.01"), ("average_floor_fraction", "1"), ("average_floor_fraction", "1.5"),
+    ("average_floor_fraction", '"0.05"'), ("average_floor_fraction", "true"), ("average_floor_fraction", "false")])
 def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
     assert config.trigger == TriggerSettings()
@@ -472,30 +495,43 @@ def test_an_unknown_or_removed_trigger_key_is_warned_about(tmp_path, key):
 
 def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
     main = write(tmp_path, "[trigger]\npercentile = 95\nmin_scores = 8\n")
-    (tmp_path / "pom.local.toml").write_text("[trigger]\npercentile = 90\n", encoding="utf-8")
-    assert Config.load(main, environ={}).trigger == TriggerSettings(90.0, 300.0, 8, 60.0)
+    (tmp_path / "pom.local.toml").write_text("[trigger]\npercentile = 90\nalgorithm = \"moving_average\"\n", encoding="utf-8")
+    assert Config.load(main, environ={}).trigger == TriggerSettings(percentile=90.0, min_scores=8, algorithm="moving_average")
 
 
 def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
-    from pom.scoring.convo_interest_tracker import ConvoInterestTracker, ScoreEffect
-    text = "[trigger]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\n"
+    from pom.scoring import ScoreEffect, tracker_from_settings
+    text = "[trigger]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
     settings = Config.load(write(tmp_path, text), environ={}).trigger
-    tracker = ConvoInterestTracker(settings.percentile, settings.window_seconds, settings.min_scores,
-                                   settings.cooldown_seconds)
+    tracker = tracker_from_settings(settings)
     assert tracker.report.ok
     assert [tracker.record(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [ScoreEffect.COUNTED] * 5
     assert tracker.trigger_level_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
     assert tracker.record(3.5, 5) is ScoreEffect.TRIGGERED
 
 
+@pytest.mark.parametrize("algorithm", ["percentile", "decaying_quantile", "moving_average"])
+def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm):
+    from pom.scoring import ALGORITHMS, tracker_from_settings
+    settings = Config.load(write(tmp_path, f'[trigger]\nalgorithm = "{algorithm}"\n'), environ={}).trigger
+    tracker = tracker_from_settings(settings)
+    assert isinstance(tracker._bar, ALGORITHMS[algorithm]) and tracker.report.ok and tracker._bar.report.ok
+
+
 def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
     """The trigger values are tuned often, so they are not pinned: only that the shipped file reads without a warning
-    and that each value is one the tracker accepts."""
-    from pom.scoring.convo_interest_tracker import ConvoInterestTracker
+    and that each algorithm accepts the values."""
+    import dataclasses
+    from pom.scoring import ALGORITHMS, tracker_from_settings
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
-    trigger = shipped.trigger
     assert shipped.report.ok
-    assert ConvoInterestTracker(trigger.percentile, trigger.window_seconds, trigger.min_scores, trigger.cooldown_seconds).report.ok
+    for algorithm in ALGORITHMS:
+        tracker = tracker_from_settings(dataclasses.replace(shipped.trigger, algorithm=algorithm))
+        assert tracker.report.ok and tracker._bar.report.ok
+
+
+def test_the_shipped_algorithm_is_the_percentile_one():
+    assert Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={}).trigger.algorithm == "percentile"
 
 
 # --- The [listening] section ---------------------------------------------------------------

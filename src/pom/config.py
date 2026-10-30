@@ -20,12 +20,10 @@ of being threaded through by hand. Today there are five:
                model's address and timeout, and the two settings of each request, `max_tokens` and
                `temperature`. The entry point builds the PromptBuilder and the OracleModelClient from
                `config.oracle` and passes `config.exemplar_range` to the ExemplarSelector, which never reads Config.
-    [trigger]  A section (see TriggerSettings): when the Printer responds, when a score is above a percentile of the
-               room's recent scores. `window_seconds` is how many seconds of recent scores the bar is drawn from (300, the
-               last five minutes), `min_scores` how few scores the window may hold (20; a quiet room reaches back to its
-               last 20, and nothing triggers until it holds that many), `percentile` how much of the window a score
-               must beat (99.5; 100 is the best score of the window), and `cooldown_seconds` how long after a trigger the next
-               may come (60; 0 for none). The entry point builds the ConvoInterestTracker from `config.trigger`.
+    [trigger]  A section (see TriggerSettings): when the Printer responds, when a score is above a bar worked out from the
+               room's recent scores. `algorithm` picks how ("percentile", "decaying_quantile" or "moving_average"; each reads only
+               its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a trigger the next
+               may come (60; 0 for none). The entry point builds the ConvoInterestTracker with `tracker_from_settings(config.trigger)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `step`, `hold`,
                `rewind` and `max_buffer`, and the Listener's sound pass and caption memory. The defaults are the
@@ -72,7 +70,9 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
          "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.percentile",
-         "trigger.cooldown_seconds", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
+         "trigger.cooldown_seconds", "trigger.algorithm", "trigger.starting_bar", "trigger.exclude_triggers",
+         "trigger.half_life_seconds", "trigger.average_fraction", "trigger.average_half_life_scores",
+         "trigger.average_floor_fraction", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
          "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
@@ -92,6 +92,13 @@ DEFAULT_TRIGGER_PERCENTILE = 99.5
 DEFAULT_TRIGGER_WINDOW_SECONDS = 300.0
 DEFAULT_TRIGGER_MIN_SCORES = 20
 DEFAULT_TRIGGER_COOLDOWN_SECONDS = 60.0
+DEFAULT_TRIGGER_ALGORITHM = "percentile"
+TRIGGER_ALGORITHMS = ("percentile", "decaying_quantile", "moving_average")
+DEFAULT_TRIGGER_STARTING_BAR = 6.8
+DEFAULT_TRIGGER_HALF_LIFE_SECONDS = 300.0
+DEFAULT_TRIGGER_AVERAGE_FRACTION = 0.25
+DEFAULT_TRIGGER_AVERAGE_HALF_LIFE_SCORES = 10.0
+DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION = 0.05
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
 DEFAULT_LISTENING_DEVICE = "plughw:0,0"
@@ -178,22 +185,40 @@ class OracleSettings:
 class TriggerSettings:
     """The `[trigger]` section: when the Printer responds.
 
+    `algorithm` picks how the bar is worked out; each algorithm reads only its own settings, so one section can hold them all and
+    switching is one line.
+
     Attributes:
-        percentile: How much of the room's recent scores a score must beat to trigger, above 0 and at most 100.
-            100 means beating the best score of the window; 99.5 beating all but about one score in two hundred;
-            90 being in the top tenth.
-        window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (300 is the
-            last five minutes). Measured in time, not in scores, so it means the same in a busy room and a
-            quiet one.
-        min_scores: The window always holds at least this many scores, and nothing triggers until it does, a
-            whole number of at least 2.
-        cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 is
-            no cooldown).
+        percentile: How much of the room's recent scores a score must beat to trigger, above 0 and at most 100. 100 means beating
+            the best score; 99.5 beating all but about one in two hundred; 90 being in the top tenth. (percentile and decaying_quantile)
+        window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (300 is the last five minutes). Measured in
+            time, not in scores, so it means the same in a busy room and a quiet one. (percentile)
+        min_scores: The window always holds at least this many scores, and until this many have been heard the bar is the
+            starting bar, a whole number of at least 2. (percentile)
+        cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 is no cooldown). (all)
+        starting_bar: The bar before the room has said enough to work one out, and where it begins; it fades as the room speaks.
+            There is no silent warm-up. (all)
+        exclude_triggers: True leaves a score that triggered out of what the bar is built from, so one zinger does not hold the bar up
+            and shut out the next. (percentile and decaying_quantile)
+        half_life_seconds: Seconds for a score to count half as much, above 0. (decaying_quantile)
+        average_fraction: How far above the decaying average the bar sits, 0 or more (0.25 is 25% above). (moving_average)
+        average_half_life_scores: How many more scores it takes for a score's influence on the average to halve, above 0.
+            (moving_average)
+        average_floor_fraction: How far up the 0 to 9 scale the floor sits; scores below it are ignored. From 0 up to but not
+            including 1. (moving_average)
+        algorithm: "percentile", "decaying_quantile" or "moving_average".
     """
     percentile: float = DEFAULT_TRIGGER_PERCENTILE
     window_seconds: float = DEFAULT_TRIGGER_WINDOW_SECONDS
     min_scores: int = DEFAULT_TRIGGER_MIN_SCORES
     cooldown_seconds: float = DEFAULT_TRIGGER_COOLDOWN_SECONDS
+    starting_bar: float = DEFAULT_TRIGGER_STARTING_BAR
+    exclude_triggers: bool = False
+    half_life_seconds: float = DEFAULT_TRIGGER_HALF_LIFE_SECONDS
+    average_fraction: float = DEFAULT_TRIGGER_AVERAGE_FRACTION
+    average_half_life_scores: float = DEFAULT_TRIGGER_AVERAGE_HALF_LIFE_SCORES
+    average_floor_fraction: float = DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION
+    algorithm: str = DEFAULT_TRIGGER_ALGORITHM
 
 
 @dataclass(frozen=True)
@@ -375,7 +400,20 @@ class Config:
             _whole(values.get("trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES),
                    "trigger.min_scores", DEFAULT_TRIGGER_MIN_SCORES, 2, report),
             _number(values.get("trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS),
-                    "trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS, 0.0, report))
+                    "trigger.cooldown_seconds", DEFAULT_TRIGGER_COOLDOWN_SECONDS, 0.0, report),
+            _finite(values.get("trigger.starting_bar", DEFAULT_TRIGGER_STARTING_BAR), "trigger.starting_bar",
+                    DEFAULT_TRIGGER_STARTING_BAR, report),
+            _bool(values.get("trigger.exclude_triggers", False), "trigger.exclude_triggers", report),
+            _positive(values.get("trigger.half_life_seconds", DEFAULT_TRIGGER_HALF_LIFE_SECONDS),
+                      "trigger.half_life_seconds", DEFAULT_TRIGGER_HALF_LIFE_SECONDS, report),
+            _number(values.get("trigger.average_fraction", DEFAULT_TRIGGER_AVERAGE_FRACTION),
+                    "trigger.average_fraction", DEFAULT_TRIGGER_AVERAGE_FRACTION, 0.0, report),
+            _positive(values.get("trigger.average_half_life_scores", DEFAULT_TRIGGER_AVERAGE_HALF_LIFE_SCORES),
+                      "trigger.average_half_life_scores", DEFAULT_TRIGGER_AVERAGE_HALF_LIFE_SCORES, report),
+            _below_one(values.get("trigger.average_floor_fraction", DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION),
+                       "trigger.average_floor_fraction", DEFAULT_TRIGGER_AVERAGE_FLOOR_FRACTION, report),
+            _choice(values.get("trigger.algorithm", DEFAULT_TRIGGER_ALGORITHM), "trigger.algorithm",
+                    DEFAULT_TRIGGER_ALGORITHM, TRIGGER_ALGORITHMS, report))
         whisper_url = _text(values.get("listening.whisper_url", DEFAULT_LISTENING_WHISPER_URL), "listening.whisper_url",
                             DEFAULT_LISTENING_WHISPER_URL, report)
         if "POM_WHISPER_URL" in environ:
@@ -498,6 +536,30 @@ def _percent(value, label: str, default: float, report: FaultRecorder) -> float:
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value <= 100.0:
         return float(value)
     report.warn(f"{label} must be a number above 0 and at most 100, got {value!r}; using {default:g}")
+    return default
+
+
+def _finite(value, label: str, default: float, report: FaultRecorder) -> float:
+    """Any finite number (an int or float, not a boolean); otherwise the default."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and float("-inf") < value < float("inf"):
+        return float(value)
+    report.warn(f"{label} must be a number, got {value!r}; using {default:g}")
+    return default
+
+
+def _below_one(value, label: str, default: float, report: FaultRecorder) -> float:
+    """A number from 0 up to but not including 1 (an int or float, not a boolean); otherwise the default."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 <= value < 1.0:
+        return float(value)
+    report.warn(f"{label} must be a number from 0 up to but not including 1, got {value!r}; using {default:g}")
+    return default
+
+
+def _choice(value, label: str, default: str, choices, report: FaultRecorder) -> str:
+    """One of the named choices (text, in the list); otherwise the default."""
+    if isinstance(value, str) and value in choices:
+        return value
+    report.warn(f"{label} must be one of {', '.join(choices)}, got {value!r}; using {default}")
     return default
 
 

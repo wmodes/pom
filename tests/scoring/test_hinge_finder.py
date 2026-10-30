@@ -8,7 +8,7 @@ import logging
 from pom.fault_recorder import FaultRecorder
 from pom.listening import FragmentLevel, HeardSegment, SegmentFragmenter
 from pom.listening.segment_fragmenter import Fragment
-from pom.scoring import ConvoInterestTracker, HingeFinder, ScoreEffect, ScoredBy, ScoredFragment, ScoredSentence
+from pom.scoring import ConvoInterestTracker, HingeFinder, PercentileBar, ScoreEffect, ScoredBy, ScoredFragment, ScoredSentence
 
 QUIET = 2.0
 LOUD = 9.0
@@ -58,7 +58,8 @@ def segment(words="", ends_at=10.0, kind="speech", ambient=()):
 
 
 def tracker(min_scores=3, cooldown=60.0):
-    return ConvoInterestTracker(percentile=100.0, window_seconds=300.0, min_scores=min_scores, cooldown_seconds=cooldown)
+    """A tracker over a PercentileBar whose starting line is out of reach (1000), so nothing triggers until `min_scores` scores are heard."""
+    return ConvoInterestTracker(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
 
 
 def finder(segments, scores=None, consider_ambient_sounds=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
@@ -152,9 +153,9 @@ class TestTheTrigger:
         last = self.scored()[-1]
         assert last.window_size == 3 and last.trigger_level == QUIET
 
-    def test_the_first_score_meets_an_empty_window_and_no_bar(self):
+    def test_the_first_score_meets_an_empty_window_and_the_starting_line(self):
         first = self.scored()[0]
-        assert first.window_size == 0 and first.trigger_level is None
+        assert first.window_size == 0 and first.trigger_level == 1000.0
 
     def test_the_count_includes_the_score_just_made(self):
         assert [s.counted for s in self.scored()] == [1, 2, 3, 4]

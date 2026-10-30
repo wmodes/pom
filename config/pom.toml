@@ -108,39 +108,73 @@ Output the score as a single digit | the sentence | what content you found that 
 # TRIGGER: when the Printer responds
 # ================================================
 
-# The trigger is a percentile of the room's recent scores. It looks at the scores the room has recently earned and
-# finds the one at the given percentile (100 is the best of them). A score makes the Printer respond when it is above
-# that, judged against the scores as they were before it was said. Every score counts, the lowest too: no fixed line
-# throws any away. (A statistical fence was tried first. The scorer's numbers are lumpy, a pile at 1, humps near 3 and
-# 5, almost nothing above 7, and a fence that guesses where the top should be from the middle landed above the real top
-# in two windows out of three. A percentile measures where the top really is.)
+# The trigger decides when a score is interesting enough for the Printer to respond: when it is above a bar worked out
+# from the scores the room has recently earned, judged against the room as it was before the score was heard. Every score
+# counts, the lowest too. There is more than one way to work out the bar, and `algorithm` picks it; each way reads only its
+# own settings below, so switching is one line and the others can stay as they are. (A statistical fence was tried first.
+# The scorer's numbers are lumpy, a pile at 1, humps near 3 and 5, almost nothing above 7, and a fence that guesses where
+# the top should be from the middle landed above the real top in two windows out of three.)
+#
+#   "percentile"         the bar is a high percentile of the scores heard in the last `window_seconds`.
+#   "decaying_quantile"  the bar is a high percentile of all recent scores, each counting for less the older it is (EWMQ):
+#                        a zinger fades by degrees instead of holding the bar until it falls off the edge of a window.
+#   "moving_average"     the bar is a set fraction above a decaying average of the scores. The first method; it has a fixed
+#                        floor below which scores are ignored.
 [trigger]
 
-# How much of the room's recent scores a score must beat to trigger. 100 means beating the best score of the window:
-# the sentence has to top everything said lately. 99.5 lets about one score in two hundred stand above the bar, which
-# does not hang on one lucky high score the way 100 does. 90 means being in the top tenth. Above 0 and at most 100.
-# Replayed on five recorded meetings (four Zoom calls and one live room, about 850 sentences an hour) with the 60 s
-# cooldown below: 99.5 with a 5-minute window gave about 9.8 triggers an hour (8.1 to 11.2 by meeting), with a 10-minute
-# window 6.4 (4.0 to 8.1) and with 20 minutes 6.7 (3.4 to 9.3); 100 with ten minutes 6.4, 99 about 9, 98 about 13.
+algorithm = "percentile"
+
+# Where the bar begins, before the room has said enough for one to be worked out from its own scores. It fades as the room
+# speaks, so it is a starting point and not a limit. There is no silent warm-up: a score above it can trigger in the first
+# minute. About the usual top of the scores on the recordings (a 99th percentile near 7).
+starting_bar = 6.8
+
+# How many seconds after a trigger before the next score may trigger. A score above the bar inside the cooldown is held
+# back (it still goes to the bar), so a burst of strong sentences, such as a run of jokes, gives one trigger and not six.
+# 0 turns it off. 0 or more.
+cooldown_seconds = 60
+
+# A triggering score is normally part of what the bar is built from, so the zinger that fired becomes the room's best and
+# holds the bar up for a while. true leaves it out: the bar then stays at the room's usual high tide, and a good score soon
+# after a great one can still fire. (percentile and decaying_quantile)
+exclude_triggers = false
+
+# --- percentile and decaying_quantile ---
+
+# How much of the room's recent scores a score must beat. 100 means beating the best score; 99.5 lets about one score in 200
+# stand above the bar; 90 means the top tenth. Above 0 and at most 100. A lower number triggers more often.
 percentile = 99.5
 
-# How many seconds of recent scores the bar is drawn from: 300 is the last five minutes. It is a length of time, not
-# a count of scores, so a busy room and a quiet one both get "the last five minutes". A shorter window forgets sooner, so
-# the bar is lower and the Printer answers more often. 99.5 only differs from 100 once the window holds about 200
-# scores (a busy five minutes holds about 75), so with a short window it is still the best score of the window. Above 0.
+# --- percentile ---
+
+# How many seconds of recent scores the bar is drawn from: 300 is the last five minutes. A length of time, not a count of
+# scores, so a busy room and a quiet one both get "the last five minutes". A shorter window forgets sooner. 99.5 only differs
+# from 100 once the window holds about 200 scores, which a busy five minutes (about 75) does not.
 window_seconds = 300
 
-# The fewest scores the window may hold. If the room is so quiet that fewer than this were heard in the window, the
-# window reaches back to the last this-many scores instead, so the bar never comes from a handful. Nothing
-# triggers until the window holds this many, so the Printer does not respond to the first thing it hears in an empty
-# room. A whole number of at least 2.
+# The fewest scores the window may hold. If the room is so quiet that fewer than this were heard in the window, the window
+# reaches back to the last this-many scores instead, so the bar never comes from a handful; until this many have been heard
+# the bar is `starting_bar`. A whole number of at least 2.
 min_scores = 20
 
-# How many seconds after a trigger before the next score may trigger. A score above the bar inside the cooldown is
-# held back (it still joins the window), so a burst of strong sentences, such as a run of jokes, gives one trigger
-# and not six, and the next one has to come from the room once the cooldown is over. 0 turns it off. In four recorded
-# meetings 60 took the liveliest from 12 triggers an hour to about 5, and all four from 6.6 to 4.1. 0 or more.
-cooldown_seconds = 60
+# --- decaying_quantile ---
+
+# How many seconds for a score to count half as much: after one half-life it counts half, after two a quarter. Decay is by
+# time, so a quiet room and a busy one both remember "the last few minutes". Above 0. In replays, 300 gave about 7 triggers
+# an hour at percentile 99.5.
+half_life_seconds = 300
+
+# --- moving_average ---
+
+# How far above the decaying average of the scores the bar sits: 0.25 is 25% above. 0 or more.
+average_fraction = 0.25
+
+# How many more scores it takes for a score's influence on the average to halve (decay is by score, not by time). Above 0.
+average_half_life_scores = 10
+
+# How far up the 0 to 9 scale the floor sits: scores below it are ignored and never feed the average. 0.05 is 0.45. From 0 up
+# to but not including 1. A fixed line, which the other methods avoid.
+average_floor_fraction = 0.05
 
 
 # ================================================

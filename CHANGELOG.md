@@ -9,6 +9,12 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The trigger's algorithm is selectable** (`[trigger] algorithm = "percentile" | "decaying_quantile" | "moving_average"`, default `percentile`, so nothing changes until it is switched). `ConvoInterestTracker(bar, cooldown_seconds)`
+  now takes a `TriggerBar` and keeps only what every way shares (the trigger decision, the cooldown, the clock); `tracker_from_settings(config.trigger)` builds the bar the config names, each bar reading only its own keys.
+  New settings: `starting_bar` (6.8, shared: the bar begins there and slides to the room's own level, replacing the silent warm-up), `exclude_triggers` (off; leaves a triggering score out of the bar's memory),
+  `half_life_seconds` (300, decaying quantile) and `average_fraction`, `average_half_life_scores`, `average_floor_fraction` (moving average). `pom.toml` has a section for each. The playgrounds and the hearing-debug probe
+  use the factory and print `tracker.describe()`. Checked against the tagged percentile tracker on all five recordings: the same effect for every one of 6,768 scores with an unreachable starting line, and with 6.8 the same after the
+  first 20 scores (the only difference: 2 triggers in the first 20 scores of two recordings, the warm-up going away). The tracker's 117 tests were replaced by 82 over a fake bar plus the bars' own; the factory has 29, the config tests grew.
 - **The shipped trigger values are no longer pinned by a test** (`percentile`, `window_seconds`, `min_scores`, `cooldown_seconds` in `config/pom.toml`). They are tuned
   often, and the test that made them equal the code's defaults turned the suite red at every change. It now checks only that the shipped
   file loads without a warning and that the tracker accepts the values. The `[listening]` values stay pinned.

@@ -102,6 +102,11 @@ class TriggerHistory:
         self._next_id = 1
         self.total_added = 0
 
+    @property
+    def max_age_seconds(self) -> float:
+        """How long a record is kept, in seconds."""
+        return self._max_age
+
     def add(self, hinge: str, score: float, bar: Optional[float], window_size: int, heard_at: float,
             portent: Optional[Portent] = None) -> Optional[TriggerRecord]:
         """Records a trigger and returns its record, or None if it could not be made (see `report`)."""

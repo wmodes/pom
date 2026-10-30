@@ -42,6 +42,10 @@ class TestTheDefaults:
         assert history().report.ok
         assert history(max_age_seconds=0.001, max_records=1).report.ok
 
+    def test_the_age_limit_can_be_read(self):
+        assert history(max_age_seconds=900).max_age_seconds == 900.0
+        assert history().max_age_seconds == 3600.0
+
     def test_it_starts_empty(self):
         h = history()
         assert h.recent() == [] and h.total_added == 0 and h.get(1) is None

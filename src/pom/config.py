@@ -31,6 +31,9 @@ of being threaded through by hand. Today there are five:
                `rewind` and `max_buffer`, and the Listener's sound pass and caption memory. The defaults are the
                combination that worked in the room; change one at a time. The entry point builds the
                WhisperServerClient, MicSource and Listener from `config.listening`.
+    [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of triggers. Whether it
+               runs, the address and port it listens on, its password (set it in config/pom.local.toml, never in the
+               committed file), whether it shows the hinge text, and how long a trigger stays on the page.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
@@ -72,7 +75,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "trigger.cooldown_seconds", "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
-         "listening.consider_ambient_sounds"}
+         "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
+         "monitor.show_hinges", "monitor.history_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -100,6 +104,11 @@ DEFAULT_LISTENING_SOUND_EVERY_STEPS = 3
 DEFAULT_LISTENING_SOUND_SECONDS = 10.0
 DEFAULT_LISTENING_AMBIENT_MEMORY = 6
 DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS = False
+DEFAULT_MONITOR_ENABLED = False
+DEFAULT_MONITOR_HOST = "0.0.0.0"
+DEFAULT_MONITOR_PORT = 8080
+DEFAULT_MONITOR_SHOW_HINGES = True
+DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -224,6 +233,27 @@ class ListeningSettings:
     consider_ambient_sounds: bool = DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS
 
 
+@dataclass(frozen=True)
+class MonitorSettings:
+    """The `[monitor]` section: the monitoring site, a web page of the last hour of triggers.
+
+    Attributes:
+        enabled: True starts the site with the Printer.
+        host: The address it listens on; 0.0.0.0 means every network interface, so anyone on the local network can reach it.
+        port: The port it listens on, 1 to 65535.
+        password: The site's password. The site does not start while it is empty; set it in config/pom.local.toml,
+            which git ignores, never in pom.toml.
+        show_hinges: True shows the hinge (what was said in the room) on the page; False shows numbers only.
+        history_seconds: How long a trigger stays on the page, above 0 (3600 is an hour). Kept in memory only.
+    """
+    enabled: bool = DEFAULT_MONITOR_ENABLED
+    host: str = DEFAULT_MONITOR_HOST
+    port: int = DEFAULT_MONITOR_PORT
+    password: str = ""
+    show_hinges: bool = DEFAULT_MONITOR_SHOW_HINGES
+    history_seconds: float = DEFAULT_MONITOR_HISTORY_SECONDS
+
+
 class Config:
     """The project's shared settings, plus a report of anything that had to be recovered from.
 
@@ -237,6 +267,7 @@ class Config:
         oracle: The `[oracle]` section, as an OracleSettings (the exemplar range is `exemplar_range`).
         trigger: The `[trigger]` section, as a TriggerSettings.
         listening: The `[listening]` section, as a ListeningSettings.
+        monitor: The `[monitor]` section, as a MonitorSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -244,12 +275,13 @@ class Config:
                  report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None,
-                 listening: Optional[ListeningSettings] = None):
+                 listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
         self.trigger = trigger if trigger is not None else TriggerSettings()
         self.listening = listening if listening is not None else ListeningSettings()
+        self.monitor = monitor if monitor is not None else MonitorSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -372,7 +404,15 @@ class Config:
                    "listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY, 1, report),
             _bool(values.get("listening.consider_ambient_sounds", DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS),
                   "listening.consider_ambient_sounds", report))
-        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening)
+        monitor = MonitorSettings(
+            _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report),
+            _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, report),
+            _port(values.get("monitor.port", DEFAULT_MONITOR_PORT), "monitor.port", DEFAULT_MONITOR_PORT, report),
+            _text(values.get("monitor.password", ""), "monitor.password", "", report),
+            _bool(values.get("monitor.show_hinges", DEFAULT_MONITOR_SHOW_HINGES), "monitor.show_hinges", report),
+            _positive(values.get("monitor.history_seconds", DEFAULT_MONITOR_HISTORY_SECONDS), "monitor.history_seconds",
+                      DEFAULT_MONITOR_HISTORY_SECONDS, report))
+        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor)
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:
@@ -458,6 +498,14 @@ def _percent(value, label: str, default: float, report: FaultRecorder) -> float:
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value <= 100.0:
         return float(value)
     report.warn(f"{label} must be a number above 0 and at most 100, got {value!r}; using {default:g}")
+    return default
+
+
+def _port(value, label: str, default: int, report: FaultRecorder) -> int:
+    """A whole number from 1 to 65535 (not a boolean or a decimal); otherwise the default."""
+    if isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 65535:
+        return value
+    report.warn(f"{label} must be a whole number from 1 to 65535, got {value!r}; using {default}")
     return default
 
 

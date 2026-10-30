@@ -693,3 +693,74 @@ def test_consider_ambient_sounds_takes_a_boolean_or_an_on_off_word(tmp_path, val
 
 def test_ambient_sounds_are_not_considered_unless_asked():
     assert Config.load(environ={}).listening.consider_ambient_sounds is False
+
+
+# --- The [monitor] section -----------------------------------------------------------------
+
+def test_the_monitor_defaults_when_nothing_is_set():
+    from pom.config import MonitorSettings
+    config = Config.load(environ={})
+    assert config.monitor == MonitorSettings() and config.report.ok
+    assert (config.monitor.enabled, config.monitor.host, config.monitor.port) == (False, "0.0.0.0", 8080)
+    assert (config.monitor.password, config.monitor.show_hinges, config.monitor.history_seconds) == ("", True, 3600.0)
+
+
+def test_all_the_monitor_values_are_read_from_the_section(tmp_path):
+    from pom.config import MonitorSettings
+    text = ('[monitor]\nenabled = true\nhost = "127.0.0.1"\nport = 9090\npassword = "s3cret"\nshow_hinges = false\n'
+            'history_seconds = 1800\n')
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.monitor == MonitorSettings(True, "127.0.0.1", 9090, "s3cret", False, 1800.0) and config.report.ok
+
+
+def test_the_smallest_and_largest_ports_are_accepted(tmp_path):
+    assert Config.load(write(tmp_path, "[monitor]\nport = 1\n"), environ={}).monitor.port == 1
+    assert Config.load(write(tmp_path, "[monitor]\nport = 65535\n"), environ={}).monitor.port == 65535
+
+
+@pytest.mark.parametrize("key,value", [
+    ("enabled", "5"), ("enabled", '"maybe"'), ("enabled", "[true]"),
+    ("host", "5"), ("host", "true"),
+    ("port", "0"), ("port", "65536"), ("port", "-1"), ("port", "80.5"), ("port", '"8080"'), ("port", "true"),
+    ("password", "5"), ("password", "true"),
+    ("history_seconds", "0"), ("history_seconds", "-5"), ("history_seconds", '"3600"'), ("history_seconds", "true"),
+    ("history_seconds", "inf")])
+def test_a_bad_monitor_value_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import MonitorSettings
+    config = Config.load(write(tmp_path, f"[monitor]\n{key} = {value}\n"), environ={})
+    assert config.monitor == MonitorSettings()
+    assert len(config.report.warnings) == 1 and f"monitor.{key}" in config.report.warnings[0]
+
+
+@pytest.mark.parametrize("value", ["5", '"maybe"', "[true]"])
+def test_a_bad_show_hinges_value_hides_the_hinges_and_warns(tmp_path, value):
+    """A flag that cannot be read leans toward privacy: the hinge text is hidden."""
+    config = Config.load(write(tmp_path, f"[monitor]\nshow_hinges = {value}\n"), environ={})
+    assert config.monitor.show_hinges is False
+    assert len(config.report.warnings) == 1 and "monitor.show_hinges" in config.report.warnings[0]
+
+
+@pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"on"', True), ('"no"', False)])
+def test_monitor_flags_take_a_boolean_or_an_on_off_word(tmp_path, value, expected):
+    config = Config.load(write(tmp_path, f"[monitor]\nenabled = {value}\nshow_hinges = {value}\n"), environ={})
+    assert config.monitor.enabled is expected and config.monitor.show_hinges is expected and config.report.ok
+
+
+def test_an_unknown_monitor_key_is_warned_about(tmp_path):
+    from pom.config import MonitorSettings
+    config = Config.load(write(tmp_path, "[monitor]\npasword = \"x\"\n"), environ={})
+    assert any("monitor.pasword" in w for w in config.report.warnings) and config.monitor == MonitorSettings()
+
+
+def test_the_monitor_section_merges_key_by_key_with_the_local_file(tmp_path):
+    main = write(tmp_path, '[monitor]\nenabled = true\nport = 9000\npassword = ""\n')
+    (tmp_path / "pom.local.toml").write_text('[monitor]\npassword = "from-the-local-file"\n', encoding="utf-8")
+    monitor = Config.load(main, environ={}).monitor
+    assert (monitor.enabled, monitor.port, monitor.password) == (True, 9000, "from-the-local-file")
+
+
+def test_the_shipped_monitor_section_is_off_and_has_no_password():
+    """The committed file goes to a public repository and the Pi: the site must be off and the password empty."""
+    shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
+    assert shipped.report.ok
+    assert shipped.monitor.enabled is False and shipped.monitor.password == ""

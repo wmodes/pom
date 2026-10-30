@@ -233,3 +233,32 @@ max_tokens = 300
 
 # How adventurous the model's word choice is. 0 always takes the likeliest word; higher is more varied.
 temperature = 0.8
+
+
+# ================================================
+# MONITOR: a web page of the last hour of triggers
+# ================================================
+
+# Open it from another machine on the same network, for example http://pom1.local:8080 . It shows the newest triggers
+# first and, for each, the hinge, the exemplars the oracle was shown, the portent, the score and the bar. The hinge is
+# what someone said in the room, so the page keeps it in memory only, for the hour, and asks for a password.
+[monitor]
+
+# Whether the site starts with the Printer.
+enabled = false
+
+# The address it listens on. 0.0.0.0 means every network interface, so anyone on the local network can reach the login.
+host = "0.0.0.0"
+
+# The port it listens on, 1 to 65535.
+port = 8080
+
+# The password. The site will not start while this is empty. DO NOT put the real one here: pom.toml is committed to a
+# public repository. Put `password = "..."` under [monitor] in config/pom.local.toml, which git ignores.
+password = ""
+
+# true shows the hinge on the page; false shows numbers only (time, score, bar, window) and the exemplars and portent.
+show_hinges = true
+
+# How many seconds a trigger stays on the page. It is kept in memory only, so a restart empties it. Above 0.
+history_seconds = 3600

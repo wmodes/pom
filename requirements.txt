@@ -2,6 +2,9 @@
 # Install into the project venv:  python -m pip install -r requirements.txt
 # Both are pure Python (their own dependencies ship wheels for aarch64); verify on the Pi when deploying.
 
+# The monitoring site: a web page of the last hour of triggers (pom.monitor). Pure Python.
+flask>=3.0,<4
+
 # Everyday-speech word frequencies, for "how rare is this word in normal talk".
 wordfreq>=3.1,<4
 

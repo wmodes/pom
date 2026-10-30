@@ -374,7 +374,8 @@ src/pom/
                fallback_scorer                                   shelved, unused
   prompt/      prompt_builder                                    built
   voice/       oracle_model_client, portent_writer               built
-  monitor/     trigger_history (the last hour, memory only)      built
+  monitor/     trigger_history (the last hour, memory only),     built
+               monitor_site (the web page, Flask, password)      built; not yet fed by the pipeline
   output/      formatter, serial wrapper, reply selection        planned
   input/       keyboard                                          planned
   conductor                                                      planned; the only module that knows the whole pipeline

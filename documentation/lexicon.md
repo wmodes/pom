@@ -98,6 +98,9 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **trigger record** †: one trigger and what came of it: the hinge, its score, the bar it beat, the window, the exemplars
   shown and the portent (`TriggerRecord`). **Trigger history**: the last hour of them, newest first, kept in memory only and
   never written down (`TriggerHistory`), for the monitoring site.
+- **monitoring site** †: the password-protected web page of the last hour of triggers, with a detail page for each: the hinge,
+  the exemplars, the portent, the score and the bar (`MonitorSite`, settings in `[monitor]`). Open it from another machine on the
+  Printer's network.
 - **hinge finder** †: the component that joins the listener, the fragmenter, the scorer and the trigger, and yields each
   thing heard as a `ScoredSentence`; the one the trigger fired on is the hinge (`HingeFinder`).
 - **portent writer** †: the component that takes a hinge and returns a portent, joining the prompt builder and the oracle

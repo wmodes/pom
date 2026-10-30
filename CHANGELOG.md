@@ -46,6 +46,16 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **`MonitorSite`** (`pom/monitor/monitor_site.py`, 80 new tests, mutation-checked: 64 of 64 caught) and **`[monitor]` in the config** (19 new tests, 19 of 19 caught), the
+  monitoring site. A Flask page of the last hour of triggers: summary tiles (triggers in the hour and at that pace, the last one, the bar now,
+  scores in the window, sentences scored and heard, uptime, which servers are up), then the triggers newest first, and for each a detail page
+  with the hinge, the exemplars the oracle was shown, the portent, the score, the bar and the window at that moment. `/api/triggers` is the same as
+  JSON, and the page polls it every 5 s, updating in place and reloading when a newer trigger arrives. Behind a password (HTTP basic auth, any
+  user name, compared in constant time); the site will not start without one. `show_hinges = false` hides the hinge text everywhere. All text is
+  escaped, pages are never cached, and a Content-Security-Policy allows only the page's own few lines of script. A taken port, a missing
+  password or a failing status function is reported, never raised. Settings: `enabled` (off), `host` (0.0.0.0), `port` (8080), `password` (empty:
+  set it in the gitignored `pom.local.toml`, never in `pom.toml`), `show_hinges` (true; a value that cannot be read hides them), `history_seconds`
+  (3600). The shipped file has the site off and no password, pinned by a test. `flask` joins `requirements.txt`. Not yet fed by the pipeline.
 - **`TriggerHistory` and `TriggerRecord`** (`pom/monitor/trigger_history.py`, 72 tests, mutation-checked: 36 of 36 caught), the first piece of
   the monitoring site. `add(hinge, score, bar, window_size, heard_at, portent)` keeps one record per trigger (numbered from 1,
   never reused, stamped with the clock); `recent()` gives the last hour newest first, `get(id)` one record. **Memory only**: a hinge is

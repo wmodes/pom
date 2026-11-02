@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Scoring**: `Scorer` is `ClipScorer` (module `clip_scorer.py`, error `ClipScorerError`), `ScoredFragment` is `ScoredClip`, `Word` (the word tagger's) is `TaggedWord`, `score_from_probabilities` is `score_from_scorecard`,
+  `is_fragment_filtered` is `is_clip_filtered`, and `WARM_UP_FRAGMENT` is `WARM_UP_CLIP`. The fragment filter is the **clip filter**: the config key `scorer.fragment_filter_score` is `scorer.clip_filter_score` (a copy of the old name in
+  `config/pom.local.toml` would now be ignored with a warning; the shipped one has none), and `ScoredBy.FRAGMENT_FILTER` (`"fragment_filter"`) is `ScoredBy.CLIP_FILTER` (`"clip_filter"`). The word *fragment* itself becomes *clip* with the Listening
+  batch, where `Fragment` does. Behavior is unchanged; 2,580 tests pass, and every `from pom... import` in experiments, scripts and tests still resolves.
 - **The Great Rename, Writing**: `OracleModelClient.portent()` is `consult()` (put the finished prompt to the oracle model). The `pom.voice` package keeps its name until the packages move together. Behavior is unchanged.
 - **The Great Rename, Printing**: the output side takes the lexicon's names. `TypewriterFormatter` is `PortentFormatter`, `TypewriterPort` is `TerminalPort` (its `type()` is `transmit()`), `ConsoleTypewriter` is `ConsoleTerminal`,
   `TypingReport` is `PrintResult`, and `OutputSettings` is `PrintingSettings`. The modules are `portent_formatter.py` and `terminal_port.py`, the tests follow. **Config:** the `[output]` section is `[printing]`

@@ -10,7 +10,7 @@ of being threaded through by hand. Today there are five:
     log_level  How much the service logs to stdout (and so to journald).
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
-               that defines "interesting" and the score scale, the fragment_filter's score, how many content
+               that defines "interesting" and the score scale, the clip_filter's score, how many content
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
                entry point builds the ScorerModelClient and Scorer from `config.scorer`. Environment:
                POM_SCORER_URL.
@@ -77,7 +77,7 @@ _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "oracle.exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
-         "scorer.prompt_output_debug", "scorer.fragment_filter_score", "scorer.min_content_words", "scorer.failure_limit",
+         "scorer.prompt_output_debug", "scorer.clip_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
          "oracle.temperature", "trigger.min_scores", "trigger.window_seconds", "trigger.percentile",
          "trigger.cooldown_seconds", "trigger.algorithm", "trigger.starting_bar", "trigger.exclude_triggers",
@@ -95,7 +95,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
-DEFAULT_SCORER_FRAGMENT_FILTER_SCORE = 1.0
+DEFAULT_SCORER_CLIP_FILTER_SCORE = 1.0
 DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3
 DEFAULT_SCORER_RETRY_SECONDS = 30.0
@@ -168,7 +168,7 @@ class ScorerSettings:
         timeout: Seconds to wait for one score.
         prompt_scoring: What "interesting" means and what the numbers mean, from the config file.
             Empty means none was set, and the Scorer then leaves every fragment unscored.
-        fragment_filter_score: The score given to fragments the fragment_filter keeps from the model.
+        clip_filter_score: The score given to fragments the clip_filter keeps from the model.
         min_content_words: Fragments with fewer content words skip the model (0 = never skip).
         failure_limit: Model failures in a row that make the Scorer leave the model alone.
         retry_seconds: How long it leaves the model alone before trying again.
@@ -183,7 +183,7 @@ class ScorerSettings:
     url: str = DEFAULT_SCORER_URL
     timeout: float = DEFAULT_SCORER_TIMEOUT
     prompt_scoring: str = ""
-    fragment_filter_score: float = DEFAULT_SCORER_FRAGMENT_FILTER_SCORE
+    clip_filter_score: float = DEFAULT_SCORER_CLIP_FILTER_SCORE
     min_content_words: int = DEFAULT_SCORER_MIN_CONTENT_WORDS
     failure_limit: int = DEFAULT_SCORER_FAILURE_LIMIT
     retry_seconds: float = DEFAULT_SCORER_RETRY_SECONDS
@@ -464,9 +464,9 @@ class Config:
                                     "scorer.prompt_output_debug", "", report)
         if scorer_prompt.strip() and not scorer_output.strip():
             report.warn("scorer.prompt_output is empty, so the model is not told how to reply")
-        scorer_fragment_filter_score = _number(
-            values.get("scorer.fragment_filter_score", DEFAULT_SCORER_FRAGMENT_FILTER_SCORE),
-            "scorer.fragment_filter_score", DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, 0.0, report)
+        scorer_clip_filter_score = _number(
+            values.get("scorer.clip_filter_score", DEFAULT_SCORER_CLIP_FILTER_SCORE),
+            "scorer.clip_filter_score", DEFAULT_SCORER_CLIP_FILTER_SCORE, 0.0, report)
         scorer_min_content = _whole(values.get("scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS),
                                     "scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS, 0, report)
         scorer_failure_limit = _whole(values.get("scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT),
@@ -493,7 +493,7 @@ class Config:
             log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)
         if "POM_SCORER_URL" in environ:
             scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, report)
-        scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_fragment_filter_score,
+        scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_clip_filter_score,
                                 scorer_min_content, scorer_failure_limit, scorer_retry, scorer_output,
                                 scorer_output_debug)
         oracle = OracleSettings(

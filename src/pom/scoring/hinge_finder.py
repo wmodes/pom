@@ -28,7 +28,7 @@ from typing import Iterator, Optional
 from pom.listening.segment_fragmenter import FragmentLevel
 from pom.log_setup import get_logger
 from pom.scoring.convo_interest_tracker import ScoreEffect
-from pom.scoring.scorer import ScoredBy
+from pom.scoring.clip_scorer import ScoredBy
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -45,7 +45,7 @@ class ScoredSentence:
         kind: "speech" or "lyrics" for words, "ambient" for the caption of a sound.
         score: 0 (dull) to 9 (extremely interesting), or None if it was not scored (a caption while ambient sounds are
             not considered, or the Scorer could not).
-        scored_by: What made the score (the model, the fragment filter) or left it without one.
+        scored_by: What made the score (the model, the clip filter) or left it without one.
         effect: What the trigger did with the score, or None if the trigger never saw it.
         heard_at: Where in the audio stream the words ended, in seconds from the start of listening.
         trigger_level: The bar a score had to clear, as it stood before this one joined the window (None until it exists).

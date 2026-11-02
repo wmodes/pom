@@ -8,7 +8,7 @@ import logging
 from pom.fault_recorder import FaultRecorder
 from pom.listening import FragmentLevel, HeardSegment, SegmentFragmenter
 from pom.listening.segment_fragmenter import Fragment
-from pom.scoring import ConvoInterestTracker, HingeFinder, PercentileBar, ScoreEffect, ScoredBy, ScoredFragment, ScoredSentence
+from pom.scoring import ConvoInterestTracker, HingeFinder, PercentileBar, ScoreEffect, ScoredBy, ScoredClip, ScoredSentence
 
 QUIET = 2.0
 LOUD = 9.0
@@ -37,7 +37,7 @@ class FakeScorer:
     def score(self, fragment):
         self.fragments.append(fragment)
         self.asked.append((fragment.text, fragment.heard_at))
-        return ScoredFragment(fragment, self.scores.get(fragment.text, 3.0), self.scored_by)
+        return ScoredClip(fragment, self.scores.get(fragment.text, 3.0), self.scored_by)
 
     def score_text(self, text, heard_at=0.0):
         return self.score(Fragment(text, FragmentLevel.SENTENCE, heard_at))
@@ -111,8 +111,8 @@ class TestWhatIsYielded:
         assert found(made) == [] and scorer.asked == []
 
     def test_what_made_the_score_is_passed_on(self):
-        made, _, _ = finder([segment("Hello there.")], scored_by=ScoredBy.FRAGMENT_FILTER)
-        assert found(made)[0].scored_by is ScoredBy.FRAGMENT_FILTER
+        made, _, _ = finder([segment("Hello there.")], scored_by=ScoredBy.CLIP_FILTER)
+        assert found(made)[0].scored_by is ScoredBy.CLIP_FILTER
 
     def test_a_scored_sentence_cannot_be_changed(self):
         made, _, _ = finder([segment("Hello there.")])

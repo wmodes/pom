@@ -59,7 +59,7 @@ _log = get_logger(__name__, DEBUG)
 
 # The user message, word for word as in the experiment, so scores match its saved results.
 USER_TEMPLATE = "Rate this line: {fragment_text}"
-WARM_UP_FRAGMENT = "Hello there."
+WARM_UP_CLIP = "Hello there."
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_EXPLAIN_TIMEOUT = 90.0
 EXPLAIN_MAX_TOKENS = 80
@@ -77,7 +77,7 @@ def _http_post(url: str, body: dict, timeout: float) -> dict:
         return json.load(response)
 
 
-def score_from_probabilities(reply) -> Optional[float]:
+def score_from_scorecard(reply) -> Optional[float]:
     """The expected value of the digit 0 to 9 the model starts its reply with, or None.
 
     Reads the probabilities of the first generated token from an OpenAI-style reply that asked for
@@ -202,7 +202,7 @@ class ScorerModelClient:
                              f"the fragment will go unscored")
             return None
         self.last_seconds = time.perf_counter() - started
-        value = score_from_probabilities(reply)
+        value = score_from_scorecard(reply)
         if value is None:
             self.report.warn("the scorer model's reply held no score; the fragment will go unscored")
             return None
@@ -216,7 +216,7 @@ class ScorerModelClient:
         Returns True if the model answered with a score. Call this once at startup; the first
         request after a server starts can take many seconds.
         """
-        return self.score(WARM_UP_FRAGMENT) is not None
+        return self.score(WARM_UP_CLIP) is not None
 
     def explain(self, fragment_text: str) -> Optional[Explanation]:
         """One debug run for a fragment: the model's written reply and the score from the same run, or None.
@@ -243,4 +243,4 @@ class ScorerModelClient:
             return None
         self.last_seconds = time.perf_counter() - started
         _log.debug("explained a fragment of %d characters in %.0f ms", len(fragment_text), self.last_seconds * 1000)
-        return Explanation(text, score_from_probabilities(reply)) if text else None
+        return Explanation(text, score_from_scorecard(reply)) if text else None

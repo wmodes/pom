@@ -5,8 +5,8 @@ import math
 import pytest
 
 from pom.scoring.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, DEFAULT_TIMEOUT, EXPLAIN_MAX_TOKENS,
-                                       USER_TEMPLATE, WARM_UP_FRAGMENT, ScorerModelClient, ScorerModelClientError,
-                                       Explanation, score_from_probabilities, parse_written_score)
+                                       USER_TEMPLATE, WARM_UP_CLIP, ScorerModelClient, ScorerModelClientError,
+                                       Explanation, score_from_scorecard, parse_written_score)
 
 URL = "http://127.0.0.1:8098/v1/chat/completions"
 PROMPT = "You score how interesting a fragment is."
@@ -39,35 +39,35 @@ def client(post=None, **options):
 
 class TestExpectedDigit:
     def test_a_certain_digit_is_that_digit(self):
-        assert score_from_probabilities(reply(("7", 1.0))) == pytest.approx(7.0)
+        assert score_from_scorecard(reply(("7", 1.0))) == pytest.approx(7.0)
 
     def test_probabilities_weight_the_digits(self):
-        assert score_from_probabilities(reply(("2", 0.5), ("8", 0.5))) == pytest.approx(5.0)
+        assert score_from_scorecard(reply(("2", 0.5), ("8", 0.5))) == pytest.approx(5.0)
 
     def test_unequal_weights(self):
-        assert score_from_probabilities(reply(("2", 0.75), ("6", 0.25))) == pytest.approx(3.0)
+        assert score_from_scorecard(reply(("2", 0.75), ("6", 0.25))) == pytest.approx(3.0)
 
     def test_weights_are_normalised_over_the_digits_found(self):
-        assert score_from_probabilities(reply(("4", 0.2), ("8", 0.2), ("The", 0.6))) == pytest.approx(6.0)
+        assert score_from_scorecard(reply(("4", 0.2), ("8", 0.2), ("The", 0.6))) == pytest.approx(6.0)
 
     def test_whitespace_around_a_digit_is_ignored(self):
-        assert score_from_probabilities(reply((" 5", 0.5), ("5 ", 0.5))) == pytest.approx(5.0)
+        assert score_from_scorecard(reply((" 5", 0.5), ("5 ", 0.5))) == pytest.approx(5.0)
 
     def test_the_same_digit_in_two_spellings_adds_up(self):
-        assert score_from_probabilities(reply(("3", 0.25), (" 3", 0.25), ("9", 0.5))) == pytest.approx(6.0)
+        assert score_from_scorecard(reply(("3", 0.25), (" 3", 0.25), ("9", 0.5))) == pytest.approx(6.0)
 
     def test_zero_counts_as_a_digit(self):
-        assert score_from_probabilities(reply(("0", 0.5), ("8", 0.5))) == pytest.approx(4.0)
-        assert score_from_probabilities(reply(("0", 1.0))) == pytest.approx(0.0)
+        assert score_from_scorecard(reply(("0", 0.5), ("8", 0.5))) == pytest.approx(4.0)
+        assert score_from_scorecard(reply(("0", 1.0))) == pytest.approx(0.0)
 
     def test_longer_numbers_are_not_digits(self):
-        assert score_from_probabilities(reply(("10", 0.4), ("85", 0.4), ("5", 0.2))) == pytest.approx(5.0)
+        assert score_from_scorecard(reply(("10", 0.4), ("85", 0.4), ("5", 0.2))) == pytest.approx(5.0)
 
     def test_two_digit_tokens_that_are_inside_the_digit_string_are_not_digits(self):
-        assert score_from_probabilities(reply(("01", 0.3), ("12", 0.3), ("89", 0.2), ("5", 0.2))) == pytest.approx(5.0)
+        assert score_from_scorecard(reply(("01", 0.3), ("12", 0.3), ("89", 0.2), ("5", 0.2))) == pytest.approx(5.0)
 
     def test_no_digit_gives_none(self):
-        assert score_from_probabilities(reply(("The", 0.9), ("Sure", 0.1))) is None
+        assert score_from_scorecard(reply(("The", 0.9), ("Sure", 0.1))) is None
 
     @pytest.mark.parametrize("bad", [None, {}, [], "text", {"choices": []},
                                      {"choices": [{}]}, {"choices": [{"logprobs": None}]},
@@ -75,7 +75,7 @@ class TestExpectedDigit:
                                      {"choices": [{"logprobs": {"content": [{"top_logprobs": [{"token": 5}]}]}}]},
                                      {"choices": [{"logprobs": {"content": [{"top_logprobs": [{"token": "5", "logprob": "x"}]}]}}]}])
     def test_malformed_replies_give_none(self, bad):
-        assert score_from_probabilities(bad) is None
+        assert score_from_scorecard(bad) is None
 
 
 class TestScore:
@@ -201,7 +201,7 @@ class TestWarmUp:
         post = FakePost()
         assert client(post).warm_up() is True
         assert len(post.calls) == 1
-        assert post.calls[0][1]["messages"][1]["content"] == USER_TEMPLATE.format(fragment_text=WARM_UP_FRAGMENT)
+        assert post.calls[0][1]["messages"][1]["content"] == USER_TEMPLATE.format(fragment_text=WARM_UP_CLIP)
 
     def test_warm_up_reports_failure_without_raising(self):
         assert client(FakePost(OSError("down"))).warm_up() is False

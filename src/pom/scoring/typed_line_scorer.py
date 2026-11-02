@@ -28,7 +28,7 @@ from typing import Callable
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.scoring.hinge_finder import ScoredSentence
-from pom.scoring.scorer import ScoredBy
+from pom.scoring.clip_scorer import ScoredBy
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)

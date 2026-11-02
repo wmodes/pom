@@ -51,7 +51,7 @@ from pom.listening import (Listener, MacMicSource, MicSource, SegmentFragmenter,
 from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TriggerHistory                      # noqa: E402
 from pom.log_setup import configure_logging                                                         # noqa: E402
 from pom.prompt import PromptBuilder                                                                # noqa: E402
-from pom.scoring import (HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
+from pom.scoring import (HingeFinder, ScoreEffect, ClipScorer, ScorerModelClient,  # noqa: E402
                          WordTagger, tracker_from_settings)
 from pom.voice import OracleModelClient, PortentWriter                                              # noqa: E402
 
@@ -144,8 +144,8 @@ def main() -> None:
 
     nltk_dir = ROOT / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug)
-    scorer = Scorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
-                    fragment_filter_score=scoring.fragment_filter_score, min_content_words=scoring.min_content_words,
+    scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
+                    clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     tracker = tracker_from_settings(trigger)
     finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)

@@ -1,7 +1,7 @@
 """Tests for pom.scoring.word_tagger: reading text as words, with fakes so no NLTK data is needed."""
 import pytest
 
-from pom.scoring.word_tagger import DEFAULT_FILLERS, Word, WordTagger, WordTaggerError
+from pom.scoring.word_tagger import DEFAULT_FILLERS, TaggedWord, WordTagger, WordTaggerError
 
 STOP = {"the", "my", "a", "about", "i", "you", "and"}
 
@@ -104,16 +104,16 @@ class TestAnalyze:
         assert texts == ["dog", "ate", "sandwiches"]
 
     def test_wordnet_pos_follows_the_tag(self):
-        assert Word("x", "x", "VBD").wordnet_pos == "v"
-        assert Word("x", "x", "NN").wordnet_pos == "n"
-        assert Word("x", "x", "JJ").wordnet_pos == "a"
-        assert Word("x", "x", "RB").wordnet_pos == "r"
-        assert Word("x", "x", "DT").wordnet_pos is None
-        assert Word("x", "x").wordnet_pos is None
+        assert TaggedWord("x", "x", "VBD").wordnet_pos == "v"
+        assert TaggedWord("x", "x", "NN").wordnet_pos == "n"
+        assert TaggedWord("x", "x", "JJ").wordnet_pos == "a"
+        assert TaggedWord("x", "x", "RB").wordnet_pos == "r"
+        assert TaggedWord("x", "x", "DT").wordnet_pos is None
+        assert TaggedWord("x", "x").wordnet_pos is None
 
     def test_word_is_immutable(self):
         with pytest.raises(AttributeError):
-            Word("x", "x").text = "y"
+            TaggedWord("x", "x").text = "y"
 
 
 class TestRecovery:

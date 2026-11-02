@@ -4,9 +4,9 @@
 Part of experiments/hearing-debug. A prototype of the front half of the Printer, run on the Pi (or on
 the Mac against a recording):
 
-    microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Scorer -> explanation
+    microphone -> cut at pauses -> level normalized -> whisper -> sentences -> ClipScorer -> explanation
 
-For every sentence it prints the Scorer's score (the real `pom` Scorer, built from config/pom.toml) and,
+For every sentence it prints the ClipScorer's score (the real `pom` ClipScorer, built from config/pom.toml) and,
 a little later, the model's own written account of why: the content it found that earned the score,
 from the debug prompt. Each score also goes to the real `pom` ConvoInterestTracker, which keeps the room's
 recent scores, and a sentence that stands out from them (above the configured percentile of that window) is marked as one
@@ -69,7 +69,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                  # noqa: E402
 from rolling_cutter import RollingCutter                         # noqa: E402  (next to this file)
 from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
-from pom.scoring import ScoreEffect, ScorerModelClient, Scorer, WordTagger, tracker_from_settings   # noqa: E402
+from pom.scoring import ScoreEffect, ScorerModelClient, ClipScorer, WordTagger, tracker_from_settings   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
 
@@ -311,7 +311,7 @@ class Transcriber:
         return self._vad
 
     def transcribe(self, pcm: bytes) -> "WhisperText":
-        """What whisper heard in an utterance: words for the Scorer, and ambient captions kept apart."""
+        """What whisper heard in an utterance: words for the ClipScorer, and ambient captions kept apart."""
         raw = self.client.text(pcm, vad=self._vad)
         heard = split_whisper(raw)
         if heard.words or heard.ambient or self.client.error:
@@ -333,7 +333,7 @@ class WhisperText:
     """What whisper said about one utterance, sorted into the kinds the Printer treats differently.
 
     Attributes:
-        words: Speech and song lyrics, with the music symbols removed. This is what the Scorer is given.
+        words: Speech and song lyrics, with the music symbols removed. This is what the ClipScorer is given.
         ambient: Whisper's captions of sounds, such as "(dog barks)" or "(dramatic music)". They describe the
             room, not something said, so they are shown but never scored; later they can go into the voice's
             prompt as context ("a dog is barking").
@@ -368,7 +368,7 @@ def short_hash(text: str) -> str:
 
 
 class Brain:
-    """The real Scorer and scorer model client, rebuilt whenever config/pom.toml changes."""
+    """The real ClipScorer and scorer model client, rebuilt whenever config/pom.toml changes."""
 
     def __init__(self, config_path: Path, word_tagger: WordTagger, score_timeout: float = 0.0):
         self._path, self._word_tagger = config_path, word_tagger
@@ -396,7 +396,7 @@ class Brain:
         settings = config.scorer
         client = ScorerModelClient(settings.url, settings.prompt, max(settings.timeout, self._score_timeout),
                                 explain_prompt=settings.prompt_debug)
-        self.scorer = Scorer(client, self._word_tagger, fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
+        self.scorer = ClipScorer(client, self._word_tagger, clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
         self.client, self.settings, self.trigger = client, settings, config.trigger
         # A new config can mean new prompts, and a score under new wording is not the same measure, so the
@@ -406,7 +406,7 @@ class Brain:
         note = "; ".join(problems)
         if first:
             return f"config loaded{(' (problems: ' + note + ')') if note else ''}"
-        changed = [name for name in ("prompt_scoring", "prompt_output", "prompt_output_debug", "url", "fragment_filter_score",
+        changed = [name for name in ("prompt_scoring", "prompt_output", "prompt_output_debug", "url", "clip_filter_score",
                                      "min_content_words")
                    if getattr(before, name) != getattr(settings, name)]
         return (f"config reloaded: {', '.join(changed) if changed else 'no scorer setting changed'}; "
@@ -683,7 +683,7 @@ class Pipeline:
                 continue
             self.count += 1
             number = self.count
-            if self.debug_mode() and not self.brain.scorer.is_fragment_filtered(fragment.text):
+            if self.debug_mode() and not self.brain.scorer.is_clip_filtered(fragment.text):
                 # ONE request per sentence: the score and the reasons both come out of it.
                 self.history.append(Heard(number, fragment.text, None, "waiting"))
                 self.display.pending(number, fragment.text)
@@ -744,7 +744,7 @@ class Pipeline:
         self.display.line(f"\n[{self.display.stamp()}] re-scoring the last {len(self.history)} sentences "
                           f"with [{self.brain.fingerprint()}]" + (f" ({changed})" if changed else ""))
         for item in list(self.history):
-            if self.debug_mode() and not self.brain.scorer.is_fragment_filtered(item.text):
+            if self.debug_mode() and not self.brain.scorer.is_clip_filtered(item.text):
                 self._queue_run(item.number, item.text, previous=item.score, feed=False)
             else:
                 scored = self.brain.scorer.score_text(item.text)

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_FRAGMENT_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
+from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_CLIP_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
                         Config, ListeningSettings, OracleSettings, ScorerSettings, TriggerSettings)
 
@@ -283,24 +283,24 @@ def test_scorer_defaults_when_nothing_is_set():
     config = Config.load(environ={})
     assert config.scorer == ScorerSettings() and config.report.ok
     assert config.scorer.url == "http://127.0.0.1:8098/v1/chat/completions"
-    assert (config.scorer.timeout, config.scorer.fragment_filter_score, config.scorer.min_content_words,
+    assert (config.scorer.timeout, config.scorer.clip_filter_score, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (15.0, 1.0, 1, 3, 30.0)
     assert config.scorer.prompt_scoring == "" and config.scorer.prompt_output == ""
     assert config.scorer.prompt_output_debug == "" and config.scorer.prompt == "" and config.scorer.prompt_debug == ""
 
 
 def test_the_scorer_defaults_match_the_scorers_own():
-    from pom.scoring import scorer, scorer_model_client
+    from pom.scoring import clip_scorer, scorer_model_client
     assert DEFAULT_SCORER_TIMEOUT == scorer_model_client.DEFAULT_TIMEOUT
-    assert DEFAULT_SCORER_FRAGMENT_FILTER_SCORE == scorer.DEFAULT_FRAGMENT_FILTER_SCORE
-    assert DEFAULT_SCORER_MIN_CONTENT_WORDS == scorer.DEFAULT_MIN_CONTENT_WORDS
-    assert DEFAULT_SCORER_FAILURE_LIMIT == scorer.DEFAULT_FAILURE_LIMIT
-    assert DEFAULT_SCORER_RETRY_SECONDS == scorer.DEFAULT_RETRY_SECONDS
+    assert DEFAULT_SCORER_CLIP_FILTER_SCORE == clip_scorer.DEFAULT_CLIP_FILTER_SCORE
+    assert DEFAULT_SCORER_MIN_CONTENT_WORDS == clip_scorer.DEFAULT_MIN_CONTENT_WORDS
+    assert DEFAULT_SCORER_FAILURE_LIMIT == clip_scorer.DEFAULT_FAILURE_LIMIT
+    assert DEFAULT_SCORER_RETRY_SECONDS == clip_scorer.DEFAULT_RETRY_SECONDS
     assert DEFAULT_SCORER_URL.startswith("http://")
 
 
 def test_scorer_values_are_read_from_the_section(tmp_path):
-    text = ('[scorer]\nurl = "http://10.0.0.5:9000/v1/chat/completions"\ntimeout = 4\nfragment_filter_score = 2\n'
+    text = ('[scorer]\nurl = "http://10.0.0.5:9000/v1/chat/completions"\ntimeout = 4\nclip_filter_score = 2\n'
             'min_content_words = 0\nfailure_limit = 5\nretry_seconds = 12.5\nprompt_scoring = "Score it."\n'
             'prompt_output = "Reply with a number."\nprompt_output_debug = "Reply with a number and why."\n')
     scorer = Config.load(write(tmp_path, text), environ={}).scorer
@@ -323,7 +323,7 @@ def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
 @pytest.mark.parametrize("key,value", [
     ("url", "5"), ("url", "true"), ("timeout", '"slow"'), ("timeout", "0"), ("timeout", "-3"), ("timeout", "true"),
     ("prompt_scoring", "5"), ("prompt_scoring", "[1, 2]"), ("prompt_output", "5"), ("prompt_output_debug", "true"), 
-    ("fragment_filter_score", "-1"), ("fragment_filter_score", '"x"'), ("fragment_filter_score", "true"),
+    ("clip_filter_score", "-1"), ("clip_filter_score", '"x"'), ("clip_filter_score", "true"),
    
     ("min_content_words", "-1"), ("min_content_words", "1.5"), ("min_content_words", "true"),
     ("failure_limit", "0"), ("failure_limit", "2.5"), ("failure_limit", '"3"'),
@@ -335,10 +335,10 @@ def test_a_bad_scorer_value_means_the_default_with_a_warning(tmp_path, key, valu
 
 
 def test_the_smallest_allowed_scorer_values_are_accepted(tmp_path):
-    text = "[scorer]\ntimeout = 0.1\nfragment_filter_score = 0\nmin_content_words = 0\nfailure_limit = 1\nretry_seconds = 0\n"
+    text = "[scorer]\ntimeout = 0.1\nclip_filter_score = 0\nmin_content_words = 0\nfailure_limit = 1\nretry_seconds = 0\n"
     config = Config.load(write(tmp_path, text), environ={})
     assert config.report.ok
-    assert (config.scorer.timeout, config.scorer.fragment_filter_score, config.scorer.min_content_words,
+    assert (config.scorer.timeout, config.scorer.clip_filter_score, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (0.1, 0.0, 0, 1, 0.0)
 
 
@@ -379,20 +379,20 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
 
 def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
     from pom.scoring.scorer_model_client import ScorerModelClient
-    from pom.scoring.scorer import ScoredBy, Scorer
+    from pom.scoring.clip_scorer import ScoredBy, ClipScorer
     from pom.scoring.word_tagger import WordTagger
-    config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nfragment_filter_score = 2\nfailure_limit = 2\n'), environ={})
+    config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nclip_filter_score = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
     client = ScorerModelClient(settings.url, settings.prompt, settings.timeout,
                             post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
                                 {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
-    scorer = Scorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
+    scorer = ClipScorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
                                       stopwords={"the"}),
-                    fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
+                    clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     assert client.available and scorer.report.ok
     assert scorer.score_text("The lamp hums.").score == 6.0
-    assert scorer.score_text("The").scored_by is ScoredBy.FRAGMENT_FILTER and scorer.score_text("The").score == 2.0
+    assert scorer.score_text("The").scored_by is ScoredBy.CLIP_FILTER and scorer.score_text("The").score == 2.0
 
 
 def test_the_scoring_prompt_is_the_scoring_part_plus_the_output_part(tmp_path):

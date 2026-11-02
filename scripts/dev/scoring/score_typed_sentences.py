@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Play with the Scorer and the trigger: type sentences, see each one's score and whether the trigger would fire.
+"""Play with the ClipScorer and the trigger: type sentences, see each one's score and whether the trigger would fire.
 
-The Scorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address
+The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address
 in `scorer.url`), and so is the ConvoInterestTracker that decides the trigger. Each sentence is taken to have been said
 `--gap` seconds after the one before, so you can watch the room's window fill and the bar settle. The scoring is
 src/pom/scoring/; this is only a window onto it.
@@ -26,16 +26,16 @@ from pom.config import Config  # noqa: E402
 from pom.listening import SegmentFragmenter  # noqa: E402
 from pom.listening.segment_fragmenter import FragmentLevel  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import ScoreEffect, Scorer, ScorerModelClient, WordTagger, tracker_from_settings  # noqa: E402
+from pom.scoring import ScoreEffect, ClipScorer, ScorerModelClient, WordTagger, tracker_from_settings  # noqa: E402
 
 
 def build(config: Config, min_scores: int):
-    """The real Scorer and ConvoInterestTracker, from the config."""
+    """The real ClipScorer and ConvoInterestTracker, from the config."""
     nltk_dir = ROOT / "data" / "nltk"
     tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None)
     settings = config.scorer
     client = ScorerModelClient(settings.url, settings.prompt, settings.timeout, explain_prompt=settings.prompt_debug)
-    scorer = Scorer(client, tagger, fragment_filter_score=settings.fragment_filter_score,
+    scorer = ClipScorer(client, tagger, clip_filter_score=settings.clip_filter_score,
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
     trigger = dataclasses.replace(config.trigger, min_scores=min_scores) if min_scores else config.trigger

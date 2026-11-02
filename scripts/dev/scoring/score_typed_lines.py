@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Play with the typed-line path: type lines, see each one's score, the typed score multiplier, and whether the Printer would answer.
 
-The Scorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address in
+The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address in
 `scorer.url`), and so are the ConvoInterestTracker and the TypedLineScorer, with the `[trigger]` settings
 `typed_score_multiplier` and `typed_lines_affect_bar`. A line that does not clear the bar is ignored: the Printer says nothing, and
 this playground says "silence". The scoring is src/pom/scoring/; this is only a window onto it.
@@ -26,16 +26,16 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import (Scorer, ScorerModelClient, TypedLineScorer, WordTagger, tracker_from_settings)  # noqa: E402
+from pom.scoring import (ClipScorer, ScorerModelClient, TypedLineScorer, WordTagger, tracker_from_settings)  # noqa: E402
 
 
 def build(config: Config, args):
-    """The real Scorer, tracker and TypedLineScorer, from the config and the command line."""
+    """The real ClipScorer, tracker and TypedLineScorer, from the config and the command line."""
     nltk_dir = ROOT / "data" / "nltk"
     tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None)
     settings = config.scorer
     client = ScorerModelClient(settings.url, settings.prompt, settings.timeout, explain_prompt=settings.prompt_debug)
-    scorer = Scorer(client, tagger, fragment_filter_score=settings.fragment_filter_score,
+    scorer = ClipScorer(client, tagger, clip_filter_score=settings.clip_filter_score,
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
     trigger = config.trigger

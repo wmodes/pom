@@ -69,7 +69,7 @@ class WordTaggerError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
-class Word:
+class TaggedWord:
     """One word of a fragment, and what it is.
 
     Attributes:
@@ -200,7 +200,7 @@ class WordTagger:
             else:
                 name = token[0].isupper() and index > 0 and lower != "i"
             # A capitalized "Uh" at the start of a sentence gets tagged as a name; padding never is.
-            words.append(Word(
+            words.append(TaggedWord(
                 text=token, lemma=self._lemma(lower, tag), tag=tag, is_name=name and not filler,
                 is_number=number, is_stopword=lower in self._stopwords, is_filler=filler))
         return words

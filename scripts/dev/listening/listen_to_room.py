@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Play with the whole listening side: the microphone (or a recording) through the Listener, the Scorer and the trigger.
+"""Play with the whole listening side: the microphone (or a recording) through the Listener, the ClipScorer and the trigger.
 
-It is the real HingeFinder (the Listener, the SegmentFragmenter, the Scorer and the ConvoInterestTracker joined) and nothing
+It is the real HingeFinder (the Listener, the SegmentFragmenter, the ClipScorer and the ConvoInterestTracker joined) and nothing
 else: every sentence it hears is shown with its score and where the trigger stands, and the ones that would trigger the
 Printer are marked. It needs a whisper-server running (the address is `listening.whisper_url`) and the scorer model's
 llama-server; the settings are all in config/pom.toml.
@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config  # noqa: E402
 from pom.listening import Listener, MicSource, SegmentFragmenter, WavSource, WhisperServerClient  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import (HingeFinder, ScoreEffect, Scorer, ScorerModelClient,  # noqa: E402
+from pom.scoring import (HingeFinder, ScoreEffect, ClipScorer, ScorerModelClient,  # noqa: E402
                          WordTagger, tracker_from_settings)
 
 
@@ -67,8 +67,8 @@ def main():
     nltk_dir = ROOT / "data" / "nltk"
     settings = config.scorer
     scorer_client = ScorerModelClient(settings.url, settings.prompt, settings.timeout, explain_prompt=settings.prompt_debug)
-    scorer = Scorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
-                    fragment_filter_score=settings.fragment_filter_score, min_content_words=settings.min_content_words,
+    scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
+                    clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     tracker = tracker_from_settings(trigger)
     finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)

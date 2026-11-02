@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Probe: can a small local LLM score how interesting a sentence of overheard speech is?
 
-Part of experiments/interest-scorer, a formative experiment that settled how the Scorer works. It
+Part of experiments/interest-scorer, a formative experiment that settled how the ClipScorer works. It
 is not part of the Printer (see the README in this folder). By default it sends each line to a
 running llama-server on its own and asks for a single digit, 0-9, with the prompt in config/pom.toml
 (the same prompt the Printer uses). It reads the probabilities of the digits with the Printer's own
@@ -37,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                              # noqa: E402
-from pom.scoring.scorer_model_client import USER_TEMPLATE, score_from_probabilities   # noqa: E402
+from pom.scoring.scorer_model_client import USER_TEMPLATE, score_from_scorecard   # noqa: E402
 
 # DEFAULT_PROMPT = (
     # "You listen to people talking in a room. Rate how 'interesting' one line of what you overheard "
@@ -210,7 +210,7 @@ def rate(url: str, prompt: str, line: str, context: list[str]) -> tuple[float, f
     with urllib.request.urlopen(request, timeout=120) as response:
         data = json.load(response)
     seconds = time.perf_counter() - start
-    score = score_from_probabilities(data)
+    score = score_from_scorecard(data)
     return (float("nan") if score is None else score), seconds
 
 

@@ -42,9 +42,9 @@ url = "http://127.0.0.1:8098/v1/chat/completions"
 timeout = 15
 
 # Sentences with fewer than this many content words (not filler, stopwords or numbers) are not sent
-# to the model; they get fragment_filter_score. 0 sends everything.
+# to the model; they get clip_filter_score. 0 sends everything.
 min_content_words = 1
-fragment_filter_score = 1.0
+clip_filter_score = 1.0
 
 # If the model fails this many times in a row, leave it alone for retry_seconds, leaving fragments
 # unscored meanwhile, then try it again.

@@ -8,7 +8,7 @@ import logging
 import pytest
 
 from pom.fault_recorder import FaultRecorder
-from pom.scoring import (ConvoInterestTracker, PercentileBar, ScoreEffect, ScoredBy, ScoredFragment, ScoredSentence, TypedLineScorer,
+from pom.scoring import (ConvoInterestTracker, PercentileBar, ScoreEffect, ScoredBy, ScoredClip, ScoredSentence, TypedLineScorer,
                          TypedLineScorerError)
 from pom.scoring.typed_line_scorer import DEFAULT_MULTIPLIER, TYPED
 
@@ -22,7 +22,7 @@ class FakeScorer:
     def score_text(self, text, heard_at=0.0):
         from pom.listening.segment_fragmenter import Fragment, FragmentLevel
         self.asked.append((text, heard_at))
-        return ScoredFragment(Fragment(text, FragmentLevel.SENTENCE, heard_at), self.scores.get(text, 3.0), self.scored_by)
+        return ScoredClip(Fragment(text, FragmentLevel.SENTENCE, heard_at), self.scores.get(text, 3.0), self.scored_by)
 
 
 class Clock:
@@ -176,18 +176,18 @@ class TestWhenThereIsNoScore:
         class Unable(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
-                return ScoredFragment(result.fragment, None, ScoredBy.UNSCORED)
+                return ScoredClip(result.fragment, None, ScoredBy.UNSCORED)
         made = TypedLineScorer(Unable(), tracker(), Clock())
         sentence = made.score("hello")
         assert (sentence.score, sentence.effect, sentence.is_hinge) == (None, ScoreEffect.IGNORED, False)
 
-    def test_the_fragment_filters_score_is_multiplied_like_any_other(self):
+    def test_the_clip_filters_score_is_multiplied_like_any_other(self):
         class Filtered(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
-                return ScoredFragment(result.fragment, 1.0, ScoredBy.FRAGMENT_FILTER)
+                return ScoredClip(result.fragment, 1.0, ScoredBy.CLIP_FILTER)
         sentence = TypedLineScorer(Filtered(), tracker(), Clock()).score("hello")
-        assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.FRAGMENT_FILTER, False)
+        assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.CLIP_FILTER, False)
 
 
 class TestTheMultiplierIsChecked:

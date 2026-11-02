@@ -19,6 +19,13 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   under the gitignored `config/pom.local.toml` (where the monitoring site's password lives) and then environment variables. A bad
   value means the default plus a warning. Everything a person might tune is in it.
 - **AI ledger** †: `documentation/ai-ledger.md`, the record of remote AI (Claude) use. Local models are never counted.
+- **pom1** †: the Raspberry Pi 5 (16 GB) the Printer runs on (`ssh pi@pom1.local`). Away from the home network it falls back to its own
+  Wi-Fi hotspot, `pom1-direct` (Comitup). It is the client: work reaches it through git and nothing is edited on it by hand.
+- **servers** †: the programs the Printer talks to over HTTP, on the Pi itself: whisper-server for hearing (port 8110) and one
+  llama-server for each model (the scorer model on 8098, the oracle model on 8099). They stay loaded and idle during a turn.
+- **Office of Ordinary Hauntings** †: the in-world home of the Printer (officeofordinaryhauntings.net, case study CS-0027). The
+  **Observation Session** † is its in-world event, where the Printer is observed. The site's "clean room" and wireless ban are theatre
+  (the Pi keeps its radios), and the honest line is that speech is transcribed and discarded: nothing is kept.
 
 ## Listening: from sound to text
 
@@ -38,8 +45,18 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   what get scored (`SegmentFragmenter`; the levels are `FragmentLevel`).
 - **whisper client** †: the component that talks to whisper-server: it sends audio and gets segments back (`WhisperServerClient`).
 - **ambient caption**: whisper's guess at a sound in the room, like `(dog barks)` or `[Music]`.
-  Never scored; kept as context for the oracle model.
+  Not scored unless `consider_ambient_sounds` is on (it is off: how a caption scores is untried, and whisper sometimes invents
+  them); kept as context for the oracle model.
 - **lyrics** †: sung words whisper marks with music symbols. They are words, so they are scored.
+- **step and hold** †: the rolling cutter's rhythm (`[listening]`). Whisper is asked about the audio every `step` seconds (5). A finished
+  segment is kept only once it ends `hold` seconds (2) before the end of what whisper was given, so a thought still going is not cut in
+  two. A stretch of talk past `max_buffer` seconds (30) without finishing is forced out; `rewind` (0, off) would start each run earlier.
+- **sound pass** †: whisper's voice detector treats singing and most sounds as not speech. After `sound_every_steps` (3) runs in a row
+  with no speech, whisper is asked once, without the detector, about the last `sound_seconds` of sound, and only lyrics and ambient
+  captions are kept. It can only hear what is still held, about two seconds after a quiet stretch.
+- **ambient memory** †: the latest `ambient_memory` (6) ambient captions, kept to tell the oracle model what the room sounds like.
+- **known-good hearing setup** †: the only combination that worked well in the room: whisper `base.en` with its voice detection at 0.5,
+  a run every 5 seconds on a rolling buffer. It is fragile, so it is changed one thing at a time and pinned by a test.
 
 ## Scoring and triggering: choosing what to respond to
 
@@ -51,6 +68,8 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **scorer**: the component that scores fragments: the fragment_filter, then the scorer model,
   with a fragment left unscored if the scorer model doesn't reply.
 - **scorer model**: the small language model that scores fragments (Qwen3-4B for now).
+- **scorer model client** †: the component that asks the scorer model for a score and gets back the digits it might say, each with how
+  likely it is (`ScorerModelClient`). The oracle model client is its counterpart for the oracle model.
 - **fragment_filter**: the check in front of the scorer model that gives fragments with no content
   words (such as "or not.") a fixed low score, `fragment_filter_score`, without asking the scorer model.
 - **unscored** †: a fragment the scorer model gave no score; its score is None. The
@@ -173,6 +192,43 @@ where a fact belongs to it.
   of their own, takes each hinge through a turn (write, format, type) while the Printer does not listen, and feeds the monitoring
   site. The entry point starts it.
 
+## Planned and undecided
+
+Parts and ideas that do not exist yet. The Conductor, the half-duplex gate and the keyboard watcher are under *Typing and turns*.
+
+- **portent deliverer** †: *(planned)* the component that takes one hinge through the steps of a turn, writing the portent, formatting
+  it and typing it, and reports what happened (`PortentDeliverer`).
+- **skip ahead** †: *(planned)* after a turn the listener drops the sound that piled up while the Printer wrote and typed (`Listener.skip_ahead`),
+  so it does not hear its own typing. Sound during a turn is not heard: that is what half-duplex means.
+- **entry point** †: *(planned)* the program that builds the one `Config`, builds the parts from it and starts the Conductor; on the Pi it
+  runs as a service. Modules never read the config themselves. It takes the playgrounds' choices as options: a microphone or a recording,
+  the real terminal or the console typewriter, the monitoring site.
+- **paper guards** †: *(proposed)* so nobody comes back to a pile of paper: nothing triggers unless speech was heard in the last 10
+  minutes, and hard ceilings of about 12 portents an hour and 60 a day.
+- **failing loudly** †: *(open)* if the scorer model or the oracle model is down the Printer can never respond, and a log line is not loud
+  when someone is switching a printer on. What "loud" means (a beep, an email, something at the venue) is not decided.
+- **real-room test** †: the Printer in a real room, a quiet one too, then retuning the trigger, which has so far been tuned on four chatty
+  meetings.
+- **Track A and Track B** †: the two voices the design began with. Track A is a stock instruct model with the project's prompt, which is
+  what runs and what the bake-off measured. Track B is a base model fine-tuned (LoRA, on the Mac, never on the Pi) on the library plus
+  hinge pairs. Track B has not been started.
+- **hinge pair** †: *(for Track B)* an overheard line paired with a tangential reply in the right register, curated by Wes, Neil and
+  River, with a large language model drafting candidates (logged in the AI ledger).
+
+## How we work
+
+- **leaf** †: a module that depends on nothing not already built, made alone with its own tests and a way to see it work, before anything
+  that assembles it. We build **leaf-first**.
+- **mutation check** †: breaking the code on purpose, one small change (a *mutant*) at a time, and running the whole suite. A mutant the
+  tests do not catch (it *survives*) shows a missing test.
+- **preview** †: for anything Wes will see (a page, a chart, output), build it, show it running, and wait for suggestions before the
+  mutation checks and the commit.
+- **design choices first** †: before building anything that affects the system, say how it will be solved and list the choices, each with a
+  recommendation. Building waits for Wes's **go**, and a feature is added only if Wes agrees. A name, or a rename, is one of these choices.
+- **handoff** †: `documentation/project-state.md`, where the project stands and the working rules, for whoever picks the work up next.
+- **changelog** †: `CHANGELOG.md`, updated in the same commit as each change; commits are small and frequent.
+- **Wes writes the prompts** †: the scorer prompt and the oracle prompt are Wes's. Claude measures them and does not author them.
+
 ## Where the code does not match yet †
 
 These names predate the lexicon. Each rename is Wes's decision.
@@ -182,3 +238,20 @@ These names predate the lexicon. Each rename is Wes's decision.
 - Older docs say **pronouncement** for portent, and a few say **chunk** for fragments.
 - The part that decides whether a score triggers is `ConvoInterestTracker` (`convo_interest_tracker.py`); the lexicon's word for it
   is the **trigger**. `TriggerJudge` was proposed as a name (not decided).
+
+## Collisions and inconsistencies to settle †
+
+Words that mean more than one thing, or several words for one thing, found in the code and the docs. Nothing here is decided.
+
+- **typed**: it names both directions. `TypewriterPort.type()` and "the typewriter types a portent" mean the machine prints; *typed line*,
+  `typed_score_multiplier`, `typed_lines_affect_bar` and `type_during_output` mean a person typed at the keyboard.
+- **segment, fragment, sentence**: three words for nearly one thing. The lexicon says a fragment is scored, but the code yields a
+  `ScoredSentence`, scores only sentence-level fragments (`FragmentLevel.SENTENCE`), and a typed line is not heard and is no fragment of
+  a segment. A **heard segment** is not whisper's **segment**. A hinge is called a fragment, but the portent writer takes plain text.
+- **trigger**: the lexicon defines it as a moment (a score above the bar), but docs and code also use "the trigger" for the component that
+  decides (`ConvoInterestTracker`), and `[trigger]` is its config section.
+- **voice and oracle**: the module is `src/pom/voice/`, the startup step is "voice-model", and the tracks are two "voices", while the lexicon
+  says oracle model, oracle prompt and portent writer.
+- **terminal, typewriter, Wheelwriter**: `[terminal]` is the serial connection; `TypewriterPort`, `TypewriterFormatter`, `ConsoleTypewriter`
+  and `type_text_on_typewriter.py` say typewriter; many comments say Wheelwriter for facts that hold for any terminal. The split is
+  deliberate but not yet stated as a rule.

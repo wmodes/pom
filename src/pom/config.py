@@ -26,8 +26,8 @@ of being threaded through by hand. Today there are five:
                may come (60; 0 for none), `typed_score_multiplier` what a typed line's score is multiplied by (1.5) and
                `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the ConvoInterestTracker with `tracker_from_settings(config.trigger)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
-               whisper-server, the microphone's capture device and buffer, and the RollingCutter's `step`, `hold`,
-               `rewind` and `max_buffer`, and the Listener's sound pass and caption memory. The defaults are the
+               whisper-server, the microphone's capture device and buffer, and the RollingCutter's `cut_every_seconds`, `hold_back_seconds`,
+               `rewind_seconds` and `max_cut_seconds`, and the Listener's sound pass and caption memory. The defaults are the
                combination that worked in the room; change one at a time. The entry point builds the
                WhisperServerClient, MicSource and Listener from `config.listening`.
     [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of triggers. Whether it
@@ -84,9 +84,9 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "trigger.half_life_seconds", "trigger.average_fraction", "trigger.average_half_life_scores",
          "trigger.average_floor_fraction", "trigger.typed_score_multiplier", "trigger.typed_lines_affect_bar",
          "listening.whisper_url", "listening.whisper_timeout", "listening.device",
-         "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
-         "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
-         "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
+         "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
+         "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
+         "listening.score_room_tone", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
          "monitor.show_hinges", "monitor.history_seconds", "printing.paper_width_inches", "printing.margin_inches",
          "printing.characters_per_inch", "printing.quote_indent", "printing.linefeeds_after_portent",
          "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
@@ -119,14 +119,14 @@ DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
 DEFAULT_LISTENING_DEVICE = "plughw:0,0"
 DEFAULT_LISTENING_BUFFER_SECONDS = 10.0
-DEFAULT_LISTENING_STEP = 5.0
-DEFAULT_LISTENING_HOLD = 2.0
-DEFAULT_LISTENING_REWIND = 0.0
-DEFAULT_LISTENING_MAX_BUFFER = 30.0
-DEFAULT_LISTENING_SOUND_EVERY_STEPS = 3
-DEFAULT_LISTENING_SOUND_SECONDS = 10.0
-DEFAULT_LISTENING_AMBIENT_MEMORY = 6
-DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS = False
+DEFAULT_LISTENING_CUT_EVERY_SECONDS = 5.0
+DEFAULT_LISTENING_HOLD_BACK_SECONDS = 2.0
+DEFAULT_LISTENING_REWIND_SECONDS = 0.0
+DEFAULT_LISTENING_MAX_CUT_SECONDS = 30.0
+DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY = 3
+DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS = 10.0
+DEFAULT_LISTENING_ROOM_TONE_MEMORY = 6
+DEFAULT_LISTENING_SCORE_ROOM_TONE = False
 DEFAULT_MONITOR_ENABLED = False
 DEFAULT_MONITOR_HOST = "0.0.0.0"
 DEFAULT_MONITOR_PORT = 8080
@@ -278,29 +278,29 @@ class ListeningSettings:
         whisper_timeout: Seconds to wait for one transcription, above 0.
         device: The ALSA capture device for the microphone, as `arecord -D` takes it.
         buffer_seconds: Sound held for the microphone before the oldest is dropped, above 0.
-        step: Seconds of new audio between whisper runs, above 0.
-        hold: A segment is kept once it ends this many seconds before the end of the buffer, 0 or more.
-        rewind: Seconds before the last kept segment's end that the next run starts, 0 or more (0 is off).
-        max_buffer: Seconds without a finished segment before one is forced out, above 0.
-        sound_every_steps: After this many runs in a row with no speech, listen once for lyrics and captions;
+        cut_every_seconds: Seconds of new audio between whisper runs, above 0.
+        hold_back_seconds: A segment is kept once it ends this many seconds before the end of the buffer, 0 or more.
+        rewind_seconds: Seconds before the last kept segment's end that the next run starts, 0 or more (0 is off).
+        max_cut_seconds: Seconds without a finished segment before one is forced out, above 0.
+        room_tone_pass_every: After this many runs in a row with no speech, listen once for lyrics and captions;
             a whole number of at least 0, 0 for never.
-        sound_seconds: How much recent audio that pass listens to, above 0.
-        ambient_memory: How many recent captions of sounds to remember, a whole number of at least 1.
-        consider_ambient_sounds: True lets captions of sounds like "(dog barks)" be scored and become hinges, as
+        room_tone_pass_seconds: How much recent audio that pass listens to, above 0.
+        room_tone_memory: How many recent captions of sounds to remember, a whole number of at least 1.
+        score_room_tone: True lets captions of sounds like "(dog barks)" be scored and become hinges, as
             speech does. False (the default) leaves them unscored.
     """
     whisper_url: str = DEFAULT_LISTENING_WHISPER_URL
     whisper_timeout: float = DEFAULT_LISTENING_WHISPER_TIMEOUT
     device: str = DEFAULT_LISTENING_DEVICE
     buffer_seconds: float = DEFAULT_LISTENING_BUFFER_SECONDS
-    step: float = DEFAULT_LISTENING_STEP
-    hold: float = DEFAULT_LISTENING_HOLD
-    rewind: float = DEFAULT_LISTENING_REWIND
-    max_buffer: float = DEFAULT_LISTENING_MAX_BUFFER
-    sound_every_steps: int = DEFAULT_LISTENING_SOUND_EVERY_STEPS
-    sound_seconds: float = DEFAULT_LISTENING_SOUND_SECONDS
-    ambient_memory: int = DEFAULT_LISTENING_AMBIENT_MEMORY
-    consider_ambient_sounds: bool = DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS
+    cut_every_seconds: float = DEFAULT_LISTENING_CUT_EVERY_SECONDS
+    hold_back_seconds: float = DEFAULT_LISTENING_HOLD_BACK_SECONDS
+    rewind_seconds: float = DEFAULT_LISTENING_REWIND_SECONDS
+    max_cut_seconds: float = DEFAULT_LISTENING_MAX_CUT_SECONDS
+    room_tone_pass_every: int = DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY
+    room_tone_pass_seconds: float = DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS
+    room_tone_memory: int = DEFAULT_LISTENING_ROOM_TONE_MEMORY
+    score_room_tone: bool = DEFAULT_LISTENING_SCORE_ROOM_TONE
 
 
 @dataclass(frozen=True)
@@ -542,22 +542,22 @@ class Config:
                   DEFAULT_LISTENING_DEVICE, report),
             _positive(values.get("listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS),
                       "listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS, report),
-            _positive(values.get("listening.step", DEFAULT_LISTENING_STEP), "listening.step",
-                      DEFAULT_LISTENING_STEP, report),
-            _number(values.get("listening.hold", DEFAULT_LISTENING_HOLD), "listening.hold",
-                    DEFAULT_LISTENING_HOLD, 0.0, report),
-            _number(values.get("listening.rewind", DEFAULT_LISTENING_REWIND), "listening.rewind",
-                    DEFAULT_LISTENING_REWIND, 0.0, report),
-            _positive(values.get("listening.max_buffer", DEFAULT_LISTENING_MAX_BUFFER), "listening.max_buffer",
-                      DEFAULT_LISTENING_MAX_BUFFER, report),
-            _whole(values.get("listening.sound_every_steps", DEFAULT_LISTENING_SOUND_EVERY_STEPS),
-                   "listening.sound_every_steps", DEFAULT_LISTENING_SOUND_EVERY_STEPS, 0, report),
-            _positive(values.get("listening.sound_seconds", DEFAULT_LISTENING_SOUND_SECONDS),
-                      "listening.sound_seconds", DEFAULT_LISTENING_SOUND_SECONDS, report),
-            _whole(values.get("listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY),
-                   "listening.ambient_memory", DEFAULT_LISTENING_AMBIENT_MEMORY, 1, report),
-            _bool(values.get("listening.consider_ambient_sounds", DEFAULT_LISTENING_CONSIDER_AMBIENT_SOUNDS),
-                  "listening.consider_ambient_sounds", report))
+            _positive(values.get("listening.cut_every_seconds", DEFAULT_LISTENING_CUT_EVERY_SECONDS), "listening.cut_every_seconds",
+                      DEFAULT_LISTENING_CUT_EVERY_SECONDS, report),
+            _number(values.get("listening.hold_back_seconds", DEFAULT_LISTENING_HOLD_BACK_SECONDS), "listening.hold_back_seconds",
+                    DEFAULT_LISTENING_HOLD_BACK_SECONDS, 0.0, report),
+            _number(values.get("listening.rewind_seconds", DEFAULT_LISTENING_REWIND_SECONDS), "listening.rewind_seconds",
+                    DEFAULT_LISTENING_REWIND_SECONDS, 0.0, report),
+            _positive(values.get("listening.max_cut_seconds", DEFAULT_LISTENING_MAX_CUT_SECONDS), "listening.max_cut_seconds",
+                      DEFAULT_LISTENING_MAX_CUT_SECONDS, report),
+            _whole(values.get("listening.room_tone_pass_every", DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY),
+                   "listening.room_tone_pass_every", DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY, 0, report),
+            _positive(values.get("listening.room_tone_pass_seconds", DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS),
+                      "listening.room_tone_pass_seconds", DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS, report),
+            _whole(values.get("listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY),
+                   "listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY, 1, report),
+            _bool(values.get("listening.score_room_tone", DEFAULT_LISTENING_SCORE_ROOM_TONE),
+                  "listening.score_room_tone", report))
         monitor = MonitorSettings(
             _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report),
             _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, report),

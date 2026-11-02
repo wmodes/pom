@@ -205,28 +205,28 @@ whisper_timeout = 180
 device = "plughw:0,0"
 buffer_seconds = 10
 
-# Whisper is asked about the audio every `step` seconds. A finished segment is kept once it ends `hold` seconds before
-# the end of what whisper was given, so a thought still going is not cut in two. `rewind` starts each run that many
+# Whisper is asked about the audio every `cut_every_seconds`. A finished segment is kept once it ends `hold_back_seconds` before
+# the end of what whisper was given, so a thought still going is not cut in two. `rewind_seconds` starts each run that many
 # seconds before the last kept segment's end (0 is off; it made whisper repeat the last word). A stretch of talk that
-# runs past `max_buffer` seconds without finishing is forced out.
-step = 5
-hold = 2
-rewind = 0
-max_buffer = 30
+# runs past `max_cut_seconds` without finishing is forced out.
+cut_every_seconds = 5
+hold_back_seconds = 2
+rewind_seconds = 0
+max_cut_seconds = 30
 
 # The voice detector treats singing and most sounds as not speech. After this many runs in a row with no speech, whisper
-# is asked once, without it, about the last `sound_seconds` of sound, and only lyrics and captions like "(dog barks)"
+# is asked once, without it, about the last `room_tone_pass_seconds` of sound, and only lyrics and captions like "(dog barks)"
 # are kept. 0 turns it off. (It can only hear what is still held, which after a quiet stretch is about two seconds.)
-sound_every_steps = 3
-sound_seconds = 10
+room_tone_pass_every = 3
+room_tone_pass_seconds = 10
 
 # How many of the latest captions of sounds in the room to remember, to tell the oracle model what the room sounds like.
-ambient_memory = 6
+room_tone_memory = 6
 
 # Whether captions of sounds in the room, like "(dog barks)", may be scored and become hinges the way speech does. The
 # Printer reacts to what is happening around it, and a dog barking may be all that is happening. Off by default: how a
 # caption scores has not been tried, and whisper sometimes invents them. Speech and lyrics are scored either way.
-consider_ambient_sounds = false
+score_room_tone = false
 
 
 # ================================================

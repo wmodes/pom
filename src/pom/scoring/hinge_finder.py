@@ -12,7 +12,7 @@ Design decisions, and why:
   * Time is the Listener's: counted in audio received, so a recording replayed at any speed triggers exactly as a live run.
   * Only whole sentences are scored; clauses and phrases are not (the same rule the hearing-debug experiment used).
   * AMBIENT SOUNDS. A caption like "(dog barks)" is yielded either way, so a playground can show it. With
-    `consider_ambient_sounds` off (the default) it is not scored and the trigger never sees it: `score` is None and
+    `score_room_tone` off (the default) it is not scored and the trigger never sees it: `score` is None and
     `effect` is None. With it on, the caption is scored like a sentence and counted by the trigger, so a sound can be the
     hinge. How a caption scores is untried; whisper sometimes invents captions.
   * Nothing here may stop the oracle (see pom/__init__.py). A Scorer that cannot score gives an unscored sentence, which the
@@ -71,19 +71,19 @@ class ScoredSentence:
 class HingeFinder:
     """Finds the sentences worth answering in what the room says."""
 
-    def __init__(self, listener, fragmenter, scorer, tracker, consider_ambient_sounds: bool = False):
+    def __init__(self, listener, fragmenter, scorer, tracker, score_room_tone: bool = False):
         """Args:
             listener: A Listener (anything with hear(), close() and report).
             fragmenter: A SegmentFragmenter that cuts words into sentences.
             scorer: A Scorer that scores a fragment, or plain text with score_text().
             tracker: A ConvoInterestTracker that says whether a score is a trigger.
-            consider_ambient_sounds: True lets captions of sounds be scored and become hinges; False leaves them unscored.
+            score_room_tone: True lets captions of sounds be scored and become hinges; False leaves them unscored.
         """
         self._listener = listener
         self._fragmenter = fragmenter
         self._scorer = scorer
         self._tracker = tracker
-        self._consider_ambient = consider_ambient_sounds
+        self._consider_ambient = score_room_tone
 
     def find(self) -> Iterator[ScoredSentence]:
         """Yields a ScoredSentence for each thing heard, as it is scored. Blocks while waiting for sound.

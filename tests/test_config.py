@@ -573,25 +573,25 @@ def test_the_listening_defaults_match_the_modules_defaults():
     from pom.listening import eavesdropper, mic_deck, rolling_cutter, whisper_model_client
     assert ListeningSettings() == ListeningSettings(
         whisper_model_client.DEFAULT_URL, whisper_model_client.DEFAULT_TIMEOUT, mic_deck.DEFAULT_DEVICE,
-        mic_deck.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_STEP, rolling_cutter.DEFAULT_HOLD,
-        rolling_cutter.DEFAULT_REWIND, rolling_cutter.DEFAULT_MAX_BUFFER, eavesdropper.DEFAULT_SOUND_EVERY_STEPS,
-        eavesdropper.DEFAULT_SOUND_SECONDS, eavesdropper.DEFAULT_AMBIENT_MEMORY)
+        mic_deck.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_CUT_EVERY_SECONDS, rolling_cutter.DEFAULT_HOLD_BACK_SECONDS,
+        rolling_cutter.DEFAULT_REWIND_SECONDS, rolling_cutter.DEFAULT_MAX_CUT_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_PASS_EVERY,
+        eavesdropper.DEFAULT_ROOM_TONE_PASS_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_MEMORY)
 
 
 def test_all_the_listening_values_are_read_from_the_section(tmp_path):
     text = ("[listening]\nwhisper_url = \"http://pi.test:9000\"\nwhisper_timeout = 60\ndevice = \"hw:1,0\"\n"
-            "buffer_seconds = 4\nstep = 3\nhold = 1.5\nrewind = 0.5\nmax_buffer = 20\nsound_every_steps = 5\n"
-            "sound_seconds = 8\nambient_memory = 9\nconsider_ambient_sounds = true\n")
+            "buffer_seconds = 4\ncut_every_seconds = 3\nhold_back_seconds = 1.5\nrewind_seconds = 0.5\nmax_cut_seconds = 20\nroom_tone_pass_every = 5\n"
+            "room_tone_pass_seconds = 8\nroom_tone_memory = 9\nscore_room_tone = true\n")
     config = Config.load(write(tmp_path, text), environ={})
     assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9, True)
     assert config.report.ok
 
 
 def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
-    text = "[listening]\nhold = 0\nrewind = 0\nsound_every_steps = 0\nambient_memory = 1\n"
+    text = "[listening]\nhold_back_seconds = 0\nrewind_seconds = 0\nroom_tone_pass_every = 0\nroom_tone_memory = 1\n"
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.listening.hold == 0.0 and config.listening.rewind == 0.0
-    assert config.listening.sound_every_steps == 0 and config.listening.ambient_memory == 1 and config.report.ok
+    assert config.listening.hold_back_seconds == 0.0 and config.listening.rewind_seconds == 0.0
+    assert config.listening.room_tone_pass_every == 0 and config.listening.room_tone_memory == 1 and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -600,15 +600,15 @@ def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
     ("whisper_timeout", "inf"),
     ("device", "5"), ("device", "true"),
     ("buffer_seconds", "0"), ("buffer_seconds", "-1"), ("buffer_seconds", '"10"'), ("buffer_seconds", "true"),
-    ("step", "0"), ("step", "-1"), ("step", '"5"'), ("step", "true"), ("step", "nan"),
-    ("hold", "-1"), ("hold", '"2"'), ("hold", "true"),
-    ("rewind", "-0.5"), ("rewind", '"0"'), ("rewind", "false"),
-    ("max_buffer", "0"), ("max_buffer", "-30"), ("max_buffer", '"30"'), ("max_buffer", "true"),
-    ("sound_every_steps", "-1"), ("sound_every_steps", "2.5"), ("sound_every_steps", '"3"'), ("sound_every_steps", "true"),
-    ("sound_seconds", "0"), ("sound_seconds", "-10"), ("sound_seconds", '"10"'), ("sound_seconds", "true"),
-    ("ambient_memory", "0"), ("ambient_memory", "-1"), ("ambient_memory", "2.5"), ("ambient_memory", '"6"'),
-    ("ambient_memory", "true"),
-    ("consider_ambient_sounds", "5"), ("consider_ambient_sounds", '"maybe"'), ("consider_ambient_sounds", "[true]")])
+    ("cut_every_seconds", "0"), ("cut_every_seconds", "-1"), ("cut_every_seconds", '"5"'), ("cut_every_seconds", "true"), ("cut_every_seconds", "nan"),
+    ("hold_back_seconds", "-1"), ("hold_back_seconds", '"2"'), ("hold_back_seconds", "true"),
+    ("rewind_seconds", "-0.5"), ("rewind_seconds", '"0"'), ("rewind_seconds", "false"),
+    ("max_cut_seconds", "0"), ("max_cut_seconds", "-30"), ("max_cut_seconds", '"30"'), ("max_cut_seconds", "true"),
+    ("room_tone_pass_every", "-1"), ("room_tone_pass_every", "2.5"), ("room_tone_pass_every", '"3"'), ("room_tone_pass_every", "true"),
+    ("room_tone_pass_seconds", "0"), ("room_tone_pass_seconds", "-10"), ("room_tone_pass_seconds", '"10"'), ("room_tone_pass_seconds", "true"),
+    ("room_tone_memory", "0"), ("room_tone_memory", "-1"), ("room_tone_memory", "2.5"), ("room_tone_memory", '"6"'),
+    ("room_tone_memory", "true"),
+    ("score_room_tone", "5"), ("score_room_tone", '"maybe"'), ("score_room_tone", "[true]")])
 def test_a_bad_listening_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[listening]\n{key} = {value}\n"), environ={})
     assert config.listening == ListeningSettings()
@@ -621,10 +621,10 @@ def test_an_unknown_listening_key_is_warned_about(tmp_path):
 
 
 def test_the_listening_section_merges_key_by_key_with_the_local_file(tmp_path):
-    main = write(tmp_path, "[listening]\nstep = 3\nhold = 1\n")
-    (tmp_path / "pom.local.toml").write_text("[listening]\nhold = 0.5\n", encoding="utf-8")
+    main = write(tmp_path, "[listening]\ncut_every_seconds = 3\nhold_back_seconds = 1\n")
+    (tmp_path / "pom.local.toml").write_text("[listening]\nhold_back_seconds = 0.5\n", encoding="utf-8")
     listening = Config.load(main, environ={}).listening
-    assert (listening.step, listening.hold) == (3.0, 0.5)
+    assert (listening.cut_every_seconds, listening.hold_back_seconds) == (3.0, 0.5)
 
 
 def test_the_whisper_address_can_come_from_the_environment(tmp_path):
@@ -652,9 +652,9 @@ def test_the_listening_settings_plug_straight_into_the_modules():
 
     settings = Config.load(environ={}).listening
     client = WhisperModelClient(settings.whisper_url, settings.whisper_timeout)
-    cutter = RollingCutter(client, settings.step, settings.hold, settings.rewind, settings.max_buffer)
-    listener = Eavesdropper(NoSound(), client, settings.step, settings.hold, settings.rewind, settings.max_buffer,
-                        settings.sound_every_steps, settings.sound_seconds, settings.ambient_memory)
+    cutter = RollingCutter(client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds)
+    listener = Eavesdropper(NoSound(), client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds,
+                        settings.room_tone_pass_every, settings.room_tone_pass_seconds, settings.room_tone_memory)
     assert client.report.ok and cutter.report.ok and listener.report.ok
 
 
@@ -743,13 +743,13 @@ def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accep
 
 
 @pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"yes"', True), ('"off"', False)])
-def test_consider_ambient_sounds_takes_a_boolean_or_an_on_off_word(tmp_path, value, expected):
-    config = Config.load(write(tmp_path, f"[listening]\nconsider_ambient_sounds = {value}\n"), environ={})
-    assert config.listening.consider_ambient_sounds is expected and config.report.ok
+def test_score_room_tone_takes_a_boolean_or_an_on_off_word(tmp_path, value, expected):
+    config = Config.load(write(tmp_path, f"[listening]\nscore_room_tone = {value}\n"), environ={})
+    assert config.listening.score_room_tone is expected and config.report.ok
 
 
 def test_ambient_sounds_are_not_considered_unless_asked():
-    assert Config.load(environ={}).listening.consider_ambient_sounds is False
+    assert Config.load(environ={}).listening.score_room_tone is False
 
 
 # --- The [monitor] section -----------------------------------------------------------------

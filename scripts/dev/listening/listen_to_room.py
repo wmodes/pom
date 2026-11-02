@@ -61,8 +61,8 @@ def main():
     source = (WavDeck(args.wav, speed=args.speed) if args.wav
               else MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds))
     listener = Eavesdropper(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
-                        heard_settings.max_buffer, heard_settings.sound_every_steps, heard_settings.sound_seconds,
-                        heard_settings.ambient_memory)
+                        heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
+                        heard_settings.room_tone_memory)
 
     nltk_dir = ROOT / "data" / "nltk"
     settings = config.scorer
@@ -71,14 +71,14 @@ def main():
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     tracker = tracker_from_settings(trigger)
-    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.consider_ambient_sounds)
+    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
     print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
           f"a whisper run every {heard_settings.step:g} s")
     print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
-    print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
+    print(f"  ambient sounds {'are' if heard_settings.score_room_tone else 'are not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
 

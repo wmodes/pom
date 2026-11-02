@@ -139,8 +139,8 @@ def main() -> None:
     else:
         source, where = MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
     listener = Eavesdropper(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
-                        heard_settings.max_buffer, heard_settings.sound_every_steps, heard_settings.sound_seconds,
-                        heard_settings.ambient_memory)
+                        heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
+                        heard_settings.room_tone_memory)
 
     nltk_dir = ROOT / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug)
@@ -148,7 +148,7 @@ def main() -> None:
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     tracker = tracker_from_settings(trigger)
-    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.consider_ambient_sounds)
+    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "weights.json"), rng,
@@ -172,7 +172,7 @@ def main() -> None:
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
     print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
-    print(f"  ambient sounds {'are' if heard_settings.consider_ambient_sounds else 'are not'} scored")
+    print(f"  ambient sounds {'are' if heard_settings.score_room_tone else 'are not'} scored")
     if site is not None:
         print(f"  monitoring site: http://{'<this machine>' if config.monitor.host == '0.0.0.0' else config.monitor.host}:{site.port}  "
               f"(any user name; the password is [monitor] password; hinges {'shown' if config.monitor.show_hinges else 'hidden'})")

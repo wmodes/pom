@@ -62,9 +62,9 @@ def tracker(min_scores=3, cooldown=60.0):
     return ConvoInterestTracker(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
 
 
-def finder(segments, scores=None, consider_ambient_sounds=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
+def finder(segments, scores=None, score_room_tone=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
     listener, scorer = FakeListener(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(listener, fragmenter or TakeCutter(), scorer, tracker(**tracking), consider_ambient_sounds)
+    made = HingeFinder(listener, fragmenter or TakeCutter(), scorer, tracker(**tracking), score_room_tone)
     return made, listener, scorer
 
 
@@ -201,7 +201,7 @@ class TestAmbientSounds:
         assert not found(made)[0].is_hinge
 
     def test_a_considered_caption_is_scored_at_the_time_it_was_heard(self):
-        made, _, scorer = finder([self.CAPTIONS], scores={"(dog barks)": 4.0}, consider_ambient_sounds=True)
+        made, _, scorer = finder([self.CAPTIONS], scores={"(dog barks)": 4.0}, score_room_tone=True)
         sentence = found(made)[0]
         assert scorer.asked == [("(dog barks)", 15.0)]
         assert (sentence.kind, sentence.score, sentence.scored_by) == ("ambient", 4.0, ScoredBy.MODEL)
@@ -211,7 +211,7 @@ class TestAmbientSounds:
         segments = [segment("One.", 10.0), segment("Two.", 20.0), segment("Three.", 30.0),
                     segment("", ends_at=40.0, ambient=("(a gunshot)",))]
         made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "(a gunshot)": LOUD},
-                            consider_ambient_sounds=True)
+                            score_room_tone=True)
         hinges = [s for s in found(made) if s.is_hinge]
         assert [(h.text, h.kind) for h in hinges] == [("(a gunshot)", "ambient")]
 
@@ -225,7 +225,7 @@ class TestAmbientSounds:
 
     def test_the_words_are_scored_whether_or_not_sounds_are_considered(self):
         for flag in (False, True):
-            made, _, scorer = finder([segment("Hello there.")], consider_ambient_sounds=flag)
+            made, _, scorer = finder([segment("Hello there.")], score_room_tone=flag)
             assert [s.score for s in found(made)] == [3.0]
 
 
@@ -262,7 +262,7 @@ class TestNothingSaidInTheRoomIsKept:
     def test_what_was_heard_reaches_neither_the_log_nor_the_report(self, caplog):
         caplog.set_level(logging.DEBUG)
         made, _, _ = finder([segment("My secret is the neighbor.", 10.0, ambient=("(a secret gunshot)",))],
-                            consider_ambient_sounds=True)
+                            score_room_tone=True)
         found(made)
         text = caplog.text + "\n".join(made.report_lines())
         assert "secret" not in text and "neighbor" not in text and "gunshot" not in text

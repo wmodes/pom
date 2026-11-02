@@ -8,15 +8,15 @@ captions and nothing; and `hear()` yields one HeardSegment for each segment that
 Two things beyond the cutter, both from the hearing-debug experiment:
   * REPEATS. Words identical to the last words are skipped, and captions identical to the last captions are not
     reported again, because whisper sometimes says the same thing twice across a boundary or keeps hearing the same
-    sound. The captions are also remembered (the last `ambient_memory` of them, `recent_ambient`), to give the oracle
+    sound. The captions are also remembered (the last `room_tone_memory` of them, `recent_ambient`), to give the oracle
     model as context later.
   * THE SOUND PASS. The voice detector treats singing and most sounds as not speech. The Printer reacts to what it hears,
-    so after `sound_every_steps` rounds in a row that found no speech, whisper is asked about the last `sound_seconds` of
+    so after `room_tone_pass_every` rounds in a row that found no speech, whisper is asked about the last `room_tone_pass_seconds` of
     audio WITHOUT the voice detector, and only lyrics and captions are kept (plain text from that pass is where whisper
-    makes things up, so it is thrown away). `sound_every_steps` 0 turns the pass off.
+    makes things up, so it is thrown away). `room_tone_pass_every` 0 turns the pass off.
     KNOWN LIMIT, inherited from the experiment: the pass can only hear what the cutter still holds, and a stretch with no
     speech is trimmed to its last two seconds before the pass runs, so in practice it listens to about two seconds, not
-    `sound_seconds`. Hearing the whole stretch would need the Eavesdropper to keep its own recent audio.
+    `room_tone_pass_seconds`. Hearing the whole stretch would need the Eavesdropper to keep its own recent audio.
 
 Design decisions, and why:
   * `hear()` is a plain generator, so this module needs no threads and no event loop. It blocks while it waits for sound
@@ -39,16 +39,16 @@ from typing import Iterator, Optional, Tuple
 
 from pom.fault_recorder import FaultRecorder
 from pom.listening.audio_deck import AudioDeck
-from pom.listening.rolling_cutter import (DEFAULT_HOLD, DEFAULT_MAX_BUFFER, DEFAULT_REWIND, DEFAULT_STEP, RollingCutter)
+from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter)
 from pom.listening.track_splitter import TrackSplitter
 from pom.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_SOUND_EVERY_STEPS = 3
-DEFAULT_SOUND_SECONDS = 10.0
-DEFAULT_AMBIENT_MEMORY = 6
+DEFAULT_ROOM_TONE_PASS_EVERY = 3
+DEFAULT_ROOM_TONE_PASS_SECONDS = 10.0
+DEFAULT_ROOM_TONE_MEMORY = 6
 
 
 class EavesdropperError(ValueError):
@@ -86,33 +86,33 @@ class Eavesdropper:
         report: Problems met (a bad setting, whisper not answering). Includes the cutter's.
     """
 
-    def __init__(self, source: AudioDeck, client, step: float = DEFAULT_STEP, hold: float = DEFAULT_HOLD,
-                 rewind: float = DEFAULT_REWIND, max_buffer: float = DEFAULT_MAX_BUFFER,
-                 sound_every_steps: int = DEFAULT_SOUND_EVERY_STEPS, sound_seconds: float = DEFAULT_SOUND_SECONDS,
-                 ambient_memory: int = DEFAULT_AMBIENT_MEMORY, sorter: Optional[TrackSplitter] = None,
+    def __init__(self, source: AudioDeck, client, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
+                 rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS,
+                 room_tone_pass_every: int = DEFAULT_ROOM_TONE_PASS_EVERY, room_tone_pass_seconds: float = DEFAULT_ROOM_TONE_PASS_SECONDS,
+                 room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, sorter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, strict: bool = False):
         """Args:
             source: Where the sound comes from (a MicSource, or a WavSource for a replay).
             client: Asks whisper (a WhisperServerClient, or anything with its `segments`, `text` and `error`).
-            step, hold, rewind, max_buffer: The RollingCutter's settings (see there).
-            sound_every_steps: After this many rounds in a row with no speech, listen once for lyrics and captions.
+            step, hold, rewind, max_cut_seconds: The RollingCutter's settings (see there).
+            room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and captions.
                 A whole number of at least 0; 0 turns the sound pass off.
-            sound_seconds: How much recent audio the sound pass listens to, above 0.
-            ambient_memory: How many recent captions to remember, a whole number of at least 1.
+            room_tone_pass_seconds: How much recent audio the sound pass listens to, above 0.
+            room_tone_memory: How many recent captions to remember, a whole number of at least 1.
             sorter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
             strict: Raise EavesdropperError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=EavesdropperError, logger=_log)
         self._source, self._client = source, client
-        self._sound_every = self._setting(sound_every_steps, "sound_every_steps", DEFAULT_SOUND_EVERY_STEPS,
+        self._sound_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
                                           lambda v: _is_whole(v, 0), "a whole number of at least 0")
-        self._sound_seconds = self._setting(sound_seconds, "sound_seconds", DEFAULT_SOUND_SECONDS,
+        self._room_tone_pass_seconds = self._setting(room_tone_pass_seconds, "room_tone_pass_seconds", DEFAULT_ROOM_TONE_PASS_SECONDS,
                                             lambda v: _is_number(v) and v > 0, "a number above 0")
-        memory = self._setting(ambient_memory, "ambient_memory", DEFAULT_AMBIENT_MEMORY,
+        memory = self._setting(room_tone_memory, "room_tone_memory", DEFAULT_ROOM_TONE_MEMORY,
                                lambda v: _is_whole(v, 1), "a whole number of at least 1")
         self._sorter = sorter if sorter is not None else TrackSplitter()
-        self._cutter = cutter if cutter is not None else RollingCutter(client, step, hold, rewind, max_buffer, strict=strict)
+        self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict)
         if cutter is None:
             self.report.extend(self._cutter.report)
         self._recent_ambient = collections.deque(maxlen=memory)
@@ -165,7 +165,7 @@ class Eavesdropper:
         elif self._sound_every and not self._whisper_down:
             self._quiet_steps += 1
             if self._quiet_steps % self._sound_every == 0:
-                text = self._client.text(self._cutter.recent(self._sound_seconds), vad=False)
+                text = self._client.text(self._cutter.recent(self._room_tone_pass_seconds), vad=False)
                 item = self._news(self._sorter.sort(text, plain_text=False), self._cutter.total_seconds)
                 if item is not None:
                     yield item

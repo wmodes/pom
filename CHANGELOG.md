@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Listening (2 of 2): the config keys**: the `[listening]` keys say what they do and carry their units. `step` is `cut_every_seconds`, `hold` is `hold_back_seconds`, `rewind` is `rewind_seconds`, `max_buffer` is `max_cut_seconds`,
+  `sound_every_steps` is `room_tone_pass_every`, `sound_seconds` is `room_tone_pass_seconds`, `ambient_memory` is `room_tone_memory` and `consider_ambient_sounds` is `score_room_tone`. The `RollingCutter` and `Eavesdropper` parameters, the `ListeningSettings` fields and
+  the `DEFAULT_` constants follow, and `config/pom.toml` is changed to match. A copy of an old name in `config/pom.local.toml` (here or on the Pi) would now be ignored with a warning; the shipped files have none. The words ambient, fragment, listener
+  and source in comments, messages and test names are a separate pass. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, Listening (1 of 2): the classes and modules**: the listening side takes the lexicon's names. The audio sources are decks (`MicSource` is `MicDeck`, `WavSource` is `WavDeck`, `MacMicSource` is `MacMicDeck`, `AudioSource` is `AudioDeck`),
   `WhisperServerClient` is `WhisperModelClient`, `WhisperTextSorter` is `TrackSplitter` (it hands on `Tracks`, was `WhisperText`), `Listener` is `Eavesdropper`, `HeardSegment` is `Take`, `SegmentFragmenter` is `TakeCutter`, and `Fragment` / `FragmentLevel`
   are `Clip` / `ClipLevel`. Their errors, modules (`mic_deck.py`, `eavesdropper.py`, `take_cutter.py` and so on, so the loggers follow) and tests follow. The experiments that import them use the new names; the hearing-debug folder's own

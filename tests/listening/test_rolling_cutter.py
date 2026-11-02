@@ -4,7 +4,7 @@ import threading
 import pytest
 
 from pom.listening.audio_format import BYTES_PER_SECOND
-from pom.listening.rolling_cutter import (DEFAULT_HOLD, DEFAULT_MAX_BUFFER, DEFAULT_REWIND, DEFAULT_STEP, RollingCutter,
+from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter,
                                           RollingCutterError, join_unfinished)
 from pom.listening.whisper_model_client import Segment
 
@@ -61,7 +61,7 @@ class TestWhenARoundIsDue:
         assert cutter.due()
 
     def test_the_step_is_a_setting(self):
-        cutter = RollingCutter(FakeWhisper(), step=2.0)
+        cutter = RollingCutter(FakeWhisper(), cut_every_seconds=2.0)
         cutter.feed(audio(2.0))
         assert cutter.due()
 
@@ -107,7 +107,7 @@ class TestKeepingFinishedSegments:
         assert len(cutter.cut()) == 1
 
     def test_the_hold_is_a_setting(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 4.5, "Close to the end.")]), hold=0.5)
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 4.5, "Close to the end.")]), hold_back_seconds=0.5)
         cutter.feed(audio(5.0))
         assert len(cutter.cut()) == 1
 
@@ -226,7 +226,7 @@ class TestWhatWhisperIsGiven:
 
     def test_with_a_rewind_the_next_round_starts_that_much_earlier(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [])
-        cutter = RollingCutter(whisper, rewind=1.0)
+        cutter = RollingCutter(whisper, rewind_seconds=1.0)
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 5))
@@ -235,7 +235,7 @@ class TestWhatWhisperIsGiven:
 
     def test_a_rewind_longer_than_the_audio_so_far_starts_at_the_beginning(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [])
-        cutter = RollingCutter(whisper, rewind=10.0)
+        cutter = RollingCutter(whisper, rewind_seconds=10.0)
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 5))
@@ -298,13 +298,13 @@ class TestAVeryLongThought:
 
     def test_at_the_limit_only_the_finished_segments_are_kept_when_there_are_some(self):
         late = seg(28.5, 29.9, "Held back.")
-        cutter = RollingCutter(FakeWhisper([seg(1.0, 5.0, "Done."), late]), step=30.0)
+        cutter = RollingCutter(FakeWhisper([seg(1.0, 5.0, "Done."), late]), cut_every_seconds=30.0)
         cutter.feed(audio(30.0))
         assert [s.text for s in cutter.cut()] == ["Done."] and cutter.forced == 0
 
     def test_the_limit_is_a_setting(self):
         replies = [[seg(0.5, 5.0 * n, "Long.")] for n in range(1, 4)]
-        cutter = RollingCutter(FakeWhisper(*replies), max_buffer=10.0)
+        cutter = RollingCutter(FakeWhisper(*replies), max_cut_seconds=10.0)
         results = []
         for _ in range(2):
             cutter.feed(audio(5.0))
@@ -321,7 +321,7 @@ class TestAVeryLongThought:
 class TestRewinding:
     def test_with_a_rewind_the_next_round_starts_before_the_last_segments_end(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "First.")], [])
-        cutter = RollingCutter(whisper, rewind=1.0)
+        cutter = RollingCutter(whisper, rewind_seconds=1.0)
         cutter.feed(audio(5.0))
         cutter.cut()
         cutter.feed(audio(5.0))
@@ -331,7 +331,7 @@ class TestRewinding:
     def test_what_was_heard_again_in_the_rewind_is_dropped(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "First."), seg(3.2, 4.0, "Second.")],
                               [seg(2.0, 3.0, "First."), seg(3.2, 4.0, "Second.")])
-        cutter = RollingCutter(whisper, rewind=1.0)
+        cutter = RollingCutter(whisper, rewind_seconds=1.0)
         cutter.feed(audio(5.0))
         assert [s.text for s in cutter.cut()] == ["First."]
         cutter.feed(audio(5.0))
@@ -346,7 +346,7 @@ class TestRewinding:
         assert [s.text for s in cutter.cut()] == ["New."]
 
     def test_without_a_rewind_the_default_is_zero(self):
-        assert DEFAULT_REWIND == 0.0
+        assert DEFAULT_REWIND_SECONDS == 0.0
 
 
 class TestWhenWhisperDoesNotAnswer:
@@ -459,25 +459,25 @@ class TestFeeding:
 
 class TestSettings:
     def test_the_defaults_are_the_known_good_ones(self):
-        assert (DEFAULT_STEP, DEFAULT_HOLD, DEFAULT_REWIND, DEFAULT_MAX_BUFFER) == (5.0, 2.0, 0.0, 30.0)
+        assert (DEFAULT_CUT_EVERY_SECONDS, DEFAULT_HOLD_BACK_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_MAX_CUT_SECONDS) == (5.0, 2.0, 0.0, 30.0)
         assert RollingCutter(FakeWhisper()).report.ok
 
-    @pytest.mark.parametrize("name,bad", [("step", 0), ("step", -1), ("step", "5"), ("step", None), ("step", True),
-                                          ("step", float("nan")), ("step", float("inf")),
-                                          ("hold", -1), ("hold", "2"), ("hold", None), ("hold", True),
-                                          ("rewind", -0.5), ("rewind", "0"), ("rewind", None), ("rewind", True),
-                                          ("max_buffer", 0), ("max_buffer", -5), ("max_buffer", "30"), ("max_buffer", None)])
+    @pytest.mark.parametrize("name,bad", [("cut_every_seconds", 0), ("cut_every_seconds", -1), ("cut_every_seconds", "5"), ("cut_every_seconds", None), ("cut_every_seconds", True),
+                                          ("cut_every_seconds", float("nan")), ("cut_every_seconds", float("inf")),
+                                          ("hold_back_seconds", -1), ("hold_back_seconds", "2"), ("hold_back_seconds", None), ("hold_back_seconds", True),
+                                          ("rewind_seconds", -0.5), ("rewind_seconds", "0"), ("rewind_seconds", None), ("rewind_seconds", True),
+                                          ("max_cut_seconds", 0), ("max_cut_seconds", -5), ("max_cut_seconds", "30"), ("max_cut_seconds", None)])
     def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad):
         cutter = RollingCutter(FakeWhisper(), **{name: bad})
         assert len(cutter.report.warnings) == 1 and name in cutter.report.warnings[0]
-        defaults = {"step": DEFAULT_STEP, "hold": DEFAULT_HOLD, "rewind": DEFAULT_REWIND, "max_buffer": DEFAULT_MAX_BUFFER}
+        defaults = {"cut_every_seconds": DEFAULT_CUT_EVERY_SECONDS, "hold_back_seconds": DEFAULT_HOLD_BACK_SECONDS, "rewind_seconds": DEFAULT_REWIND_SECONDS, "max_cut_seconds": DEFAULT_MAX_CUT_SECONDS}
         assert getattr(cutter, "_" + name) == defaults[name]
 
-    @pytest.mark.parametrize("name,low", [("hold", 0), ("rewind", 0)])
+    @pytest.mark.parametrize("name,low", [("hold_back_seconds", 0), ("rewind_seconds", 0)])
     def test_zero_is_allowed_where_it_makes_sense(self, name, low):
         assert RollingCutter(FakeWhisper(), **{name: low}).report.ok
 
-    @pytest.mark.parametrize("name,bad", [("step", 0), ("hold", -1), ("rewind", -1), ("max_buffer", 0)])
+    @pytest.mark.parametrize("name,bad", [("cut_every_seconds", 0), ("hold_back_seconds", -1), ("rewind_seconds", -1), ("max_cut_seconds", 0)])
     def test_strict_mode_raises_on_a_bad_setting(self, name, bad):
         with pytest.raises(RollingCutterError, match=name):
             RollingCutter(FakeWhisper(), strict=True, **{name: bad})

@@ -2,20 +2,20 @@
 
 Cutting the stream by loudness (a pause after speech) fails in a room with bursty noise, a hookah, a cat or the street,
 which never lets it find a pause, so it ends up cutting by the clock in the middle of a thought. This module hands
-whisper a rolling stretch of audio every `step` seconds and keeps the segments whisper itself finished. Whisper decides
+whisper a rolling stretch of audio every `cut_every_seconds` and keeps the segments whisper itself finished. Whisper decides
 what is speech and where its segments end.
 
 What this adds around whisper, and why:
   * The audio after the last kept segment stays in the buffer for the next round, so a thought that was still going is
-    not cut in two. A segment is kept once it ends at least `hold` seconds before the end of the buffer.
+    not cut in two. A segment is kept once it ends at least `hold_back_seconds` before the end of the buffer.
   * A segment that does not end like a sentence (no . ? or !) is joined to the one after it first, because whisper
     sometimes breaks at a pause in the middle of a sentence.
-  * Optional, off by default (`rewind` 0): the next round starts `rewind` seconds before the last kept segment's end, in
+  * Optional, off by default (`rewind_seconds` 0): the next round starts `rewind_seconds` before the last kept segment's end, in
     case whisper's segment ends run slightly late and clip the next sentence's first syllables. Segments that end within
     that stretch are the old ones heard again and are dropped. Live, it also re-heard the last word of the previous
     segment as the start of the next ("yourself." twice), which is why it is off.
   * A buffer with no speech in it is trimmed to its last two seconds, so noise does not pile up.
-  * A buffer that grows past `max_buffer` seconds without a finished segment is forced out, so one very long thought
+  * A buffer that grows past `max_cut_seconds` without a finished segment is forced out, so one very long thought
     cannot stall everything.
 
 Design decisions, and why:
@@ -43,10 +43,10 @@ from pom.log_setup import get_logger
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_STEP = 5.0
-DEFAULT_HOLD = 2.0
-DEFAULT_REWIND = 0.0
-DEFAULT_MAX_BUFFER = 30.0
+DEFAULT_CUT_EVERY_SECONDS = 5.0
+DEFAULT_HOLD_BACK_SECONDS = 2.0
+DEFAULT_REWIND_SECONDS = 0.0
+DEFAULT_MAX_CUT_SECONDS = 30.0
 _FINISHED = re.compile(r"[.?!][\"')\]]*$")             # ends like a sentence
 _LONGEST_JOIN = 25.0                                    # seconds: the longest a joined segment may grow
 _NOISE_KEPT = 2.0                                       # seconds of a buffer with no speech that are kept
@@ -90,25 +90,25 @@ class RollingCutter:
         forced: How many times a segment had to be forced out at the buffer limit.
     """
 
-    def __init__(self, client: SegmentFinder, step: float = DEFAULT_STEP, hold: float = DEFAULT_HOLD,
-                 rewind: float = DEFAULT_REWIND, max_buffer: float = DEFAULT_MAX_BUFFER, vad: bool = True,
+    def __init__(self, client: SegmentFinder, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
+                 rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS, vad: bool = True,
                  clock: Optional[Callable[[], float]] = None, strict: bool = False):
         """Args:
             client: Asks whisper for segments (a WhisperServerClient, or anything with its `segments` and `error`).
-            step: Seconds of new audio between whisper runs, above 0.
-            hold: A segment is kept once it ends this many seconds before the buffer's end, 0 or more.
-            rewind: Seconds before the last kept segment's end that the next round starts, 0 or more (0 is off).
-            max_buffer: Seconds without a finished segment before one is forced out, above 0.
+            cut_every_seconds: Seconds of new audio between whisper runs, above 0.
+            hold_back_seconds: A segment is kept once it ends this many seconds before the buffer's end, 0 or more.
+            rewind_seconds: Seconds before the last kept segment's end that the next round starts, 0 or more (0 is off).
+            max_cut_seconds: Seconds without a finished segment before one is forced out, above 0.
             vad: Whether whisper's voice detection is on for the rounds.
             clock: A function giving seconds, used only to time whisper. Default: time.perf_counter.
             strict: Raise RollingCutterError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=RollingCutterError, logger=_log)
         self._client = client
-        self._step = self._setting(step, "step", DEFAULT_STEP, lambda v: v > 0, "above 0")
-        self._hold = self._setting(hold, "hold", DEFAULT_HOLD, lambda v: v >= 0, "at least 0")
-        self._rewind = self._setting(rewind, "rewind", DEFAULT_REWIND, lambda v: v >= 0, "at least 0")
-        self._max_buffer = self._setting(max_buffer, "max_buffer", DEFAULT_MAX_BUFFER, lambda v: v > 0, "above 0")
+        self._cut_every_seconds = self._setting(cut_every_seconds, "cut_every_seconds", DEFAULT_CUT_EVERY_SECONDS, lambda v: v > 0, "above 0")
+        self._hold_back_seconds = self._setting(hold_back_seconds, "hold_back_seconds", DEFAULT_HOLD_BACK_SECONDS, lambda v: v >= 0, "at least 0")
+        self._rewind_seconds = self._setting(rewind_seconds, "rewind_seconds", DEFAULT_REWIND_SECONDS, lambda v: v >= 0, "at least 0")
+        self._max_cut_seconds = self._setting(max_cut_seconds, "max_cut_seconds", DEFAULT_MAX_CUT_SECONDS, lambda v: v > 0, "above 0")
         self._vad = bool(vad)
         self._clock = clock if clock is not None else time.perf_counter
         self._lock = threading.Lock()
@@ -116,7 +116,7 @@ class RollingCutter:
         self._base = 0.0               # seconds in the whole stream at which the buffer's first byte lies
         self._start = 0.0              # where the next whisper window begins
         self._last_end = 0.0           # the end of the last kept segment
-        self._next = self._step        # the stream time at which the next whisper run is due
+        self._next = self._cut_every_seconds        # the stream time at which the next whisper run is due
         self.took = 0.0
         self.forced = 0
 
@@ -174,7 +174,7 @@ class RollingCutter:
         """
         total = self.total_seconds
         end = total if final else min(self._next, total)
-        self._next += self._step
+        self._next += self._cut_every_seconds
         window = self._buffer_to(end)
         found: List[Segment] = []
         if end - self._start >= _SHORTEST_WINDOW:
@@ -191,11 +191,11 @@ class RollingCutter:
             self._trim(end - _NOISE_KEPT)                       # only noise in the buffer: keep a short lead-in
             return []
         found = [s for s in found if s.end > self._last_end + _REHEARD_SLACK]    # drop what was already kept (heard again)
-        done = [s for s in found if final or s.end <= end - self._hold]
-        if not done and found and end - self._start >= self._max_buffer:
+        done = [s for s in found if final or s.end <= end - self._hold_back_seconds]
+        if not done and found and end - self._start >= self._max_cut_seconds:
             done = found                              # one long thought: do not let the buffer grow forever
             self.forced += 1
         if done:
             self._last_end = done[-1].end
-            self._trim(self._last_end - self._rewind)
+            self._trim(self._last_end - self._rewind_seconds)
         return done

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Audit corpus text for source artifacts. Read-only.
+"""Audit library text for holding artifacts. Read-only.
 
-`ready/` is meant to hold clean utterances with no trace of their source. This
+`ready/` is meant to hold clean utterances with no trace of their holding. This
 script measures how well that holds, file by file, so a person can read the
 worst offenders instead of trusting the standardizer.
 
@@ -22,7 +22,7 @@ import re
 import sys
 from collections import Counter
 
-CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
+LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
 
 CHECKS = {
     "nonascii": lambda p: bool(re.search(r"[^\x20-\x7e\n]", p)),
@@ -69,7 +69,7 @@ def table(files):
         rates = [f"{100 * sum(CHECKS[n](p) for p in paras) / max(1, len(paras)):6.1f}" for n in names]
         print(f"{base[:46]:<46}{len(paras):>6}{words / max(1, len(paras)):>6.0f} " + " ".join(rates))
     dups = sorted(((p, c) for p, c in seen.items() if c > 1), key=lambda x: -x[1])
-    print(f"\nparagraphs that occur more than once across the corpus: {len(dups)}")
+    print(f"\nparagraphs that occur more than once across the library: {len(dups)}")
     for p, c in dups[:15]:
         print(f"  x{c} [{where[p]}] {p.replace(chr(10), ' / ')[:100]}")
 
@@ -93,7 +93,7 @@ def main():
     parser.add_argument("count", nargs="?", type=int, default=12)
     parser.add_argument("--dir", choices=("ready", "draft"), default="ready")
     args = parser.parse_args()
-    files = sorted(glob.glob(os.path.join(CORPUS, args.dir, "*", "*.txt")))
+    files = sorted(glob.glob(os.path.join(LIBRARY, args.dir, "*", "*.txt")))
     if args.id and args.check:
         examples(files, args.id, args.check, args.count)
     else:

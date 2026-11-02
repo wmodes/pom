@@ -1,11 +1,11 @@
 """Printer of Mysteries: runtime code for the haunted typewriter.
 
 Everything here is object-oriented: small classes with one concern each, passing plain data
-objects to each other. Helper scripts (corpus building, setup) live in scripts/ and may import
+objects to each other. Helper scripts (library building, setup) live in scripts/ and may import
 from this package, never the reverse.
 
 PROJECT-WIDE PRINCIPLE: the Printer must never stop because of a typo or a recoverable fault.
-A bad number in a hand-edited file, one corrupt line in a corpus file, a missing optional file,
+A bad number in a hand-edited file, one corrupt line in a library file, a missing optional file,
 a mic that drops out: none of these may crash the oracle in a gallery. A module that meets a
 problem it can recover from recovers (falls back to a default, skips the bad entry, retries) and
 records what it did in a `FaultRecorder` and in the log (stdout, so journald) for a person to

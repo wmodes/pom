@@ -108,7 +108,7 @@ def test_the_committed_sample_config_is_clean_and_safe_for_the_pi(tmp_path):
     assert config.log_level == "INFO"
 
 
-# --- How many chunks per pull ----------------------------------------------------------
+# --- How many passages per pull ----------------------------------------------------------
 
 def test_samples_default_to_three_to_five():
     config = Config.load(environ={})
@@ -162,7 +162,7 @@ def test_config_samples_plug_straight_into_the_sampler():
     import random
     from pom.library import Passage, Catalog, Circulation, Bibliomancer
     config = Config.load(environ={"POM_EXEMPLARS_MIN": "2", "POM_EXEMPLARS_MAX": "2"})
-    store = Catalog.from_chunks([Passage(f"a#{i}", "a", "red", f"Passage {i}", 2) for i in range(9)])
+    store = Catalog.from_passages([Passage(f"a#{i}", "a", "red", f"Passage {i}", 2) for i in range(9)])
     selector = Bibliomancer(store, Circulation.from_dict({}), random.Random(1),
                                 exemplar_range=config.exemplar_range)
     assert len(selector.draw()) == 2

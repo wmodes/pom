@@ -1,16 +1,16 @@
 {
-  "_about": "Draw weights for the chunk pool; the only place they live. Each register has a 'share' (relative, normalized when read: how often the register comes up) and lists its 'sources' with a 'weight' each (how often a source is drawn compared with the others in the same register; a source missing from the list counts 1.0). The tree mirrors the folders in chunks/. Nothing in the chunk files depends on these numbers. See scripts/dev/corpus/draw_weights.py.",
-  "registers": {
+  "_about": "Circulation for the passages; the only place it lives. Each shelf has a 'share' (relative, normalized when read: how often the shelf comes up) and lists its 'holdings' with a weight each (how often a holding is drawn compared with the others on the same shelf; a holding missing from the list counts 1.0). The tree mirrors the folders in passages/. Nothing in the passage files depends on these numbers. See scripts/dev/library/circulation.py.",
+  "shelves": {
     "aphorism": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "aphorism-la-rochefoucauld-maxims": 1.0,
         "aphorism-scotch-proverbs": 1.0
       }
     },
     "divination": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "demonologia-forsyth-1827": 1.0,
         "dreambook-witches-noe-1900s": 1.0,
         "fortunes-dreams-cielo-1900s": 1.0,
@@ -20,13 +20,13 @@
     },
     "drama": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "drama-shakespeare-plays": 0.2
       }
     },
     "epitaph": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "epitaph-curious-andrews": 1.0,
         "epitaph-funny-eaton": 1.0,
         "epitaph-gleanings-norfolk": 1.0,
@@ -35,13 +35,13 @@
     },
     "horoscope": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "horoscope-sepharial-1920s": 1.0
       }
     },
     "humor": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "humor-dad-jokes-river": 1.0,
         "humor-joe-millers-jests-additions": 1.0,
         "humor-joe-millers-jests-wits-vade-mecum": 1.0
@@ -49,7 +49,7 @@
     },
     "manual": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "manual-civil-defense-emergency": 1.0,
         "manual-emergency-childbirth-ocd": 1.0,
         "manual-etiquette-post-1922": 0.5,
@@ -67,20 +67,20 @@
     },
     "news": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "news-annual-monitor-obituaries-1851": 0.2,
         "news-quaint-curious-advertisements-1886": 1.0
       }
     },
     "nonsense": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "nonsense-carroll-alice-1865": 1.0
       }
     },
     "poetry": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "poetry-blake-songs-1794": 1.0,
         "poetry-chaucer-general-prologue": 1.0,
         "poetry-chaucer-manciple-tale": 1.0,
@@ -106,7 +106,7 @@
     },
     "prophecy": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "bible-kjv-job-whirlwind": 0.5,
         "bible-kjv-revelation-new-heaven": 0.5,
         "bible-kjv-revelation-throne-and-horsemen": 0.5,
@@ -119,7 +119,7 @@
     },
     "rhyme": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "rhyme-lear-book-of-nonsense-1846": 1.0,
         "rhyme-lear-more-nonsense-1872": 1.0,
         "rhyme-real-mother-goose-1916": 1.0
@@ -127,7 +127,7 @@
     },
     "spiritualism": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "spiritualism-atkinson-genuine-mediumship": 0.15,
         "spiritualism-doyle-new-revelation-1918": 0.2,
         "spiritualism-doyle-vital-message-1919": 0.2,
@@ -138,7 +138,7 @@
     },
     "wisdom": {
       "share": 1.0,
-      "sources": {
+      "holdings": {
         "aphorism-epictetus-golden-sayings": 1.0,
         "aphorism-marcus-aurelius-meditations": 1.0,
         "aphorism-sun-tzu-art-of-war": 0.5,

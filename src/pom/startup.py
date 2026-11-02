@@ -11,7 +11,7 @@ step. Replace them one at a time; the runner and its tests do not change.
 
 The duties, in order (see `planned_steps` for each one's detail):
     1. config-report      say what the config loader had to correct
-    2. data-check         the corpus chunks, the weights file and the NLTK data are present
+    2. data-check         the library passages, the weights file and the NLTK data are present
     3. mic-gain           set the microphone's capture gain from config (Pi only; it resets on reboot)
     4. audio-device       a capture device exists
     5. transcriber        whisper is present and answering
@@ -26,7 +26,7 @@ Design decisions, and why:
     a failure; the remaining steps still run, and `run` returns a result rather than raising. The
     Conductor reads `result.ready` and decides how to degrade (keep listening, stay quiet, say so in
     the log). `strict=True` raises StartupError at the first failed step, for tests and dev tools.
-  * A step is critical or not. A failed critical step (no microphone, no corpus) is a CRITICAL fault and
+  * A step is critical or not. A failed critical step (no microphone, no library) is a CRITICAL fault and
     makes `ready` false; a failed optional step is a WARNING and the Printer carries on.
   * A step may also be skipped: it does not apply here (a Pi-only step on the Mac) or is not written
     yet. Skipping is not a problem and is never reported as one.
@@ -175,8 +175,8 @@ def planned_steps() -> list:
     """The startup duties, in order, each still a placeholder. See the module docstring."""
     return [
         PlannedStep("config-report", "log what the config loader had to correct (config.report)"),
-        PlannedStep("data-check", "the corpus chunks, circulation.json and the NLTK data are present; the "
-                    "Bibliomancer cannot draw without chunks", critical=True),
+        PlannedStep("data-check", "the library passages, circulation.json and the NLTK data are present; the "
+                    "Bibliomancer cannot draw without passages", critical=True),
         PlannedStep("mic-gain", "set the microphone's capture gain from config (24 of 30 worked on the "
                     "ATR4697-USB); Pi only, and it resets on every reboot"),
         PlannedStep("audio-device", "a capture device exists; without ears there is nothing to do",

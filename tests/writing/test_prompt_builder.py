@@ -25,23 +25,23 @@ def theme(text):
     return f"**Theme**\n\n```\n{text}\n```"
 
 
-def chunk(index, text=None):
-    return Passage(f"book#{index}", "book", "verse", text or f"chunk {index}", 2)
+def passage(index, text=None):
+    return Passage(f"book#{index}", "book", "verse", text or f"passage {index}", 2)
 
 
 class FakeSelector:
-    """Hands back the chunks it was given, and counts the draws."""
+    """Hands back the passages it was given, and counts the draws."""
 
-    def __init__(self, chunks):
-        self.chunks, self.draws = list(chunks), 0
+    def __init__(self, passages):
+        self.passages, self.draws = list(passages), 0
 
     def draw(self, count=None):
         self.draws += 1
-        return list(self.chunks)
+        return list(self.passages)
 
 
-def builder(prompt=PROMPT, chunks=(chunk(1), chunk(2)), strict=False):
-    selector = FakeSelector(chunks)
+def builder(prompt=PROMPT, passages=(passage(1), passage(2)), strict=False):
+    selector = FakeSelector(passages)
     return PromptBuilder(prompt, selector, strict=strict), selector
 
 
@@ -49,13 +49,13 @@ class TestBuilding:
     def test_the_hinge_and_exemplars_go_where_the_prompt_marks_them(self):
         prompt = builder()[0].build("The dog barks at ghosts.")
         assert prompt.text == ("Speak as the oracle.\n\nExamples:\n"
-                               "**Style Example 1**\n\n```\nchunk 1\n```\n\n**Style Example 2**\n\n```\nchunk 2\n```\n\n"
+                               "**Style Example 1**\n\n```\npassage 1\n```\n\n**Style Example 2**\n\n```\npassage 2\n```\n\n"
                                "They said: **Theme**\n\n```\nThe dog barks at ghosts.\n```\nYour portent:")
 
     def test_the_result_carries_the_exemplars_it_used(self):
         prompt = builder()[0].build("A hinge.")
         assert isinstance(prompt, OraclePrompt)
-        assert prompt.exemplars == (chunk(1), chunk(2))
+        assert prompt.exemplars == (passage(1), passage(2))
 
     def test_a_hinge_is_trimmed_but_otherwise_left_word_for_word(self):
         text = builder("{hinge}")[0].build("  Hello,  there!\n").text
@@ -65,20 +65,20 @@ class TestBuilding:
         assert builder("{hinge}")[0].build("test of hinge").text == "**Theme**\n\n```\ntest of hinge\n```"
 
     def test_the_exemplars_are_numbered_from_one_and_each_is_fenced(self):
-        text = builder("{exemplars}", chunks=[chunk(1, "test of exemplar 1"), chunk(2, "test of exemplar 2")])[0].build("h").text
+        text = builder("{exemplars}", passages=[passage(1, "test of exemplar 1"), passage(2, "test of exemplar 2")])[0].build("h").text
         assert text == ("**Style Example 1**\n\n```\ntest of exemplar 1\n```\n\n"
                         "**Style Example 2**\n\n```\ntest of exemplar 2\n```")
 
     def test_a_single_exemplar_is_still_labelled_style_example_1(self):
-        assert builder("{exemplars}", chunks=[chunk(1)])[0].build("h").text == example(1, "chunk 1")
+        assert builder("{exemplars}", passages=[passage(1)])[0].build("h").text == example(1, "passage 1")
 
-    def test_a_chunk_keeps_its_own_line_breaks(self):
-        text = builder("{exemplars} {hinge}", chunks=[chunk(1, "line one\nline two")])[0].build("x").text
+    def test_a_passage_keeps_its_own_line_breaks(self):
+        text = builder("{exemplars} {hinge}", passages=[passage(1, "line one\nline two")])[0].build("x").text
         assert text == example(1, "line one\nline two") + " " + theme("x")
 
     def test_every_place_is_filled(self):
-        text = builder("{hinge} / {hinge} / {exemplars} / {exemplars}", chunks=[chunk(1)])[0].build("h").text
-        assert text == f"{theme('h')} / {theme('h')} / {example(1, 'chunk 1')} / {example(1, 'chunk 1')}"
+        text = builder("{hinge} / {hinge} / {exemplars} / {exemplars}", passages=[passage(1)])[0].build("h").text
+        assert text == f"{theme('h')} / {theme('h')} / {example(1, 'passage 1')} / {example(1, 'passage 1')}"
 
     def test_the_prompt_is_stripped_of_surrounding_blank_lines(self):
         assert builder("\n\n  {hinge}  \n\n")[0].build("h").text == theme("h")
@@ -98,8 +98,8 @@ class TestBracesAreJustText:
         text = builder(PROMPT)[0].build("{exemplars} {hinge}").text
         assert text.endswith("They said: " + theme("{exemplars} {hinge}") + "\nYour portent:")
 
-    def test_a_chunk_that_looks_like_a_place_is_not_filled_in_again(self):
-        text = builder("{exemplars} then {hinge}", chunks=[chunk(1, "see {hinge}")])[0].build("real").text
+    def test_a_passage_that_looks_like_a_place_is_not_filled_in_again(self):
+        text = builder("{exemplars} then {hinge}", passages=[passage(1, "see {hinge}")])[0].build("real").text
         assert text == example(1, "see {hinge}") + " then " + theme("real")
 
     def test_a_hinge_with_curly_braces_is_kept(self):
@@ -120,14 +120,14 @@ class TestExemplars:
         assert selector.draws == 2
 
     def test_nothing_to_draw_still_builds_and_is_reported(self):
-        built, _ = builder(chunks=[])
+        built, _ = builder(passages=[])
         prompt = built.build("h")
         assert prompt.text.startswith("Speak as the oracle.\n\nExamples:\n\n\nThey said: **Theme**")
         assert "**Style Example" not in prompt.text
         assert prompt.exemplars == () and len(built.report.warnings) == 1
 
     def test_nothing_to_draw_raises_in_strict_mode(self):
-        built, _ = builder(chunks=[], strict=True)
+        built, _ = builder(passages=[], strict=True)
         with pytest.raises(PromptBuilderError):
             built.build("h")
 
@@ -170,7 +170,7 @@ class TestBadInput:
 class TestPrivacy:
     def test_the_hinge_never_reaches_the_report_or_the_log(self, caplog):
         caplog.set_level(logging.DEBUG)
-        built, _ = builder(chunks=[])
+        built, _ = builder(passages=[])
         built.build("a secret about the neighbor")
         built.build("   ")
         assert "secret" not in caplog.text and "neighbor" not in caplog.text
@@ -178,10 +178,10 @@ class TestPrivacy:
 
 
 def real_selector(seed=None):
-    chunks = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
-    weights = Circulation.from_dict({"registers": {"verse": {}}})
+    passages = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
+    weights = Circulation.from_dict({"shelves": {"verse": {}}})
     rng = random.Random(seed)
-    return Bibliomancer(Catalog.from_chunks(chunks), weights, rng), rng
+    return Bibliomancer(Catalog.from_passages(passages), weights, rng), rng
 
 
 def seed_of(hinge):

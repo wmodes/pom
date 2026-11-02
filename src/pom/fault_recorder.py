@@ -1,7 +1,7 @@
 """The FaultRecorder: a module's problems found while loading or running, kept as data, not raised.
 
 DESIGN PRINCIPLE (project-wide): the Printer must never stop because of a typo. A hand-edited
-file with a bad number, one corrupt line in a corpus file, a missing optional file: none of
+file with a bad number, one corrupt line in a library file, a missing optional file: none of
 these may crash the oracle in a gallery. A module that meets a problem it can recover from
 recovers (it falls back to a default, skips the bad entry) and records what it did here, so a
 person can fix it later. Nothing is raised at the point of the problem.
@@ -13,7 +13,7 @@ Modules never configure logging themselves; the entry point does that once (pom.
 
 Two severities:
   * WARNING:  recovered. The module carried on with a default or skipped something.
-  * CRITICAL: the module cannot do its job at all (for example, there are no chunks to draw
+  * CRITICAL: the module cannot do its job at all (for example, there are no passages to draw
               from). It still does not raise; it returns an empty result and says so, and the
               Conductor decides how to degrade (stay quiet and keep listening, say so in the log).
 

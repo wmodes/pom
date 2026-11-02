@@ -16,7 +16,7 @@ of being threaded through by hand. Today there are five:
                POM_SCORER_URL.
     [oracle]   A section (see OracleSettings): what the oracle model is given and how it is reached. The
                `prompt` (with `{exemplars}` and `{hinge}` marking where those go), `exemplars_min` and
-               `exemplars_max` (how many corpus chunks go into each pull of exemplars, 3 and 5 by default), the
+               `exemplars_max` (how many library passages go into each pull of exemplars, 3 and 5 by default), the
                model's address and timeout, and the two settings of each request, `max_tokens` and
                `temperature`. The entry point builds the PromptBuilder and the OracleModelClient from
                `config.oracle` and passes `config.exemplar_range` to the Bibliomancer, which never reads Config.
@@ -395,7 +395,7 @@ class Config:
         debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         local_logs: Also write the log to a local file (development only).
-        exemplar_range: (fewest, most) chunks per pull of exemplars, for the Bibliomancer.
+        exemplar_range: (fewest, most) passages per pull of exemplars, for the Bibliomancer.
         scorer: The `[scorer]` section, as a ScorerSettings.
         oracle: The `[oracle]` section, as an OracleSettings (the exemplar range is `exemplar_range`).
         qualifying: The `[qualifying]` section, as a QualifyingSettings.

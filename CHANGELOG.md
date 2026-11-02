@@ -45,6 +45,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (6): the library's words**: in the library code, its tests and dev tools, the oracle-side users and the docs, a *corpus* is the *library*, a *register* is a *shelf*, a *source* is a *holding*, a *chunk* is a *passage* and the *draw weights* are *circulation*
+  (`Passage.holding` and `.shelf`, `Catalog.shelves()`, `.holdings(shelf)`, `.passages(shelf, holding)`, `Catalog.from_passages`, `Bibliomancer.shelf_shares`, `Circulation.holding_weight`, `LIBRARY` and `PASSAGES` in the tools, the monitor page's exemplar list). **The data
+  changes with it:** every record in `library/passages/*.jsonl` has the keys `holding` and `shelf` (were `source` and `register`), and `library/passages/circulation.json` has `shelves` and `holdings` (were `registers` and `sources`) with a rewritten `_about`.
+  The passages were regenerated with `cataloguer.py`, and all 72,264 records were compared with the old ones: the same, apart from the two key names. A checkout that pulls this needs no other step. Not renamed: the `form` column of `holdings.csv` and the `--form` flag (the same thing as a shelf; it is
+  not in the lexicon yet) and the `--weights` flags. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, words (5): trigger is qualify, tracker is BarKeeper, effect is ruling**: outside the monitor, a score no longer *triggers*, it *qualifies*, the thing that decides is the *BarKeeper* (not "the trigger" or "the tracker"), and what it says about an attempt is a
   *ruling*. That is the variables and parameters (`bar_keeper`, `HingeFinder(eavesdropper, take_cutter, scorer, bar_keeper)`), `Attempt.trigger_level` as `Attempt.bar`, `Attempt.effect` as `Attempt.ruling`, `last_trigger` as `last_qualifier`,
   the messages (`at most one qualifier every 60 s`, `the qualifying algorithm must be one of ...`), the dev tools' output (`<-- would qualify`, `; held`), the comments and the test names. The monitoring site, its page and its API still say *trigger*, and so do the

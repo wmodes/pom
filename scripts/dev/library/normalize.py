@@ -1,4 +1,4 @@
-"""Turn a trimmed source into a list of clean utterances, one per paragraph.
+"""Turn a trimmed holding into a list of clean utterances, one per paragraph.
 
 Goal: `ready/` should hold examples of the kind of thing the oracle should say, with
 no trace of where they came from. So the output of this module is plain text in
@@ -6,7 +6,7 @@ which every utterance is its own paragraph, separated from the next by one blank
 line. Verse keeps its line breaks inside a paragraph; a stanza is a paragraph.
 
 What is removed, in general terms:
-  - source furniture: headings, section and chapter labels, speaker names and stage
+  - holding furniture: headings, section and chapter labels, speaker names and stage
     directions, jest and list numbers, page numbers, running heads, footnotes,
     cross-references ("see page 14"), tables, rule lines, markup
   - typography a typewriter cannot print (curly quotes, dashes, accents, symbols)
@@ -18,7 +18,7 @@ lines). Every rule is deterministic and counts what it changed into a Counter. W
 an `audit` dict is passed, rules also record samples of what they removed, so a
 human can check that real content was not lost.
 
-Per-source behavior comes from flags in the manifest `normalize` column
+Per-holding behavior comes from flags in the manifest `normalize` column
 (space-separated), and an optional `drop` column of regexes (see library.py):
 
     unwrap        join hard-wrapped prose lines into paragraphs (not for verse)
@@ -34,8 +34,8 @@ Per-source behavior comes from flags in the manifest `normalize` column
     linenos       verse: strip line numbers left at the end of lines ("chasing, 561")
     titles        verse: drop a poem's title line that sits directly above its first line
     unbrace       keep an editor's [inserted words] but drop the brackets around them
-    spellcheck    OCR sources: drop paragraphs containing a word that is neither in the system
-                  dictionary nor repeated in the source (needs /usr/share/dict/words)
+    spellcheck    OCR holdings: drop paragraphs containing a word that is neither in the system
+                  dictionary nor repeated in the holding (needs /usr/share/dict/words)
     unbracket     remove an editor's [bracketed notes] and the *asterisks* that point to them
     dictionary    "Term--meaning" entries (a dream dictionary) become "Term: meaning"
     keep-accents  keep accented letters instead of folding them to ASCII
@@ -600,8 +600,8 @@ def clean_paragraphs(paragraphs, drop_patterns, stats, audit, dictionary=False, 
             note(audit, "lowercase fragments", paragraph)
             stats["lowercase fragments dropped"] += 1
         elif any(p.search(paragraph) for p in drop_patterns):
-            note(audit, "per-source drop", paragraph)
-            stats["paragraphs dropped (per-source)"] += 1
+            note(audit, "per-holding drop", paragraph)
+            stats["paragraphs dropped (per-holding)"] += 1
         elif is_heading(paragraph):
             note(audit, "headings", paragraph)
             stats["headings dropped"] += 1
@@ -646,7 +646,7 @@ def spellcheck_paragraphs(paragraphs, stats, audit):
     """Drops paragraphs holding a word that looks like an OCR error.
 
     A lowercase word is suspect when it is not in the dictionary AND occurs fewer than
-    three times in the source (real jargon such as "printwheel" repeats; OCR errors such
+    three times in the holding (real jargon such as "printwheel" repeats; OCR errors such
     as "cnaracter" and "ortoa" do not). A word with a capital inside it ("RFlIsh") is
     always suspect. Capitalized words and acronyms pass, since names are not in the dictionary.
     """
@@ -686,12 +686,12 @@ def standardize(text, flags, stats, audit=None, drop_patterns=()):
     """Runs every rule in order and returns the utterances, one paragraph each.
 
     Args:
-        text: Trimmed source text.
-        flags: Set of per-source flags from the manifest `normalize` column.
+        text: Trimmed holding text.
+        flags: Set of per-holding flags from the manifest `normalize` column.
         stats: A Counter that rules add their counts to.
         audit: Optional dict; when given, rules record samples of what they removed.
         drop_patterns: Compiled regexes; any paragraph matching one is dropped
-            (from the manifest `drop` column, for source-specific labels).
+            (from the manifest `drop` column, for holding-specific labels).
     """
     text = drop_generated_headings(text, stats, audit)
     text = fold_characters(text, "keep-accents" in flags, stats)

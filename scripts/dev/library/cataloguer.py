@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
-"""Turn ready/ utterances into chunks: the units both voice tracks use.
+"""Turn ready/ utterances into passages: the units both voice tracks use.
 
-ready/ holds clean utterances, one paragraph each. A *chunk* is an utterance sized
+ready/ holds clean utterances, one paragraph each. A *passage* is an utterance sized
 for the oracle's output (usually 15 to 50 words, at most 150) and carrying what a
-consumer needs: where it came from, its register, and its chance of being drawn.
+consumer needs: where it came from, its shelf, and its chance of being drawn.
 
-    Track A draws 3 to 5 chunks at random as register exemplars.
-    Track B trains on the same chunks, using the same draw probabilities as sampling odds.
+    Track A draws 3 to 5 passages at random as shelf exemplars.
+    Track B trains on the same passages, using the same draw probabilities as sampling odds.
 
 Rules, in order:
   1. Split. A utterance over --max-words (150) is cut at sentence breaks (prose) or line
      breaks (verse and wrapped text) into near-equal pieces, never mid-sentence unless one
      sentence alone is over the limit, then at clause breaks, then at word boundaries.
   2. Merge (off by default). With --min-words N, short utterances join the next one in
-     the same source until they reach N words, without crossing --max-words.
-  3. Deduplicate. An exact repeat of a chunk anywhere in the corpus is dropped; the kept
+     the same holding until they reach N words, without crossing --max-words.
+  3. Deduplicate. An exact repeat of a passage anywhere in the library is dropped; the kept
      copy records how many times it occurred.
 
-A chunk holds only facts about itself (source, register, text). How likely it is to be
-drawn depends on the whole corpus and on the weights in passages/circulation.json, so that is
+A passage holds only facts about itself (holding, shelf, text). How likely it is to be
+drawn depends on the whole library and on the weights in passages/circulation.json, so that is
 computed at load time by the Bibliomancer (src/pom/library) and never stored here: adding one utterance, or
-changing a weight, touches no chunk file.
+changing a weight, touches no passage file.
 
-Output is deterministic: one JSONL file per source under library/passages/<register>/<id>.jsonl.
+Output is deterministic: one JSONL file per holding under library/passages/<shelf>/<id>.jsonl.
 Re-run after any change to ready/ or the manifest.
 
 Usage:
@@ -45,9 +45,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from pom.library import Circulation  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.log_setup import configure_logging  # noqa: E402
 
-CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
-READY = os.path.join(CORPUS, "ready")
-OUT = os.path.join(CORPUS, "passages")
+LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
+READY = os.path.join(LIBRARY, "ready")
+OUT = os.path.join(LIBRARY, "passages")
 
 # Sentence ends: terminal punctuation (optionally closed by a quote or bracket), then a
 # capital, quote or digit. Abbreviations are rejoined afterwards.
@@ -162,9 +162,9 @@ def read_utterances(path):
 
 
 def build(limit, minimum):
-    """Chunks every approved source. Returns (records_by_source, stats)."""
+    """Passages every approved holding. Returns (records_by_holding, stats)."""
     manifest = {}
-    with open(os.path.join(CORPUS, "holdings.csv"), newline="", encoding="utf-8") as handle:
+    with open(os.path.join(LIBRARY, "holdings.csv"), newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             if row["status"] == "approved":
                 manifest[row["id"]] = row
@@ -172,10 +172,10 @@ def build(limit, minimum):
     for path in sorted(os.path.join(READY, d, f)
                        for d in sorted(os.listdir(READY)) if os.path.isdir(os.path.join(READY, d))
                        for f in sorted(os.listdir(os.path.join(READY, d))) if f.endswith(".txt")):
-        source = os.path.basename(path)[:-4]
-        if source not in manifest:
+        holding = os.path.basename(path)[:-4]
+        if holding not in manifest:
             continue
-        row = manifest[source]
+        row = manifest[holding]
         texts = []
         for utterance in read_utterances(path):
             pieces, count = split_utterance(utterance, limit)
@@ -193,36 +193,36 @@ def build(limit, minimum):
             if words(text) > limit:
                 stats["unsplittable"] += 1
             record = {
-                "id": f"{source}#{len(out):05d}", "source": source, "register": row["form"],
+                "id": f"{holding}#{len(out):05d}", "holding": holding, "shelf": row["form"],
                 "text": text, "words": words(text),
                 "repeats": 1, "sha1": hashlib.sha1(text.encode("utf-8")).hexdigest()[:12],
             }
             seen[text] = record
             out.append(record)
-        records[source] = out
+        records[holding] = out
     return records, stats
 
 
 def target_shares(records, weights_path):
-    """Returns each register's normalized target share; drift in circulation.json is logged."""
+    """Returns each shelf's normalized target share; drift in circulation.json is logged."""
     weights = Circulation.from_file(weights_path)
     layout = {}
-    for source, rs in records.items():
+    for holding, rs in records.items():
         if rs:
-            layout.setdefault(rs[0]["register"], []).append(source)
-    weights.check(layout)                      # logs unlisted or missing registers and sources
+            layout.setdefault(rs[0]["shelf"], []).append(holding)
+    weights.check(layout)                      # logs unlisted or missing shelves and holdings
     return weights.shares_for(layout)
 
 
 def write(records):
-    """Writes one JSONL file per source and removes stale chunk files from earlier runs."""
+    """Writes one JSONL file per holding and removes stale passage files from earlier runs."""
     wanted = set()
-    for source, rs in records.items():
+    for holding, rs in records.items():
         if not rs:
             continue
-        directory = os.path.join(OUT, rs[0]["register"])
+        directory = os.path.join(OUT, rs[0]["shelf"])
         os.makedirs(directory, exist_ok=True)
-        path = os.path.join(directory, f"{source}.jsonl")
+        path = os.path.join(directory, f"{holding}.jsonl")
         wanted.add(path)
         with open(path, "w", encoding="utf-8") as handle:
             for record in rs:
@@ -236,31 +236,31 @@ def write(records):
 
 def report(records, stats, shares, limit, minimum):
     """Prints counts, the length distribution, and the expected share of draws."""
-    chunks = [r for rs in records.values() for r in rs]
-    lengths = sorted(c["words"] for c in chunks)
+    passages = [r for rs in records.values() for r in rs]
+    lengths = sorted(c["words"] for c in passages)
     n = len(lengths)
     pct = lambda p: lengths[int(p * (n - 1))]
-    print(f"{n} chunks from {len(records)} sources  (max {limit} words, "
+    print(f"{n} passages from {len(records)} holdings  (max {limit} words, "
           f"min-merge {'off' if minimum <= 0 else minimum})")
     print(f"split {stats['split']} long utterances into {stats['pieces']} pieces; "
           f"dropped {stats['duplicates']} exact duplicates; {stats['unsplittable']} still over the limit")
-    print("words per chunk, percentiles:", {p: pct(p / 100) for p in (5, 25, 50, 75, 95, 99)},
+    print("words per passage, percentiles:", {p: pct(p / 100) for p in (5, 25, 50, 75, 95, 99)},
           f"max {lengths[-1]}")
     near = sum(1 for w in lengths if limit * 0.9 <= w <= limit)
-    print(f"chunks within 10% of the ceiling: {near} ({100 * near / n:.1f}%)")
-    print(f"\n{'register':<13}{'chunks':>8}{'target share of draws':>24}")
-    by_register = {}
-    for c in chunks:
-        by_register.setdefault(c["register"], []).append(c)
-    for register in sorted(by_register, key=lambda r: -shares[r]):
-        print(f"{register:<13}{len(by_register[register]):>8}{shares[register]:>23.1%}")
+    print(f"passages within 10% of the ceiling: {near} ({100 * near / n:.1f}%)")
+    print(f"\n{'shelf':<13}{'passages':>8}{'target share of draws':>24}")
+    by_shelf = {}
+    for c in passages:
+        by_shelf.setdefault(c["shelf"], []).append(c)
+    for shelf in sorted(by_shelf, key=lambda r: -shares[r]):
+        print(f"{shelf:<13}{len(by_shelf[shelf]):>8}{shares[shelf]:>23.1%}")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--max-words", type=int, default=150)
     parser.add_argument("--min-words", type=int, default=0)
-    parser.add_argument("--weights", default=os.path.join(CORPUS, "passages", "circulation.json"))
+    parser.add_argument("--weights", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
     configure_logging("WARNING")

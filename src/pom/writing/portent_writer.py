@@ -44,7 +44,7 @@ class Portent:
 
     Attributes:
         text: The portent, as the model wrote it (only the whitespace around it is trimmed).
-        exemplars: The corpus chunks that were put into the prompt, in the order they were shown.
+        exemplars: The library passages that were put into the prompt, in the order they were shown.
         seconds: How long the model took to write it.
         cut_off: True if the model stopped because it reached the most it may write, rather than finishing.
     """

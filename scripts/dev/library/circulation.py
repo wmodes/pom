@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Print the draw odds the Bibliomancer will use, so a circulation.json edit can be checked at a glance.
 
-The oracle draws a few exemplar chunks at random. The corpus is lopsided, so the Bibliomancer weights
-every chunk to give each register its target share over many draws (see
+The oracle draws a few exemplar passages at random. The library is lopsided, so the Bibliomancer weights
+every passage to give each shelf its target share over many draws (see
 src/pom/library/bibliomancer.py for the math). This script builds the real Bibliomancer from
-library/passages/ and library/passages/circulation.json and reports, per register, its target share, its chunk count, how
-much likelier an average chunk of that register is than in a flat draw, and the chance that one
-pull of five comes entirely from that register.
+library/passages/ and library/passages/circulation.json and reports, per shelf, its target share, its passage count, how
+much likelier an average passage of that shelf is than in a flat draw, and the chance that one
+pull of five comes entirely from that shelf.
 
-The logic lives in the pom package; this is only the report. Warnings (an unlisted source, a
-weight for a source with no chunks) are logged to stdout by the package.
+The logic lives in the pom package; this is only the report. Warnings (an unlisted holding, a
+weight for a holding with no passages) are logged to stdout by the package.
 
 Usage:
     circulation.py                  print the odds
@@ -25,32 +25,32 @@ sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may 
 from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
-CORPUS = os.path.join(HERE, "..", "..", "..", "library")
+LIBRARY = os.path.join(HERE, "..", "..", "..", "library")
 PULL = 5      # the pull size used for the "all alike" column
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--weights", default=os.path.join(CORPUS, "passages", "circulation.json"))
+    parser.add_argument("--weights", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     args = parser.parse_args()
 
     configure_logging("WARNING")
-    store = Catalog.load(os.path.join(CORPUS, "passages"))
+    store = Catalog.load(os.path.join(LIBRARY, "passages"))
     selector = Bibliomancer(store, Circulation.from_file(args.weights))
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
-    shares = selector.register_shares()
+    shares = selector.shelf_shares()
     total = sum(store.count(r) for r in shares)
 
-    print(f"{len(store.layout()) and sum(len(s) for s in store.layout().values())} sources, "
-          f"{total} chunks; a flat draw would give each chunk a 1 in {total} chance.\n")
-    print(f"{'register':<13}{'target':>8}{'chunks':>12}{'odds vs flat':>14}{'all ' + str(PULL) + ' alike':>14}")
-    for register in sorted(shares, key=lambda r: -shares[r]):
-        count = store.count(register)
-        print(f"{register:<13}{shares[register]:>7.1%}{count:>12}"
-              f"{shares[register] / count * total:>13.1f}x{shares[register] ** PULL:>14.1e}")
-    print("\n'odds vs flat': how much likelier an average chunk of that register is than in a flat draw."
-          f"\n'all {PULL} alike': chance that one pull of {PULL} comes entirely from that register.")
+    print(f"{len(store.layout()) and sum(len(s) for s in store.layout().values())} holdings, "
+          f"{total} passages; a flat draw would give each passage a 1 in {total} chance.\n")
+    print(f"{'shelf':<13}{'target':>8}{'passages':>12}{'odds vs flat':>14}{'all ' + str(PULL) + ' alike':>14}")
+    for shelf in sorted(shares, key=lambda r: -shares[r]):
+        count = store.count(shelf)
+        print(f"{shelf:<13}{shares[shelf]:>7.1%}{count:>12}"
+              f"{shares[shelf] / count * total:>13.1f}x{shares[shelf] ** PULL:>14.1e}")
+    print("\n'odds vs flat': how much likelier an average passage of that shelf is than in a flat draw."
+          f"\n'all {PULL} alike': chance that one pull of {PULL} comes entirely from that shelf.")
 
 
 if __name__ == "__main__":

@@ -3,10 +3,10 @@
 Helpers that run on the Mac while developing, grouped by task. Several are **playgrounds**: small tools that let you type
 into one built part of the Printer and see what it does, using the real modules (not their own versions of them).
 
-- `library/`: fetches and cleans the public-domain corpus from `library/holdings.csv`. Rules and workflow are in the repo-root `library/README.md`.
+- `library/`: fetches and cleans the public-domain library from `library/holdings.csv`. Rules and workflow are in the repo-root `library/README.md`.
   - `library/validate_output.py` is a stub for checks on a voice's replies. It reports nothing yet; the reasons are in its header.
-  - `library/sample.py` plays with the Bibliomancer: prints pulls of random chunks, or measures
-    the long-run register shares.
+  - `library/sample.py` plays with the Bibliomancer: prints pulls of random passages, or measures
+    the long-run shelf shares.
 - `listening/`: `cut_speech_into_hinges.py` shows where the TakeCutter cuts a piece of speech into hinge candidates; `split_whisper_tracks.py` shows how
   the TrackSplitter sorts whisper's text into words, captions and nothing; `listen_to_room.py` runs the whole listening side on the
   microphone or a recording, scoring what it hears and marking what would qualify (it needs whisper-server running).

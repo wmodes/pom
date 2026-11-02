@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch and clean the corpus sources listed in library/holdings.csv.
+"""Fetch and clean the library holdings listed in library/holdings.csv.
 
 The manifest is the single source of truth. This script never edits it; it
 reads it, enforces the rights rule, and writes only under library/raw/ (not
@@ -16,8 +16,8 @@ Usage:
     scripts/dev/library/library.py add --id ID --form F --title T --rights R --basis B --url U
     scripts/dev/library/library.py set ID column=value ...   # edit markers, flags, status
     scripts/dev/library/library.py process ID         # fetch, clean, audit, sample; stops before promote
-    scripts/dev/library/library.py status             # what is on disk, per source
-    scripts/dev/library/library.py fetch [--id ID]    # download approved sources
+    scripts/dev/library/library.py status             # what is on disk, per holding
+    scripts/dev/library/library.py fetch [--id ID]    # download approved holdings
     scripts/dev/library/library.py inspect --id ID    # landmarks + edges, to pick trim markers
     scripts/dev/library/library.py inspect --id ID --trimmed   # edges after the markers
     scripts/dev/library/library.py clean [--id ID]    # raw -> draft
@@ -56,11 +56,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import normalize  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
-CORPUS = ROOT / "library"
-MANIFEST = CORPUS / "holdings.csv"
+LIBRARY = ROOT / "library"
+MANIFEST = LIBRARY / "holdings.csv"
 
 # Wikimedia's policy asks for contact info in the User-Agent; we give the repo URL.
-USER_AGENT = ("printer-of-mysteries-corpus/0.1 "
+USER_AGENT = ("printer-of-mysteries-library/0.1 "
               "(https://github.com/wmodes/pom; private art project; rate-limited)")
 REQUEST_DELAY_S = 2.0
 MAX_ATTEMPTS = 5
@@ -79,7 +79,7 @@ FETCHABLE_STATUSES = {"approved", "fetched", "processed"}
 LATE_COLUMNS = []
 
 # Columns that moved elsewhere. read_manifest drops them, so the next save removes them.
-# `weight` now lives in library/passages/circulation.json, next to the chunks it affects.
+# `weight` now lives in library/passages/circulation.json, next to the passages it affects.
 DROPPED_COLUMNS = ["weight"]
 
 
@@ -125,7 +125,7 @@ def select_rows(rows, only_id):
 
     Args:
         rows: Manifest rows.
-        only_id: A source id to restrict to, or None for all fetchable rows.
+        only_id: A holding id to restrict to, or None for all fetchable rows.
 
     Raises:
         SystemExit: If a fetchable row is not openly licensed, or the id is unknown.
@@ -141,7 +141,7 @@ def select_rows(rows, only_id):
                      f"'{row['rights']}'. Fix the manifest.")
         chosen.append(row)
     if only_id and not chosen:
-        sys.exit(f"No fetchable source with id '{only_id}' (check status and rights).")
+        sys.exit(f"No fetchable holding with id '{only_id}' (check status and rights).")
     return chosen
 
 
@@ -331,8 +331,8 @@ MIN_WORDS_PER_PAGE = 40
 
 
 def fetch_pdf(row, raw_dir):
-    """Downloads the PDF as raw/<id>/source.pdf."""
-    (raw_dir / "source.pdf").write_bytes(http_get(row["url"]))
+    """Downloads the PDF as raw/<id>/holding.pdf."""
+    (raw_dir / "holding.pdf").write_bytes(http_get(row["url"]))
 
 
 def pdf_page_count(pdf):
@@ -369,7 +369,7 @@ def clean_pdf(raw_dir, row):
     embedded text layer is scrambled), `layer` forces the embedded text, and blank
     means auto: use the text layer unless it is nearly empty.
     """
-    pdf = raw_dir / "source.pdf"
+    pdf = raw_dir / "holding.pdf"
     mode = (row.get("extract") or "").strip().lower()
     if mode == "ocr":
         return tidy(ocr_pdf(pdf, raw_dir / "ocr.txt").replace("\f", "\n\n"))
@@ -384,12 +384,12 @@ def clean_pdf(raw_dir, row):
 
 def fetch_text(row, raw_dir):
     """Downloads a plain-text file, such as an Internet Archive *_djvu.txt OCR dump."""
-    (raw_dir / "source.txt").write_bytes(http_get(row["url"]))
+    (raw_dir / "holding.txt").write_bytes(http_get(row["url"]))
 
 
 def clean_text(raw_dir, row):
     """Decodes the text file and normalizes line endings (the markers do the rest)."""
-    raw = (raw_dir / "source.txt").read_text(encoding="utf-8-sig", errors="replace")
+    raw = (raw_dir / "holding.txt").read_text(encoding="utf-8-sig", errors="replace")
     return tidy(raw.replace("\r\n", "\n").replace("\r", "\n").replace("\f", "\n\n"))
 
 
@@ -405,16 +405,16 @@ def tidy(text):
 # --- Inbox (human-supplied files that cannot be downloaded) --------------------
 
 def fetch_inbox(row, raw_dir):
-    """Copies a human-supplied file from library/inbox/ into raw/<id>/ as source.<ext>.
+    """Copies a human-supplied file from library/inbox/ into raw/<id>/ as holding.<ext>.
 
     For text that has no public URL, such as a shared Google Doc or original writing
     from a contributor. The inbox file is committed, since it cannot be refetched.
     Set the manifest url to 'inbox/<filename>'.
     """
-    source = CORPUS / row["url"]
-    if not source.is_file():
-        sys.exit(f"{row['id']}: inbox file not found: {source}")
-    shutil.copyfile(source, raw_dir / f"source{source.suffix.lower()}")
+    holding = LIBRARY / row["url"]
+    if not holding.is_file():
+        sys.exit(f"{row['id']}: inbox file not found: {holding}")
+    shutil.copyfile(holding, raw_dir / f"holding{holding.suffix.lower()}")
 
 
 def handler_for(row):
@@ -434,18 +434,18 @@ def handler_for(row):
 
 
 def raw_dir_for(row):
-    return CORPUS / "raw" / row["id"]
+    return LIBRARY / "raw" / row["id"]
 
 
 def draft_path_for(row):
-    return CORPUS / "draft" / row["form"] / f"{row['id']}.txt"
+    return LIBRARY / "draft" / row["form"] / f"{row['id']}.txt"
 
 
 def ready_path_for(row):
-    return CORPUS / "ready" / row["form"] / f"{row['id']}.txt"
+    return LIBRARY / "ready" / row["form"] / f"{row['id']}.txt"
 
 
-# Junk that appears in many sources and is never part of the text itself.
+# Junk that appears in many holdings and is never part of the text itself.
 ILLUSTRATION = re.compile(r"\[Illustration[^\]]*\]", re.I)
 
 
@@ -490,10 +490,10 @@ def apply_trim(text, row):
 
 
 def cmd_fetch(args):
-    """Downloads each approved source into a temp dir, then renames it into place.
+    """Downloads each approved holding into a temp dir, then renames it into place.
 
     The rename keeps a half-finished download from ever looking complete, and a
-    failure on one source is reported without stopping the rest.
+    failure on one holding is reported without stopping the rest.
     """
     failures = []
     for row in select_rows(load_manifest(), args.id):
@@ -520,7 +520,7 @@ def cmd_fetch(args):
 
 
 def build_text(row, trim=True, standardize=True, stats=None, audit=None):
-    """Produces a source's cleaned text from raw/, deterministically.
+    """Produces a holding's cleaned text from raw/, deterministically.
 
     The one place cleaning happens, shared by `clean` and `inspect` so what you
     inspect is exactly what gets written. No timestamps or randomness, so
@@ -562,7 +562,7 @@ LANDMARK = re.compile(
 
 
 def cmd_inspect(args):
-    """Shows what's needed to choose start_marker and end_marker for a source.
+    """Shows what's needed to choose start_marker and end_marker for a holding.
 
     Prints the landmark-looking lines of the untrimmed text with the marker
     string to paste into holdings.csv ('text' if the line is unique, otherwise
@@ -571,7 +571,7 @@ def cmd_inspect(args):
     """
     row = next((r for r in load_manifest() if r["id"] == args.id), None)
     if row is None:
-        sys.exit(f"No source with id '{args.id}'.")
+        sys.exit(f"No holding with id '{args.id}'.")
     # Untrimmed view is what markers are chosen against, so leave it unstandardized.
     lines = build_text(row, trim=args.trimmed, standardize=args.trimmed).split("\n")
     print(f"{row['id']}: {len(lines)} lines "
@@ -686,7 +686,7 @@ def cmd_clean(args):
 def cmd_promote(args):
     """Copies reviewed drafts into ready/, refusing anything that isn't cleared.
 
-    A source is promoted only if it is approved, openly licensed, marked
+    A holding is promoted only if it is approved, openly licensed, marked
     reviewed in the manifest, and has a draft. Everything else is reported with
     the reason, so ready/ can be trusted without checking.
     """
@@ -715,7 +715,7 @@ def cmd_promote(args):
 def cmd_publish_check(_args):
     """Fails if text that is not public domain is tracked by git.
 
-    Run this before making the repository public or sharing it. Any source whose
+    Run this before making the repository public or sharing it. Any holding whose
     rights are 'owner-cleared' (or anything other than public-domain/cc0) must
     not have its text in a committed file.
     """
@@ -730,10 +730,10 @@ def cmd_publish_check(_args):
                 offenders.append((row["id"], row["rights"], path))
     if offenders:
         print("NOT SAFE TO PUBLISH: committed text that is not public domain:")
-        for source_id, rights, path in offenders:
-            print(f"  {path}  ({source_id}, rights={rights})")
+        for holding_id, rights, path in offenders:
+            print(f"  {path}  ({holding_id}, rights={rights})")
         sys.exit(1)
-    print("OK: no non-public-domain corpus text is tracked by git.")
+    print("OK: no non-public-domain library text is tracked by git.")
 
 
 def validate_row_values(values):
@@ -753,12 +753,12 @@ def check_cleared(row):
 
 
 def cmd_add(args):
-    """Appends a manifest row, so new sources never need a hand-edited CSV or scratch script."""
+    """Appends a manifest row, so new holdings never need a hand-edited CSV or scratch script."""
     fields, rows = read_manifest()
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", args.id):
         sys.exit("id must be lowercase letters, digits and hyphens, e.g. poetry-pope-essay-man-1733")
     if any(r["id"] == args.id for r in rows):
-        sys.exit(f"A source with id '{args.id}' already exists. Use `set` to change it.")
+        sys.exit(f"A holding with id '{args.id}' already exists. Use `set` to change it.")
     row = {f: "" for f in fields}
     row.update(id=args.id, form=args.form, title=args.title, author=args.author, year=args.year,
                rights=args.rights, rights_basis=args.basis, url=args.url, status=args.status,
@@ -773,11 +773,11 @@ def cmd_add(args):
 
 
 def cmd_set(args):
-    """Changes manifest columns for one source: library.py set ID column=value [...]."""
+    """Changes manifest columns for one holding: library.py set ID column=value [...]."""
     fields, rows = read_manifest()
     row = next((r for r in rows if r["id"] == args.id), None)
     if row is None:
-        sys.exit(f"No source with id '{args.id}'.")
+        sys.exit(f"No holding with id '{args.id}'.")
     changes = {}
     for pair in args.assignments:
         column, sep, value = pair.partition("=")
@@ -799,21 +799,21 @@ def cmd_set(args):
 
 
 def show_utterances(row, count):
-    """Prints the first, a middle, and the last few utterances of a source's draft."""
+    """Prints the first, a middle, and the last few utterances of a holding's draft."""
     path = draft_path_for(row)
     paragraphs = [p for p in re.split(r"\n\s*\n", path.read_text(encoding="utf-8")) if p.strip()]
     middle = len(paragraphs) // 2
     print(f"\n{len(paragraphs)} utterances. First, middle and last few:")
-    for label, chunk in (("first", paragraphs[:count]),
+    for label, passage in (("first", paragraphs[:count]),
                          ("middle", paragraphs[middle:middle + count]),
                          ("last", paragraphs[-count:])):
         print(f"  -- {label}")
-        for p in chunk:
+        for p in passage:
             print("     " + p.replace("\n", " / ")[:140])
 
 
 def cmd_process(args):
-    """Takes one source from manifest row to a reviewed-ready draft in one command.
+    """Takes one holding from manifest row to a reviewed-ready draft in one command.
 
     Runs fetch (if not fetched), clean with a standardization audit, the edge
     inspection, and a sample of utterances. It stops before promotion: the markers,
@@ -821,7 +821,7 @@ def cmd_process(args):
     """
     row = next((r for r in load_manifest() if r["id"] == args.id), None)
     if row is None:
-        sys.exit(f"No source with id '{args.id}'. Add it first with `add`.")
+        sys.exit(f"No holding with id '{args.id}'. Add it first with `add`.")
     if row["status"] != "approved":
         sys.exit(f"{args.id} is '{row['status']}'. Confirm its rights, then: "
                  f"library.py set {args.id} status=approved")
@@ -838,45 +838,45 @@ def cmd_process(args):
           f"and re-run; when it reads right, set reviewed=yes and run promote.")
 
 
-def source_weights():
-    """Per-source weights from library/passages/circulation.json (a missing source counts 1.0)."""
-    path = CORPUS / "passages" / "circulation.json"
+def holding_weights():
+    """Per-holding weights from library/passages/circulation.json (a missing holding counts 1.0)."""
+    path = LIBRARY / "passages" / "circulation.json"
     if not path.exists():
         return {}
     doc = json.loads(path.read_text(encoding="utf-8"))
-    return {source: float(weight) for entry in doc.get("registers", {}).values()
-            for source, weight in entry.get("sources", {}).items()}
+    return {holding: float(weight) for entry in doc.get("shelves", {}).values()
+            for holding, weight in entry.get("holdings", {}).items()}
 
 
-def source_weight(row, weights=None):
-    """A source's relative weight: its entry in circulation.json, or 1.0 if absent."""
-    return (weights if weights is not None else source_weights()).get(row["id"], 1.0)
+def holding_weight(row, weights=None):
+    """A holding's relative weight: its entry in circulation.json, or 1.0 if absent."""
+    return (weights if weights is not None else holding_weights()).get(row["id"], 1.0)
 
 
 def cmd_mix(args):
-    """Shows how much each source and form contributes to the mix, after weights.
+    """Shows how much each holding and form contributes to the mix, after weights.
 
     Effective words = words in ready/ x weight. Use it to keep one flavor (say, the
-    Bible) from overwhelming the rest: change a source's weight in
+    Bible) from overwhelming the rest: change a holding's weight in
     library/passages/circulation.json, run this again.
     """
     stats = []
-    weights = source_weights()
+    weights = holding_weights()
     for row in load_manifest():
         path = ready_path_for(row)
         if row["status"] != "approved" or not path.exists():
             continue
         paragraphs = [p for p in re.split(r"\n\s*\n", path.read_text(encoding="utf-8")) if p.strip()]
         words = sum(len(p.split()) for p in paragraphs)
-        stats.append((row, len(paragraphs), words, words * source_weight(row, weights)))
+        stats.append((row, len(paragraphs), words, words * holding_weight(row, weights)))
     total_u = sum(s[1] for s in stats)
     total_w = sum(s[3] for s in stats)
     if not stats or not total_w:
         sys.exit("Nothing in ready/ yet.")
-    print(f"{'source':<46} {'wt':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
+    print(f"{'holding':<46} {'wt':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
     for row, utterances, words, effective in sorted(stats, key=lambda s: -s[3]):
         flag = "  <-- over 15%" if effective / total_w > 0.15 else ""
-        print(f"{row['id']:<46} {source_weight(row, weights):>4.1f} {utterances:>7} {words:>8} "
+        print(f"{row['id']:<46} {holding_weight(row, weights):>4.1f} {utterances:>7} {words:>8} "
               f"{effective / total_w:>8.1%}{flag}")
     print(f"\n{'by form':<46} {'':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
     forms = {}
@@ -887,7 +887,7 @@ def cmd_mix(args):
         print(f"{form:<46} {'':>4} {utterances:>7} {words:>8} {effective / total_w:>8.1%}")
     if args.prefix:
         group = [s for s in stats if s[0]["id"].startswith(args.prefix)]
-        print(f"\nids starting '{args.prefix}': {len(group)} sources, "
+        print(f"\nids starting '{args.prefix}': {len(group)} holdings, "
               f"{sum(s[2] for s in group)} words, "
               f"{sum(s[3] for s in group) / total_w:.1%} of the weighted mix")
     print(f"\nTOTAL: {total_u} utterances, {sum(s[2] for s in stats)} words, "
@@ -908,7 +908,7 @@ def main():
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name, fn in (("fetch", cmd_fetch), ("clean", cmd_clean), ("promote", cmd_promote)):
         p = sub.add_parser(name)
-        p.add_argument("--id", help="restrict to one source id")
+        p.add_argument("--id", help="restrict to one holding id")
         if name == "fetch":
             p.add_argument("--force", action="store_true", help="refetch even if present")
         if name == "clean":
@@ -918,17 +918,17 @@ def main():
                            help="print N sample fragments each rule removed, to check for lost content")
         p.set_defaults(func=fn)
     p = sub.add_parser("inspect", help="show landmarks and edges to choose trim markers")
-    p.add_argument("--id", required=True, help="source id")
+    p.add_argument("--id", required=True, help="holding id")
     p.add_argument("--trimmed", action="store_true",
                    help="show the edges after the current markers instead")
     p.add_argument("--edge", type=int, default=6, help="lines to show at each edge")
     p.set_defaults(func=cmd_inspect)
     p = sub.add_parser("review", help="one-screen review report per draft")
-    p.add_argument("--id", help="restrict to one source id")
+    p.add_argument("--id", help="restrict to one holding id")
     p.set_defaults(func=cmd_review)
     sub.add_parser("publish-check", help="fail if non-public-domain text is committed"
                    ).set_defaults(func=cmd_publish_check)
-    p = sub.add_parser("add", help="append a source row to the manifest")
+    p = sub.add_parser("add", help="append a holding row to the manifest")
     p.add_argument("--id", required=True)
     p.add_argument("--form", required=True)
     p.add_argument("--title", required=True)
@@ -936,7 +936,7 @@ def main():
     p.add_argument("--year", default="")
     p.add_argument("--rights", required=True, choices=sorted(RIGHTS_VALUES))
     p.add_argument("--basis", required=True, help="why we believe the rights claim")
-    p.add_argument("--url", required=True, help="source URL, or inbox/<file>")
+    p.add_argument("--url", required=True, help="holding URL, or inbox/<file>")
     p.add_argument("--status", default="candidate", choices=sorted(STATUS_VALUES))
     p.add_argument("--notes", default="")
     p.set_defaults(func=cmd_add)
@@ -944,10 +944,10 @@ def main():
     p.add_argument("id")
     p.add_argument("assignments", nargs="+", metavar="column=value")
     p.set_defaults(func=cmd_set)
-    p = sub.add_parser("mix", help="share of each source and form in the weighted mix")
-    p.add_argument("--prefix", help="also total the sources whose id starts with this (e.g. bible-)")
+    p = sub.add_parser("mix", help="share of each holding and form in the weighted mix")
+    p.add_argument("--prefix", help="also total the holdings whose id starts with this (e.g. bible-)")
     p.set_defaults(func=cmd_mix)
-    p = sub.add_parser("process", help="fetch, clean, audit and sample one source (stops before promote)")
+    p = sub.add_parser("process", help="fetch, clean, audit and sample one holding (stops before promote)")
     p.add_argument("id")
     p.add_argument("--audit", type=int, default=8, metavar="N", help="audit samples per rule")
     p.add_argument("--edge", type=int, default=4, help="lines/utterances to show at each edge")

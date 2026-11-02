@@ -57,7 +57,7 @@ from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
 from pom.writing import OracleModelClient, PortentWriter                                              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-CHUNKS = ROOT / "library" / "passages"
+PASSAGES = ROOT / "library" / "passages"
 PAPER_WIDTH = 64                  # a line of the typewriter, for the look of it only; the real width is the formatter's
 
 
@@ -152,7 +152,7 @@ def main() -> None:
     finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, heard_settings.score_room_tone)
 
     rng = random.Random()
-    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "circulation.json"), rng,
+    selector = Bibliomancer(Catalog.load(PASSAGES), Circulation.from_file(PASSAGES / "circulation.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")
@@ -212,7 +212,7 @@ def main() -> None:
             portents += 1
             print("\n" + "\n".join("      " + line for line in textwrap.wrap(portent.text, PAPER_WIDTH)) + "\n")
             print(f"  ({portent.words} words, {portent.seconds:.1f} s{', cut off at max_tokens' if portent.cut_off else ''}; "
-                  f"exemplars: {', '.join(chunk.id for chunk in portent.exemplars) or 'none'})", flush=True)
+                  f"exemplars: {', '.join(passage.id for passage in portent.exemplars) or 'none'})", flush=True)
             if args.max_portents and portents >= args.max_portents:
                 break
         if site is not None:

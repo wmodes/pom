@@ -25,9 +25,9 @@ def test_warn_records_a_warning_without_raising():
 
 def test_critical_is_recorded_without_raising():
     report = FaultRecorder()
-    report.critical("no chunks to draw from")
+    report.critical("no passages to draw from")
     assert report.has_critical and not report.ok
-    assert report.criticals == ["no chunks to draw from"] and report.warnings == []
+    assert report.criticals == ["no passages to draw from"] and report.warnings == []
 
 
 def test_issues_keep_order_and_severity():

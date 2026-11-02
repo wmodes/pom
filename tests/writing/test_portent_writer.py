@@ -37,32 +37,32 @@ class FakePost:
 
 
 class FakeSelector:
-    """Hands back the chunks it was given, and counts the draws."""
+    """Hands back the passages it was given, and counts the draws."""
 
-    def __init__(self, chunks):
-        self.chunks, self.draws = list(chunks), 0
+    def __init__(self, passages):
+        self.passages, self.draws = list(passages), 0
 
     def draw(self, count=None):
         self.draws += 1
-        return list(self.chunks)
+        return list(self.passages)
 
 
-def chunk(index):
-    return Passage(f"book#{index}", "book", "verse", f"chunk {index}", 2)
+def passage(index):
+    return Passage(f"book#{index}", "book", "verse", f"passage {index}", 2)
 
 
-def writer(post=None, prompt=PROMPT, chunks=(chunk(1), chunk(2)), rng=None, strict=False, selector=None):
+def writer(post=None, prompt=PROMPT, passages=(passage(1), passage(2)), rng=None, strict=False, selector=None):
     """A writer over the real builder and client, with a fake server. Returns the writer, the server and the selector."""
     post = post if post is not None else FakePost()
-    selector = selector if selector is not None else FakeSelector(chunks)
+    selector = selector if selector is not None else FakeSelector(passages)
     return PortentWriter(PromptBuilder(prompt, selector), OracleModelClient(URL, post=post), rng, strict), post, selector
 
 
 def real_selector(seed=None):
-    chunks = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
-    weights = Circulation.from_dict({"registers": {"verse": {}}})
+    passages = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
+    weights = Circulation.from_dict({"shelves": {"verse": {}}})
     rng = random.Random(seed)
-    return Bibliomancer(Catalog.from_chunks(chunks), weights, rng), rng
+    return Bibliomancer(Catalog.from_passages(passages), weights, rng), rng
 
 
 class TestWriting:
@@ -76,10 +76,10 @@ class TestWriting:
         written.write("The dog barks at ghosts.")
         prompt = post.calls[0][1]["messages"][0]["content"]
         assert "The dog barks at ghosts." in prompt
-        assert "chunk 1" in prompt and "chunk 2" in prompt
+        assert "passage 1" in prompt and "passage 2" in prompt
 
     def test_the_portent_carries_the_exemplars_it_was_shown(self):
-        assert writer()[0].write("A hinge.").exemplars == (chunk(1), chunk(2))
+        assert writer()[0].write("A hinge.").exemplars == (passage(1), passage(2))
 
     def test_the_model_is_asked_once_for_each_write(self):
         written, post, _ = writer()

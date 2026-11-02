@@ -1,30 +1,30 @@
-"""Chunks and the store that holds them.
+"""Passages and the store that holds them.
 
-A chunk is one utterance sized for the oracle's output. The chunk files are made by
-scripts/dev/library/cataloguer.py, one JSON object per line, one file per source:
+A passage is one utterance sized for the oracle's output. The passage files are made by
+scripts/dev/library/cataloguer.py, one JSON object per line, one file per holding:
 
-    library/passages/<register>/<source>.jsonl
+    library/passages/<shelf>/<holding>.jsonl
 
 This module reads those files and answers questions about them. It does not decide how likely a
-chunk is to be drawn (that is the Circulation and the Bibliomancer) and it never writes anything.
+passage is to be drawn (that is the Circulation and the Bibliomancer) and it never writes anything.
 
 Design decisions, and why:
   * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
     an unreadable file or a mismatched record is skipped or repaired and recorded in a FaultRecorder (and
-    logged), never raised. One corrupt record must not cost the gallery its corpus. Only a store
-    with no chunks at all is CRITICAL, and even then nothing is raised: the store is simply empty
+    logged), never raised. One corrupt record must not cost the gallery its library. Only a store
+    with no passages at all is CRITICAL, and even then nothing is raised: the store is simply empty
     and says so. `strict=True` raises instead, for tests and dev tools.
   * Where a record disagrees with where it lives, the location wins. The files are generated, so
-    a record claiming another register or source is drift; trusting the folder and file name keeps
+    a record claiming another shelf or holding is drift; trusting the folder and file name keeps
     the layout that Circulation checks against exactly what is on disk.
-  * Chunks are immutable. Nothing downstream should be able to edit the corpus by accident.
-  * Loading is eager. The corpus is about 15 MB of text, which is nothing next to the Pi's 16 GB,
+  * Passages are immutable. Nothing downstream should be able to edit the library by accident.
+  * Loading is eager. The library is about 15 MB of text, which is nothing next to the Pi's 16 GB,
     and doing the work at startup keeps the session itself free of file reads.
   * FaultRecorder messages name the file and line, because the files are generated and a person has to
     find the bad record.
-  * Order is deterministic (sorted registers, sources, then file order), so a seeded selector
+  * Order is deterministic (sorted shelves, holdings, then file order), so a seeded selector
     gives the same draws on every machine.
-  * The folder may hold other files (circulation.json). Only `<register>/<source>.jsonl` are read.
+  * The folder may hold other files (circulation.json). Only `<shelf>/<holding>.jsonl` are read.
 """
 import json
 from dataclasses import dataclass
@@ -39,7 +39,7 @@ _log = get_logger(__name__, DEBUG)
 
 
 class CatalogError(ValueError):
-    """Raised for any chunk problem, but only in strict mode (development and tests)."""
+    """Raised for any passage problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,17 +47,17 @@ class Passage:
     """One utterance, with where it came from.
 
     Attributes:
-        id: Stable identifier, `<source>#<index>`.
-        source: The source it came from (a book or document).
-        register: The register (folder) the source belongs to.
+        id: Stable identifier, `<holding>#<index>`.
+        holding: The holding it came from (a book or document).
+        shelf: The shelf (folder) the holding belongs to.
         text: The utterance. Verse keeps its line breaks.
         words: Word count.
         repeats: How many exact copies existed before duplicates were dropped.
         sha1: Short hash of the text, for noticing changes.
     """
     id: str
-    source: str
-    register: str
+    holding: str
+    shelf: str
     text: str
     words: int
     repeats: int = 1
@@ -65,110 +65,110 @@ class Passage:
 
 
 class Catalog:
-    """All the chunks, indexed by register and source.
+    """All the passages, indexed by shelf and holding.
 
-    Build one with `Catalog.load` (from disk) or `Catalog.from_chunks` (in memory).
+    Build one with `Catalog.load` (from disk) or `Catalog.from_passages` (in memory).
     """
 
-    def __init__(self, chunks: Iterable[Passage], report: Optional[FaultRecorder] = None,
+    def __init__(self, passages: Iterable[Passage], report: Optional[FaultRecorder] = None,
                  strict: bool = False):
-        """Indexes the chunks. Use the `load` / `from_chunks` constructors.
+        """Indexes the passages. Use the `load` / `from_passages` constructors.
 
-        A chunk whose id was already seen is skipped and reported. A store with no chunks at all
+        A passage whose id was already seen is skipped and reported. A store with no passages at all
         records a CRITICAL fault (and raises CatalogError in strict mode).
         """
         self.report = report if report is not None else _new_report(strict)
         self._tree: dict[str, dict[str, list[Passage]]] = {}
         self._by_id: dict[str, Passage] = {}
-        for chunk in chunks:
-            if chunk.id in self._by_id:
-                self.report.warn(f"duplicate chunk id {chunk.id}; keeping the first")
+        for passage in passages:
+            if passage.id in self._by_id:
+                self.report.warn(f"duplicate passage id {passage.id}; keeping the first")
                 continue
-            self._by_id[chunk.id] = chunk
-            self._tree.setdefault(chunk.register, {}).setdefault(chunk.source, []).append(chunk)
+            self._by_id[passage.id] = passage
+            self._tree.setdefault(passage.shelf, {}).setdefault(passage.holding, []).append(passage)
         if not self._by_id:
-            self.report.critical("no chunks loaded: the oracle has nothing to say")
+            self.report.critical("no passages loaded: the oracle has nothing to say")
 
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_chunks(cls, chunks: Iterable[Passage], strict: bool = False) -> "Catalog":
-        """Builds a store from chunk objects already in memory (used by tests)."""
-        return cls(chunks, strict=strict)
+    def from_passages(cls, passages: Iterable[Passage], strict: bool = False) -> "Catalog":
+        """Builds a store from passage objects already in memory (used by tests)."""
+        return cls(passages, strict=strict)
 
     @classmethod
     def load(cls, directory, strict: bool = False) -> "Catalog":
-        """Reads every `<register>/<source>.jsonl` under `directory`.
+        """Reads every `<shelf>/<holding>.jsonl` under `directory`.
 
         A missing directory, an unreadable file or a bad record is recorded in `store.report`
         and skipped; the rest still loads. With strict=True the first problem raises CatalogError.
         """
         report = _new_report(strict)
         root = Path(directory)
-        chunks = []
+        passages = []
         if not root.is_dir():
-            report.critical(f"chunk directory not found: {root}")
+            report.critical(f"passage directory not found: {root}")
         else:
             for folder in sorted(p for p in root.iterdir()
                                  if p.is_dir() and not p.name.startswith(".")):
                 for path in sorted(folder.glob("*.jsonl")):
                     read = _read_file(path, folder.name, path.stem, report)
-                    _log.debug("read %s/%s: %d chunk(s)", folder.name, path.name, len(read))
-                    chunks.extend(read)
-        store = cls(chunks, report, strict)
-        _log.info("loaded %d chunks from %d source(s) in %d register(s)", len(store),
-                  sum(len(store.sources(r)) for r in store.registers()), len(store.registers()))
+                    _log.debug("read %s/%s: %d passage(s)", folder.name, path.name, len(read))
+                    passages.extend(read)
+        store = cls(passages, report, strict)
+        _log.info("loaded %d passages from %d holding(s) in %d shelf(s)", len(store),
+                  sum(len(store.holdings(r)) for r in store.shelves()), len(store.shelves()))
         return store
 
     # --- Questions ------------------------------------------------------------------
 
-    def registers(self) -> list[str]:
-        """The register names, sorted."""
+    def shelves(self) -> list[str]:
+        """The shelf names, sorted."""
         return sorted(self._tree)
 
-    def sources(self, register: str) -> list[str]:
-        """The source ids in a register, sorted; empty if the register is unknown."""
-        return sorted(self._tree.get(register, {}))
+    def holdings(self, shelf: str) -> list[str]:
+        """The holding ids in a shelf, sorted; empty if the shelf is unknown."""
+        return sorted(self._tree.get(shelf, {}))
 
     def layout(self) -> dict[str, list[str]]:
-        """Register -> its sources. This is what `Circulation.check` compares its file against."""
-        return {register: self.sources(register) for register in self.registers()}
+        """Shelf -> its holdings. This is what `Circulation.check` compares its file against."""
+        return {shelf: self.holdings(shelf) for shelf in self.shelves()}
 
-    def chunks(self, register: str, source: Optional[str] = None) -> tuple[Passage, ...]:
-        """The chunks of a register, or of one source in it, in file order.
+    def passages(self, shelf: str, holding: Optional[str] = None) -> tuple[Passage, ...]:
+        """The passages of a shelf, or of one holding in it, in file order.
 
-        Returns an empty tuple for an unknown register or source.
+        Returns an empty tuple for an unknown shelf or holding.
         """
-        by_source = self._tree.get(register, {})
-        if source is not None:
-            return tuple(by_source.get(source, ()))
-        return tuple(chunk for name in sorted(by_source) for chunk in by_source[name])
+        by_holding = self._tree.get(shelf, {})
+        if holding is not None:
+            return tuple(by_holding.get(holding, ()))
+        return tuple(passage for name in sorted(by_holding) for passage in by_holding[name])
 
-    def count(self, register: Optional[str] = None, source: Optional[str] = None) -> int:
-        """How many chunks: in total, in a register, or in one source of a register."""
-        if register is None:
+    def count(self, shelf: Optional[str] = None, holding: Optional[str] = None) -> int:
+        """How many passages: in total, in a shelf, or in one holding of a shelf."""
+        if shelf is None:
             return len(self._by_id)
-        return len(self.chunks(register, source))
+        return len(self.passages(shelf, holding))
 
-    def get(self, chunk_id: str) -> Passage:
-        """The chunk with this id.
+    def get(self, passage_id: str) -> Passage:
+        """The passage with this id.
 
         Raises:
             CatalogError: If there is none. This is a programming error (the caller asked for an id
                 it never received), not a data problem, so it is not softened.
         """
         try:
-            return self._by_id[chunk_id]
+            return self._by_id[passage_id]
         except KeyError:
-            raise CatalogError(f"no chunk with id {chunk_id!r}") from None
+            raise CatalogError(f"no passage with id {passage_id!r}") from None
 
     def __len__(self) -> int:
         return len(self._by_id)
 
     def __iter__(self) -> Iterator[Passage]:
-        """Every chunk in deterministic order: register, source, then file order."""
-        for register in self.registers():
-            yield from self.chunks(register)
+        """Every passage in deterministic order: shelf, holding, then file order."""
+        for shelf in self.shelves():
+            yield from self.passages(shelf)
 
 
 def _new_report(strict: bool) -> FaultRecorder:
@@ -176,17 +176,17 @@ def _new_report(strict: bool) -> FaultRecorder:
     return FaultRecorder(strict=strict, error=CatalogError, logger=_log)
 
 
-def _read_file(path: Path, register: str, source: str, report: FaultRecorder) -> list[Passage]:
-    """Parses one chunk file, repairing or skipping what is wrong and reporting each problem.
+def _read_file(path: Path, shelf: str, holding: str, report: FaultRecorder) -> list[Passage]:
+    """Parses one passage file, repairing or skipping what is wrong and reporting each problem.
 
     The folder and file name are trusted over what a record claims.
     """
-    chunks = []
+    passages = []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as error:
         report.warn(f"cannot read {path}: {error}; skipping the file")
-        return chunks
+        return passages
     for number, line in enumerate(lines, start=1):
         if not line.strip():
             continue
@@ -197,7 +197,7 @@ def _read_file(path: Path, register: str, source: str, report: FaultRecorder) ->
             report.warn(f"{where}: not valid JSON ({error}); skipping the record")
             continue
         if not isinstance(record, dict):
-            report.warn(f"{where}: a chunk must be a JSON object; skipping the record")
+            report.warn(f"{where}: a passage must be a JSON object; skipping the record")
             continue
         text = record.get("text")
         if "text" not in record:
@@ -206,26 +206,26 @@ def _read_file(path: Path, register: str, source: str, report: FaultRecorder) ->
         if not isinstance(text, str) or not text.strip():
             report.warn(f"{where}: text must be a non-empty string; skipping the record")
             continue
-        chunk_id = record.get("id")
-        if chunk_id is None:
-            chunk_id = f"{source}#line{number}"
-            report.warn(f"{where}: missing field(s): id; using {chunk_id}")
-        for field, expected in (("register", register), ("source", source)):
+        passage_id = record.get("id")
+        if passage_id is None:
+            passage_id = f"{holding}#line{number}"
+            report.warn(f"{where}: missing field(s): id; using {passage_id}")
+        for field, expected in (("shelf", shelf), ("holding", holding)):
             if field not in record:
                 report.warn(f"{where}: missing field(s): {field}; using {expected!r}")
             elif record[field] != expected:
-                what = "folder" if field == "register" else "file"
+                what = "folder" if field == "shelf" else "file"
                 report.warn(f"{where}: {field} {record[field]!r} does not match its {what} "
                             f"{expected!r}; using {expected!r}")
         words = record.get("words")
-        chunks.append(Passage(
-            id=str(chunk_id), source=source, register=register, text=text,
+        passages.append(Passage(
+            id=str(passage_id), holding=holding, shelf=shelf, text=text,
             words=words if isinstance(words, int) and not isinstance(words, bool)
             else len(text.split()),
             repeats=_repeats(record.get("repeats", 1), where, report),
             sha1=str(record.get("sha1", "")),
         ))
-    return chunks
+    return passages
 
 
 def _repeats(value, where: str, report: FaultRecorder) -> int:

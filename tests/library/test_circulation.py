@@ -18,50 +18,50 @@ from pom.library import Circulation, CirculationError
 REPO = Path(__file__).resolve().parents[2]
 
 
-def doc(**registers):
-    """Builds a weights document: doc(red={"share": 1, "sources": {"a": 0.5}})."""
-    return {"registers": registers}
+def doc(**shelves):
+    """Builds a weights document: doc(red={"share": 1, "holdings": {"a": 0.5}})."""
+    return {"shelves": shelves}
 
 
 # --- Parsing valid input ---------------------------------------------------------------
 
-def test_reads_shares_and_source_weights():
-    weights = Circulation.from_dict(doc(news={"share": 2, "sources": {"ads": 0.5}}))
+def test_reads_shares_and_holding_weights():
+    weights = Circulation.from_dict(doc(news={"share": 2, "holdings": {"ads": 0.5}}))
     assert weights.share("news") == 2.0
-    assert weights.source_weight("ads") == 0.5
+    assert weights.holding_weight("ads") == 0.5
     assert weights.report.ok
 
 
-def test_unlisted_register_and_source_count_one():
-    weights = Circulation.from_dict(doc(news={"share": 2, "sources": {"ads": 0.5}}))
+def test_unlisted_shelf_and_holding_count_one():
+    weights = Circulation.from_dict(doc(news={"share": 2, "holdings": {"ads": 0.5}}))
     assert weights.share("poetry") == 1.0
-    assert weights.source_weight("anything") == 1.0
+    assert weights.holding_weight("anything") == 1.0
 
 
-def test_register_without_share_or_sources_defaults():
+def test_shelf_without_share_or_holdings_defaults():
     weights = Circulation.from_dict(doc(news={}))
     assert weights.share("news") == 1.0 and weights.report.ok
 
 
 def test_empty_document_is_valid_and_all_defaults():
     weights = Circulation.from_dict({})
-    assert weights.share("x") == 1.0 and weights.source_weight("y") == 1.0 and weights.report.ok
+    assert weights.share("x") == 1.0 and weights.holding_weight("y") == 1.0 and weights.report.ok
 
 
 def test_underscore_keys_are_notes_and_ignored():
     weights = Circulation.from_dict({
         "_about": "a note",
-        "registers": {"_comment": "ignored", "news": {"_why": "x", "share": 3, "sources": {"_n": 9, "ads": 2}}},
+        "shelves": {"_comment": "ignored", "news": {"_why": "x", "share": 3, "holdings": {"_n": 9, "ads": 2}}},
     })
     assert weights.share("news") == 3.0
-    assert weights.source_weight("ads") == 2.0
-    assert weights.source_weight("_n") == 1.0   # a note, not a weight
+    assert weights.holding_weight("ads") == 2.0
+    assert weights.holding_weight("_n") == 1.0   # a note, not a weight
     assert weights.report.ok
 
 
 def test_zero_is_allowed_to_switch_something_off():
-    weights = Circulation.from_dict(doc(news={"share": 0, "sources": {"ads": 0}}))
-    assert weights.share("news") == 0.0 and weights.source_weight("ads") == 0.0
+    weights = Circulation.from_dict(doc(news={"share": 0, "holdings": {"ads": 0}}))
+    assert weights.share("news") == 0.0 and weights.holding_weight("ads") == 0.0
     assert weights.report.ok
 
 
@@ -84,7 +84,7 @@ def test_invalid_json_gives_defaults_and_a_warning(tmp_path):
     path = tmp_path / "circulation.json"
     path.write_text("{not json", encoding="utf-8")
     weights = Circulation.from_file(path)
-    assert weights.source_weight("x") == 1.0
+    assert weights.holding_weight("x") == 1.0
     assert any("not valid JSON" in w for w in weights.report.warnings)
 
 
@@ -95,28 +95,28 @@ def test_top_level_not_an_object_gives_defaults(bad):
     assert any("JSON object" in w for w in weights.report.warnings)
 
 
-def test_registers_not_an_object_gives_defaults():
-    weights = Circulation.from_dict({"registers": []})
+def test_shelves_not_an_object_gives_defaults():
+    weights = Circulation.from_dict({"shelves": []})
     assert weights.share("news") == 1.0
-    assert any("'registers' must be an object" in w for w in weights.report.warnings)
+    assert any("'shelves' must be an object" in w for w in weights.report.warnings)
 
 
-def test_register_entry_not_an_object_is_skipped_and_the_rest_survive():
+def test_shelf_entry_not_an_object_is_skipped_and_the_rest_survive():
     weights = Circulation.from_dict(doc(news=3, poetry={"share": 4}))
     assert weights.share("news") == 1.0           # skipped: default
     assert weights.share("poetry") == 4.0         # the good sibling is untouched
-    assert any("register 'news' must be an object" in w for w in weights.report.warnings)
+    assert any("shelf 'news' must be an object" in w for w in weights.report.warnings)
 
 
-def test_sources_not_an_object_is_skipped_but_the_share_survives():
-    weights = Circulation.from_dict(doc(news={"share": 3, "sources": ["ads"]}))
-    assert weights.share("news") == 3.0 and weights.source_weight("ads") == 1.0
-    assert any("'sources' must be an object" in w for w in weights.report.warnings)
+def test_holdings_not_an_object_is_skipped_but_the_share_survives():
+    weights = Circulation.from_dict(doc(news={"share": 3, "holdings": ["ads"]}))
+    assert weights.share("news") == 3.0 and weights.holding_weight("ads") == 1.0
+    assert any("'holdings' must be an object" in w for w in weights.report.warnings)
 
 
-def test_typo_in_a_register_key_warns_and_the_valid_keys_still_apply():
-    weights = Circulation.from_dict(doc(news={"shares": 2, "share": 3, "sources": {"ads": 0.5}}))
-    assert weights.share("news") == 3.0 and weights.source_weight("ads") == 0.5
+def test_typo_in_a_shelf_key_warns_and_the_valid_keys_still_apply():
+    weights = Circulation.from_dict(doc(news={"shares": 2, "share": 3, "holdings": {"ads": 0.5}}))
+    assert weights.share("news") == 3.0 and weights.holding_weight("ads") == 0.5
     assert any("unknown key" in w and "shares" in w for w in weights.report.warnings)
 
 
@@ -124,25 +124,25 @@ def test_typo_in_a_register_key_warns_and_the_valid_keys_still_apply():
 def test_bad_share_falls_back_to_one_with_a_warning(bad):
     weights = Circulation.from_dict(doc(news={"share": bad}))
     assert weights.share("news") == 1.0
-    assert any("register 'news' share" in w and "using 1.0" in w for w in weights.report.warnings)
+    assert any("shelf 'news' share" in w and "using 1.0" in w for w in weights.report.warnings)
 
 
 @pytest.mark.parametrize("bad", ["2", None, True, -1, float("nan"), float("inf")])
-def test_bad_source_weight_falls_back_to_one_with_a_warning(bad):
-    weights = Circulation.from_dict(doc(news={"sources": {"ads": bad, "obits": 0.2}}))
-    assert weights.source_weight("ads") == 1.0
-    assert weights.source_weight("obits") == 0.2   # one bad weight does not spoil the others
-    assert any("source 'ads'" in w for w in weights.report.warnings)
+def test_bad_holding_weight_falls_back_to_one_with_a_warning(bad):
+    weights = Circulation.from_dict(doc(news={"holdings": {"ads": bad, "obits": 0.2}}))
+    assert weights.holding_weight("ads") == 1.0
+    assert weights.holding_weight("obits") == 0.2   # one bad weight does not spoil the others
+    assert any("holding 'ads'" in w for w in weights.report.warnings)
 
 
-def test_a_source_listed_twice_keeps_the_first():
-    weights = Circulation.from_dict(doc(news={"sources": {"ads": 0.5}}, poetry={"sources": {"ads": 9}}))
-    assert weights.source_weight("ads") == 0.5
-    assert any("more than one register" in w for w in weights.report.warnings)
+def test_a_holding_listed_twice_keeps_the_first():
+    weights = Circulation.from_dict(doc(news={"holdings": {"ads": 0.5}}, poetry={"holdings": {"ads": 9}}))
+    assert weights.holding_weight("ads") == 0.5
+    assert any("more than one shelf" in w for w in weights.report.warnings)
 
 
 def test_many_problems_at_once_never_raise_and_all_are_reported():
-    weights = Circulation.from_dict(doc(news={"share": "x", "sources": {"a": -1, "b": None}},
+    weights = Circulation.from_dict(doc(news={"share": "x", "holdings": {"a": -1, "b": None}},
                                     poetry=7, cooking={"shares": 1}))
     assert len(weights.report.warnings) >= 4
     assert weights.share("news") == 1.0
@@ -151,7 +151,7 @@ def test_many_problems_at_once_never_raise_and_all_are_reported():
 def test_problems_are_logged_so_they_reach_journald(caplog):
     with caplog.at_level(logging.WARNING, logger="pom.library.circulation"):
         Circulation.from_dict(doc(news={"share": "oops"}))
-    assert any(r.levelno == logging.WARNING and "register 'news' share" in r.message
+    assert any(r.levelno == logging.WARNING and "shelf 'news' share" in r.message
                for r in caplog.records)
 
 
@@ -174,7 +174,7 @@ def test_debug_lines_appear_only_when_the_module_flag_is_on(caplog, module_debug
     with caplog.at_level(logging.DEBUG, logger="pom.library.circulation"):
         Circulation.from_dict(doc(news={"share": 2})).shares_for(["news"])
     debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
-    assert any("parsed 1 register share" in m for m in debug)
+    assert any("parsed 1 shelf share" in m for m in debug)
     assert any("normalized shares" in m for m in debug)
 
 
@@ -187,7 +187,7 @@ def test_debug_lines_are_hidden_when_the_module_flag_is_off(caplog, module_debug
 
 def test_check_problems_are_logged_too(caplog):
     with caplog.at_level(logging.WARNING, logger="pom.library.circulation"):
-        Circulation.from_dict(doc(news={"sources": {"ads": 1}})).check(LAYOUT)
+        Circulation.from_dict(doc(news={"holdings": {"ads": 1}})).check(LAYOUT)
     assert any("not in weights file" in r.message for r in caplog.records)
 
 
@@ -196,15 +196,15 @@ def test_check_problems_are_logged_too(caplog):
 STRICT_CASES = [
     ("a missing file", None, "cannot read"),
     ("top level not an object", [], "JSON object"),
-    ("registers not an object", {"registers": []}, "'registers' must be an object"),
-    ("register not an object", doc(news=3), "register 'news' must be an object"),
-    ("sources not an object", doc(news={"sources": ["ads"]}), "'sources' must be an object"),
+    ("shelves not an object", {"shelves": []}, "'shelves' must be an object"),
+    ("shelf not an object", doc(news=3), "shelf 'news' must be an object"),
+    ("holdings not an object", doc(news={"holdings": ["ads"]}), "'holdings' must be an object"),
     ("a typo in a key", doc(news={"shares": 2}), "unknown key.*shares"),
-    ("a bad share", doc(news={"share": "2"}), "register 'news' share"),
-    ("a negative share", doc(news={"share": -1}), "register 'news' share"),
-    ("a bad source weight", doc(news={"sources": {"ads": None}}), "source 'ads'"),
-    ("a duplicate source", doc(news={"sources": {"ads": 1}}, poetry={"sources": {"ads": 1}}),
-     "more than one register"),
+    ("a bad share", doc(news={"share": "2"}), "shelf 'news' share"),
+    ("a negative share", doc(news={"share": -1}), "shelf 'news' share"),
+    ("a bad holding weight", doc(news={"holdings": {"ads": None}}), "holding 'ads'"),
+    ("a duplicate holding", doc(news={"holdings": {"ads": 1}}, poetry={"holdings": {"ads": 1}}),
+     "more than one shelf"),
 ]
 
 
@@ -225,12 +225,12 @@ def test_strict_invalid_json_raises(tmp_path):
 
 
 def test_strict_mode_accepts_a_clean_document():
-    assert Circulation.from_dict(doc(news={"share": 2, "sources": {"ads": 1}}), strict=True).share("news") == 2.0
+    assert Circulation.from_dict(doc(news={"share": 2, "holdings": {"ads": 1}}), strict=True).share("news") == 2.0
 
 
 # --- Normalized shares -----------------------------------------------------------------
 
-def test_equal_shares_over_three_registers_are_thirds():
+def test_equal_shares_over_three_shelves_are_thirds():
     """The tile example: red, green and blue, 1:1:1."""
     weights = Circulation.from_dict(doc(red={}, green={}, blue={}))
     shares = weights.shares_for(["red", "green", "blue"])
@@ -246,24 +246,24 @@ def test_thumb_on_the_scale_is_normalized():
     assert sum(shares.values()) == pytest.approx(1.0)
 
 
-def test_unlisted_register_gets_one_in_the_normalization():
+def test_unlisted_shelf_gets_one_in_the_normalization():
     weights = Circulation.from_dict(doc(red={"share": 1}, blue={"share": 1}))
     shares = weights.shares_for(["red", "blue", "green"])   # green unlisted
     assert shares == pytest.approx({"red": 1 / 3, "blue": 1 / 3, "green": 1 / 3})
 
 
-def test_shares_are_normalized_only_over_registers_given():
-    """A listed register that has no chunks must not take probability from the others."""
+def test_shares_are_normalized_only_over_shelves_given():
+    """A listed shelf that has no passages must not take probability from the others."""
     weights = Circulation.from_dict(doc(red={"share": 5}, blue={"share": 1}))
     assert weights.shares_for(["blue"]) == {"blue": 1.0}
 
 
-def test_zero_share_register_gets_zero_probability():
+def test_zero_share_shelf_gets_zero_probability():
     weights = Circulation.from_dict(doc(red={"share": 0}, blue={"share": 1}))
     assert weights.shares_for(["red", "blue"]) == pytest.approx({"red": 0.0, "blue": 1.0})
 
 
-def test_no_registers_gives_an_empty_result_not_an_error():
+def test_no_shelves_gives_an_empty_result_not_an_error():
     assert Circulation.from_dict({}).shares_for([]) == {}
 
 
@@ -271,23 +271,23 @@ def test_all_zero_shares_fall_back_to_equal_with_a_warning():
     weights = Circulation.from_dict(doc(red={"share": 0}, blue={"share": 0}))
     shares = weights.shares_for(["red", "blue"])
     assert shares == pytest.approx({"red": 0.5, "blue": 0.5})
-    assert any("no register has a positive share" in w for w in weights.report.warnings)
+    assert any("no shelf has a positive share" in w for w in weights.report.warnings)
 
 
 def test_all_zero_shares_raise_in_strict_mode():
     weights = Circulation.from_dict(doc(red={"share": 0}, blue={"share": 0}), strict=True)
-    with pytest.raises(CirculationError, match="no register has a positive share"):
+    with pytest.raises(CirculationError, match="no shelf has a positive share"):
         weights.shares_for(["red", "blue"])
 
 
-# --- Checking against the corpus layout ------------------------------------------------
+# --- Checking against the library layout ------------------------------------------------
 
 LAYOUT = {"news": ["ads", "obits"], "poetry": ["dickinson"]}
 
 
 def matching():
-    return Circulation.from_dict(doc(news={"sources": {"ads": 1, "obits": 0.2}},
-                                 poetry={"sources": {"dickinson": 1}}))
+    return Circulation.from_dict(doc(news={"holdings": {"ads": 1, "obits": 0.2}},
+                                 poetry={"holdings": {"dickinson": 1}}))
 
 
 def test_matching_layout_has_nothing_to_report():
@@ -295,60 +295,60 @@ def test_matching_layout_has_nothing_to_report():
     assert report.ok and report.warnings == []
 
 
-def test_unlisted_register_is_reported():
-    report = Circulation.from_dict(doc(news={"sources": {"ads": 1, "obits": 1}})).check(LAYOUT)
-    assert any("register" in w and "poetry" in w and "1.0" in w for w in report.warnings)
+def test_unlisted_shelf_is_reported():
+    report = Circulation.from_dict(doc(news={"holdings": {"ads": 1, "obits": 1}})).check(LAYOUT)
+    assert any("shelf" in w and "poetry" in w and "1.0" in w for w in report.warnings)
 
 
-def test_unlisted_source_is_reported():
-    report = Circulation.from_dict(doc(news={"sources": {"ads": 1}}, poetry={"sources": {"dickinson": 1}})).check(LAYOUT)
-    assert any("source" in w and "obits" in w for w in report.warnings)
+def test_unlisted_holding_is_reported():
+    report = Circulation.from_dict(doc(news={"holdings": {"ads": 1}}, poetry={"holdings": {"dickinson": 1}})).check(LAYOUT)
+    assert any("holding" in w and "obits" in w for w in report.warnings)
 
 
-def test_listed_source_with_no_chunks_is_reported_not_fatal():
-    weights = Circulation.from_dict(doc(news={"sources": {"ads": 1, "obits": 1, "ghost": 1}}))
+def test_listed_holding_with_no_passages_is_reported_not_fatal():
+    weights = Circulation.from_dict(doc(news={"holdings": {"ads": 1, "obits": 1, "ghost": 1}}))
     report = weights.check(LAYOUT)
-    assert any("no chunks" in w and "ghost" in w for w in report.warnings)
+    assert any("no passages" in w and "ghost" in w for w in report.warnings)
 
 
-def test_listed_register_with_no_chunks_is_reported_not_fatal():
+def test_listed_shelf_with_no_passages_is_reported_not_fatal():
     report = Circulation.from_dict(doc(news={}, poetry={}, cooking={})).check(LAYOUT)
-    assert any("no chunks" in w and "cooking" in w for w in report.warnings)
+    assert any("no passages" in w and "cooking" in w for w in report.warnings)
 
 
-def test_register_with_an_empty_source_list_in_the_layout_counts_as_no_chunks():
+def test_shelf_with_an_empty_holding_list_in_the_layout_counts_as_no_passages():
     report = Circulation.from_dict(doc(news={})).check({"news": []})
-    assert any("no chunks" in w and "news" in w for w in report.warnings)
+    assert any("no passages" in w and "news" in w for w in report.warnings)
 
 
-def test_source_listed_under_the_wrong_register_is_reported():
+def test_holding_listed_under_the_wrong_shelf_is_reported():
     """The Sun Tzu case: the id says one thing, the folder says another."""
-    weights = Circulation.from_dict(doc(news={"sources": {"ads": 1, "obits": 1, "dickinson": 1}}, poetry={}))
+    weights = Circulation.from_dict(doc(news={"holdings": {"ads": 1, "obits": 1, "dickinson": 1}}, poetry={}))
     report = weights.check(LAYOUT)
     assert any("dickinson" in w and "listed under 'news'" in w and "'poetry'" in w
                for w in report.warnings)
 
 
 def test_check_returns_its_own_report_and_leaves_the_loading_report_alone():
-    weights = Circulation.from_dict(doc(news={"sources": {"ads": 1}}))
+    weights = Circulation.from_dict(doc(news={"holdings": {"ads": 1}}))
     before = len(weights.report)
     report = weights.check(LAYOUT)
     assert len(report) > 0 and len(weights.report) == before
 
 
 def test_check_does_not_print(capsys):
-    Circulation.from_dict(doc(news={"sources": {"ads": 1}})).check(LAYOUT)
+    Circulation.from_dict(doc(news={"holdings": {"ads": 1}})).check(LAYOUT)
     out = capsys.readouterr()
     assert out.out == "" and out.err == ""
 
 
 STRICT_CHECKS = [
-    ("an unlisted register", doc(news={"sources": {"ads": 1, "obits": 1}}), "poetry"),
-    ("an unlisted source", doc(news={"sources": {"ads": 1}}, poetry={"sources": {"dickinson": 1}}), "obits"),
-    ("a listed source with no chunks", doc(news={"sources": {"ads": 1, "obits": 1, "ghost": 1}}), "ghost"),
-    ("a listed register with no chunks", doc(news={}, poetry={}, cooking={}), "cooking"),
-    ("a source under the wrong register",
-     doc(news={"sources": {"ads": 1, "obits": 1, "dickinson": 1}}, poetry={}), "dickinson"),
+    ("an unlisted shelf", doc(news={"holdings": {"ads": 1, "obits": 1}}), "poetry"),
+    ("an unlisted holding", doc(news={"holdings": {"ads": 1}}, poetry={"holdings": {"dickinson": 1}}), "obits"),
+    ("a listed holding with no passages", doc(news={"holdings": {"ads": 1, "obits": 1, "ghost": 1}}), "ghost"),
+    ("a listed shelf with no passages", doc(news={}, poetry={}, cooking={}), "cooking"),
+    ("a holding under the wrong shelf",
+     doc(news={"holdings": {"ads": 1, "obits": 1, "dickinson": 1}}, poetry={}), "dickinson"),
 ]
 
 
@@ -363,7 +363,7 @@ def test_strict_check_accepts_a_matching_layout():
 
 
 def matching_document():
-    return doc(news={"sources": {"ads": 1, "obits": 0.2}}, poetry={"sources": {"dickinson": 1}})
+    return doc(news={"holdings": {"ads": 1, "obits": 0.2}}, poetry={"holdings": {"dickinson": 1}})
 
 
 # --- The committed file ----------------------------------------------------------------
@@ -371,10 +371,10 @@ def matching_document():
 @pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
                     reason="library/passages/circulation.json not present")
 def test_real_weights_file_is_clean_even_in_strict_mode():
-    chunks = REPO / "library" / "passages"
+    passages = REPO / "library" / "passages"
     layout = {folder.name: [f.stem for f in sorted(folder.glob("*.jsonl"))]
-              for folder in sorted(chunks.iterdir()) if folder.is_dir()}
-    weights = Circulation.from_file(chunks / "circulation.json", strict=True)   # raises on any typo
+              for folder in sorted(passages.iterdir()) if folder.is_dir()}
+    weights = Circulation.from_file(passages / "circulation.json", strict=True)   # raises on any typo
     assert weights.check(layout).ok
     shares = weights.shares_for(layout)
     assert sum(shares.values()) == pytest.approx(1.0)

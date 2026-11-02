@@ -46,7 +46,7 @@ from pom.writing import PromptBuilder                               # noqa: E402
 from pom.writing import OracleModelClient, PortentWriter              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-CHUNKS = ROOT / "library" / "passages"
+PASSAGES = ROOT / "library" / "passages"
 CONTEXT_SIZE = 4096
 
 
@@ -55,20 +55,20 @@ def seed_for(hinge: str) -> int:
     return int(hashlib.sha256(hinge.strip().encode("utf-8")).hexdigest()[:8], 16)
 
 
-def exemplar_columns(chunks, width: int) -> list:
+def exemplar_columns(passages, width: int) -> list:
     """Lays the exemplars out two to a row, side by side, each headed by its id and wrapped to its column."""
     column = max((width - 3) // 2, 20)
 
-    def cell(chunk) -> list:
-        lines = [chunk.id, "-" * min(len(chunk.id), column)]
-        for line in chunk.text.splitlines():                  # verse keeps its line breaks
+    def cell(passage) -> list:
+        lines = [passage.id, "-" * min(len(passage.id), column)]
+        for line in passage.text.splitlines():                  # verse keeps its line breaks
             lines += textwrap.wrap(line, column) or [""]
         return lines
 
     rows = []
-    for start in range(0, len(chunks), 2):
-        left = cell(chunks[start])
-        right = cell(chunks[start + 1]) if start + 1 < len(chunks) else []
+    for start in range(0, len(passages), 2):
+        left = cell(passages[start])
+        right = cell(passages[start + 1]) if start + 1 < len(passages) else []
         rows += [f"{a:<{column}} | {b}".rstrip() for a, b in zip_longest(left, right, fillvalue="")]
         rows.append("")
     return rows
@@ -109,7 +109,7 @@ def main() -> None:
     configure_logging("WARNING")
     config = Config.load(CONFIG_PATH)
     rng = random.Random()
-    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "circulation.json"), rng,
+    selector = Bibliomancer(Catalog.load(PASSAGES), Circulation.from_file(PASSAGES / "circulation.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

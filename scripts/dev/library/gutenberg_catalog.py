@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search Project Gutenberg's complete catalog offline, to find corpus candidates.
+"""Search Project Gutenberg's complete catalog offline, to find library candidates.
 
 Gutenberg publishes its whole catalog as one CSV. Searching that locally is more
 reliable than the public search APIs, which time out and rate-limit. The CSV is
@@ -29,7 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 CATALOG = ROOT / "library" / "raw" / "_catalog" / "pg_catalog.csv"
 CATALOG_URL = "https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv"
-USER_AGENT = ("printer-of-mysteries-corpus/0.1 "
+USER_AGENT = ("printer-of-mysteries-library/0.1 "
               "(https://github.com/wmodes/pom; private art project; rate-limited)")
 
 

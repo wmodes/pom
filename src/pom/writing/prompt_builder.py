@@ -4,12 +4,12 @@ When a hinge qualifies, the oracle model is asked for a portent. What it is aske
 written by Wes in the config file (`oracle.prompt`), with two places marked for the pieces that change
 every time:
 
-  * `{exemplars}`: a handful of corpus chunks drawn by the Bibliomancer, to show the model the registers
+  * `{exemplars}`: a handful of library passages drawn by the Bibliomancer, to show the model the shelves
     the oracle speaks in. They are drawn at random and never matched to the hinge.
   * `{hinge}`: the clip that qualified, word for word.
 
 `build(hinge)` draws the exemplars, fills in both places and returns the finished prompt together with the
-chunks it used, so a dev tool can show which exemplars went in. Each piece goes in labelled and fenced, so the
+passages it used, so a dev tool can show which exemplars went in. Each piece goes in labelled and fenced, so the
 model can tell the material from the instructions around it:
 
     **Style Example 1**            **Theme**
@@ -30,15 +30,15 @@ Design decisions, and why:
     it cannot. `strict=True` raises PromptBuilderError instead, for tests and dev tools.
   * The hinge is never logged or put in a FaultRecorder message: nothing that was said in the room is kept.
     Logs and reports hold counts only.
-  * The two places are filled in one pass over the prompt, not one after the other, so a corpus chunk that
+  * The two places are filled in one pass over the prompt, not one after the other, so a library passage that
     happens to contain the text "{hinge}", or a hinge that contains "{exemplars}", is left as it is. Other
-    braces in the prompt, the chunks or the hinge are plain text.
+    braces in the prompt, the passages or the hinge are plain text.
   * Exemplars are only drawn if the prompt has an `{exemplars}` place. A prompt without one (a voice that is
-    shown just the hinge) gets no draw, so the chunks reported are always the ones the model was shown.
+    shown just the hinge) gets no draw, so the passages reported are always the ones the model was shown.
   * The fence is put around the pieces here, not written in the prompt, because the prompt text would be
-    generated over by the model if it held a fence. A blank line separates one exemplar from the next; a chunk keeps
-    its own line breaks (verse stays verse). The fence is not escaped: if a chunk or the hinge itself contained
-    three backticks, the fence would close early (no chunk in the corpus does).
+    generated over by the model if it held a fence. A blank line separates one exemplar from the next; a passage keeps
+    its own line breaks (verse stays verse). The fence is not escaped: if a passage or the hinge itself contained
+    three backticks, the fence would close early (no passage in the library does).
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config and has no
     built-in prompt. The Bibliomancer is passed in too, so a dev tool can give it a seeded random
     generator and get the same exemplars for the same hinge.
@@ -77,7 +77,7 @@ class OraclePrompt:
 
     Attributes:
         text: The prompt to send to the oracle model.
-        exemplars: The chunks that were drawn and placed in it (empty if the prompt has no place for them).
+        exemplars: The passages that were drawn and placed in it (empty if the prompt has no place for them).
     """
     text: str
     exemplars: tuple[Passage, ...] = ()
@@ -128,8 +128,8 @@ class PromptBuilder:
         exemplars = tuple(self._selector.draw()) if self._wants_exemplars else ()
         if self._wants_exemplars and not exemplars:
             self.report.warn("no exemplars could be drawn; the prompt was built without them")
-        values = {"exemplars": EXEMPLAR_SEPARATOR.join(_fenced(f"{EXEMPLAR_LABEL} {number}", chunk.text)
-                                                       for number, chunk in enumerate(exemplars, start=1)),
+        values = {"exemplars": EXEMPLAR_SEPARATOR.join(_fenced(f"{EXEMPLAR_LABEL} {number}", passage.text)
+                                                       for number, passage in enumerate(exemplars, start=1)),
                   "hinge": _fenced(HINGE_LABEL, hinge.strip())}
         text = PLACES.sub(lambda place: values[place.group(1)], self._prompt)
         _log.debug("built a prompt of %d characters with %d exemplar(s)", len(text), len(exemplars))

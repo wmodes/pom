@@ -208,7 +208,7 @@ _DETAIL = """<!doctype html>
 <pre>{{ portent.text }}</pre>
 <p class="muted">{{ portent.words }} words, written in {{ seconds }} s{% if portent.cut_off %}, cut off at the most it may write{% endif %}.</p>
 <h2>Exemplars the oracle was shown</h2>
-{% for chunk in portent.exemplars %}<p class="muted">{{ chunk.id }} · {{ chunk.register }}</p><pre>{{ chunk.text }}</pre>
+{% for passage in portent.exemplars %}<p class="muted">{{ passage.id }} · {{ passage.shelf }}</p><pre>{{ passage.text }}</pre>
 {% else %}<p class="muted">None.</p>{% endfor %}
 {% else %}<p class="muted">No portent could be had for this trigger.</p>{% endif %}
 </main></body></html>"""
@@ -286,7 +286,7 @@ class MonitorSite:
     # --- What the pages say ---------------------------------------------------------
 
     def _status(self) -> MonitorStatus:
-        """The caller's status, or an empty one if there is no source or it fails."""
+        """The caller's status, or an empty one if there is no holding or it fails."""
         if self._status_source is None:
             return MonitorStatus()
         try:
@@ -417,7 +417,7 @@ class MonitorSite:
                     item["hinge"] = record.hinge
                 if record.portent is not None:
                     item.update(portent=record.portent.text, words=record.portent.words, seconds=record.portent.seconds,
-                                cut_off=record.portent.cut_off, exemplars=[chunk.id for chunk in record.portent.exemplars])
+                                cut_off=record.portent.cut_off, exemplars=[passage.id for passage in record.portent.exemplars])
                 triggers.append(item)
             return jsonify({"stats": stats, "triggers": triggers})
 

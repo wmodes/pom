@@ -1,4 +1,4 @@
-"""The corpus module: what the oracle may say, and how likely each piece is to be drawn."""
+"""The library module: what the oracle may say, and how likely each piece is to be drawn."""
 from pom.library.bibliomancer import Bibliomancer, BibliomancerError
 from pom.library.catalog import Catalog, CatalogError, Passage
 from pom.library.circulation import Circulation, CirculationError

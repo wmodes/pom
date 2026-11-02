@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/sort_whisper_text.py", "scripts/dev/listening/listen_to_room.py",
+PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/split_whisper_tracks.py", "scripts/dev/listening/listen_to_room.py",
                "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/scoring/score_typed_lines.py",
                "scripts/dev/writing/write_portent_from_hinge.py",
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_turns.py",
@@ -27,17 +27,17 @@ def test_every_playground_starts_and_shows_its_help(script):
 
 
 def test_the_sort_playground_sorts_whispers_text():
-    result = run("scripts/dev/listening/sort_whisper_text.py", "(dog barks) Hello there. [BLANK_AUDIO]")
+    result = run("scripts/dev/listening/split_whisper_tracks.py", "(dog barks) Hello there. [BLANK_AUDIO]")
     assert result.stdout.splitlines() == ["words:   Hello there.", "kind:    speech", "ambient: (dog barks)"]
 
 
 def test_the_sort_playground_can_treat_the_text_as_coming_without_the_voice_detector():
-    result = run("scripts/dev/listening/sort_whisper_text.py", "--lyrics-only", "hello ♪ la la ♪ there")
+    result = run("scripts/dev/listening/split_whisper_tracks.py", "--lyrics-only", "hello ♪ la la ♪ there")
     assert result.stdout.splitlines() == ["words:   la la", "kind:    lyrics", "ambient: (none)"]
 
 
 def test_the_sort_playground_reads_standard_input_too():
-    result = subprocess.run([sys.executable, str(ROOT / "scripts/dev/listening/sort_whisper_text.py")], input="[Music] and then we left",
+    result = subprocess.run([sys.executable, str(ROOT / "scripts/dev/listening/split_whisper_tracks.py")], input="[Music] and then we left",
                             capture_output=True, text=True, timeout=60)
     assert "words:   and then we left" in result.stdout and "[Music]" in result.stdout
 

@@ -7,7 +7,7 @@ into one built part of the Printer and see what it does, using the real modules 
   - `library/validate_output.py` is a stub for checks on a voice's replies. It reports nothing yet; the reasons are in its header.
   - `library/sample.py` plays with the Bibliomancer: prints pulls of random chunks, or measures
     the long-run register shares.
-- `listening/`: `cut_speech_into_hinges.py` shows where the TakeCutter cuts a piece of speech into hinge candidates; `sort_whisper_text.py` shows how
+- `listening/`: `cut_speech_into_hinges.py` shows where the TakeCutter cuts a piece of speech into hinge candidates; `split_whisper_tracks.py` shows how
   the TrackSplitter sorts whisper's text into words, captions and nothing; `listen_to_room.py` runs the whole listening side on the
   microphone or a recording, scoring what it hears and marking what would trigger (it needs whisper-server running).
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether the trigger would fire (it needs

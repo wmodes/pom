@@ -6,10 +6,10 @@ out), the kind of words they are, and the captions of sounds that were set aside
 src/pom/listening/track_splitter.py; this is only a window onto it.
 
 Usage:
-    sort_whisper_text.py "(dog barks) Hello there. [BLANK_AUDIO]"
-    sort_whisper_text.py "he said ♪ hello world ♪ and left"
-    echo "[Music] and then we left" | sort_whisper_text.py
-    sort_whisper_text.py --lyrics-only "hello ♪ la la ♪ there"      # text from a pass without the voice detector: only lyrics count
+    split_whisper_tracks.py "(dog barks) Hello there. [BLANK_AUDIO]"
+    split_whisper_tracks.py "he said ♪ hello world ♪ and left"
+    echo "[Music] and then we left" | split_whisper_tracks.py
+    split_whisper_tracks.py --lyrics-only "hello ♪ la la ♪ there"      # text from a pass without the voice detector: only lyrics count
 """
 import argparse
 import os

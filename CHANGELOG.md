@@ -45,6 +45,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, folders (3): two file names**: the dev tool `scripts/dev/listening/sort_whisper_text.py` is `split_whisper_tracks.py` (it shows the TrackSplitter), and `tests/scripts/test_playgrounds.py` is `test_testbench.py`. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, folders (2): the other packages**: each lexicon section is its own package now. `pom.output` is `pom.printing`, `pom.voice` and `pom.prompt` are merged into `pom.writing` (the prompt builder, the oracle model client and the
   portent writer), and `pom.scoring` is split: the bar, the BarKeeper, its factory, the three bar algorithms and the `Attempt` (cut out of `hinge_finder.py` into its own module) are in `pom.qualifying`, the `HingeFinder` is in `pom.conductor`,
   the `TypedLineScorer` is in `pom.keyboard`, and `pom.scoring` keeps the clip scorer, the scorer model client, the word tagger and the fallback. The tests and the dev tools move the same way (`tests/printing/`, `tests/writing/`, `tests/qualifying/`, `tests/conductor/`,

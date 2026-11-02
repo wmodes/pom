@@ -55,8 +55,8 @@ class FixedTakeCutter:
         return list(self.clips)
 
 
-def segment(words="", ends_at=10.0, kind="speech", ambient=()):
-    return Take(words if words else "", kind if words else "", tuple(ambient), ends_at)
+def segment(words="", ends_at=10.0, kind="speech", room_tone=()):
+    return Take(words if words else "", kind if words else "", tuple(room_tone), ends_at)
 
 
 def tracker(min_scores=3, cooldown=60.0):
@@ -183,13 +183,13 @@ class TestTheTrigger:
         assert not any(s.is_hinge for s in found(made))
 
 
-class TestAmbientSounds:
-    CAPTIONS = segment("", ends_at=15.0, ambient=("(dog barks)",))
+class TestRoomToneSounds:
+    CAPTIONS = segment("", ends_at=15.0, room_tone=("(dog barks)",))
 
     def test_a_caption_is_yielded_but_not_scored_by_default(self):
         made, _, scorer = finder([self.CAPTIONS])
         sentence = found(made)[0]
-        assert (sentence.text, sentence.kind) == ("(dog barks)", "ambient")
+        assert (sentence.text, sentence.kind) == ("(dog barks)", "room_tone")
         assert sentence.score is None and sentence.scored_by is ScoredBy.UNSCORED and sentence.effect is None
         assert scorer.asked == []
 
@@ -206,23 +206,23 @@ class TestAmbientSounds:
         made, _, scorer = finder([self.CAPTIONS], scores={"(dog barks)": 4.0}, score_room_tone=True)
         sentence = found(made)[0]
         assert scorer.asked == [("(dog barks)", 15.0)]
-        assert (sentence.kind, sentence.score, sentence.scored_by) == ("ambient", 4.0, ScoredBy.MODEL)
+        assert (sentence.kind, sentence.score, sentence.scored_by) == ("room_tone", 4.0, ScoredBy.MODEL)
         assert sentence.effect is Ruling.DID_NOT_QUALIFY and sentence.counted == 1
 
     def test_a_considered_caption_can_be_the_hinge(self):
         segments = [segment("One.", 10.0), segment("Two.", 20.0), segment("Three.", 30.0),
-                    segment("", ends_at=40.0, ambient=("(a gunshot)",))]
+                    segment("", ends_at=40.0, room_tone=("(a gunshot)",))]
         made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "(a gunshot)": LOUD},
                             score_room_tone=True)
         hinges = [s for s in found(made) if s.is_hinge]
-        assert [(h.text, h.kind) for h in hinges] == [("(a gunshot)", "ambient")]
+        assert [(h.text, h.kind) for h in hinges] == [("(a gunshot)", "room_tone")]
 
     def test_captions_come_before_the_words_of_the_same_segment(self):
-        made, _, _ = finder([segment("Hello there.", 10.0, ambient=("(door slams)",))])
+        made, _, _ = finder([segment("Hello there.", 10.0, room_tone=("(door slams)",))])
         assert [s.text for s in found(made)] == ["(door slams)", "Hello there."]
 
     def test_every_caption_of_a_segment_is_yielded(self):
-        made, _, _ = finder([segment("", 10.0, ambient=("(door slams)", "(music)"))])
+        made, _, _ = finder([segment("", 10.0, room_tone=("(door slams)", "(music)"))])
         assert [s.text for s in found(made)] == ["(door slams)", "(music)"]
 
     def test_the_words_are_scored_whether_or_not_sounds_are_considered(self):
@@ -263,7 +263,7 @@ class TestClosingAndReporting:
 class TestNothingSaidInTheRoomIsKept:
     def test_what_was_heard_reaches_neither_the_log_nor_the_report(self, caplog):
         caplog.set_level(logging.DEBUG)
-        made, _, _ = finder([segment("My secret is the neighbor.", 10.0, ambient=("(a secret gunshot)",))],
+        made, _, _ = finder([segment("My secret is the neighbor.", 10.0, room_tone=("(a secret gunshot)",))],
                             score_room_tone=True)
         found(made)
         text = caplog.text + "\n".join(made.report_lines())

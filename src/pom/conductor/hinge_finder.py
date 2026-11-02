@@ -11,7 +11,7 @@ Design decisions, and why:
     Attempt, which is why the ones that did not trigger are yielded too.
   * Time is the Eavesdropper's: counted in audio received, so a recording replayed at any speed triggers exactly as a live run.
   * Only whole sentences are scored; clauses and phrases are not (the same rule the hearing-debug experiment used).
-  * AMBIENT SOUNDS. A caption like "(dog barks)" is yielded either way, so a playground can show it. With
+  * ROOM TONE. A caption like "(dog barks)" is yielded either way, so a playground can show it. With
     `score_room_tone` off (the default) it is not scored and the trigger never sees it: `score` is None and
     `effect` is None. With it on, the caption is scored like a sentence and counted by the trigger, so a sound can be the
     hinge. How a caption scores is untried; whisper sometimes invents captions.
@@ -33,7 +33,7 @@ from pom.scoring.clip_scorer import ScoredBy
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-AMBIENT = "ambient"
+ROOM_TONE = "room_tone"
 
 
 class HingeFinder:
@@ -51,7 +51,7 @@ class HingeFinder:
         self._take_cutter = take_cutter
         self._scorer = scorer
         self._tracker = tracker
-        self._consider_ambient = score_room_tone
+        self._score_room_tone = score_room_tone
 
     def find(self) -> Iterator[Attempt]:
         """Yields an Attempt for each thing heard, as it is scored. Blocks while waiting for sound.
@@ -59,8 +59,8 @@ class HingeFinder:
         Ends when the Eavesdropper's sound ends or the finder is closed.
         """
         for heard in self._listener.hear():
-            for caption in heard.ambient:
-                yield self._sentence(caption, AMBIENT, heard.ends_at, score_it=self._consider_ambient)
+            for caption in heard.room_tone:
+                yield self._sentence(caption, ROOM_TONE, heard.ends_at, score_it=self._score_room_tone)
             if not heard.words:
                 continue
             for clip in self._take_cutter.split(heard.words, heard_at=heard.ends_at):

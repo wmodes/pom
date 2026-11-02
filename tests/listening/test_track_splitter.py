@@ -1,4 +1,4 @@
-"""Tests for pom.listening.track_splitter: words, ambient captions and nothing-here marks."""
+"""Tests for pom.listening.track_splitter: words, room tone and nothing-here marks."""
 import dataclasses
 import random
 
@@ -39,45 +39,45 @@ class TestNothingHereMarks:
 
     def test_a_mark_is_dropped_and_not_kept_as_a_caption(self, sort):
         heard = sort("hello [BLANK_AUDIO] there")
-        assert heard.words == "hello there" and heard.ambient == ()
+        assert heard.words == "hello there" and heard.room_tone == ()
 
     def test_two_marks_in_a_row_are_nothing(self, sort):
         assert sort("[BLANK_AUDIO] (silence)") == Tracks("", (), KIND_NONE)
 
     def test_a_caption_that_only_mentions_silence_is_still_a_caption(self, sort):
-        assert sort("(deafening silence)").ambient == ("(deafening silence)",)
+        assert sort("(deafening silence)").room_tone == ("(deafening silence)",)
 
 
-class TestAmbientCaptions:
+class TestRoomToneCaptions:
     def test_a_caption_is_kept_apart_from_the_words(self, sort):
         heard = sort("(dog barks) hello there")
-        assert heard.words == "hello there" and heard.ambient == ("(dog barks)",) and heard.kind == KIND_SPEECH
+        assert heard.words == "hello there" and heard.room_tone == ("(dog barks)",) and heard.kind == KIND_SPEECH
 
     def test_square_brackets_count_too(self, sort):
         heard = sort("[Music] and then we left")
-        assert heard.words == "and then we left" and heard.ambient == ("[Music]",)
+        assert heard.words == "and then we left" and heard.room_tone == ("[Music]",)
 
     def test_a_caption_alone_leaves_no_words_and_no_kind(self, sort):
         assert sort("(dog barks)") == Tracks("", ("(dog barks)",), KIND_NONE)
 
     def test_a_captions_inner_spacing_is_tidied(self, sort):
-        assert sort("(dog   barks\n loudly)").ambient == ("(dog barks loudly)",)
+        assert sort("(dog   barks\n loudly)").room_tone == ("(dog barks loudly)",)
 
     def test_each_caption_is_kept_once_in_the_order_it_first_came(self, sort):
         heard = sort("(dog barks) one [Music] two (dog barks) three (door slams) [Music]")
-        assert heard.ambient == ("(dog barks)", "[Music]", "(door slams)")
+        assert heard.room_tone == ("(dog barks)", "[Music]", "(door slams)")
         assert heard.words == "one two three"
 
     def test_only_the_innermost_brackets_are_a_caption(self, sort):
         heard = sort("(a (b) c)")
-        assert heard.ambient == ("(b)",) and heard.words == "(a c)"
+        assert heard.room_tone == ("(b)",) and heard.words == "(a c)"
 
     def test_the_captions_are_a_tuple(self, sort):
-        assert isinstance(sort("(dog barks)").ambient, tuple)
+        assert isinstance(sort("(dog barks)").room_tone, tuple)
 
     def test_a_caption_with_a_music_symbol_stays_a_caption(self, sort):
         heard = sort(f"[{NOTE} dramatic music {NOTE}] hello")
-        assert heard.ambient == (f"[{NOTE} dramatic music {NOTE}]",) and heard.words == "hello"
+        assert heard.room_tone == (f"[{NOTE} dramatic music {NOTE}]",) and heard.words == "hello"
 
 
 class TestLyrics:
@@ -159,7 +159,7 @@ class TestWhateverWhisperWrites:
             heard = sort(raw, plain_text=plain_text)
             assert NOTE not in heard.words                                           # the symbols are always removed
             assert heard.words == " ".join(heard.words.split())                      # tidy
-            assert len(set(heard.ambient)) == len(heard.ambient)                     # each caption once
+            assert len(set(heard.room_tone)) == len(heard.room_tone)                     # each caption once
             assert (heard.kind == KIND_NONE) == (heard.words == "")                  # a kind exactly when there are words
             assert heard.kind in (KIND_SPEECH, KIND_LYRICS, KIND_NONE)
             if not plain_text:

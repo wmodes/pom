@@ -79,7 +79,7 @@ def main():
     print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
           f"a whisper run every {heard_settings.step:g} s")
     print(f"  trigger ({qualifying.algorithm}): a score above {tracker.describe()}")
-    print(f"  ambient sounds {'are' if heard_settings.score_room_tone else 'are not'} scored")
+    print(f"  room tone {'is' if heard_settings.score_room_tone else 'is not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
 
@@ -87,7 +87,7 @@ def main():
         for sentence in finder.find():
             when = stamp(sentence.heard_at)
             if sentence.score is None and sentence.effect is None:
-                print(f"\n[{when}] ambient, not scored: {sentence.text}", flush=True)
+                print(f"\n[{when}] room tone, not scored: {sentence.text}", flush=True)
                 continue
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
             print(f"\n[{when}] {sentence.kind:<7} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Play with the TrackSplitter: see how whisper's text is sorted into words, ambient captions and nothing.
+"""Play with the TrackSplitter: see how whisper's text is sorted into words, room tone and nothing.
 
 Give it text as arguments, or pipe text in, and it prints the words (speech, and lyrics with the music symbols taken
 out), the kind of words they are, and the captions of sounds that were set aside. The sorting is
@@ -31,9 +31,9 @@ def main():
     configure_logging("WARNING")
     raw = " ".join(args.text) if args.text else sys.stdin.read()
     heard = TrackSplitter().sort(raw, plain_text=not args.lyrics_only)
-    print(f"words:   {heard.words or '(none)'}")
-    print(f"kind:    {heard.kind or '(none)'}")
-    print(f"ambient: {', '.join(heard.ambient) if heard.ambient else '(none)'}")
+    print(f"words:     {heard.words or '(none)'}")
+    print(f"kind:      {heard.kind or '(none)'}")
+    print(f"room tone: {', '.join(heard.room_tone) if heard.room_tone else '(none)'}")
 
 
 if __name__ == "__main__":

@@ -1,16 +1,16 @@
 """The Eavesdropper: sound in, what was heard out.
 
 It joins the parts of the listening side. Sound comes from an AudioDeck; the RollingCutter feeds it to whisper
-every few seconds and keeps the segments whisper finished; the TrackSplitter sorts each segment into words, ambient
+every few seconds and keeps the segments whisper finished; the TrackSplitter sorts each segment into words, room tone
 captions and nothing; and `hear()` yields one Take for each segment that holds something new. What happens next
 (cutting, scoring, the trigger) is for the modules after it.
 
 Two things beyond the cutter, both from the hearing-debug experiment:
   * REPEATS. Words identical to the last words are skipped, and captions identical to the last captions are not
     reported again, because whisper sometimes says the same thing twice across a boundary or keeps hearing the same
-    sound. The captions are also remembered (the last `room_tone_memory` of them, `recent_ambient`), to give the oracle
+    sound. The captions are also remembered (the last `room_tone_memory` of them, `recent_room_tone`), to give the oracle
     model as context later.
-  * THE SOUND PASS. The voice detector treats singing and most sounds as not speech. The Printer reacts to what it hears,
+  * THE ROOM-TONE PASS. The voice detector treats singing and most sounds as not speech. The Printer reacts to what it hears,
     so after `room_tone_pass_every` rounds in a row that found no speech, whisper is asked about the last `room_tone_pass_seconds` of
     audio WITHOUT the voice detector, and only lyrics and captions are kept (plain text from that pass is where whisper
     makes things up, so it is thrown away). `room_tone_pass_every` 0 turns the pass off.
@@ -24,7 +24,7 @@ Design decisions, and why:
     thread of its own, so sound is not lost while the Eavesdropper waits for whisper.
   * Time is counted in audio received, not wall-clock time, so a recording replayed at any speed is heard exactly as a
     live stream would be. `ends_at` is the place in the stream where the segment ended, in seconds; it is the time the
-    trigger is given. (In a fast replay the sound pass looks at the audio received when the round ran, which is also what a
+    trigger is given. (In a fast replay the room-tone pass looks at the audio received when the round ran, which is also what a
     live run would have; the hearing-debug experiment, whose audio thread ran ahead, looked further on.)
   * Nothing here may stop the oracle (see pom/__init__.py). Whisper being down is a warning in `report`, once for each
     outage, and the audio is kept and tried again. A bad setting is replaced by its default and recorded.
@@ -62,12 +62,12 @@ class Take:
     Attributes:
         words: What was said or sung, ready to be cut into clips and scored. "" if this segment held only captions.
         kind: "speech" or "lyrics" for the words; "" if there are none.
-        ambient: Captions of sounds that are new since the last segment, such as "(dog barks)". Never scored.
+        room_tone: Captions of sounds that are new since the last segment, such as "(dog barks)". Never scored.
         ends_at: Where in the audio stream the segment ended, in seconds from the start of listening.
     """
     words: str
     kind: str
-    ambient: Tuple[str, ...]
+    room_tone: Tuple[str, ...]
     ends_at: float
 
 
@@ -96,8 +96,8 @@ class Eavesdropper:
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
             step, hold, rewind, max_cut_seconds: The RollingCutter's settings (see there).
             room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and captions.
-                A whole number of at least 0; 0 turns the sound pass off.
-            room_tone_pass_seconds: How much recent audio the sound pass listens to, above 0.
+                A whole number of at least 0; 0 turns the room-tone pass off.
+            room_tone_pass_seconds: How much recent audio the room-tone pass listens to, above 0.
             room_tone_memory: How many recent captions to remember, a whole number of at least 1.
             sorter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
@@ -115,9 +115,9 @@ class Eavesdropper:
         self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict)
         if cutter is None:
             self.report.extend(self._cutter.report)
-        self._recent_ambient = collections.deque(maxlen=memory)
+        self._recent_room_tone = collections.deque(maxlen=memory)
         self._last_words = ""
-        self._last_ambient: Tuple[str, ...] = ()
+        self._last_room_tone: Tuple[str, ...] = ()
         self._quiet_steps = 0
         self._whisper_down = False
 
@@ -129,9 +129,9 @@ class Eavesdropper:
         return default
 
     @property
-    def recent_ambient(self) -> Tuple[str, ...]:
+    def recent_room_tone(self) -> Tuple[str, ...]:
         """The last few captions of sounds in the room, oldest first, for the oracle model's context."""
-        return tuple(self._recent_ambient)
+        return tuple(self._recent_room_tone)
 
     def hear(self) -> Iterator[Take]:
         """Listens until the sound ends (a recording runs out, the microphone stops, or `close` is called).
@@ -153,7 +153,7 @@ class Eavesdropper:
         self._source.close()
 
     def _round(self, final: bool) -> Iterator[Take]:
-        """One whisper round: yields what is new in the segments it finished, or tries the sound pass."""
+        """One whisper round: yields what is new in the segments it finished, or tries the room-tone pass."""
         segments = self._cutter.cut(final=final)
         self._note_whisper()
         for segment in segments:
@@ -172,17 +172,17 @@ class Eavesdropper:
 
     def _news(self, heard, ends_at: float) -> Optional[Take]:
         """The part of `heard` that is new since the last segment, or None if there is nothing new."""
-        ambient = ()
-        if heard.ambient and heard.ambient != self._last_ambient:
-            self._last_ambient = heard.ambient
-            self._recent_ambient.extend(heard.ambient)
-            ambient = heard.ambient
+        room_tone = ()
+        if heard.room_tone and heard.room_tone != self._last_room_tone:
+            self._last_room_tone = heard.room_tone
+            self._recent_room_tone.extend(heard.room_tone)
+            room_tone = heard.room_tone
         words = heard.words if heard.words and heard.words != self._last_words else ""
         if words:
             self._last_words = words
-        if not words and not ambient:
+        if not words and not room_tone:
             return None
-        return Take(words, heard.kind if words else "", ambient, ends_at)
+        return Take(words, heard.kind if words else "", room_tone, ends_at)
 
     def _note_whisper(self) -> None:
         """Says so, once, when whisper stops answering; and notes when it is back."""

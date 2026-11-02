@@ -16,9 +16,9 @@ class Attempt:
 
     Attributes:
         text: The sentence (or the caption of a sound), word for word.
-        kind: "speech" or "lyrics" for words, "ambient" for the caption of a sound.
-        score: 0 (dull) to 9 (extremely interesting), or None if it was not scored (a caption while ambient sounds are
-            not considered, or the Scorer could not).
+        kind: "speech" or "lyrics" for words, "room_tone" for the caption of a sound.
+        score: 0 (dull) to 9 (extremely interesting), or None if it was not scored (a caption while room tone is
+            not scored, or the Scorer could not).
         scored_by: What made the score (the model, the clip filter) or left it without one.
         effect: What the trigger did with the score, or None if the trigger never saw it.
         heard_at: Where in the audio stream the words ended, in seconds from the start of listening.

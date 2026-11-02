@@ -30,7 +30,7 @@ class ScriptedSource:
 
 
 class FakeWhisper:
-    """`segments` answers each round with the next reply; `text` (the sound pass) answers from `texts`."""
+    """`segments` answers each round with the next reply; `text` (the room-tone pass) answers from `texts`."""
 
     def __init__(self, *rounds, texts=(), failing=()):
         self.rounds, self.texts, self.failing = list(rounds), list(texts), set(failing)
@@ -115,7 +115,7 @@ class TestRepeats:
     def test_a_caption_that_comes_back_after_another_is_reported_again(self):
         listener, _, _ = make(17, [seg(0.5, 3.0, "(dog barks)")], [seg(4.0, 6.0, "(door slams)")],
                               [seg(9.0, 11.0, "(dog barks)")])
-        assert [h.ambient for h in hear(listener)] == [("(dog barks)",), ("(door slams)",), ("(dog barks)",)]
+        assert [h.room_tone for h in hear(listener)] == [("(dog barks)",), ("(door slams)",), ("(dog barks)",)]
 
     def test_words_and_captions_are_judged_separately(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "(dog barks) Hello.")], [seg(4.0, 6.0, "(door slams) Hello.")])
@@ -139,21 +139,21 @@ class TestCaptionsAndLyrics:
     def test_recent_captions_are_remembered_oldest_first(self):
         listener, _, _ = make(17, [seg(0.5, 3.0, "(dog barks)")], [seg(4.0, 6.0, "(door slams)")], [seg(9.0, 11.0, "[Music]")])
         hear(listener)
-        assert listener.recent_ambient == ("(dog barks)", "(door slams)", "[Music]")
+        assert listener.recent_room_tone == ("(dog barks)", "(door slams)", "[Music]")
 
     def test_only_the_last_few_captions_are_remembered(self):
         rounds = [[seg(5.0 * n + 0.5, 5.0 * n + 2.0, f"(sound {n})")] for n in range(5)]
         listener, _, _ = make(27, *rounds, room_tone_memory=3)
         hear(listener)
-        assert listener.recent_ambient == ("(sound 2)", "(sound 3)", "(sound 4)")
+        assert listener.recent_room_tone == ("(sound 2)", "(sound 3)", "(sound 4)")
 
     def test_a_caption_repeated_straight_away_is_remembered_once(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "(dog barks)")], [seg(4.0, 6.0, "(dog barks)")])
         hear(listener)
-        assert listener.recent_ambient == ("(dog barks)",)
+        assert listener.recent_room_tone == ("(dog barks)",)
 
     def test_nothing_is_remembered_before_anything_is_heard(self):
-        assert make(5)[0].recent_ambient == ()
+        assert make(5)[0].recent_room_tone == ()
 
 
 class TestTheSoundPass:
@@ -163,7 +163,7 @@ class TestTheSoundPass:
         assert got == [Take("la la", "lyrics", ("(crowd cheers)",), pytest.approx(15.0, abs=0.05))]
         assert whisper.text_calls == [(pytest.approx(2.0), False)]             # voice detector off; see the next test
 
-    def test_plain_text_from_the_sound_pass_is_thrown_away(self):
+    def test_plain_text_from_the_room_tone_pass_is_thrown_away(self):
         listener, _, _ = make(17, texts=["Hello there, I invented this."])
         assert hear(listener) == []
 
@@ -273,7 +273,7 @@ class TestSettings:
         listener = make(5, **{name: bad})[0]
         assert len(listener.report.warnings) == 1 and name in listener.report.warnings[0]
 
-    def test_zero_sound_passes_is_allowed(self):
+    def test_zero_room_tone_passes_is_allowed(self):
         assert make(5, room_tone_pass_every=0)[0].report.ok
 
     def test_the_cutters_settings_are_checked_too_and_reported_here(self):
@@ -342,7 +342,7 @@ class TestWithARealCutterAndSorter:
                   [seg(15.0, 17.0, f"{NOTE} la la {NOTE}")]]
         listener, _, _ = make(25, *rounds)
         got = hear(listener)
-        assert [(h.words, h.kind, h.ambient) for h in got] == [
+        assert [(h.words, h.kind, h.room_tone) for h in got] == [
             ("First thing said.", "speech", ()), ("Second thing, still going.", "speech", ()),
             ("", "", ("(dog barks)",)), ("la la", "lyrics", ())]
         assert [h.ends_at for h in got] == sorted(h.ends_at for h in got)

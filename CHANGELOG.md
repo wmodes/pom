@@ -45,6 +45,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (2): ambient is room tone**: whisper's captions of sounds like "(dog barks)" are *room tone* (the `Take.room_tone` and `Tracks.room_tone` fields, `Eavesdropper.recent_room_tone`, the `ROOM_TONE` kind, now the string `"room_tone"`, and the
+  comments, messages and tests), and the *sound pass* is the *room-tone pass* (the testbench tool prints `room tone:` and its labels are re-aligned). Behavior is unchanged except for that kind string; 2,580 tests pass.
 - **The Great Rename, words (1): fragment is clip**: in the listening, scoring, qualifying and writing code, the tests, the dev tools and the config comments, a *fragment* is a *clip* and the *fragmenter* is the *take cutter* (variables, parameters, the `ScoredClip.clip` field, the `{clip_text}` placeholder
   in the scorer's request template, messages, comments and test names). The scorer prompt text itself is unchanged. The library's own use of the word (a fragment of OCR text in `normalize.py` and the library docs) is a different thing and stays. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, folders (3): two file names**: the dev tool `scripts/dev/listening/sort_whisper_text.py` is `split_whisper_tracks.py` (it shows the TrackSplitter), and `tests/scripts/test_playgrounds.py` is `test_testbench.py`. Behavior is unchanged; 2,580 tests pass.

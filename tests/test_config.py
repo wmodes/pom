@@ -752,7 +752,7 @@ def test_score_room_tone_takes_a_boolean_or_an_on_off_word(tmp_path, value, expe
     assert config.listening.score_room_tone is expected and config.report.ok
 
 
-def test_ambient_sounds_are_not_considered_unless_asked():
+def test_room_tone_sounds_are_not_considered_unless_asked():
     assert Config.load(environ={}).listening.score_room_tone is False
 
 

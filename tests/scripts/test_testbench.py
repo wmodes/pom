@@ -28,18 +28,18 @@ def test_every_playground_starts_and_shows_its_help(script):
 
 def test_the_sort_playground_sorts_whispers_text():
     result = run("scripts/dev/listening/split_whisper_tracks.py", "(dog barks) Hello there. [BLANK_AUDIO]")
-    assert result.stdout.splitlines() == ["words:   Hello there.", "kind:    speech", "ambient: (dog barks)"]
+    assert result.stdout.splitlines() == ["words:     Hello there.", "kind:      speech", "room tone: (dog barks)"]
 
 
 def test_the_sort_playground_can_treat_the_text_as_coming_without_the_voice_detector():
     result = run("scripts/dev/listening/split_whisper_tracks.py", "--lyrics-only", "hello ♪ la la ♪ there")
-    assert result.stdout.splitlines() == ["words:   la la", "kind:    lyrics", "ambient: (none)"]
+    assert result.stdout.splitlines() == ["words:     la la", "kind:      lyrics", "room tone: (none)"]
 
 
 def test_the_sort_playground_reads_standard_input_too():
     result = subprocess.run([sys.executable, str(ROOT / "scripts/dev/listening/split_whisper_tracks.py")], input="[Music] and then we left",
                             capture_output=True, text=True, timeout=60)
-    assert "words:   and then we left" in result.stdout and "[Music]" in result.stdout
+    assert "words:     and then we left" in result.stdout and "[Music]" in result.stdout
 
 
 def test_the_score_playground_says_so_when_the_scorer_model_is_not_answering():

@@ -6,7 +6,7 @@ these three kinds differently, so this module sorts them before anything is scor
 
   * WORDS: speech, and sung lyrics with the music symbols taken out. These are what the Scorer is given. The Printer
     reacts to what it hears, not only to conversation, so lyrics are words and compete on score like any sentence.
-  * AMBIENT captions: whisper's guess at a sound in the room. They describe the room and are not something said, so
+  * ROOM TONE: whisper's guess at a sound in the room. It describes the room and is not something said, so
     they are never scored (a hallucinated "(gunshot)" once scored 8.0). They are kept, once each, to give the oracle
     model as context later.
   * NOTHING-HERE marks: "[BLANK_AUDIO]", "(silence)" and the like. They carry no information and are dropped.
@@ -45,16 +45,16 @@ class Tracks:
 
     Attributes:
         words: Speech and song lyrics, with the music symbols removed. This is what the Scorer is given.
-        ambient: Whisper's captions of sounds, once each in the order they came, brackets included.
+        room_tone: Whisper's captions of sounds, once each in the order they came, brackets included.
         kind: "speech", "lyrics" (the words came only from between music symbols), or "" if there are no words.
     """
     words: str
-    ambient: Tuple[str, ...]
+    room_tone: Tuple[str, ...]
     kind: str
 
 
 class TrackSplitter:
-    """Sorts whisper's text into words, ambient captions and nothing-here marks. Has no state."""
+    """Sorts whisper's text into words, room tone and nothing-here marks. Has no state."""
 
     def sort(self, raw: str, plain_text: bool = True) -> Tracks:
         """Sorts one reply from whisper.
@@ -70,14 +70,14 @@ class TrackSplitter:
         if not isinstance(raw, str):
             return Tracks("", (), KIND_NONE)
         raw = _EMPTY_MARKS.sub(" ", raw)
-        ambient = tuple(dict.fromkeys(" ".join(caption.split()) for caption in _CAPTION.findall(raw)))
+        room_tone = tuple(dict.fromkeys(" ".join(caption.split()) for caption in _CAPTION.findall(raw)))
         uncaptioned = _CAPTION.sub(" ", raw)
         if not plain_text:
             pieces = (" ".join(piece.replace(MUSIC_SYMBOL, " ").split()) for piece in _LYRICS.findall(uncaptioned))
             lyrics = " ".join(piece for piece in pieces if piece)          # a pair of symbols around only space is nothing
-            return Tracks(lyrics, ambient, KIND_LYRICS if lyrics else KIND_NONE)
+            return Tracks(lyrics, room_tone, KIND_LYRICS if lyrics else KIND_NONE)
         words = " ".join(uncaptioned.replace(MUSIC_SYMBOL, " ").split())
         outside_lyrics = " ".join(_LYRICS.sub(" ", uncaptioned).replace(MUSIC_SYMBOL, " ").split())
         if not words:
-            return Tracks("", ambient, KIND_NONE)
-        return Tracks(words, ambient, KIND_SPEECH if outside_lyrics else KIND_LYRICS)
+            return Tracks("", room_tone, KIND_NONE)
+        return Tracks(words, room_tone, KIND_SPEECH if outside_lyrics else KIND_LYRICS)

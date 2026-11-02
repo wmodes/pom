@@ -27,7 +27,7 @@ of being threaded through by hand. Today there are five:
                `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `cut_every_seconds`, `hold_back_seconds`,
-               `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's sound pass and caption memory. The defaults are the
+               `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and caption memory. The defaults are the
                combination that worked in the room; change one at a time. The entry point builds the
                WhisperModelClient, MicDeck and Eavesdropper from `config.listening`.
     [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of triggers. Whether it

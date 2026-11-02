@@ -173,7 +173,7 @@ def main() -> None:
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
     print(f"  trigger ({qualifying.algorithm}): a score above {tracker.describe()}")
-    print(f"  ambient sounds {'are' if heard_settings.score_room_tone else 'are not'} scored")
+    print(f"  room tone {'is' if heard_settings.score_room_tone else 'is not'} scored")
     if site is not None:
         print(f"  monitoring site: http://{'<this machine>' if config.monitor.host == '0.0.0.0' else config.monitor.host}:{site.port}  "
               f"(any user name; the password is [monitor] password; hinges {'shown' if config.monitor.show_hinges else 'hidden'})")
@@ -186,7 +186,7 @@ def main() -> None:
         for sentence in finder.find():
             when = stamp(sentence.heard_at)
             if sentence.score is None and sentence.effect is None:
-                print(f"\n[{when}] ambient, not scored: {sentence.text}", flush=True)
+                print(f"\n[{when}] room tone, not scored: {sentence.text}", flush=True)
                 continue
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
             print(f"\n[{when}] {sentence.kind:<6} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "

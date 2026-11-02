@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Print the draw odds the ExemplarSelector will use, so a weights.json edit can be checked at a glance.
+"""Print the draw odds the Bibliomancer will use, so a weights.json edit can be checked at a glance.
 
-The oracle draws a few exemplar chunks at random. The corpus is lopsided, so the ExemplarSelector weights
+The oracle draws a few exemplar chunks at random. The corpus is lopsided, so the Bibliomancer weights
 every chunk to give each register its target share over many draws (see
-src/pom/corpus/exemplar_selector.py for the math). This script builds the real ExemplarSelector from
+src/pom/corpus/bibliomancer.py for the math). This script builds the real Bibliomancer from
 corpus/chunks/ and corpus/chunks/weights.json and reports, per register, its target share, its chunk count, how
 much likelier an average chunk of that register is than in a flat draw, and the chance that one
 pull of five comes entirely from that register.
@@ -12,8 +12,8 @@ The logic lives in the pom package; this is only the report. Warnings (an unlist
 weight for a source with no chunks) are logged to stdout by the package.
 
 Usage:
-    draw_weights.py                  print the odds
-    draw_weights.py --weights FILE   use another weights file
+    circulation.py                  print the odds
+    circulation.py --weights FILE   use another weights file
 """
 import argparse
 import os
@@ -22,7 +22,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
-from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector  # noqa: E402
+from pom.corpus import Catalog, Circulation, Bibliomancer  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(HERE, "..", "..", "..", "corpus")
@@ -35,8 +35,8 @@ def main():
     args = parser.parse_args()
 
     configure_logging("WARNING")
-    store = ChunkStore.load(os.path.join(CORPUS, "chunks"))
-    selector = ExemplarSelector(store, DrawWeights.from_file(args.weights))
+    store = Catalog.load(os.path.join(CORPUS, "chunks"))
+    selector = Bibliomancer(store, Circulation.from_file(args.weights))
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     shares = selector.register_shares()

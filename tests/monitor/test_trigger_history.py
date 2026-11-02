@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from pom.corpus import Chunk
+from pom.corpus import Passage
 from pom.monitor import TriggerHistory, TriggerHistoryError, TriggerRecord
 from pom.monitor.trigger_history import DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS
 from pom.voice import Portent
@@ -21,7 +21,7 @@ class Clock:
 
 
 def portent(text="The ghosts keep the hours."):
-    return Portent(text, (Chunk("book#1", "book", "verse", "an exemplar", 2),), 1.5, False)
+    return Portent(text, (Passage("book#1", "book", "verse", "an exemplar", 2),), 1.5, False)
 
 
 def history(clock=None, **options):

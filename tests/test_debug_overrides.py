@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 
 SRC = Path(__file__).resolve().parents[1] / "src"
-MODULES = ["pom/config.py", "pom/corpus/draw_weights.py", "pom/corpus/chunk_store.py",
-           "pom/corpus/exemplar_selector.py", "pom/listening/segment_fragmenter.py",
+MODULES = ["pom/config.py", "pom/corpus/circulation.py", "pom/corpus/catalog.py",
+           "pom/corpus/bibliomancer.py", "pom/listening/segment_fragmenter.py",
            "pom/scoring/word_tagger.py", "pom/scoring/scorer_model_client.py",
            "pom/scoring/scorer.py", "pom/scoring/fallback_scorer.py",
            "pom/scoring/convo_interest_tracker.py", "pom/prompt/prompt_builder.py", "pom/voice/oracle_model_client.py",

@@ -4,7 +4,7 @@ When the trigger fires, the oracle model is asked for a portent. What it is aske
 written by Wes in the config file (`oracle.prompt`), with two places marked for the pieces that change
 every time:
 
-  * `{exemplars}`: a handful of corpus chunks drawn by the ExemplarSelector, to show the model the registers
+  * `{exemplars}`: a handful of corpus chunks drawn by the Bibliomancer, to show the model the registers
     the oracle speaks in. They are drawn at random and never matched to the hinge.
   * `{hinge}`: the fragment that triggered, word for word.
 
@@ -40,15 +40,15 @@ Design decisions, and why:
     its own line breaks (verse stays verse). The fence is not escaped: if a chunk or the hinge itself contained
     three backticks, the fence would close early (no chunk in the corpus does).
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config and has no
-    built-in prompt. The ExemplarSelector is passed in too, so a dev tool can give it a seeded random
+    built-in prompt. The Bibliomancer is passed in too, so a dev tool can give it a seeded random
     generator and get the same exemplars for the same hinge.
 """
 import re
 from dataclasses import dataclass
 from typing import Optional
 
-from pom.corpus.chunk_store import Chunk
-from pom.corpus.exemplar_selector import ExemplarSelector
+from pom.corpus.catalog import Passage
+from pom.corpus.bibliomancer import Bibliomancer
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 
@@ -80,7 +80,7 @@ class OraclePrompt:
         exemplars: The chunks that were drawn and placed in it (empty if the prompt has no place for them).
     """
     text: str
-    exemplars: tuple[Chunk, ...] = ()
+    exemplars: tuple[Passage, ...] = ()
 
 
 class PromptBuilder:
@@ -91,7 +91,7 @@ class PromptBuilder:
         available: True if there is a prompt to build from.
     """
 
-    def __init__(self, prompt: str, selector: ExemplarSelector, strict: bool = False):
+    def __init__(self, prompt: str, selector: Bibliomancer, strict: bool = False):
         """Args:
             prompt: The oracle prompt, with `{exemplars}` and `{hinge}` marking where those go.
             selector: Where the exemplars are drawn from.

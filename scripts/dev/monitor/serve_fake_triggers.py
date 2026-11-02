@@ -26,7 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
-from pom.corpus import Chunk                                                  # noqa: E402
+from pom.corpus import Passage                                                  # noqa: E402
 from pom.monitor import MonitorSite, MonitorStatus, TriggerHistory            # noqa: E402
 from pom.voice import Portent                                                 # noqa: E402
 
@@ -40,9 +40,9 @@ HINGES = [
     "She said the elevator had been going up for three days.",
 ]
 EXEMPLARS = [
-    Chunk("dreambook-demo#00001", "dreambook-demo", "divination", "To dream of a long staircase is a sign of a journey not yet begun.", 14),
-    Chunk("horoscope-demo#00002", "horoscope-demo", "horoscope", "With the Moon in the house of letters, an answer arrives sealed.", 12),
-    Chunk("aphorism-demo#00003", "aphorism-demo", "wisdom", "What is not yours is another man's weather; let him look to it.", 13),
+    Passage("dreambook-demo#00001", "dreambook-demo", "divination", "To dream of a long staircase is a sign of a journey not yet begun.", 14),
+    Passage("horoscope-demo#00002", "horoscope-demo", "horoscope", "With the Moon in the house of letters, an answer arrives sealed.", 12),
+    Passage("aphorism-demo#00003", "aphorism-demo", "wisdom", "What is not yours is another man's weather; let him look to it.", 13),
 ]
 PORTENTS = [
     "A letter will come under the door, and you will not open it. This is the correct decision.",

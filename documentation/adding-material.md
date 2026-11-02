@@ -72,7 +72,7 @@ python scripts/dev/corpus/corpus.py promote --id ID
 ## 5. Chunk it and weigh it
 
 ```
-python scripts/dev/corpus/chunk.py
+python scripts/dev/corpus/cataloguer.py
 ```
 
 This rewrites `corpus/chunks/` (only the new source's file changes) and prints a report. Watch for
@@ -94,7 +94,7 @@ Nothing else needs regenerating when a weight changes.
 ```
 python scripts/dev/corpus/sample.py --pulls 5                   # see what actually gets drawn
 python scripts/dev/corpus/sample.py --stats 3000                # each register's share vs its target
-python scripts/dev/corpus/draw_weights.py                       # the odds table
+python scripts/dev/corpus/circulation.py                       # the odds table
 python -m pytest -q                                             # the whole suite, including the real corpus
 ```
 
@@ -110,8 +110,8 @@ addition is one commit, any code or test change it forced is another.
 ## Changing or removing a source
 
 - **Remove:** `python scripts/dev/corpus/corpus.py set ID status=excluded`, delete its entry from
-  `weights.json`, and re-run `chunk.py` (it deletes chunk files for sources that are gone). A weights
+  `weights.json`, and re-run `cataloguer.py` (it deletes chunk files for sources that are gone). A weights
   entry for a source with no chunks is only a warning, but it is probably a typo.
 - **Change the cleaning:** `set` the new markers, flags or drop patterns, `process`, audit, then
-  `promote --id ID` and `chunk.py` again. Nothing in `draft/`, `ready/` or `chunks/` is edited by hand.
+  `promote --id ID` and `cataloguer.py` again. Nothing in `draft/`, `ready/` or `chunks/` is edited by hand.
 - **Change how often it comes up:** only `weights.json`.

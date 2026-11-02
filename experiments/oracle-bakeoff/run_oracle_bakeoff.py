@@ -44,7 +44,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "experiments" / "oracle-playground"))
 sys.path.insert(0, str(HERE))
 from pom.config import Config                                      # noqa: E402
-from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector   # noqa: E402
+from pom.corpus import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
 from pom.voice import OracleModelClient                            # noqa: E402
@@ -84,7 +84,7 @@ def port_in_use(port: int) -> bool:
         return probe.connect_ex(("127.0.0.1", port)) == 0
 
 
-def corpus_fingerprint(store: ChunkStore) -> str:
+def corpus_fingerprint(store: Catalog) -> str:
     """A short hash of every chunk and of the draw weights, so a changed corpus is noticed."""
     digest = hashlib.sha256()
     for line in sorted(f"{chunk.id}\t{chunk.text}" for chunk in store):
@@ -140,8 +140,8 @@ def main() -> None:
     oracle = config.oracle
     hinges = read_hinges(HINGES)
     rng = random.Random()
-    store = ChunkStore.load(CHUNKS)
-    selector = ExemplarSelector(store, DrawWeights.from_file(CHUNKS / "weights.json"), rng,
+    store = Catalog.load(CHUNKS)
+    selector = Bibliomancer(store, Circulation.from_file(CHUNKS / "weights.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

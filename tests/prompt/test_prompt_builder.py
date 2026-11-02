@@ -1,6 +1,6 @@
 """Tests for pom.prompt.prompt_builder: the hinge and the exemplars go into Wes's prompt, labelled and fenced.
 
-The ExemplarSelector is a small fake where only the PromptBuilder is under test, and a real one with a seeded
+The Bibliomancer is a small fake where only the PromptBuilder is under test, and a real one with a seeded
 random generator where the point is that the same hinge can get the same exemplars.
 """
 import hashlib
@@ -9,7 +9,7 @@ import random
 
 import pytest
 
-from pom.corpus import Chunk, ChunkStore, DrawWeights, ExemplarSelector
+from pom.corpus import Passage, Catalog, Circulation, Bibliomancer
 from pom.prompt import OraclePrompt, PromptBuilder, PromptBuilderError
 
 PROMPT = "Speak as the oracle.\n\nExamples:\n{exemplars}\n\nThey said: {hinge}\nYour portent:"
@@ -26,7 +26,7 @@ def theme(text):
 
 
 def chunk(index, text=None):
-    return Chunk(f"book#{index}", "book", "verse", text or f"chunk {index}", 2)
+    return Passage(f"book#{index}", "book", "verse", text or f"chunk {index}", 2)
 
 
 class FakeSelector:
@@ -178,10 +178,10 @@ class TestPrivacy:
 
 
 def real_selector(seed=None):
-    chunks = [Chunk(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
-    weights = DrawWeights.from_dict({"registers": {"verse": {}}})
+    chunks = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
+    weights = Circulation.from_dict({"registers": {"verse": {}}})
     rng = random.Random(seed)
-    return ExemplarSelector(ChunkStore.from_chunks(chunks), weights, rng), rng
+    return Bibliomancer(Catalog.from_chunks(chunks), weights, rng), rng
 
 
 def seed_of(hinge):

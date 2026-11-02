@@ -111,9 +111,9 @@ def test_samples_default_to_three_to_five():
     assert config.exemplar_range == (3, 5) and config.report.ok
 
 
-def test_the_defaults_match_the_exemplar_selectors_defaults():
+def test_the_defaults_match_the_bibliomancers_defaults():
     """Config and ExemplarSelector each carry the default (neither imports the other), so keep them equal."""
-    from pom.corpus.exemplar_selector import DEFAULT_EXEMPLAR_RANGE
+    from pom.corpus.bibliomancer import DEFAULT_EXEMPLAR_RANGE
     from pom.config import DEFAULT_EXEMPLAR_RANGE as CONFIG_DEFAULT
     assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
 
@@ -156,10 +156,10 @@ def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
 
 def test_config_samples_plug_straight_into_the_sampler():
     import random
-    from pom.corpus import Chunk, ChunkStore, DrawWeights, ExemplarSelector
+    from pom.corpus import Passage, Catalog, Circulation, Bibliomancer
     config = Config.load(environ={"POM_EXEMPLARS_MIN": "2", "POM_EXEMPLARS_MAX": "2"})
-    store = ChunkStore.from_chunks([Chunk(f"a#{i}", "a", "red", f"Chunk {i}", 2) for i in range(9)])
-    selector = ExemplarSelector(store, DrawWeights.from_dict({}), random.Random(1),
+    store = Catalog.from_chunks([Passage(f"a#{i}", "a", "red", f"Passage {i}", 2) for i in range(9)])
+    selector = Bibliomancer(store, Circulation.from_dict({}), random.Random(1),
                                 exemplar_range=config.exemplar_range)
     assert len(selector.draw()) == 2
 

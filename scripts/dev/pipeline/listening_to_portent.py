@@ -45,7 +45,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                                      # noqa: E402
-from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector                                    # noqa: E402
+from pom.corpus import Catalog, Circulation, Bibliomancer                                    # noqa: E402
 from pom.listening import (Listener, MacMicSource, MicSource, SegmentFragmenter, WavSource,         # noqa: E402
                            WhisperServerClient)
 from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TriggerHistory                      # noqa: E402
@@ -151,7 +151,7 @@ def main() -> None:
     finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     rng = random.Random()
-    selector = ExemplarSelector(ChunkStore.load(CHUNKS), DrawWeights.from_file(CHUNKS / "weights.json"), rng,
+    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "weights.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

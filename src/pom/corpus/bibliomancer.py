@@ -1,19 +1,19 @@
-"""The ExemplarSelector: draws chunks at random, weighted so each register gets its target share over time.
+"""The Bibliomancer: draws chunks at random, weighted so each register gets its target share over time.
 
 The oracle shows the model a few random exemplar chunks. The corpus is lopsided (one register has
-30,000 chunks, another 400), so a plain random pick would swamp the small registers. The ExemplarSelector
+30,000 chunks, another 400), so a plain random pick would swamp the small registers. The Bibliomancer
 gives every chunk its own chance of being drawn, so that over many draws each register gets its
 target share, while any combination of draws stays possible: five obituaries in a row is rare,
 never impossible. Nothing is chosen category-first.
 
     chance(chunk) = register_share * source_weight / register_total
 
-where register_share is the register's normalized share (from DrawWeights), source_weight is the
+where register_share is the register's normalized share (from Circulation), source_weight is the
 chunk's source weight, and register_total is the sum of source_weight over the register's chunks.
 Drawing a register by its share and then a chunk within it by source weight, on every draw, gives
 exactly the same odds; this class does it with one cumulative table instead.
 
-These odds are computed from the corpus as it stands, once, when the ExemplarSelector is built. They are
+These odds are computed from the corpus as it stands, once, when the Bibliomancer is built. They are
 never stored: a chunk's chance depends on its register's total, so adding a chunk changes only
 its own register's numbers, and rebuilding takes a few milliseconds.
 
@@ -35,18 +35,18 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A register whose sources all weigh 0
     is skipped with a warning and the others renormalize. If nothing at all can be drawn that is
     CRITICAL: `draw` returns an empty list and the Conductor decides what to do. Asking for more
-    chunks than exist returns fewer. `strict=True` raises ExemplarSelectorError instead, for tests and dev
+    chunks than exist returns fewer. `strict=True` raises BibliomancerError instead, for tests and dev
     tools.
   * One pull never repeats a chunk. Drawing without repeats keeps the odds proportional to the
     weights among the chunks still available.
   * How many chunks a pull holds is a range, (3, 5) by default, passed in by whoever builds the
-    ExemplarSelector (the entry point takes it from Config; this module never reads Config itself).
+    Bibliomancer (the entry point takes it from Config; this module never reads Config itself).
     `draw()` with no argument picks a count in that range with the same random generator, so a
     seeded run is repeatable; `draw(n)` overrides it. A bad range falls back to (3, 5) with a
     warning, and a reversed one is swapped.
   * The random generator is injected, so a test (or a debugging session) can seed it and get the
     same draws every time.
-  * The ExemplarSelector counts draws per register. That is how you notice a register coming up too often
+  * The Bibliomancer counts draws per register. That is how you notice a register coming up too often
     and decide to adjust a share; the counts hold no text, so they are safe to log.
   * Chunks with zero chance (a zero source weight, or a zero-share register) are left out of the
     table entirely, so they can never be drawn.
@@ -55,8 +55,8 @@ import bisect
 import random
 from typing import Optional, Sequence
 
-from pom.corpus.chunk_store import Chunk, ChunkStore
-from pom.corpus.draw_weights import DrawWeights
+from pom.corpus.catalog import Passage, Catalog
+from pom.corpus.circulation import Circulation
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
@@ -66,19 +66,19 @@ _log = get_logger(__name__, DEBUG)
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 
 
-class ExemplarSelectorError(ValueError):
+class BibliomancerError(ValueError):
     """Raised for any selector problem, but only in strict mode (development and tests)."""
 
 
-class ExemplarSelector:
-    """Draws weighted random chunks from a ChunkStore.
+class Bibliomancer:
+    """Draws weighted random chunks from a Catalog.
 
     Attributes:
         report: Problems found while building the odds (an empty corpus, a register with nothing
-            drawable). `check_report` holds what `DrawWeights.check` found about the layout.
+            drawable). `check_report` holds what `Circulation.check` found about the layout.
     """
 
-    def __init__(self, store: ChunkStore, draw_weights: DrawWeights,
+    def __init__(self, store: Catalog, draw_weights: Circulation,
                  rng: Optional[random.Random] = None, strict: bool = False,
                  exemplar_range: Sequence[int] = DEFAULT_EXEMPLAR_RANGE):
         """Builds the draw odds from the store and the weights.
@@ -88,14 +88,14 @@ class ExemplarSelector:
             draw_weights: Register shares and source weights.
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
-            strict: Raise ExemplarSelectorError on any problem instead of recording it.
+            strict: Raise BibliomancerError on any problem instead of recording it.
             exemplar_range: The (fewest, most) chunks `draw()` returns when not told how many.
         """
         self._rng = rng if rng is not None else random.Random()
-        self.report = FaultRecorder(strict=strict, error=ExemplarSelectorError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=BibliomancerError, logger=_log)
         self._exemplar_range = self._valid_exemplar_range(exemplar_range)
         self.check_report = draw_weights.check(store.layout())   # logs any drift; the odds still work
-        self._chunks: list[Chunk] = []
+        self._chunks: list[Passage] = []
         self._probability: list[float] = []
         self._cumulative: list[float] = []
         self._shares: dict[str, float] = {}
@@ -124,7 +124,7 @@ class ExemplarSelector:
 
     # --- Building the odds ----------------------------------------------------------
 
-    def _build(self, store: ChunkStore, draw_weights: DrawWeights) -> None:
+    def _build(self, store: Catalog, draw_weights: Circulation) -> None:
         """Computes every chunk's chance of being drawn and the cumulative table."""
         if len(store) == 0:
             self.report.critical("nothing to draw from: the store has no chunks")
@@ -179,14 +179,14 @@ class ExemplarSelector:
         """Each drawable register's normalized share of draws (they sum to 1)."""
         return dict(self._shares)
 
-    def probability(self, chunk: Chunk) -> float:
+    def probability(self, chunk: Passage) -> float:
         """The chance that one draw returns this chunk; 0.0 if it can never be drawn."""
         try:
             return self._probability[self._index_of(chunk)]
         except ValueError:
             return 0.0
 
-    def _index_of(self, chunk: Chunk) -> int:
+    def _index_of(self, chunk: Passage) -> int:
         """Position of a chunk in the table (linear; for questions, not for drawing)."""
         for index, candidate in enumerate(self._chunks):
             if candidate.id == chunk.id:
@@ -203,7 +203,7 @@ class ExemplarSelector:
 
     # --- Drawing --------------------------------------------------------------------
 
-    def draw(self, count: Optional[int] = None) -> list[Chunk]:
+    def draw(self, count: Optional[int] = None) -> list[Passage]:
         """Draws chunks at random by weight, never repeating one within the pull.
 
         Args:

@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Library (the classes, modules and scripts)**: the corpus code takes the lexicon's names. `ChunkStore` is `Catalog`, `Chunk` is `Passage`, `DrawWeights` is `Circulation`, `ExemplarSelector` is `Bibliomancer`, and their
+  errors follow (`CatalogError`, `CirculationError`, `BibliomancerError`). The modules are `catalog.py`, `circulation.py` and `bibliomancer.py` (so their loggers are `pom.corpus.catalog` and so on), the tests follow, and the dev
+  scripts are `scripts/dev/corpus/cataloguer.py` (was `chunk.py`) and `circulation.py` (was `draw_weights.py`). Behavior is unchanged, and so are the data files on disk, the `corpus/` folder and the `pom.corpus` package: they move in later
+  batches, with the words register, source and chunk. The three experiments that import these classes use the new names. Old CHANGELOG entries keep the old words. Done with rope (scope-aware), then checked against the whole suite (2,580 passed).
 - **The shipped trigger leaves triggering scores out of the bar** (`exclude_triggers = true`). The zinger that fired no longer becomes the room's best score and holds the bar up, so a good score soon after a great one can still fire, and a quiet room stays alive. Replayed on the five recordings
   with EWMQ at 5 minutes and percentile 99.5: about 13.5 triggers an hour in busy rooms (7.9 before), 11.1 in a quiet one (3.6 before), and a lower zinger within 3 minutes of a higher one 2.2 times an hour (0.1 before). The rate is higher; percentile and half-life are the levers for it.
 - **The chart looks like graph paper**: black dots for the sentences (off-white in dark mode), the bar as a red line (a lighter red in dark mode), triggers still orange, and solid vertical lines every 5 minutes to match the horizontal ones (the time labels stay every 10). The caption says so. Chosen from a live preview. 9 new chart tests, 3 new page tests; 19 mutants checked.

@@ -2,14 +2,14 @@
 
 The PromptBuilder and the OracleModelClient are the real ones, with a small fake selector and a fake llama-server,
 so these tests check how the writer joins them. Where the point is repeatable exemplars, the selector is a real
-ExemplarSelector with a random generator the writer is given.
+Bibliomancer with a random generator the writer is given.
 """
 import logging
 import random
 
 import pytest
 
-from pom.corpus import Chunk, ChunkStore, DrawWeights, ExemplarSelector
+from pom.corpus import Passage, Catalog, Circulation, Bibliomancer
 from pom.prompt import PromptBuilder
 from pom.voice import OracleModelClient, Portent, PortentWriter, PortentWriterError
 
@@ -48,7 +48,7 @@ class FakeSelector:
 
 
 def chunk(index):
-    return Chunk(f"book#{index}", "book", "verse", f"chunk {index}", 2)
+    return Passage(f"book#{index}", "book", "verse", f"chunk {index}", 2)
 
 
 def writer(post=None, prompt=PROMPT, chunks=(chunk(1), chunk(2)), rng=None, strict=False, selector=None):
@@ -59,10 +59,10 @@ def writer(post=None, prompt=PROMPT, chunks=(chunk(1), chunk(2)), rng=None, stri
 
 
 def real_selector(seed=None):
-    chunks = [Chunk(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
-    weights = DrawWeights.from_dict({"registers": {"verse": {}}})
+    chunks = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
+    weights = Circulation.from_dict({"registers": {"verse": {}}})
     rng = random.Random(seed)
-    return ExemplarSelector(ChunkStore.from_chunks(chunks), weights, rng), rng
+    return Bibliomancer(Catalog.from_chunks(chunks), weights, rng), rng
 
 
 class TestWriting:

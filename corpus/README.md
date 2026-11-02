@@ -67,10 +67,10 @@ After trimming, `normalize.py` turns the text into utterances. In order: typogra
 
 ## Chunks and draw weights
 
-`chunks/<register>/<id>.jsonl` is made from `ready/` by `chunk.py`, and is what the voice models use. Each line is one chunk with its source, register and word count, and nothing about the rest of the corpus or its weight. Never edit a chunk file by hand: change `ready/` or the manifest and re-run `chunk.py`.
+`chunks/<register>/<id>.jsonl` is made from `ready/` by `cataloguer.py`, and is what the voice models use. Each line is one chunk with its source, register and word count, and nothing about the rest of the corpus or its weight. Never edit a chunk file by hand: change `ready/` or the manifest and re-run `cataloguer.py`.
 
 - **Size.** Utterances over 150 words are cut at sentence breaks (line breaks for verse) into near-equal pieces. Shorter ones are kept whole; `--min-words N` would merge them forward. Exact duplicates anywhere in the corpus are dropped, and the survivor records its `repeats`.
-- **Weights.** We weight the corpus to account for differences in quantity. Every chunk is in one pool and has its own chance of being drawn, set so each register gets its target share over many draws. The chance is computed from the register totals when the corpus is loaded and is never stored, so adding a chunk changes only its own register's numbers. Any combination of draws stays possible, including several from one register. All the weights live in one file, `chunks/weights.json`, laid out as a tree that mirrors the folders: each register has a relative `share` (equal to start) and lists every one of its sources with a `weight` (how often it is drawn compared with its neighbors in the same register; a source left out counts 1.0). Edit it by hand and nothing else needs regenerating. `draw_weights.py` prints the result.
+- **Weights.** We weight the corpus to account for differences in quantity. Every chunk is in one pool and has its own chance of being drawn, set so each register gets its target share over many draws. The chance is computed from the register totals when the corpus is loaded and is never stored, so adding a chunk changes only its own register's numbers. Any combination of draws stays possible, including several from one register. All the weights live in one file, `chunks/weights.json`, laid out as a tree that mirrors the folders: each register has a relative `share` (equal to start) and lists every one of its sources with a `weight` (how often it is drawn compared with its neighbors in the same register; a source left out counts 1.0). Edit it by hand and nothing else needs regenerating. `circulation.py` prints the result.
 
 ## Commands
 
@@ -87,8 +87,8 @@ scripts/dev/corpus/corpus.py inspect --id ID --trimmed
 scripts/dev/corpus/corpus.py review [--id ID]         # one-screen report per draft
 scripts/dev/corpus/corpus.py promote [--id ID]        # ready/
 scripts/dev/corpus/corpus.py publish-check            # fail if non-public-domain text is committed
-scripts/dev/corpus/chunk.py [--max-words N] [--min-words N] [--check]   # ready/ -> chunks/ (JSONL)
-scripts/dev/corpus/draw_weights.py                  # expected share of draws per register
+scripts/dev/corpus/cataloguer.py [--max-words N] [--min-words N] [--check]   # ready/ -> chunks/ (JSONL)
+scripts/dev/corpus/circulation.py                  # expected share of draws per register
 scripts/dev/corpus/audit.py [ID CHECK]               # artifact rates per file of ready/ (--dir draft for drafts)
 scripts/dev/corpus/gutenberg_catalog.py search REGEX  # find Gutenberg candidates offline
 ```

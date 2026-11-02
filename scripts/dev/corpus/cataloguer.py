@@ -26,10 +26,10 @@ Output is deterministic: one JSONL file per source under corpus/chunks/<register
 Re-run after any change to ready/ or the manifest.
 
 Usage:
-    chunk.py                          write corpus/chunks/ and print a report
-    chunk.py --max-words 200          change the ceiling
-    chunk.py --min-words 15           merge short utterances forward
-    chunk.py --check                  report only; write nothing
+    cataloguer.py                          write corpus/chunks/ and print a report
+    cataloguer.py --max-words 200          change the ceiling
+    cataloguer.py --min-words 15           merge short utterances forward
+    cataloguer.py --check                  report only; write nothing
 """
 import argparse
 import csv
@@ -42,7 +42,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
-from pom.corpus import DrawWeights  # noqa: E402  (scripts may import the package, never the reverse)
+from pom.corpus import Circulation  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.log_setup import configure_logging  # noqa: E402
 
 CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "corpus")
@@ -205,7 +205,7 @@ def build(limit, minimum):
 
 def target_shares(records, weights_path):
     """Returns each register's normalized target share; drift in weights.json is logged."""
-    weights = DrawWeights.from_file(weights_path)
+    weights = Circulation.from_file(weights_path)
     layout = {}
     for source, rs in records.items():
         if rs:

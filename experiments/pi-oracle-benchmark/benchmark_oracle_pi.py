@@ -50,7 +50,7 @@ sys.path.insert(0, str(ROOT / "experiments" / "oracle-playground"))
 sys.path.insert(0, str(ROOT / "experiments" / "oracle-bakeoff"))
 sys.path.insert(0, str(ROOT / "experiments" / "pi-benchmark"))
 from pom.config import Config                                      # noqa: E402
-from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector   # noqa: E402
+from pom.corpus import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
 from pom.voice import OracleModelClient                            # noqa: E402
@@ -277,8 +277,8 @@ def command_run(args) -> None:
     config = Config.load(CONFIG_PATH)
     oracle = config.oracle
     rng = random.Random()
-    store = ChunkStore.load(CHUNKS)
-    selector = ExemplarSelector(store, DrawWeights.from_file(CHUNKS / "weights.json"), rng,
+    store = Catalog.load(CHUNKS)
+    selector = Bibliomancer(store, Circulation.from_file(CHUNKS / "weights.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

@@ -2,7 +2,7 @@
 """Play with the oracle: type a hinge, get a portent, from the real PortentWriter.
 
 Nothing here is its own version of the oracle: the prompt comes from `oracle.prompt` in config/pom.toml (and
-config/pom.local.toml), and the real PortentWriter draws the exemplars (ExemplarSelector), builds the prompt
+config/pom.local.toml), and the real PortentWriter draws the exemplars (Bibliomancer), builds the prompt
 (PromptBuilder) and gets the portent (OracleModelClient). What you see here is what the Printer does. The only thing this
 script adds is the typing of the hinge, which the trigger supplies.
 
@@ -40,7 +40,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                      # noqa: E402
-from pom.corpus import ChunkStore, DrawWeights, ExemplarSelector   # noqa: E402
+from pom.corpus import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
 from pom.voice import OracleModelClient, PortentWriter              # noqa: E402
@@ -109,7 +109,7 @@ def main() -> None:
     configure_logging("WARNING")
     config = Config.load(CONFIG_PATH)
     rng = random.Random()
-    selector = ExemplarSelector(ChunkStore.load(CHUNKS), DrawWeights.from_file(CHUNKS / "weights.json"), rng,
+    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "weights.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

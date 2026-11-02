@@ -24,7 +24,7 @@ import random
 from dataclasses import dataclass
 from typing import Optional
 
-from pom.corpus.chunk_store import Chunk
+from pom.corpus.catalog import Passage
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.prompt.prompt_builder import PromptBuilder
@@ -49,7 +49,7 @@ class Portent:
         cut_off: True if the model stopped because it reached the most it may write, rather than finishing.
     """
     text: str
-    exemplars: tuple[Chunk, ...]
+    exemplars: tuple[Passage, ...]
     seconds: float
     cut_off: bool
 

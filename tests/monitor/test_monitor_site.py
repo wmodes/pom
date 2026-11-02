@@ -10,7 +10,7 @@ import urllib.request
 
 import pytest
 
-from pom.corpus import Chunk
+from pom.corpus import Passage
 from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TriggerHistory
 from pom.voice import Portent
 
@@ -30,8 +30,8 @@ def basic(user="anyone", password=PASSWORD):
 
 
 def portent(text="The ghosts keep the hours.", cut_off=False):
-    return Portent(text, (Chunk("dreambook#7", "dreambook", "divination", "To dream of a sea is a sign of travel.", 9),
-                          Chunk("horoscope#2", "horoscope", "horoscope", "The Moon in Cancer favours the home.", 6)), 2.5, cut_off)
+    return Portent(text, (Passage("dreambook#7", "dreambook", "divination", "To dream of a sea is a sign of travel.", 9),
+                          Passage("horoscope#2", "horoscope", "horoscope", "The Moon in Cancer favours the home.", 6)), 2.5, cut_off)
 
 
 def make(clock=None, show_hinges=True, status=None, history=None, **options):
@@ -599,7 +599,7 @@ class TestTextIsEscaped:
 
     def test_a_portent_and_an_exemplar_cannot_inject_markup(self):
         _, history, client, _ = make()
-        bad = Portent("<b onclick=evil()>boom</b>", (Chunk("x#1", "x", "<i>reg</i>", "<u>text</u>", 1),), 1.0, False)
+        bad = Portent("<b onclick=evil()>boom</b>", (Passage("x#1", "x", "<i>reg</i>", "<u>text</u>", 1),), 1.0, False)
         record = add(history, portent=bad)
         page = get(client, f"/trigger/{record.id}").get_data(as_text=True)
         assert "<b onclick" not in page and "<u>text</u>" not in page and "<i>reg</i>" not in page

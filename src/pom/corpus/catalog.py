@@ -1,7 +1,7 @@
 """Chunks and the store that holds them.
 
 A chunk is one utterance sized for the oracle's output. The chunk files are made by
-scripts/dev/corpus/chunk.py, one JSON object per line, one file per source:
+scripts/dev/corpus/cataloguer.py, one JSON object per line, one file per source:
 
     corpus/chunks/<register>/<source>.jsonl
 
@@ -38,12 +38,12 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 
-class ChunkError(ValueError):
+class CatalogError(ValueError):
     """Raised for any chunk problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
-class Chunk:
+class Passage:
     """One utterance, with where it came from.
 
     Attributes:
@@ -64,22 +64,22 @@ class Chunk:
     sha1: str = ""
 
 
-class ChunkStore:
+class Catalog:
     """All the chunks, indexed by register and source.
 
-    Build one with `ChunkStore.load` (from disk) or `ChunkStore.from_chunks` (in memory).
+    Build one with `Catalog.load` (from disk) or `Catalog.from_chunks` (in memory).
     """
 
-    def __init__(self, chunks: Iterable[Chunk], report: Optional[FaultRecorder] = None,
+    def __init__(self, chunks: Iterable[Passage], report: Optional[FaultRecorder] = None,
                  strict: bool = False):
         """Indexes the chunks. Use the `load` / `from_chunks` constructors.
 
         A chunk whose id was already seen is skipped and reported. A store with no chunks at all
-        records a CRITICAL fault (and raises ChunkError in strict mode).
+        records a CRITICAL fault (and raises CatalogError in strict mode).
         """
         self.report = report if report is not None else _new_report(strict)
-        self._tree: dict[str, dict[str, list[Chunk]]] = {}
-        self._by_id: dict[str, Chunk] = {}
+        self._tree: dict[str, dict[str, list[Passage]]] = {}
+        self._by_id: dict[str, Passage] = {}
         for chunk in chunks:
             if chunk.id in self._by_id:
                 self.report.warn(f"duplicate chunk id {chunk.id}; keeping the first")
@@ -92,16 +92,16 @@ class ChunkStore:
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_chunks(cls, chunks: Iterable[Chunk], strict: bool = False) -> "ChunkStore":
+    def from_chunks(cls, chunks: Iterable[Passage], strict: bool = False) -> "Catalog":
         """Builds a store from chunk objects already in memory (used by tests)."""
         return cls(chunks, strict=strict)
 
     @classmethod
-    def load(cls, directory, strict: bool = False) -> "ChunkStore":
+    def load(cls, directory, strict: bool = False) -> "Catalog":
         """Reads every `<register>/<source>.jsonl` under `directory`.
 
         A missing directory, an unreadable file or a bad record is recorded in `store.report`
-        and skipped; the rest still loads. With strict=True the first problem raises ChunkError.
+        and skipped; the rest still loads. With strict=True the first problem raises CatalogError.
         """
         report = _new_report(strict)
         root = Path(directory)
@@ -134,7 +134,7 @@ class ChunkStore:
         """Register -> its sources. This is what `DrawWeights.check` compares its file against."""
         return {register: self.sources(register) for register in self.registers()}
 
-    def chunks(self, register: str, source: Optional[str] = None) -> tuple[Chunk, ...]:
+    def chunks(self, register: str, source: Optional[str] = None) -> tuple[Passage, ...]:
         """The chunks of a register, or of one source in it, in file order.
 
         Returns an empty tuple for an unknown register or source.
@@ -150,33 +150,33 @@ class ChunkStore:
             return len(self._by_id)
         return len(self.chunks(register, source))
 
-    def get(self, chunk_id: str) -> Chunk:
+    def get(self, chunk_id: str) -> Passage:
         """The chunk with this id.
 
         Raises:
-            ChunkError: If there is none. This is a programming error (the caller asked for an id
+            CatalogError: If there is none. This is a programming error (the caller asked for an id
                 it never received), not a data problem, so it is not softened.
         """
         try:
             return self._by_id[chunk_id]
         except KeyError:
-            raise ChunkError(f"no chunk with id {chunk_id!r}") from None
+            raise CatalogError(f"no chunk with id {chunk_id!r}") from None
 
     def __len__(self) -> int:
         return len(self._by_id)
 
-    def __iter__(self) -> Iterator[Chunk]:
+    def __iter__(self) -> Iterator[Passage]:
         """Every chunk in deterministic order: register, source, then file order."""
         for register in self.registers():
             yield from self.chunks(register)
 
 
 def _new_report(strict: bool) -> FaultRecorder:
-    """A FaultRecorder that raises ChunkError in strict mode; otherwise it collects and logs."""
-    return FaultRecorder(strict=strict, error=ChunkError, logger=_log)
+    """A FaultRecorder that raises CatalogError in strict mode; otherwise it collects and logs."""
+    return FaultRecorder(strict=strict, error=CatalogError, logger=_log)
 
 
-def _read_file(path: Path, register: str, source: str, report: FaultRecorder) -> list[Chunk]:
+def _read_file(path: Path, register: str, source: str, report: FaultRecorder) -> list[Passage]:
     """Parses one chunk file, repairing or skipping what is wrong and reporting each problem.
 
     The folder and file name are trusted over what a record claims.
@@ -218,7 +218,7 @@ def _read_file(path: Path, register: str, source: str, report: FaultRecorder) ->
                 report.warn(f"{where}: {field} {record[field]!r} does not match its {what} "
                             f"{expected!r}; using {expected!r}")
         words = record.get("words")
-        chunks.append(Chunk(
+        chunks.append(Passage(
             id=str(chunk_id), source=source, register=register, text=text,
             words=words if isinstance(words, int) and not isinstance(words, bool)
             else len(text.split()),

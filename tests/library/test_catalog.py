@@ -417,9 +417,9 @@ def test_strict_from_passages_rejects_duplicates():
 # --- Meeting Circulation, and the committed library -----------------------------------------
 
 def test_layout_feeds_weights_check(library):
-    weights = Circulation.from_dict({"shelves": {"news": {"holdings": {"ads": 1, "obits": 1}},
+    circulation = Circulation.from_dict({"shelves": {"news": {"holdings": {"ads": 1, "obits": 1}},
                                                 "poetry": {"holdings": {"dickinson": 1}}}})
-    assert weights.check(Catalog.load(library).layout()).ok
+    assert circulation.check(Catalog.load(library).layout()).ok
 
 
 @pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
@@ -431,5 +431,5 @@ def test_real_passages_load_and_agree_with_the_real_weights_file():
     folders = sorted(f.name for f in (REPO / "library" / "passages").iterdir() if f.is_dir())
     assert store.shelves() == folders      # every shelf folder loaded, however many there are
     assert all(passage.words <= 150 for passage in store)
-    weights = Circulation.from_file(REPO / "library" / "passages" / "circulation.json", strict=True)
-    assert weights.check(store.layout()).ok
+    circulation = Circulation.from_file(REPO / "library" / "passages" / "circulation.json", strict=True)
+    assert circulation.check(store.layout()).ok

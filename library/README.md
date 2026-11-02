@@ -17,12 +17,12 @@ library/
 ├── inbox/          human-supplied files that cannot be downloaded (committed)
 ├── raw/            untouched downloads, one directory per holding id.  NOT safe. (gitignored)
 ├── draft/          trimmed and standardized, awaiting review.         NOT safe.
-│   └── <form>/<id>.txt
+│   └── <shelf>/<id>.txt
 └── ready/          approved + cleared + reviewed.                     SAFE.
-    └── <form>/<id>.txt
+    └── <shelf>/<id>.txt
 ```
 
-`<form>` is what the oracle might write, not where the text came from. In use: `divination`, `wisdom`, `poetry`, `drama`, `humor`, `horoscope`, `manual`, `prophecy`, `epitaph`, `aphorism`, `rhyme`, `spiritualism`, `news`, `nonsense`. Add a form only when a holding needs it, and list it here.
+`<shelf>` is what the oracle might write, not where the text came from. In use: `divination`, `wisdom`, `poetry`, `drama`, `humor`, `horoscope`, `manual`, `prophecy`, `epitaph`, `aphorism`, `rhyme`, `spiritualism`, `news`, `nonsense`. Add a shelf only when a holding needs it, and list it here.
 
 Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/library/library.py` reading `raw/` and the manifest, deterministically: re-running `clean` gives byte-identical files. To change a text, change its row in `holdings.csv` (or a rule in `normalize.py`) and re-run.
 
@@ -41,7 +41,7 @@ Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/l
 | Column | Meaning |
 |---|---|
 | `id` | Short stable slug. Names the directories and files. |
-| `form` | One of the forms above. |
+| `shelf` | One of the shelves above. |
 | `title`, `author`, `year` | As published. `year` is the first publication year when known. |
 | `rights`, `rights_basis` | See Rules. The basis says why we believe it. |
 | `url` | Where it came from; decides how it is fetched. `inbox/<file>` means a file in `library/inbox/`. Handlers: Project Gutenberg, Wikisource, direct `.pdf`, direct `.txt`, inbox. |
@@ -75,11 +75,11 @@ After trimming, `normalize.py` turns the text into utterances. In order: typogra
 ## Commands
 
 ```
-scripts/dev/library/library.py add --id ID --form F --title T --rights R --basis B --url U [--status approved]
+scripts/dev/library/library.py add --id ID --shelf S --title T --rights R --basis B --url U [--status approved]
 scripts/dev/library/library.py set ID column=value ...  # edit markers, flags, drop patterns, status
 scripts/dev/library/library.py process ID               # fetch, clean, audit, sample (stops before promote)
 scripts/dev/library/library.py status                   # what is on disk
-scripts/dev/library/library.py mix [--prefix bible-]    # weighted share of each holding and form (weights from passages/circulation.json)
+scripts/dev/library/library.py mix [--prefix bible-]    # weighted share of each holding and shelf (circulation from passages/circulation.json)
 scripts/dev/library/library.py fetch [--id ID]          # raw/
 scripts/dev/library/library.py inspect --id ID          # landmarks + first/last lines, to choose markers
 scripts/dev/library/library.py clean [-v] [--audit N]   # draft/

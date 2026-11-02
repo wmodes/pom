@@ -13,7 +13,7 @@ weight for a holding with no passages) are logged to stdout by the package.
 
 Usage:
     circulation.py                  print the odds
-    circulation.py --weights FILE   use another weights file
+    circulation.py --circulation FILE   use another circulation file
 """
 import argparse
 import os
@@ -31,12 +31,12 @@ PULL = 5      # the pull size used for the "all alike" column
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--weights", default=os.path.join(LIBRARY, "passages", "circulation.json"))
+    parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     args = parser.parse_args()
 
     configure_logging("WARNING")
     store = Catalog.load(os.path.join(LIBRARY, "passages"))
-    selector = Bibliomancer(store, Circulation.from_file(args.weights))
+    selector = Bibliomancer(store, Circulation.from_file(args.circulation))
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     shares = selector.shelf_shares()

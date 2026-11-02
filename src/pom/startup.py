@@ -11,7 +11,7 @@ step. Replace them one at a time; the runner and its tests do not change.
 
 The duties, in order (see `planned_steps` for each one's detail):
     1. config-report      say what the config loader had to correct
-    2. data-check         the library passages, the weights file and the NLTK data are present
+    2. data-check         the library passages, the circulation file and the NLTK data are present
     3. mic-gain           set the microphone's capture gain from config (Pi only; it resets on reboot)
     4. audio-device       a capture device exists
     5. transcriber        whisper is present and answering

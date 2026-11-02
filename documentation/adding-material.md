@@ -31,7 +31,7 @@ Library scripts are in `scripts/dev/library/`. For what each library column and 
 
 ```
 python scripts/dev/library/gutenberg_catalog.py search 'title regex'     # find a Gutenberg book
-python scripts/dev/library/library.py add --id SHELF-author-title-year --form SHELF \
+python scripts/dev/library/library.py add --id SHELF-author-title-year --shelf SHELF \
     --title "..." --author "..." --year 1865 --rights public-domain \
     --basis "why we believe it" --url https://www.gutenberg.org/ebooks/N --status approved
 python scripts/dev/library/library.py process ID
@@ -76,7 +76,7 @@ python scripts/dev/library/cataloguer.py
 ```
 
 This rewrites `library/passages/` (only the new holding's file changes) and prints a report. Watch for
-warnings: *"shelf(s) not in weights file"* or *"holding(s) not in weights file"* mean the new
+warnings: *"shelf(s) not in circulation file"* or *"holding(s) not in circulation file"* mean the new
 material counts 1.0 until you list it. That works, but listing it makes the intent visible.
 
 Edit `library/passages/circulation.json` by hand. Under the shelf, add the holding with a weight (1.0

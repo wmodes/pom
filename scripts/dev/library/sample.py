@@ -3,7 +3,7 @@
 
 It builds the real Bibliomancer from library/passages/, library/passages/circulation.json and the exemplar range in
 config/pom.toml (plus config/pom.local.toml), so what you see is what the oracle's exemplar draw
-will do. Try a different weights file with --weights to see the effect before editing the real one.
+will do. Try a different circulation file with --circulation to see the effect before editing the real one.
 
 Usage:
     sample.py                      one pull, sized by the config (3 to 5 passages)
@@ -12,7 +12,7 @@ Usage:
     sample.py --seed 7             repeatable draws
     sample.py --stats 5000         draw 5000 pulls quietly and compare each shelf's share of
                                    draws with its target
-    sample.py --weights my.json    use another weights file
+    sample.py --circulation my.json    use another circulation file
     sample.py -v                   show the config's log level (the default shows warnings only)
 """
 import argparse
@@ -61,14 +61,14 @@ def main():
     parser.add_argument("--seed", type=int, default=None, help="seed the random generator")
     parser.add_argument("--stats", type=int, metavar="PULLS", default=None,
                         help="draw this many pulls quietly and print the shelf shares")
-    parser.add_argument("--weights", default=os.path.join(ROOT, "library", "passages", "circulation.json"))
+    parser.add_argument("--circulation", default=os.path.join(ROOT, "library", "passages", "circulation.json"))
     parser.add_argument("-v", "--verbose", action="store_true", help="use the config's log level")
     args = parser.parse_args()
 
     config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
     configure_logging(config.log_level if args.verbose else "WARNING")
     store = Catalog.load(os.path.join(ROOT, "library", "passages"))
-    selector = Bibliomancer(store, Circulation.from_file(args.weights), random.Random(args.seed),
+    selector = Bibliomancer(store, Circulation.from_file(args.circulation), random.Random(args.seed),
                       exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")

@@ -41,7 +41,7 @@ _log = get_logger(__name__, DEBUG)
 
 
 class CirculationError(ValueError):
-    """Raised for any weights problem, but only in strict mode (development and tests)."""
+    """Raised for any circulation problem, but only in strict mode (development and tests)."""
 
 
 class Circulation:
@@ -49,7 +49,7 @@ class Circulation:
 
     Build one with `Circulation.from_file` or `Circulation.from_dict`, then ask it for shares and
     weights. `report` holds whatever was recovered from while reading; `check` compares the
-    weights with the library layout and returns its own report.
+    circulation with the library layout and returns its own report.
     """
 
     def __init__(self, shares: Mapping[str, float], holding_weights: Mapping[str, float],
@@ -74,7 +74,7 @@ class Circulation:
 
     @classmethod
     def from_file(cls, path, strict: bool = False) -> "Circulation":
-        """Reads a weights file.
+        """Reads a circulation file.
 
         A missing, unreadable or invalid file gives all-default weights and a warning, so the
         oracle still runs. With strict=True it raises CirculationError instead.
@@ -84,16 +84,16 @@ class Circulation:
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
         except OSError as error:
-            report.warn(f"cannot read weights file {path}: {error}; every weight counts 1.0")
+            report.warn(f"cannot read circulation file {path}: {error}; every weight counts 1.0")
             document = {}
         except json.JSONDecodeError as error:
-            report.warn(f"weights file {path} is not valid JSON: {error}; every weight counts 1.0")
+            report.warn(f"circulation file {path} is not valid JSON: {error}; every weight counts 1.0")
             document = {}
         return cls._parse(document, report, strict)
 
     @classmethod
     def from_dict(cls, document, strict: bool = False) -> "Circulation":
-        """Reads an already-parsed weights document, recovering from anything wrong in it.
+        """Reads an already-parsed circulation document, recovering from anything wrong in it.
 
         Keys starting with an underscore (such as `_about`) are notes and are ignored.
         """
@@ -104,7 +104,7 @@ class Circulation:
         """Walks the document, keeping what is valid and reporting what is not."""
         shares, weights, listed_under = {}, {}, {}
         if not isinstance(document, dict):
-            report.warn("weights file must be a JSON object; every weight counts 1.0")
+            report.warn("circulation file must be a JSON object; every weight counts 1.0")
             return cls(shares, weights, listed_under, report, strict)
         shelves = document.get("shelves", {})
         if not isinstance(shelves, dict):
@@ -175,13 +175,13 @@ class Circulation:
     # --- Validation -----------------------------------------------------------------
 
     def check(self, layout: Mapping[str, Iterable[str]]) -> FaultRecorder:
-        """Compares the weights with the library layout.
+        """Compares the circulation with the library layout.
 
         Args:
             layout: Shelf name -> the holding ids that have passages in it.
 
         Returns:
-            A new FaultRecorder of everything that has drifted: weights listed for a shelf or
+            A new FaultRecorder of everything that has drifted: entries listed for a shelf or
             holding with no passages (harmless, but probably a typo), shelves and holdings the
             file does not mention (counted 1.0), and holdings listed under a different shelf
             than the one their passages live in. Strict mode raises on the first of these.
@@ -192,17 +192,17 @@ class Circulation:
 
         empty_shelves = sorted(r for r in self._shares if not actual.get(r))
         if empty_shelves:
-            report.warn(f"weights list shelf(s) with no passages: {', '.join(empty_shelves)}")
+            report.warn(f"circulation lists shelf(s) with no passages: {', '.join(empty_shelves)}")
         missing_holdings = sorted(s for s in self._weights if s not in located)
         if missing_holdings:
-            report.warn(f"weights list holding(s) with no passages: {', '.join(missing_holdings)}")
+            report.warn(f"circulation lists holding(s) with no passages: {', '.join(missing_holdings)}")
         unlisted_shelves = sorted(r for r in actual if r not in self._shares)
         if unlisted_shelves:
-            report.warn(f"{len(unlisted_shelves)} shelf(s) not in weights file, "
+            report.warn(f"{len(unlisted_shelves)} shelf(s) not in circulation file, "
                         f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_shelves)}")
         unlisted_holdings = sorted(s for s in located if s not in self._weights)
         if unlisted_holdings:
-            report.warn(f"{len(unlisted_holdings)} holding(s) not in weights file, "
+            report.warn(f"{len(unlisted_holdings)} holding(s) not in circulation file, "
                         f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_holdings)}")
         for holding, shelf in sorted(self._listed_under.items()):
             if holding in located and located[holding] != shelf:

@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (9): form is shelf, weights are circulation**: the `form` column of `library/holdings.csv` is `shelf` (and `library.py add --form` is `--shelf`, `<form>` in the folder layout is `<shelf>`, the `mix`
+  table says "by shelf"), and the `--weights` flags of `cataloguer.py`, `circulation.py` and `sample.py` are `--circulation`. The "weights file" in messages, docstrings and docs is the *circulation file*, and the
+  tests' `weights` variables (always a `Circulation`) are `circulation`. A *holding weight* stays, as the lexicon says. One slip from the word pass is undone: `validate_output.py` says "not obvious source" again
+  ("holding" there read as someone carrying contraband). The catalog output is unchanged. 2,580 tests pass.
 - **The Great Rename, words (8): the monitor page says turns and qualifiers**: what the page lists is a *turn* ("Turns, newest first", "turns in the last 60 min", "last turn", "turns since start", "Turn N"
   with "← all turns"), the orange marks on the chart are *qualifiers*, and "Trigger rule" is "Bar type". The addresses change with the words: `/trigger/N` is `/turn/N` and `/api/triggers` is `/api/turns`
   (an old `/trigger/N` link is now a 404), and the JSON fields follow (`turns`, `turns_in_history`, `turns_per_hour`, `turns_since_start`, `last_turn_ago`, `bar_description`). In the code `TracePoint.triggered`

@@ -5,7 +5,7 @@ The control script will call `check_output(text, hinge)` on every reply before p
 it, so there is one named place to add checks. Today it returns no findings.
 
 INTENTION
-    The Printer's replies should be "not obvious holding, not obvious form, not obvious
+    The Printer's replies should be "not obvious source, not obvious form, not obvious
     input": lyrically connected to the room, composed in the shelves' flavor, never a
     plain quote and never a plain answer. We worried about two ways the oracle could miss that.
       - Track A (stock instruct model, 3 to 5 library passages in the prompt) may copy its
@@ -24,7 +24,7 @@ WHY IT IS A STUB (decided with Wes, October 2026)
          reads as that proverb, yet shares no long run of words with it.
       3. It is blind to "not obvious input." A reply that merely echoes the hinge ("you said
          dog, so: dog") fails the goal and never touches the library.
-      4. It stands in for the real question, "does this read as an obvious holding?", which
+      4. It stands in for the real question, "does this read as an obvious source?", which
          is a matter of taste. The bake-off compares both tracks' outputs side by side, and
          that reading is the real test. We add a check here only if the reading shows a
          problem worth catching.

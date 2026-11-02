@@ -18,7 +18,7 @@ Rules, in order:
      copy records how many times it occurred.
 
 A passage holds only facts about itself (holding, shelf, text). How likely it is to be
-drawn depends on the whole library and on the weights in passages/circulation.json, so that is
+drawn depends on the whole library and on the circulation in passages/circulation.json, so that is
 computed at load time by the Bibliomancer (src/pom/library) and never stored here: adding one utterance, or
 changing a weight, touches no passage file.
 
@@ -193,7 +193,7 @@ def build(limit, minimum):
             if words(text) > limit:
                 stats["unsplittable"] += 1
             record = {
-                "id": f"{holding}#{len(out):05d}", "holding": holding, "shelf": row["form"],
+                "id": f"{holding}#{len(out):05d}", "holding": holding, "shelf": row["shelf"],
                 "text": text, "words": words(text),
                 "repeats": 1, "sha1": hashlib.sha1(text.encode("utf-8")).hexdigest()[:12],
             }
@@ -203,15 +203,15 @@ def build(limit, minimum):
     return records, stats
 
 
-def target_shares(records, weights_path):
+def target_shares(records, circulation_path):
     """Returns each shelf's normalized target share; drift in circulation.json is logged."""
-    weights = Circulation.from_file(weights_path)
+    circulation = Circulation.from_file(circulation_path)
     layout = {}
     for holding, rs in records.items():
         if rs:
             layout.setdefault(rs[0]["shelf"], []).append(holding)
-    weights.check(layout)                      # logs unlisted or missing shelves and holdings
-    return weights.shares_for(layout)
+    circulation.check(layout)                      # logs unlisted or missing shelves and holdings
+    return circulation.shares_for(layout)
 
 
 def write(records):
@@ -260,12 +260,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--max-words", type=int, default=150)
     parser.add_argument("--min-words", type=int, default=0)
-    parser.add_argument("--weights", default=os.path.join(LIBRARY, "passages", "circulation.json"))
+    parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
     configure_logging("WARNING")
     records, stats = build(args.max_words, args.min_words)
-    shares = target_shares(records, args.weights)
+    shares = target_shares(records, args.circulation)
     if not args.check:
         write(records)
     report(records, stats, shares, args.max_words, args.min_words)

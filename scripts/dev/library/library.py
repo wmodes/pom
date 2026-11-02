@@ -3,17 +3,17 @@
 
 The manifest is the single source of truth. This script never edits it; it
 reads it, enforces the rights rule, and writes only under library/raw/ (not
-committed), library/draft/<form>/ and library/ready/<form>/ (both committed).
+committed), library/draft/<shelf>/ and library/ready/<shelf>/ (both committed).
 
 Stages, in order. Only ready/ is safe to use as training, few-shot or
 retrieval data; raw/ and draft/ are not.
     fetch    -> raw/<id>/                 untouched download
-    clean    -> draft/<form>/<id>.txt     machine-cleaned, awaiting human review
-    promote  -> ready/<form>/<id>.txt     only if approved, public-domain/CC0
+    clean    -> draft/<shelf>/<id>.txt    machine-cleaned, awaiting human review
+    promote  -> ready/<shelf>/<id>.txt    only if approved, public-domain/CC0
                                           and reviewed (manifest column)
 
 Usage:
-    scripts/dev/library/library.py add --id ID --form F --title T --rights R --basis B --url U
+    scripts/dev/library/library.py add --id ID --shelf S --title T --rights R --basis B --url U
     scripts/dev/library/library.py set ID column=value ...   # edit markers, flags, status
     scripts/dev/library/library.py process ID         # fetch, clean, audit, sample; stops before promote
     scripts/dev/library/library.py status             # what is on disk, per holding
@@ -438,11 +438,11 @@ def raw_dir_for(row):
 
 
 def draft_path_for(row):
-    return LIBRARY / "draft" / row["form"] / f"{row['id']}.txt"
+    return LIBRARY / "draft" / row["shelf"] / f"{row['id']}.txt"
 
 
 def ready_path_for(row):
-    return LIBRARY / "ready" / row["form"] / f"{row['id']}.txt"
+    return LIBRARY / "ready" / row["shelf"] / f"{row['id']}.txt"
 
 
 # Junk that appears in many holdings and is never part of the text itself.
@@ -624,7 +624,7 @@ def review_report(row):
     for ch in text:
         if ord(ch) > 127:
             non_ascii[ch] = non_ascii.get(ch, 0) + 1
-    print(f"\n{'=' * 78}\n{row['id']}  [{row['form']}]  reviewed={row['reviewed'] or '-'}")
+    print(f"\n{'=' * 78}\n{row['id']}  [{row['shelf']}]  reviewed={row['reviewed'] or '-'}")
     print(f"{words} words, {len(lines)} lines, "
           f"{sum(non_ascii.values())} non-ASCII chars "
           f"({', '.join(f'{c}x{n}' for c, n in sorted(non_ascii.items(), key=lambda kv: -kv[1])[:8]) or 'none'})")
@@ -760,7 +760,7 @@ def cmd_add(args):
     if any(r["id"] == args.id for r in rows):
         sys.exit(f"A holding with id '{args.id}' already exists. Use `set` to change it.")
     row = {f: "" for f in fields}
-    row.update(id=args.id, form=args.form, title=args.title, author=args.author, year=args.year,
+    row.update(id=args.id, shelf=args.shelf, title=args.title, author=args.author, year=args.year,
                rights=args.rights, rights_basis=args.basis, url=args.url, status=args.status,
                notes=args.notes)
     validate_row_values(row)
@@ -854,7 +854,7 @@ def holding_weight(row, weights=None):
 
 
 def cmd_mix(args):
-    """Shows how much each holding and form contributes to the mix, after weights.
+    """Shows how much each holding and shelf contributes to the mix, after weights.
 
     Effective words = words in ready/ x weight. Use it to keep one flavor (say, the
     Bible) from overwhelming the rest: change a holding's weight in
@@ -878,13 +878,13 @@ def cmd_mix(args):
         flag = "  <-- over 15%" if effective / total_w > 0.15 else ""
         print(f"{row['id']:<46} {holding_weight(row, weights):>4.1f} {utterances:>7} {words:>8} "
               f"{effective / total_w:>8.1%}{flag}")
-    print(f"\n{'by form':<46} {'':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
-    forms = {}
+    print(f"\n{'by shelf':<46} {'':>4} {'utter.':>7} {'words':>8} {'effective':>9}")
+    shelves = {}
     for row, utterances, words, effective in stats:
-        entry = forms.setdefault(row["form"], [0, 0, 0.0])
+        entry = shelves.setdefault(row["shelf"], [0, 0, 0.0])
         entry[0] += utterances; entry[1] += words; entry[2] += effective
-    for form, (utterances, words, effective) in sorted(forms.items(), key=lambda kv: -kv[1][2]):
-        print(f"{form:<46} {'':>4} {utterances:>7} {words:>8} {effective / total_w:>8.1%}")
+    for shelf, (utterances, words, effective) in sorted(shelves.items(), key=lambda kv: -kv[1][2]):
+        print(f"{shelf:<46} {'':>4} {utterances:>7} {words:>8} {effective / total_w:>8.1%}")
     if args.prefix:
         group = [s for s in stats if s[0]["id"].startswith(args.prefix)]
         print(f"\nids starting '{args.prefix}': {len(group)} holdings, "
@@ -930,7 +930,7 @@ def main():
                    ).set_defaults(func=cmd_publish_check)
     p = sub.add_parser("add", help="append a holding row to the manifest")
     p.add_argument("--id", required=True)
-    p.add_argument("--form", required=True)
+    p.add_argument("--shelf", required=True)
     p.add_argument("--title", required=True)
     p.add_argument("--author", default="")
     p.add_argument("--year", default="")
@@ -944,7 +944,7 @@ def main():
     p.add_argument("id")
     p.add_argument("assignments", nargs="+", metavar="column=value")
     p.set_defaults(func=cmd_set)
-    p = sub.add_parser("mix", help="share of each holding and form in the weighted mix")
+    p = sub.add_parser("mix", help="share of each holding and shelf in the weighted mix")
     p.add_argument("--prefix", help="also total the holdings whose id starts with this (e.g. bible-)")
     p.set_defaults(func=cmd_mix)
     p = sub.add_parser("process", help="fetch, clean, audit and sample one holding (stops before promote)")

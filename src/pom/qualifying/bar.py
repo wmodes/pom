@@ -11,7 +11,7 @@ own class. They all answer the same four questions, so the BarKeeper does not ca
   * `add(score, now, qualified)`: takes in a score that was judged, and whether it qualified. A bar may leave a qualifying score out
     of what it remembers (`exclude_qualifiers`), which is why it is told.
   * `ignores(score)`: True for a score the bar wants nothing to do with (a score under a floor). Most bars ignore nothing.
-  * `describe()`: one line saying how this bar works and how it is set, for a playground or a log (numbers only).
+  * `describe()`: one line saying how this bar works and how it is set, for a testbench or a log (numbers only).
 
 `now` is seconds, from the same clock for every call (live it is a clock reading; in a replay it is the place in the recording).
 The BarKeeper never lets it run backwards.
@@ -40,7 +40,7 @@ class Bar(ABC):
 
     @abstractmethod
     def describe(self) -> str:
-        """One line saying how the bar works and how it is set, for a playground or a log."""
+        """One line saying how the bar works and how it is set, for a testbench or a log."""
 
     def ignores(self, score: float) -> bool:
         """True if this score should be left out of everything (default: no score is)."""

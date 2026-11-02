@@ -7,11 +7,11 @@ sentence the oracle will be asked about, word for word.
 
 Design decisions, and why:
   * `find()` is a plain generator, like the Eavesdropper's `hear()`, so this module needs no threads. It blocks while it waits
-    for sound and while the Scorer works. The Conductor runs it in a thread of its own, and a playground can print every
+    for sound and while the Scorer works. The Conductor runs it in a thread of its own, and a testbench can print every
     Attempt, which is why the ones that did not qualify are yielded too.
   * Time is the Eavesdropper's: counted in audio received, so a recording replayed at any speed qualifies exactly as a live run.
   * Only whole sentences are scored; clauses and phrases are not (the same rule the hearing-debug experiment used).
-  * ROOM TONE. A caption like "(dog barks)" is yielded either way, so a playground can show it. With
+  * ROOM TONE. A caption like "(dog barks)" is yielded either way, so a testbench can show it. With
     `score_room_tone` off (the default) it is not scored and the BarKeeper never sees it: `score` is None and
     `ruling` is None. With it on, the caption is scored like a sentence and counted by the BarKeeper, so a sound can be the
     hinge. How a caption scores is untried; whisper sometimes invents captions.

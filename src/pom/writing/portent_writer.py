@@ -1,6 +1,6 @@
 """The PortentWriter: a hinge goes in, a portent comes out.
 
-It joins the two halves of the voice side. The PromptBuilder draws exemplars and fills the oracle's prompt with the
+It joins the two halves of the writing side. The PromptBuilder draws exemplars and fills the oracle's prompt with the
 hinge; the OracleModelClient sends that prompt to the oracle model and returns what it wrote. `write(hinge)` runs
 both and hands back a Portent: the text, the exemplars that were shown to the model, and how long it took. It is the
 one call the Conductor makes when a hinge qualifies.

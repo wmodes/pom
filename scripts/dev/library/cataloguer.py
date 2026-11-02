@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn ready/ utterances into passages: the units both voice tracks use.
+"""Turn ready/ utterances into passages: the units both oracle tracks use.
 
 ready/ holds clean utterances, one paragraph each. A *passage* is an utterance sized
 for the oracle's output (usually 15 to 50 words, at most 150) and carrying what a

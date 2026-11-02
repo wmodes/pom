@@ -1,7 +1,7 @@
 """The BarKeeper factory: builds the BarKeeper the config asks for.
 
 The BarKeeper can decide where its bar sits in more than one way. Each way is a Bar class with a small factory of its own
-(`from_settings`); this module is the list of them and the one function the entry point and the playgrounds call:
+(`from_settings`); this module is the list of them and the one function the entry point and the testbenches call:
 
     bar_keeper = bar_keeper_from_settings(config.qualifying)
 

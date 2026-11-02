@@ -33,7 +33,7 @@ Design decisions, and why:
   * The two places are filled in one pass over the prompt, not one after the other, so a library passage that
     happens to contain the text "{hinge}", or a hinge that contains "{exemplars}", is left as it is. Other
     braces in the prompt, the passages or the hinge are plain text.
-  * Exemplars are only drawn if the prompt has an `{exemplars}` place. A prompt without one (a voice that is
+  * Exemplars are only drawn if the prompt has an `{exemplars}` place. A prompt without one (an oracle that is
     shown just the hinge) gets no draw, so the passages reported are always the ones the model was shown.
   * The fence is put around the pieces here, not written in the prompt, because the prompt text would be
     generated over by the model if it held a fence. A blank line separates one exemplar from the next; a passage keeps

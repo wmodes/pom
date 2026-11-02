@@ -4,7 +4,7 @@
 The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address in
 `scorer.url`), and so are the BarKeeper and the TypedLineScorer, with the `[qualifying]` settings
 `typed_handicap` and `typed_lines_affect_bar`. A line that does not clear the bar is ignored: the Printer says nothing, and
-this playground says "silence". The scoring is src/pom/scoring/; this is only a window onto it.
+this testbench says "silence". The scoring is src/pom/scoring/; this is only a window onto it.
 
 Usage:
     score_typed_lines.py "Is anyone there?" "hello"

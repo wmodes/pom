@@ -17,7 +17,7 @@ The duties, in order (see `planned_steps` for each one's detail):
     5. transcriber        whisper is present and answering
     6. scorer-server      the Scorer's llama-server answers
     7. scorer-warm-up     load the Scorer's model into memory (12 to 28 s the first time)
-    8. voice-model        the voice model's server answers
+    8. oracle-model       the oracle model's server answers
     9. typewriter         the typewriter's serial port is present (Pi only)
    10. summary            one log line of readiness, counts only
 
@@ -187,7 +187,7 @@ def planned_steps() -> list:
                     "(start it if config says to); without it every clip goes unscored"),
         PlannedStep("scorer-warm-up", "Scorer.warm_up(): the first request loads the model into memory "
                     "and takes 12 to 28 s on the Pi, so do it before the first real sentence"),
-        PlannedStep("voice-model", "the voice model's server answers; without a voice nothing can be "
+        PlannedStep("oracle-model", "the oracle model's server answers; without it nothing can be "
                     "said", critical=True),
         PlannedStep("typewriter", "the Wheelwriter's serial port is present; Pi only", critical=True),
         PlannedStep("summary", "log one line of readiness: counts and seconds only, never anything heard"),

@@ -128,14 +128,14 @@ class TestSummary:
 
 class TestPlannedSteps:
     NAMES = ["config-report", "data-check", "mic-gain", "audio-device", "transcriber", "scorer-server",
-             "scorer-warm-up", "voice-model", "typewriter", "summary"]
+             "scorer-warm-up", "oracle-model", "typewriter", "summary"]
 
     def test_the_planned_duties_in_order(self):
         assert [step.name for step in planned_steps()] == self.NAMES
 
     def test_which_duties_are_critical(self):
         critical = {step.name for step in planned_steps() if step.critical}
-        assert critical == {"data-check", "audio-device", "transcriber", "voice-model", "typewriter"}
+        assert critical == {"data-check", "audio-device", "transcriber", "oracle-model", "typewriter"}
 
     def test_every_planned_step_has_a_description(self):
         assert all(isinstance(step, PlannedStep) and len(step.description) > 20 for step in planned_steps())

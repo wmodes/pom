@@ -161,7 +161,7 @@ class ClipScorer:
         return not text.strip() or len(content) < self._min_content
 
     def score_text(self, text: str, heard_at: float = 0.0) -> ScoredClip:
-        """Scores plain text as a one-sentence clip (for playgrounds and tests)."""
+        """Scores plain text as a one-sentence clip (for testbenches and tests)."""
         return self.score(Clip(text=text or "", level=ClipLevel.SENTENCE, heard_at=heard_at))
 
     def score_many(self, clips: Iterable[Clip]) -> list:

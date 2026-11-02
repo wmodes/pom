@@ -45,6 +45,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (7): playground is testbench, voice is oracle**: the dev tools in `scripts/dev/` are *testbenches* (in the comments, messages, docs and `tests/scripts/test_testbench.py`; the experiments folder `oracle-playground` keeps its name), and where *voice* meant the oracle it says
+  *oracle*: startup's `voice-model` step is `oracle-model`, and the docs and docstrings that spoke of "a voice's replies" or "both voice tracks" say the oracle and its tracks. *Voice detector* and *voice detection* (whisper's) are a different thing and stay.
+  Behavior is unchanged apart from that startup step's name; 2,580 tests pass.
 - **The Great Rename, words (6): the library's words**: in the library code, its tests and dev tools, the oracle-side users and the docs, a *corpus* is the *library*, a *register* is a *shelf*, a *source* is a *holding*, a *chunk* is a *passage* and the *draw weights* are *circulation*
   (`Passage.holding` and `.shelf`, `Catalog.shelves()`, `.holdings(shelf)`, `.passages(shelf, holding)`, `Catalog.from_passages`, `Bibliomancer.shelf_shares`, `Circulation.holding_weight`, `LIBRARY` and `PASSAGES` in the tools, the monitor page's exemplar list). **The data
   changes with it:** every record in `library/passages/*.jsonl` has the keys `holding` and `shelf` (were `source` and `register`), and `library/passages/circulation.json` has `shelves` and `holdings` (were `registers` and `sources`) with a rewritten `_about`.

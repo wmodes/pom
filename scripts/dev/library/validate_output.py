@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validation hook for a voice's output. STUB: it checks nothing yet, on purpose.
+"""Validation hook for the oracle's output. STUB: it checks nothing yet, on purpose.
 
 The control script will call `check_output(text, hinge)` on every reply before printing
 it, so there is one named place to add checks. Today it returns no findings.
@@ -7,7 +7,7 @@ it, so there is one named place to add checks. Today it returns no findings.
 INTENTION
     The Printer's replies should be "not obvious holding, not obvious form, not obvious
     input": lyrically connected to the room, composed in the shelves' flavor, never a
-    plain quote and never a plain answer. We worried about two ways a voice could miss that.
+    plain quote and never a plain answer. We worried about two ways the oracle could miss that.
       - Track A (stock instruct model, 3 to 5 library passages in the prompt) may copy its
         examples.
       - Track B (base model, LoRA fine-tuned on about 70,000 utterances) may memorize and
@@ -25,7 +25,7 @@ WHY IT IS A STUB (decided with Wes, October 2026)
       3. It is blind to "not obvious input." A reply that merely echoes the hinge ("you said
          dog, so: dog") fails the goal and never touches the library.
       4. It stands in for the real question, "does this read as an obvious holding?", which
-         is a matter of taste. The bake-off compares both voices' outputs side by side, and
+         is a matter of taste. The bake-off compares both tracks' outputs side by side, and
          that reading is the real test. We add a check here only if the reading shows a
          problem worth catching.
 
@@ -52,7 +52,7 @@ def check_output(text, hinge=None):
     """Returns a list of findings (strings) about a reply; empty means nothing to report.
 
     Args:
-        text: The reply the voice produced.
+        text: The reply the oracle produced.
         hinge: The room fragment (or typed input) the reply was written from, if known.
 
     Returns:

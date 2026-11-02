@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Play with the whole Printer except the typewriter: a room (or a recording) goes in, portents come out on the screen.
 
-Sound goes through the real Listener (whisper cuts it), each thing heard is scored sentence by sentence and watched by the
+Sound goes through the real Eavesdropper (whisper cuts it), each thing heard is scored sentence by sentence and watched by the
 trigger (the real HingeFinder), and when the trigger fires the sentence that fired it is the hinge: the real PortentWriter
 asks the oracle model for a portent and prints it where the typewriter would. Then it listens again. Every part is the one
 the Printer will use; the only things this script adds are the printing and, with --mac-mic, a different microphone.
@@ -46,8 +46,8 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                                      # noqa: E402
 from pom.corpus import Catalog, Circulation, Bibliomancer                                    # noqa: E402
-from pom.listening import (Listener, MacMicSource, MicSource, SegmentFragmenter, WavSource,         # noqa: E402
-                           WhisperServerClient)
+from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck,         # noqa: E402
+                           WhisperModelClient)
 from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TriggerHistory                      # noqa: E402
 from pom.log_setup import configure_logging                                                         # noqa: E402
 from pom.prompt import PromptBuilder                                                                # noqa: E402
@@ -124,7 +124,7 @@ def main() -> None:
     heard_settings, trigger, scoring = config.listening, config.trigger, config.scorer
     if args.monitor and not config.monitor.password:
         sys.exit("--monitor needs a password: put  password = \"...\"  under [monitor] in config/pom.local.toml (git ignores that file)")
-    client = WhisperServerClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
+    client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
     if not answers(scoring.url):
@@ -133,12 +133,12 @@ def main() -> None:
         sys.exit(f"the oracle model's llama-server is not answering at {config.oracle.url}; see the top of this file for how to start it")
 
     if args.wav:
-        source, where = WavSource(args.wav, speed=args.speed), f"the recording {args.wav}"
+        source, where = WavDeck(args.wav, speed=args.speed), f"the recording {args.wav}"
     elif args.mac_mic is not None:
-        source, where = MacMicSource(args.mac_mic, buffer_seconds=heard_settings.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
+        source, where = MacMicDeck(args.mac_mic, buffer_seconds=heard_settings.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
     else:
-        source, where = MicSource(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
-    listener = Listener(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
+        source, where = MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
+    listener = Eavesdropper(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
                         heard_settings.max_buffer, heard_settings.sound_every_steps, heard_settings.sound_seconds,
                         heard_settings.ambient_memory)
 
@@ -148,7 +148,7 @@ def main() -> None:
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     tracker = tracker_from_settings(trigger)
-    finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
+    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "weights.json"), rng,

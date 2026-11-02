@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Listening (1 of 2): the classes and modules**: the listening side takes the lexicon's names. The audio sources are decks (`MicSource` is `MicDeck`, `WavSource` is `WavDeck`, `MacMicSource` is `MacMicDeck`, `AudioSource` is `AudioDeck`),
+  `WhisperServerClient` is `WhisperModelClient`, `WhisperTextSorter` is `TrackSplitter` (it hands on `Tracks`, was `WhisperText`), `Listener` is `Eavesdropper`, `HeardSegment` is `Take`, `SegmentFragmenter` is `TakeCutter`, and `Fragment` / `FragmentLevel`
+  are `Clip` / `ClipLevel`. Their errors, modules (`mic_deck.py`, `eavesdropper.py`, `take_cutter.py` and so on, so the loggers follow) and tests follow. The experiments that import them use the new names; the hearing-debug folder's own
+  `whisper_server_client.py` is its own file and keeps its name. Config keys and the words (ambient, fragment, source, sound pass) follow in 2 of 2. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, Scoring**: `Scorer` is `ClipScorer` (module `clip_scorer.py`, error `ClipScorerError`), `ScoredFragment` is `ScoredClip`, `Word` (the word tagger's) is `TaggedWord`, `score_from_probabilities` is `score_from_scorecard`,
   `is_fragment_filtered` is `is_clip_filtered`, and `WARM_UP_FRAGMENT` is `WARM_UP_CLIP`. The fragment filter is the **clip filter**: the config key `scorer.fragment_filter_score` is `scorer.clip_filter_score` (a copy of the old name in
   `config/pom.local.toml` would now be ignored with a warning; the shipped one has none), and `ScoredBy.FRAGMENT_FILTER` (`"fragment_filter"`) is `ScoredBy.CLIP_FILTER` (`"clip_filter"`). The word *fragment* itself becomes *clip* with the Listening

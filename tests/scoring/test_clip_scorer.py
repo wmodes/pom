@@ -6,7 +6,7 @@ import pytest
 from pom.scoring.clip_scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_CLIP_FILTER_SCORE,
                               DEFAULT_RETRY_SECONDS, ScoredBy, ScoredClip, ClipScorer, ClipScorerError)
 from pom.scoring.word_tagger import WordTagger
-from pom.listening.segment_fragmenter import Fragment, FragmentLevel
+from pom.listening.take_cutter import Clip, ClipLevel
 
 STOP = {"the", "a", "my", "i", "you", "and", "is", "it", "to", "of", "me"}
 
@@ -61,7 +61,7 @@ def make(client=None, **options):
 
 
 def fragment(text, heard_at=0.0):
-    return Fragment(text=text, level=FragmentLevel.SENTENCE, heard_at=heard_at)
+    return Clip(text=text, level=ClipLevel.SENTENCE, heard_at=heard_at)
 
 
 class TestModel:
@@ -79,7 +79,7 @@ class TestModel:
 
     def test_score_text_makes_a_sentence_fragment(self):
         result = make().score_text("The lamp hums.", heard_at=3.0)
-        assert result.fragment.level is FragmentLevel.SENTENCE and result.fragment.heard_at == 3.0
+        assert result.fragment.level is ClipLevel.SENTENCE and result.fragment.heard_at == 3.0
 
     def test_score_many_keeps_the_order_given(self):
         client = FakeClient()

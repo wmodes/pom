@@ -23,8 +23,8 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config  # noqa: E402
-from pom.listening import SegmentFragmenter  # noqa: E402
-from pom.listening.segment_fragmenter import FragmentLevel  # noqa: E402
+from pom.listening import TakeCutter  # noqa: E402
+from pom.listening.take_cutter import ClipLevel  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 from pom.scoring import ScoreEffect, ClipScorer, ScorerModelClient, WordTagger, tracker_from_settings  # noqa: E402
 
@@ -63,7 +63,7 @@ def main():
     configure_logging("WARNING")
     config = Config.load(args.config)
     scorer, tracker, client = build(config, args.min_scores)
-    fragmenter = SegmentFragmenter()
+    fragmenter = TakeCutter()
     print(f"scorer at {config.scorer.url}; trigger ({config.trigger.algorithm}): a score above {tracker.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")
@@ -73,7 +73,7 @@ def main():
     def handle(text: str) -> None:
         nonlocal now
         for fragment in fragmenter.split(text, heard_at=now):
-            if fragment.level is not FragmentLevel.SENTENCE:
+            if fragment.level is not ClipLevel.SENTENCE:
                 continue
             scored = scorer.score(fragment)
             bar, held = tracker.trigger_level_at(now), tracker.window_size_at(now)

@@ -1,4 +1,4 @@
-"""AudioSource: what the listening side needs from anywhere sound comes from.
+"""AudioDeck: what the listening side needs from anywhere sound comes from.
 
 The Listener does not care whether the sound is a microphone or a recording. It needs only an object that hands out
 audio in frames and can be closed. The Printer uses a MicSource; a WavSource replays a recording, for tests and for
@@ -11,7 +11,7 @@ start (a missing file, no microphone) yields nothing and says why in its `report
 from typing import Iterator, Protocol
 
 
-class AudioSource(Protocol):
+class AudioDeck(Protocol):
     """Anything that gives out audio frames."""
 
     def frames(self) -> Iterator[bytes]:

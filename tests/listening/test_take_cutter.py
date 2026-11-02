@@ -1,4 +1,4 @@
-"""Tests for pom.listening.segment_fragmenter: cutting transcript text into sentence, clause and phrase
+"""Tests for pom.listening.take_cutter: cutting transcript text into sentence, clause and phrase
 fragments, all levels together.
 
 The module follows the project principle that nothing may stop the oracle: odd input gives an empty
@@ -10,16 +10,16 @@ import string
 
 import pytest
 
-from pom.listening import Fragment, SegmentFragmenter, SegmentFragmenterError, FragmentLevel
+from pom.listening import Clip, TakeCutter, TakeCutterError, ClipLevel
 
 
 def cut(text, **kwargs):
     """The (level, text) pairs for a piece of text, in order."""
-    return [(f.level.value, f.text) for f in SegmentFragmenter(**kwargs).split(text)]
+    return [(f.level.value, f.text) for f in TakeCutter(**kwargs).split(text)]
 
 
 def texts(text, level=None):
-    return [f.text for f in SegmentFragmenter().split(text) if level is None or f.level.value == level]
+    return [f.text for f in TakeCutter().split(text) if level is None or f.level.value == level]
 
 
 # --- Sentences -------------------------------------------------------------------------
@@ -102,8 +102,8 @@ def test_times_and_hyphenated_words_are_not_clause_breaks(text):
 
 
 def test_a_sentence_with_no_clause_break_has_no_clause_fragments():
-    fragments = SegmentFragmenter().split("My dog ate the couch.")
-    assert [f for f in fragments if f.level is FragmentLevel.CLAUSE] == []
+    fragments = TakeCutter().split("My dog ate the couch.")
+    assert [f for f in fragments if f.level is ClipLevel.CLAUSE] == []
 
 
 # --- Phrases ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ def test_thousands_separators_are_not_phrase_breaks():
 
 
 def test_leading_and_trailing_separators_are_trimmed():
-    assert all(not f.text[0] in ",;:-" and not f.text[-1] in ",;:-" for f in SegmentFragmenter().split(
+    assert all(not f.text[0] in ",;:-" and not f.text[-1] in ",;:-" for f in TakeCutter().split(
         "Well, ; so, - okay: fine, ; then."))
 
 
@@ -153,7 +153,7 @@ def test_all_three_levels_come_depth_first_in_speech_order():
 
 
 def test_a_piece_that_repeats_a_higher_level_is_not_repeated():
-    fragments = SegmentFragmenter().split("We left early; it rained.")
+    fragments = TakeCutter().split("We left early; it rained.")
     assert [f.text for f in fragments] == ["We left early; it rained.", "We left early", "it rained."]
 
 
@@ -164,8 +164,8 @@ def test_a_repeated_word_is_offered_once_whatever_its_case():
 
 
 def test_a_clause_with_no_comma_has_no_phrases_of_its_own():
-    levels = [f.level for f in SegmentFragmenter().split("We left; it rained.")]
-    assert FragmentLevel.PHRASE not in levels
+    levels = [f.level for f in TakeCutter().split("We left; it rained.")]
+    assert ClipLevel.PHRASE not in levels
 
 
 def test_a_single_word_is_a_valid_fragment():
@@ -174,21 +174,21 @@ def test_a_single_word_is_a_valid_fragment():
 
 
 def test_each_fragment_knows_its_sentence_index():
-    fragments = SegmentFragmenter().split("First one, ok. Second one. Third; done.")
-    assert [(f.sentence, f.text) for f in fragments if f.level is FragmentLevel.SENTENCE] == [
+    fragments = TakeCutter().split("First one, ok. Second one. Third; done.")
+    assert [(f.sentence, f.text) for f in fragments if f.level is ClipLevel.SENTENCE] == [
         (0, "First one, ok."), (1, "Second one."), (2, "Third; done.")]
     assert {f.sentence for f in fragments if f.text == "ok."} == {0}
 
 
 def test_a_realistic_transcript():
-    fragments = SegmentFragmenter().split(
+    fragments = TakeCutter().split(
         "Uh, so, like, I don't know... maybe? Yeah. Dr. Smith said we leave at 10:30; bring snacks - lots of them, okay?")
-    sentences = [f.text for f in fragments if f.level is FragmentLevel.SENTENCE]
+    sentences = [f.text for f in fragments if f.level is ClipLevel.SENTENCE]
     assert sentences == ["Uh, so, like, I don't know... maybe?", "Yeah.",
                          "Dr. Smith said we leave at 10:30; bring snacks - lots of them, okay?"]
-    assert "Dr. Smith said we leave at 10:30" in [f.text for f in fragments if f.level is FragmentLevel.CLAUSE]
-    assert "bring snacks" in [f.text for f in fragments if f.level is FragmentLevel.CLAUSE]
-    assert "like" in [f.text for f in fragments if f.level is FragmentLevel.PHRASE]
+    assert "Dr. Smith said we leave at 10:30" in [f.text for f in fragments if f.level is ClipLevel.CLAUSE]
+    assert "bring snacks" in [f.text for f in fragments if f.level is ClipLevel.CLAUSE]
+    assert "like" in [f.text for f in fragments if f.level is ClipLevel.PHRASE]
 
 
 def test_curly_quotes_and_apostrophes_survive():
@@ -199,56 +199,56 @@ def test_curly_quotes_and_apostrophes_survive():
 # --- Timestamps and size ---------------------------------------------------------------
 
 def test_the_timestamp_is_stamped_on_every_fragment():
-    fragments = SegmentFragmenter().split("One, two. Three.", heard_at=42.5)
+    fragments = TakeCutter().split("One, two. Three.", heard_at=42.5)
     assert fragments and {f.heard_at for f in fragments} == {42.5}
 
 
 def test_the_timestamp_defaults_to_zero():
-    assert {f.heard_at for f in SegmentFragmenter().split("Hello there.")} == {0.0}
+    assert {f.heard_at for f in TakeCutter().split("Hello there.")} == {0.0}
 
 
 def test_fragments_report_their_word_count():
-    assert Fragment("one two three", FragmentLevel.PHRASE).words == 3
+    assert Clip("one two three", ClipLevel.PHRASE).words == 3
 
 
 def test_fragments_are_immutable():
     import dataclasses
     with pytest.raises(dataclasses.FrozenInstanceError):
-        SegmentFragmenter().split("Hi there.")[0].text = "changed"
+        TakeCutter().split("Hi there.")[0].text = "changed"
 
 
 def test_text_without_punctuation_is_cut_into_windows_of_max_words():
     words = [f"w{i}" for i in range(25)]
-    fragments = SegmentFragmenter(max_words=10).split(" ".join(words))
+    fragments = TakeCutter(max_words=10).split(" ".join(words))
     assert [f.words for f in fragments] == [10, 10, 5]
     assert " ".join(f.text for f in fragments) == " ".join(words)
-    assert {f.level for f in fragments} == {FragmentLevel.SENTENCE}
+    assert {f.level for f in fragments} == {ClipLevel.SENTENCE}
 
 
 def test_no_fragment_is_longer_than_max_words():
     long = ", ".join(" ".join(f"w{i}x{j}" for j in range(30)) for i in range(5)) + "."
-    assert all(f.words <= 12 for f in SegmentFragmenter(max_words=12).split(long))
+    assert all(f.words <= 12 for f in TakeCutter(max_words=12).split(long))
 
 
 def test_the_default_limit_keeps_a_normal_sentence_whole():
     sentence = " ".join(f"word{i}" for i in range(39)) + "."
-    assert [f.text for f in SegmentFragmenter().split(sentence)] == [sentence]
+    assert [f.text for f in TakeCutter().split(sentence)] == [sentence]
 
 
 # --- Odd input never raises ------------------------------------------------------------
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\t", "...", "-- ; , :", "!!!", "——"])
 def test_empty_or_punctuation_only_text_gives_nothing(text):
-    assert SegmentFragmenter().split(text) == []
+    assert TakeCutter().split(text) == []
 
 
 @pytest.mark.parametrize("bad", [None, 5, 3.5, b"bytes", ["a list"], {"a": 1}])
 def test_text_that_is_not_a_string_gives_nothing(bad):
-    assert SegmentFragmenter().split(bad) == []
+    assert TakeCutter().split(bad) == []
 
 
 def test_non_text_other_than_none_is_reported():
-    fragmenter = SegmentFragmenter()
+    fragmenter = TakeCutter()
     fragmenter.split(None)
     assert fragmenter.report.ok                       # None is just "nothing heard"
     fragmenter.split(5)
@@ -262,7 +262,7 @@ def test_a_number_alone_is_a_fragment():
 def test_random_junk_never_raises_and_respects_the_limits():
     rng = random.Random(7)
     alphabet = string.ascii_letters + " " * 8 + ".,;:!?-—…\"'()0123456789\n"
-    fragmenter = SegmentFragmenter(max_words=8)
+    fragmenter = TakeCutter(max_words=8)
     for _ in range(3000):
         junk = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 120)))
         for fragment in fragmenter.split(junk):
@@ -273,75 +273,75 @@ def test_random_junk_never_raises_and_respects_the_limits():
 
 def test_splitting_is_repeatable():
     text = "Well, I think so; maybe not... Dr. Who? Yes!"
-    assert SegmentFragmenter().split(text, heard_at=1.0) == SegmentFragmenter().split(text, heard_at=1.0)
+    assert TakeCutter().split(text, heard_at=1.0) == TakeCutter().split(text, heard_at=1.0)
 
 
 # --- Settings: lenient by default, strict for development -----------------------------
 
 def test_the_default_limit_is_forty_words():
-    assert SegmentFragmenter().max_words == 40
+    assert TakeCutter().max_words == 40
 
 
 @pytest.mark.parametrize("bad", [0, -1, "10", None, True, 2.5])
 def test_a_bad_limit_falls_back_to_the_default_with_a_warning(bad):
-    fragmenter = SegmentFragmenter(max_words=bad)
+    fragmenter = TakeCutter(max_words=bad)
     assert fragmenter.max_words == 40
     assert any("max_words must be" in w for w in fragmenter.report.warnings)
 
 
 @pytest.mark.parametrize("bad", [0, -1, "10", None, True, 2.5])
 def test_strict_raises_for_a_bad_limit(bad):
-    with pytest.raises(SegmentFragmenterError, match="max_words must be"):
-        SegmentFragmenter(max_words=bad, strict=True)
+    with pytest.raises(TakeCutterError, match="max_words must be"):
+        TakeCutter(max_words=bad, strict=True)
 
 
 def test_strict_raises_for_text_that_is_not_a_string():
-    with pytest.raises(SegmentFragmenterError, match="expects text"):
-        SegmentFragmenter(strict=True).split(5)
+    with pytest.raises(TakeCutterError, match="expects text"):
+        TakeCutter(strict=True).split(5)
 
 
 def test_strict_accepts_normal_use():
-    assert SegmentFragmenter(strict=True).split("Fine, thanks.")
+    assert TakeCutter(strict=True).split("Fine, thanks.")
 
 
 def test_a_custom_limit_is_used():
-    assert SegmentFragmenter(max_words=7).max_words == 7
+    assert TakeCutter(max_words=7).max_words == 7
 
 
 # --- Logging ---------------------------------------------------------------------------
 
 def test_problems_are_logged_so_they_reach_journald(caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.listening.segment_fragmenter"):
-        SegmentFragmenter(max_words=0)
+    with caplog.at_level(logging.WARNING, logger="pom.listening.take_cutter"):
+        TakeCutter(max_words=0)
     assert any(r.levelno == logging.WARNING and "max_words must be" in r.message for r in caplog.records)
 
 
 def test_a_split_is_logged_at_debug_when_the_module_flag_is_on(caplog):
     from pom.log_setup import get_logger
-    get_logger("pom.listening.segment_fragmenter", True)
+    get_logger("pom.listening.take_cutter", True)
     try:
-        fragmenter = SegmentFragmenter()
+        fragmenter = TakeCutter()
         with caplog.at_level(logging.DEBUG):
             fragmenter.split("One, two. Three.")
     finally:
-        get_logger("pom.listening.segment_fragmenter", None)
+        get_logger("pom.listening.take_cutter", None)
     assert any(r.levelno == logging.DEBUG and "2 sentence(s)" in r.message for r in caplog.records)
 
 
 def test_a_split_is_not_logged_when_the_module_flag_is_off(caplog):
     from pom.log_setup import get_logger
-    get_logger("pom.listening.segment_fragmenter", False)
+    get_logger("pom.listening.take_cutter", False)
     try:
-        fragmenter = SegmentFragmenter()
+        fragmenter = TakeCutter()
         with caplog.at_level(logging.DEBUG):
             fragmenter.split("One, two. Three.")
     finally:
-        get_logger("pom.listening.segment_fragmenter", None)
+        get_logger("pom.listening.take_cutter", None)
     assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
 
 
 def test_a_window_made_only_of_punctuation_is_not_emitted():
     """Long text can leave a window with no letters or digits; that is no hinge."""
     text = " ".join(["word"] * 3 + ["--"] * 9 + ["end"])
-    for fragment in SegmentFragmenter(max_words=3).split(text):
+    for fragment in TakeCutter(max_words=3).split(text):
         assert any(c.isalnum() for c in fragment.text)

@@ -1,4 +1,4 @@
-"""The WhisperServerClient: asks a running whisper-server to turn audio into text.
+"""The WhisperModelClient: asks a running whisper-server to turn audio into text.
 
 whisper.cpp's `whisper-server` keeps the whisper model (and its Silero voice detection model) loaded, so each request
 is only the transcription. This module is only the conversation with that server: audio in, text or timed segments
@@ -16,7 +16,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow or answering oddly gives an
     empty result and a warning in `report`, never an exception. `error` says what went wrong with the latest request
     (or is None), so a caller can tell "heard nothing" from "could not ask". `strict=True` raises
-    WhisperServerClientError instead, for tests and dev tools.
+    WhisperModelClientError instead, for tests and dev tools.
   * The audio goes to the server from memory, as a WAV made in memory, so no audio file is ever written to disk.
   * Neither the audio nor the text is logged or put in a FaultRecorder message: nothing that was said in the room is
     kept. Reports hold the kind of failure only.
@@ -49,7 +49,7 @@ _SRT_ENTRY = re.compile(r"(\d+):(\d\d):(\d\d)[,.](\d\d\d)\s*-->\s*(\d+):(\d\d):(
                         re.DOTALL)
 
 
-class WhisperServerClientError(ValueError):
+class WhisperModelClientError(ValueError):
     """Raised for any client problem, but only in strict mode (development and tests)."""
 
 
@@ -111,7 +111,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-class WhisperServerClient:
+class WhisperModelClient:
     """Asks a running whisper-server to transcribe audio.
 
     Attributes:
@@ -125,9 +125,9 @@ class WhisperServerClient:
             url: The server's address, e.g. http://127.0.0.1:8110.
             timeout: Seconds to wait for one transcription, above 0.
             post: A function (url, fields, wav bytes, timeout) -> the reply text. Default: real HTTP.
-            strict: Raise WhisperServerClientError on any problem instead of recording it.
+            strict: Raise WhisperModelClientError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=WhisperServerClientError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=WhisperModelClientError, logger=_log)
         self.error: Optional[str] = None
         self._usable = isinstance(url, str) and url.startswith(("http://", "https://"))
         self._url = url.rstrip("/") if self._usable else DEFAULT_URL

@@ -6,7 +6,7 @@ import pytest
 from pom.listening.audio_format import BYTES_PER_SECOND
 from pom.listening.rolling_cutter import (DEFAULT_HOLD, DEFAULT_MAX_BUFFER, DEFAULT_REWIND, DEFAULT_STEP, RollingCutter,
                                           RollingCutterError, join_unfinished)
-from pom.listening.whisper_server_client import Segment
+from pom.listening.whisper_model_client import Segment
 
 
 class FakeWhisper:

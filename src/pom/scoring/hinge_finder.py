@@ -25,7 +25,7 @@ Design decisions, and why:
 from dataclasses import dataclass
 from typing import Iterator, Optional
 
-from pom.listening.segment_fragmenter import FragmentLevel
+from pom.listening.take_cutter import ClipLevel
 from pom.log_setup import get_logger
 from pom.scoring.convo_interest_tracker import ScoreEffect
 from pom.scoring.clip_scorer import ScoredBy
@@ -96,7 +96,7 @@ class HingeFinder:
             if not heard.words:
                 continue
             for fragment in self._fragmenter.split(heard.words, heard_at=heard.ends_at):
-                if fragment.level is FragmentLevel.SENTENCE:
+                if fragment.level is ClipLevel.SENTENCE:
                     yield self._sentence(fragment.text, heard.kind, heard.ends_at, fragment=fragment)
 
     def _sentence(self, text: str, kind: str, now: float, fragment=None, score_it: bool = True) -> ScoredSentence:

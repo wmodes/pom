@@ -1,13 +1,13 @@
-"""Tests for pom.listening.listener, with a scripted audio source and a stand-in for whisper."""
+"""Tests for pom.listening.eavesdropper, with a scripted audio source and a stand-in for whisper."""
 import logging
 
 import pytest
 
 from pom.listening.audio_format import BYTES_PER_SECOND, FRAME_BYTES, FRAME_SECONDS
-from pom.listening.listener import (DEFAULT_AMBIENT_MEMORY, DEFAULT_SOUND_EVERY_STEPS, DEFAULT_SOUND_SECONDS, HeardSegment,
-                                    Listener, ListenerError)
+from pom.listening.eavesdropper import (DEFAULT_AMBIENT_MEMORY, DEFAULT_SOUND_EVERY_STEPS, DEFAULT_SOUND_SECONDS, Take,
+                                    Eavesdropper, EavesdropperError)
 from pom.listening.rolling_cutter import RollingCutter, RollingCutterError
-from pom.listening.whisper_server_client import Segment
+from pom.listening.whisper_model_client import Segment
 
 NOTE = "♪"
 
@@ -61,14 +61,14 @@ def hear(listener):
 
 def make(seconds, *rounds, texts=(), failing=(), **options):
     source, whisper = ScriptedSource(seconds), FakeWhisper(*rounds, texts=texts, failing=failing)
-    return Listener(source, whisper, **options), source, whisper
+    return Eavesdropper(source, whisper, **options), source, whisper
 
 
 class TestWhatIsHeard:
     def test_speech_comes_out_with_where_it_ended(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "Hello there.")], [seg(4.0, 6.5, "How are you?")])
-        assert hear(listener) == [HeardSegment("Hello there.", "speech", (), 3.0),
-                                  HeardSegment("How are you?", "speech", (), 6.5)]
+        assert hear(listener) == [Take("Hello there.", "speech", (), 3.0),
+                                  Take("How are you?", "speech", (), 6.5)]
 
     def test_rounds_happen_every_step_and_once_more_at_the_end(self):
         listener, _, whisper = make(12.0)
@@ -110,7 +110,7 @@ class TestRepeats:
 
     def test_the_same_caption_twice_in_a_row_is_reported_once(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "(dog barks)")], [seg(4.0, 6.0, "(dog barks)")])
-        assert hear(listener) == [HeardSegment("", "", ("(dog barks)",), 3.0)]
+        assert hear(listener) == [Take("", "", ("(dog barks)",), 3.0)]
 
     def test_a_caption_that_comes_back_after_another_is_reported_again(self):
         listener, _, _ = make(17, [seg(0.5, 3.0, "(dog barks)")], [seg(4.0, 6.0, "(door slams)")],
@@ -120,21 +120,21 @@ class TestRepeats:
     def test_words_and_captions_are_judged_separately(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "(dog barks) Hello.")], [seg(4.0, 6.0, "(door slams) Hello.")])
         got = hear(listener)
-        assert got == [HeardSegment("Hello.", "speech", ("(dog barks)",), 3.0), HeardSegment("", "", ("(door slams)",), 6.0)]
+        assert got == [Take("Hello.", "speech", ("(dog barks)",), 3.0), Take("", "", ("(door slams)",), 6.0)]
 
 
 class TestCaptionsAndLyrics:
     def test_captions_are_kept_apart_from_the_words(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "(dog barks) Hello there.")])
-        assert hear(listener) == [HeardSegment("Hello there.", "speech", ("(dog barks)",), 3.0)]
+        assert hear(listener) == [Take("Hello there.", "speech", ("(dog barks)",), 3.0)]
 
     def test_a_caption_alone_is_reported_with_no_words(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, "[Music]")])
-        assert hear(listener) == [HeardSegment("", "", ("[Music]",), 3.0)]
+        assert hear(listener) == [Take("", "", ("[Music]",), 3.0)]
 
     def test_lyrics_are_words_with_the_music_symbols_taken_out(self):
         listener, _, _ = make(12, [seg(0.5, 3.0, f"{NOTE} la la la {NOTE}")])
-        assert hear(listener) == [HeardSegment("la la la", "lyrics", (), 3.0)]
+        assert hear(listener) == [Take("la la la", "lyrics", (), 3.0)]
 
     def test_recent_captions_are_remembered_oldest_first(self):
         listener, _, _ = make(17, [seg(0.5, 3.0, "(dog barks)")], [seg(4.0, 6.0, "(door slams)")], [seg(9.0, 11.0, "[Music]")])
@@ -160,7 +160,7 @@ class TestTheSoundPass:
     def test_after_three_rounds_with_no_speech_it_listens_for_lyrics_and_captions(self):
         listener, _, whisper = make(17, texts=[f"(crowd cheers) {NOTE} la la {NOTE}"])
         got = hear(listener)
-        assert got == [HeardSegment("la la", "lyrics", ("(crowd cheers)",), pytest.approx(15.0, abs=0.05))]
+        assert got == [Take("la la", "lyrics", ("(crowd cheers)",), pytest.approx(15.0, abs=0.05))]
         assert whisper.text_calls == [(pytest.approx(2.0), False)]             # voice detector off; see the next test
 
     def test_plain_text_from_the_sound_pass_is_thrown_away(self):
@@ -303,10 +303,10 @@ class TestSettings:
     def test_a_cutter_can_be_given_instead_of_made(self):
         whisper = FakeWhisper()
         cutter = RollingCutter(whisper, step=2.0)
-        listener = Listener(ScriptedSource(5.0), whisper, cutter=cutter)
+        listener = Eavesdropper(ScriptedSource(5.0), whisper, cutter=cutter)
         hear(listener)
         assert len(whisper.calls) == 3          # the given cutter's step of 2 s: rounds at 2 s and 4 s, and the last;
-        # the Listener's own cutter (step 5 s) would have made two
+        # the Eavesdropper's own cutter (step 5 s) would have made two
 
     def test_the_cutters_settings_are_passed_on(self):
         listener, _, whisper = make(5, [], step=2.0)
@@ -315,7 +315,7 @@ class TestSettings:
 
     @pytest.mark.parametrize("name,bad", [("sound_every_steps", -1), ("sound_seconds", 0), ("ambient_memory", 0)])
     def test_strict_mode_raises_on_a_bad_setting(self, name, bad):
-        with pytest.raises(ListenerError):
+        with pytest.raises(EavesdropperError):
             make(5, strict=True, **{name: bad})
 
     def test_strict_mode_raises_on_a_bad_cutter_setting_with_the_cutters_error(self):

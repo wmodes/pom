@@ -71,7 +71,7 @@ from rolling_cutter import RollingCutter                         # noqa: E402  (
 from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
 from pom.scoring import ScoreEffect, ScorerModelClient, ClipScorer, WordTagger, tracker_from_settings   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
-from pom.listening.segment_fragmenter import SegmentFragmenter, FragmentLevel          # noqa: E402
+from pom.listening.take_cutter import TakeCutter, ClipLevel          # noqa: E402
 
 SAMPLE_RATE = 16000
 FRAME_MS = 30
@@ -478,7 +478,7 @@ class Pipeline:
     def __init__(self, args, brain: Brain, display: Display):
         self.args, self.brain, self.display = args, brain, display
         self.transcriber = Transcriber(args.whisper_url, use_vad=args.vad, sounds=args.sounds)
-        self.fragmenter = SegmentFragmenter(max_words=40)
+        self.fragmenter = TakeCutter(max_words=40)
         self.utterances = queue.Queue(maxsize=6)
         self.run_queue = queue.Queue(maxsize=40)                     # sentences waiting for their debug run (cheap to hold)
         self.history = collections.deque(maxlen=args.history)       # in memory only; for the `r` command
@@ -679,7 +679,7 @@ class Pipeline:
         stamp = self.display.recording_stamp(at) if self.args.wav and at is not None else self.display.stamp()
         self.display.line(f"\n[{stamp}] heard {size} ({label}{extra}, whisper {took:.1f} s): \"{text}\"")
         for fragment in self.fragmenter.split(text):
-            if fragment.level is not FragmentLevel.SENTENCE:
+            if fragment.level is not ClipLevel.SENTENCE:
                 continue
             self.count += 1
             number = self.count

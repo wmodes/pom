@@ -13,14 +13,14 @@ import pytest
 
 SRC = Path(__file__).resolve().parents[1] / "src"
 MODULES = ["pom/config.py", "pom/corpus/circulation.py", "pom/corpus/catalog.py",
-           "pom/corpus/bibliomancer.py", "pom/listening/segment_fragmenter.py",
+           "pom/corpus/bibliomancer.py", "pom/listening/take_cutter.py",
            "pom/scoring/word_tagger.py", "pom/scoring/scorer_model_client.py",
            "pom/scoring/clip_scorer.py", "pom/scoring/fallback_scorer.py",
            "pom/scoring/convo_interest_tracker.py", "pom/prompt/prompt_builder.py", "pom/voice/oracle_model_client.py",
            "pom/startup.py",
-           "pom/listening/whisper_server_client.py", "pom/listening/wav_source.py", "pom/listening/mic_source.py",
+           "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py",
            "pom/listening/rolling_cutter.py",
-           "pom/listening/listener.py", "pom/voice/portent_writer.py", "pom/listening/mac_mic_source.py",
+           "pom/listening/eavesdropper.py", "pom/voice/portent_writer.py", "pom/listening/mac_mic_deck.py",
            "pom/scoring/hinge_finder.py", "pom/scoring/typed_line_scorer.py",
            "pom/monitor/trigger_history.py", "pom/monitor/monitor_site.py",
            "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py",

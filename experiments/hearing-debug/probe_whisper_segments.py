@@ -14,7 +14,7 @@ recording, with no microphone and no language model:
     `--rewind`, because whisper's segment ends can run slightly late and would clip the next sentence's first
     syllables), so a thought that was still going is not cut in two. A segment that does not end like a sentence (no . ? or !) is joined to the
     one after it first, because whisper sometimes breaks at a pause in the middle of a sentence.
-  * Each kept segment goes through the Printer's own SegmentFragmenter, which splits it into sentence
+  * Each kept segment goes through the Printer's own TakeCutter, which splits it into sentence
     fragments (whisper may put several sentences in one segment).
   * For comparison, whisper reads the whole file at once, and the sentences it finds that way are the
     answer key: how many of them did the streaming version produce unbroken? Whisper words things a little
@@ -45,7 +45,7 @@ from typing import List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
-from pom.listening.segment_fragmenter import FragmentLevel, SegmentFragmenter    # noqa: E402
+from pom.listening.take_cutter import ClipLevel, TakeCutter    # noqa: E402
 from rolling_cutter import BYTES_PER_SECOND, FINISHED, RollingCutter, join_unfinished   # noqa: E402  (next to this file)
 from whisper_server_client import SAMPLE_RATE, WhisperServerClient                   # noqa: E402  (next to this file)
 
@@ -117,11 +117,11 @@ def stream(whisper: Whisper, pcm: bytes, step: float, hold: float, max_buffer: f
     return kept, cutter.forced
 
 
-def sentences(segments: List[Segment], fragmenter: SegmentFragmenter) -> List[str]:
+def sentences(segments: List[Segment], fragmenter: TakeCutter) -> List[str]:
     """The sentence fragments of each segment, in order."""
     out = []
     for _, _, text in segments:
-        out.extend(f.text for f in fragmenter.split(text) if f.level is FragmentLevel.SENTENCE)
+        out.extend(f.text for f in fragmenter.split(text) if f.level is ClipLevel.SENTENCE)
     return out
 
 
@@ -153,7 +153,7 @@ def main() -> None:
                 sys.exit(f"missing {needed or 'whisper-server (set WHISPER_SERVER or put it on the PATH)'}")
     pcm = read_pcm(args.wav)
     total = len(pcm) / BYTES_PER_SECOND
-    fragmenter = SegmentFragmenter(max_words=40)
+    fragmenter = TakeCutter(max_words=40)
     whisper = Whisper(args.server, binary, model, vad, args.threads)
     try:
         streamed, forced = stream(whisper, pcm, args.step, args.hold, args.max_buffer, args.rewind)
@@ -171,7 +171,7 @@ def main() -> None:
                                                   default=0) < 0.8]
     unfinished = [s for s in streamed if not FINISHED.search(s[2])]
     several = [s for s in streamed if len(fragmenter.split(s[2])) and
-               sum(f.level is FragmentLevel.SENTENCE for f in fragmenter.split(s[2])) > 1]
+               sum(f.level is ClipLevel.SENTENCE for f in fragmenter.split(s[2])) > 1]
 
     print(f"{os.path.basename(args.wav)}: {total:.0f} s of audio; step {args.step:g} s, hold {args.hold:g} s")
     print(f"  streaming: {len(streamed)} segments, {len(streamed_sentences)} sentences, {forced} forced out at the "

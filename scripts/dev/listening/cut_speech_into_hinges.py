@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Play with the SegmentFragmenter: see where a piece of speech gets cut into hinge candidates.
+"""Play with the TakeCutter: see where a piece of speech gets cut into hinge candidates.
 
 Give it text as arguments, or pipe text in, and it prints every fragment with its level (sentence,
-clause or phrase) and the sentence it belongs to. The cutting logic is src/pom/listening/segment_fragmenter.py;
+clause or phrase) and the sentence it belongs to. The cutting logic is src/pom/listening/take_cutter.py;
 this is only a window onto it.
 
 Usage:
@@ -16,7 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
-from pom.listening import SegmentFragmenter  # noqa: E402
+from pom.listening import TakeCutter  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 
@@ -28,7 +28,7 @@ def main():
 
     configure_logging("WARNING")
     text = " ".join(args.text) if args.text else sys.stdin.read()
-    fragments = SegmentFragmenter(max_words=args.max_words).split(text)
+    fragments = TakeCutter(max_words=args.max_words).split(text)
     if not fragments:
         print("(nothing to cut: no words found)")
     for fragment in fragments:

@@ -1,4 +1,4 @@
-"""The SegmentFragmenter: cuts a transcript into the pieces a hinge can be chosen from.
+"""The TakeCutter: cuts a transcript into the pieces a hinge can be chosen from.
 
 Whisper turns speech into punctuated text. The oracle does not answer the whole conversation; it
 picks a word, a phrase or a sentence from what was just said and lets it in sideways. This module
@@ -27,7 +27,7 @@ Design decisions, and why:
     decimals, times and thousands separators are safe because a break needs whitespace after it.
   * Nothing here may stop the oracle (see pom/__init__.py). Text that is not a string, or has no
     letters or digits, gives an empty list; a bad `max_words` falls back to the default with a
-    warning. `strict=True` raises SegmentFragmenterError instead, for tests and dev tools.
+    warning. `strict=True` raises TakeCutterError instead, for tests and dev tools.
   * A fragment longer than `max_words` (Whisper missed the punctuation) is cut into consecutive
     windows of that many words, so a hinge is always a bounded size.
 """
@@ -56,11 +56,11 @@ _EDGES = " \t\r\n,;:-—–"
 _QUOTES = "\"“”"
 
 
-class SegmentFragmenterError(ValueError):
+class TakeCutterError(ValueError):
     """Raised for any fragmenter problem, but only in strict mode (development and tests)."""
 
 
-class FragmentLevel(Enum):
+class ClipLevel(Enum):
     """How a fragment was cut."""
     SENTENCE = "sentence"
     CLAUSE = "clause"
@@ -68,7 +68,7 @@ class FragmentLevel(Enum):
 
 
 @dataclass(frozen=True, slots=True)
-class Fragment:
+class Clip:
     """One candidate hinge.
 
     Attributes:
@@ -78,7 +78,7 @@ class Fragment:
         sentence: Index of the sentence it belongs to within the input text, from 0.
     """
     text: str
-    level: FragmentLevel
+    level: ClipLevel
     heard_at: float = 0.0
     sentence: int = 0
 
@@ -88,7 +88,7 @@ class Fragment:
         return len(self.text.split())
 
 
-class SegmentFragmenter:
+class TakeCutter:
     """Cuts transcript text into sentence, clause and phrase fragments.
 
     Attributes:
@@ -99,9 +99,9 @@ class SegmentFragmenter:
         """Args:
             max_words: The most words a fragment may have; longer ones are cut into windows of
                 this size. A whole number of at least 1.
-            strict: Raise SegmentFragmenterError on any problem instead of recording it.
+            strict: Raise TakeCutterError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=SegmentFragmenterError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=TakeCutterError, logger=_log)
         if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
             self._max_words = max_words
         else:
@@ -171,7 +171,7 @@ class SegmentFragmenter:
         """The sentence, its clauses, and their phrases, skipping any that only repeat a level above."""
         out, seen = [], set()
 
-        def add(text: str, level: FragmentLevel) -> None:
+        def add(text: str, level: ClipLevel) -> None:
             text = self._clean(text)
             key = re.sub(r"[.!?]+$", "", text).casefold()
             if key in seen:
@@ -179,13 +179,13 @@ class SegmentFragmenter:
             seen.add(key)
             for window in self._windows(text):
                 if any(c.isalnum() for c in window):      # a window of bare punctuation is no hinge
-                    out.append(Fragment(window, level, heard_at, index))
+                    out.append(Clip(window, level, heard_at, index))
 
-        add(sentence, FragmentLevel.SENTENCE)
+        add(sentence, ClipLevel.SENTENCE)
         for clause in _CLAUSE_BREAK.split(sentence):
-            add(clause, FragmentLevel.CLAUSE)
+            add(clause, ClipLevel.CLAUSE)
             for phrase in _PHRASE_BREAK.split(clause):
-                add(phrase, FragmentLevel.PHRASE)
+                add(phrase, ClipLevel.PHRASE)
         return out
 
     @staticmethod

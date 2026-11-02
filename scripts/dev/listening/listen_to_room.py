@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Play with the whole listening side: the microphone (or a recording) through the Listener, the ClipScorer and the trigger.
+"""Play with the whole listening side: the microphone (or a recording) through the Eavesdropper, the ClipScorer and the trigger.
 
-It is the real HingeFinder (the Listener, the SegmentFragmenter, the ClipScorer and the ConvoInterestTracker joined) and nothing
+It is the real HingeFinder (the Eavesdropper, the TakeCutter, the ClipScorer and the ConvoInterestTracker joined) and nothing
 else: every sentence it hears is shown with its score and where the trigger stands, and the ones that would trigger the
 Printer are marked. It needs a whisper-server running (the address is `listening.whisper_url`) and the scorer model's
 llama-server; the settings are all in config/pom.toml.
@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config  # noqa: E402
-from pom.listening import Listener, MicSource, SegmentFragmenter, WavSource, WhisperServerClient  # noqa: E402
+from pom.listening import Eavesdropper, MicDeck, TakeCutter, WavDeck, WhisperModelClient  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 from pom.scoring import (HingeFinder, ScoreEffect, ClipScorer, ScorerModelClient,  # noqa: E402
                          WordTagger, tracker_from_settings)
@@ -55,12 +55,12 @@ def main():
     configure_logging("WARNING")
     config = Config.load(args.config)
     heard_settings, trigger = config.listening, config.trigger
-    client = WhisperServerClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
+    client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
-    source = (WavSource(args.wav, speed=args.speed) if args.wav
-              else MicSource(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds))
-    listener = Listener(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
+    source = (WavDeck(args.wav, speed=args.speed) if args.wav
+              else MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds))
+    listener = Eavesdropper(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
                         heard_settings.max_buffer, heard_settings.sound_every_steps, heard_settings.sound_seconds,
                         heard_settings.ambient_memory)
 
@@ -71,7 +71,7 @@ def main():
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     tracker = tracker_from_settings(trigger)
-    finder = HingeFinder(listener, SegmentFragmenter(), scorer, tracker, heard_settings.consider_ambient_sounds)
+    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.consider_ambient_sounds)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")

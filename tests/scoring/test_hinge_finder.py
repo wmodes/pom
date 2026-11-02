@@ -1,13 +1,13 @@
 """Tests for pom.scoring.hinge_finder: sound in, hinges out.
 
-The Listener and the Scorer are small fakes (what they do is tested elsewhere); the SegmentFragmenter and the
+The Listener and the Scorer are small fakes (what they do is tested elsewhere); the TakeCutter and the
 ConvoInterestTracker are the real ones, because how the finder joins them is the point.
 """
 import logging
 
 from pom.fault_recorder import FaultRecorder
-from pom.listening import FragmentLevel, HeardSegment, SegmentFragmenter
-from pom.listening.segment_fragmenter import Fragment
+from pom.listening import ClipLevel, Take, TakeCutter
+from pom.listening.take_cutter import Clip
 from pom.scoring import ConvoInterestTracker, HingeFinder, PercentileBar, ScoreEffect, ScoredBy, ScoredClip, ScoredSentence
 
 QUIET = 2.0
@@ -40,7 +40,7 @@ class FakeScorer:
         return ScoredClip(fragment, self.scores.get(fragment.text, 3.0), self.scored_by)
 
     def score_text(self, text, heard_at=0.0):
-        return self.score(Fragment(text, FragmentLevel.SENTENCE, heard_at))
+        return self.score(Clip(text, ClipLevel.SENTENCE, heard_at))
 
 
 class FixedFragmenter:
@@ -54,7 +54,7 @@ class FixedFragmenter:
 
 
 def segment(words="", ends_at=10.0, kind="speech", ambient=()):
-    return HeardSegment(words if words else "", kind if words else "", tuple(ambient), ends_at)
+    return Take(words if words else "", kind if words else "", tuple(ambient), ends_at)
 
 
 def tracker(min_scores=3, cooldown=60.0):
@@ -64,7 +64,7 @@ def tracker(min_scores=3, cooldown=60.0):
 
 def finder(segments, scores=None, consider_ambient_sounds=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
     listener, scorer = FakeListener(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(listener, fragmenter or SegmentFragmenter(), scorer, tracker(**tracking), consider_ambient_sounds)
+    made = HingeFinder(listener, fragmenter or TakeCutter(), scorer, tracker(**tracking), consider_ambient_sounds)
     return made, listener, scorer
 
 
@@ -93,20 +93,20 @@ class TestWhatIsYielded:
         assert found(made) == [] and scorer.asked == []
 
     def test_only_whole_sentences_are_scored(self):
-        fragments = [Fragment("whole sentence here", FragmentLevel.SENTENCE), Fragment("a clause", FragmentLevel.CLAUSE),
-                     Fragment("a phrase", FragmentLevel.PHRASE)]
+        fragments = [Clip("whole sentence here", ClipLevel.SENTENCE), Clip("a clause", ClipLevel.CLAUSE),
+                     Clip("a phrase", ClipLevel.PHRASE)]
         made, _, scorer = finder([segment("whole sentence here, a clause")], fragmenter=FixedFragmenter(fragments))
         assert [s.text for s in found(made)] == ["whole sentence here"]
         assert [text for text, _ in scorer.asked] == ["whole sentence here"]
 
     def test_the_scorer_is_given_the_fragment_the_fragmenter_cut(self):
-        fragment = Fragment("whole sentence here", FragmentLevel.SENTENCE, heard_at=5.0, sentence=2)
+        fragment = Clip("whole sentence here", ClipLevel.SENTENCE, heard_at=5.0, sentence=2)
         made, _, scorer = finder([segment("whole sentence here")], fragmenter=FixedFragmenter([fragment]))
         found(made)
         assert scorer.fragments == [fragment] and scorer.fragments[0] is fragment
 
     def test_a_segment_with_no_words_is_not_cut_or_scored_at_all(self):
-        fragment = Fragment("should not appear", FragmentLevel.SENTENCE)
+        fragment = Clip("should not appear", ClipLevel.SENTENCE)
         made, _, scorer = finder([segment("")], fragmenter=FixedFragmenter([fragment]))
         assert found(made) == [] and scorer.asked == []
 
@@ -243,7 +243,7 @@ class TestClosingAndReporting:
 
     def test_the_report_lines_gather_the_four_parts_problems(self):
         listener, scorer = FakeListener([]), FakeScorer()
-        fragmenter, the_tracker = SegmentFragmenter(), tracker()
+        fragmenter, the_tracker = TakeCutter(), tracker()
         listener.report.warn("listener trouble")
         scorer.report.warn("scorer trouble")
         fragmenter.report.warn("fragmenter trouble")

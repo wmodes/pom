@@ -1,4 +1,4 @@
-"""The WhisperTextSorter: sorts what whisper wrote about a stretch of sound into the kinds the Printer treats differently.
+"""The TrackSplitter: sorts what whisper wrote about a stretch of sound into the kinds the Printer treats differently.
 
 Whisper does not only write down words. It also writes captions of sounds, like "(dog barks)" or "[Music]", marks
 for "there is nothing here", like "[BLANK_AUDIO]", and, for song, words between music symbols. The Printer treats
@@ -40,7 +40,7 @@ _LYRICS = re.compile(MUSIC_SYMBOL + "[^" + MUSIC_SYMBOL + "]+" + MUSIC_SYMBOL)  
 
 
 @dataclass(frozen=True)
-class WhisperText:
+class Tracks:
     """What whisper said about one stretch of sound, sorted.
 
     Attributes:
@@ -53,10 +53,10 @@ class WhisperText:
     kind: str
 
 
-class WhisperTextSorter:
+class TrackSplitter:
     """Sorts whisper's text into words, ambient captions and nothing-here marks. Has no state."""
 
-    def sort(self, raw: str, plain_text: bool = True) -> WhisperText:
+    def sort(self, raw: str, plain_text: bool = True) -> Tracks:
         """Sorts one reply from whisper.
 
         Args:
@@ -68,16 +68,16 @@ class WhisperTextSorter:
             The WhisperText. It is never None and this never raises.
         """
         if not isinstance(raw, str):
-            return WhisperText("", (), KIND_NONE)
+            return Tracks("", (), KIND_NONE)
         raw = _EMPTY_MARKS.sub(" ", raw)
         ambient = tuple(dict.fromkeys(" ".join(caption.split()) for caption in _CAPTION.findall(raw)))
         uncaptioned = _CAPTION.sub(" ", raw)
         if not plain_text:
             pieces = (" ".join(piece.replace(MUSIC_SYMBOL, " ").split()) for piece in _LYRICS.findall(uncaptioned))
             lyrics = " ".join(piece for piece in pieces if piece)          # a pair of symbols around only space is nothing
-            return WhisperText(lyrics, ambient, KIND_LYRICS if lyrics else KIND_NONE)
+            return Tracks(lyrics, ambient, KIND_LYRICS if lyrics else KIND_NONE)
         words = " ".join(uncaptioned.replace(MUSIC_SYMBOL, " ").split())
         outside_lyrics = " ".join(_LYRICS.sub(" ", uncaptioned).replace(MUSIC_SYMBOL, " ").split())
         if not words:
-            return WhisperText("", ambient, KIND_NONE)
-        return WhisperText(words, ambient, KIND_SPEECH if outside_lyrics else KIND_LYRICS)
+            return Tracks("", ambient, KIND_NONE)
+        return Tracks(words, ambient, KIND_SPEECH if outside_lyrics else KIND_LYRICS)

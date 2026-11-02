@@ -37,7 +37,7 @@ from typing import Callable, List, Optional, Protocol
 
 from pom.fault_recorder import FaultRecorder
 from pom.listening.audio_format import BYTES_PER_SECOND, SAMPLE_BYTES
-from pom.listening.whisper_server_client import Segment
+from pom.listening.whisper_model_client import Segment
 from pom.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

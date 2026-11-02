@@ -40,7 +40,7 @@ from enum import Enum
 from typing import Callable, Iterable, Optional
 
 from pom.scoring.word_tagger import WordTagger
-from pom.listening.segment_fragmenter import Fragment, FragmentLevel
+from pom.listening.take_cutter import Clip, ClipLevel
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
@@ -74,7 +74,7 @@ class ScoredClip:
             be scored (scored_by UNSCORED). Check for None before using it as a number.
         scored_by: Whether the scorer model made the score, the clip_filter did, or it is unscored.
     """
-    fragment: Fragment
+    fragment: Clip
     score: Optional[float]
     scored_by: ScoredBy
 
@@ -139,7 +139,7 @@ class ClipScorer:
 
     # --- Scoring --------------------------------------------------------------------
 
-    def score(self, fragment: Fragment) -> ScoredClip:
+    def score(self, fragment: Clip) -> ScoredClip:
         """Scores one fragment. Always returns a result; see `scored_by` for how it was made."""
         content = [word for word in self._word_tagger.tag(fragment.text) if word.is_content]
         if self._skips_model(fragment.text, content):
@@ -162,13 +162,13 @@ class ClipScorer:
 
     def score_text(self, text: str, heard_at: float = 0.0) -> ScoredClip:
         """Scores plain text as a one-sentence fragment (for playgrounds and tests)."""
-        return self.score(Fragment(text=text or "", level=FragmentLevel.SENTENCE, heard_at=heard_at))
+        return self.score(Clip(text=text or "", level=ClipLevel.SENTENCE, heard_at=heard_at))
 
-    def score_many(self, fragments: Iterable[Fragment]) -> list:
+    def score_many(self, fragments: Iterable[Clip]) -> list:
         """Scores each fragment on its own, in the order given."""
         return [self.score(fragment) for fragment in fragments]
 
-    def ranked(self, fragments: Iterable[Fragment]) -> list:
+    def ranked(self, fragments: Iterable[Clip]) -> list:
         """Scores the fragments and returns them best first (ties keep their order, unscored ones go last)."""
         return sorted(self.score_many(fragments),
                       key=lambda scored: (scored.score is None, -(scored.score or 0.0)))

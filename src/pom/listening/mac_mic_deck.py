@@ -1,12 +1,12 @@
-"""The MacMicSource: the Mac's microphone, through `ffmpeg`, for trying the listening side on a laptop.
+"""The MacMicDeck: the Mac's microphone, through `ffmpeg`, for trying the listening side on a laptop.
 
-The Printer's microphone is read on the Pi with `arecord`, which a Mac does not have. This is the same MicSource (the
+The Printer's microphone is read on the Pi with `arecord`, which a Mac does not have. This is the same MicDeck (the
 same reader thread, bounded buffer, drop-the-oldest rule and never-stop faults) with one difference: the program that
 captures the sound is `ffmpeg` reading macOS's AVFoundation, converted to the format whisper takes. It exists so the
 whole pipeline can be tried at a desk; it does not test the Pi's microphone path.
 
 Design decisions, and why:
-  * It is a subclass of MicSource that changes only the capture command and the wording of its faults, so there is one
+  * It is a subclass of MicDeck that changes only the capture command and the wording of its faults, so there is one
     copy of everything that matters (the buffering, the dropping, the faults), not two that could drift.
   * The default device is the system's default input (`default`), so it follows whatever the Mac is set to listen to in
     System Settings > Sound. A name from `ffmpeg -f avfoundation -list_devices true -i ""` (for example
@@ -18,7 +18,7 @@ Design decisions, and why:
     permission under System Settings > Privacy & Security > Microphone.
 """
 from pom.listening.audio_format import SAMPLE_RATE
-from pom.listening.mic_source import DEFAULT_BUFFER_SECONDS, MicSource, MicSourceError
+from pom.listening.mic_deck import DEFAULT_BUFFER_SECONDS, MicDeck, MicDeckError
 from pom.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -27,7 +27,7 @@ _log = get_logger(__name__, DEBUG)
 DEFAULT_MAC_DEVICE = "default"
 
 
-class MacMicSource(MicSource):
+class MacMicDeck(MicDeck):
     """Frames from the Mac's microphone.
 
     Attributes:
@@ -45,7 +45,7 @@ class MacMicSource(MicSource):
             device: The AVFoundation audio input: `default` for the system's default input, or a device name.
             ffmpeg: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
-            strict: Raise MicSourceError on any problem instead of recording it.
+            strict: Raise MicDeckError on any problem instead of recording it.
         """
         super().__init__(device, ffmpeg, buffer_seconds, strict)
 
@@ -55,4 +55,4 @@ class MacMicSource(MicSource):
                 "-ar", str(SAMPLE_RATE), "-ac", "1", "-f", "s16le", "pipe:1"]
 
 
-__all__ = ["MacMicSource", "MicSourceError"]
+__all__ = ["MacMicDeck", "MicDeckError"]

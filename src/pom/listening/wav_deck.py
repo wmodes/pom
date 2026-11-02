@@ -1,4 +1,4 @@
-"""The WavSource: a recording played into the listening side as if it were the microphone.
+"""The WavDeck: a recording played into the listening side as if it were the microphone.
 
 It hands out a 16 kHz mono 16-bit WAV file in 30 ms frames, paced like real time (speed 1), faster, or flat out
 (speed 0). This is how we try a change on a meeting we already have, and how the listening side is tested without a
@@ -10,7 +10,7 @@ is followed by a pause, as it would be in a room. A last piece of less than one 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing file, or a file in the wrong format, gives a
     CRITICAL fault in `report` and a source that yields nothing, never an exception. `strict=True` raises
-    WavSourceError instead, for tests and dev tools. The message for a wrong format says how to convert it.
+    WavDeckError instead, for tests and dev tools. The message for a wrong format says how to convert it.
   * Pacing is only a pause after each frame, and the pause function is injected (`sleep`), so tests run instantly.
     The listening side counts time in the audio it has received, not in wall-clock time, so a recording replayed at
     any speed is heard exactly as a live stream would be.
@@ -33,7 +33,7 @@ DEFAULT_SPEED = 1.0
 DEFAULT_END_PAUSE_SECONDS = 1.2
 
 
-class WavSourceError(ValueError):
+class WavDeckError(ValueError):
     """Raised for any source problem, but only in strict mode (development and tests)."""
 
 
@@ -41,7 +41,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class WavSource:
+class WavDeck:
     """Frames from a recording.
 
     Attributes:
@@ -57,9 +57,9 @@ class WavSource:
             speed: 1 plays at real time, 2 twice as fast, 0 as fast as possible. 0 or more.
             end_pause_seconds: Silence added after the last frame. 0 or more.
             sleep: A function that waits that many seconds. Default: time.sleep.
-            strict: Raise WavSourceError on any problem instead of recording it.
+            strict: Raise WavDeckError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=WavSourceError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=WavDeckError, logger=_log)
         self.seconds = 0.0
         self._speed = self._valid(speed, "speed", DEFAULT_SPEED)
         self._end_frames = round(self._valid(end_pause_seconds, "end_pause_seconds", DEFAULT_END_PAUSE_SECONDS) / FRAME_SECONDS)

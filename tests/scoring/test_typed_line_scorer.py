@@ -20,9 +20,9 @@ class FakeScorer:
         self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], FaultRecorder()
 
     def score_text(self, text, heard_at=0.0):
-        from pom.listening.segment_fragmenter import Fragment, FragmentLevel
+        from pom.listening.take_cutter import Clip, ClipLevel
         self.asked.append((text, heard_at))
-        return ScoredClip(Fragment(text, FragmentLevel.SENTENCE, heard_at), self.scores.get(text, 3.0), self.scored_by)
+        return ScoredClip(Clip(text, ClipLevel.SENTENCE, heard_at), self.scores.get(text, 3.0), self.scored_by)
 
 
 class Clock:

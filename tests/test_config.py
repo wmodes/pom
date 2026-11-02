@@ -570,12 +570,12 @@ def test_the_starting_listening_values_are_the_known_good_ones():
 
 
 def test_the_listening_defaults_match_the_modules_defaults():
-    from pom.listening import listener, mic_source, rolling_cutter, whisper_server_client
+    from pom.listening import eavesdropper, mic_deck, rolling_cutter, whisper_model_client
     assert ListeningSettings() == ListeningSettings(
-        whisper_server_client.DEFAULT_URL, whisper_server_client.DEFAULT_TIMEOUT, mic_source.DEFAULT_DEVICE,
-        mic_source.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_STEP, rolling_cutter.DEFAULT_HOLD,
-        rolling_cutter.DEFAULT_REWIND, rolling_cutter.DEFAULT_MAX_BUFFER, listener.DEFAULT_SOUND_EVERY_STEPS,
-        listener.DEFAULT_SOUND_SECONDS, listener.DEFAULT_AMBIENT_MEMORY)
+        whisper_model_client.DEFAULT_URL, whisper_model_client.DEFAULT_TIMEOUT, mic_deck.DEFAULT_DEVICE,
+        mic_deck.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_STEP, rolling_cutter.DEFAULT_HOLD,
+        rolling_cutter.DEFAULT_REWIND, rolling_cutter.DEFAULT_MAX_BUFFER, eavesdropper.DEFAULT_SOUND_EVERY_STEPS,
+        eavesdropper.DEFAULT_SOUND_SECONDS, eavesdropper.DEFAULT_AMBIENT_MEMORY)
 
 
 def test_all_the_listening_values_are_read_from_the_section(tmp_path):
@@ -641,7 +641,7 @@ def test_the_shipped_config_has_the_known_good_listening_values():
 
 
 def test_the_listening_settings_plug_straight_into_the_modules():
-    from pom.listening import Listener, RollingCutter, WhisperServerClient
+    from pom.listening import Eavesdropper, RollingCutter, WhisperModelClient
 
     class NoSound:
         def frames(self):
@@ -651,9 +651,9 @@ def test_the_listening_settings_plug_straight_into_the_modules():
             pass
 
     settings = Config.load(environ={}).listening
-    client = WhisperServerClient(settings.whisper_url, settings.whisper_timeout)
+    client = WhisperModelClient(settings.whisper_url, settings.whisper_timeout)
     cutter = RollingCutter(client, settings.step, settings.hold, settings.rewind, settings.max_buffer)
-    listener = Listener(NoSound(), client, settings.step, settings.hold, settings.rewind, settings.max_buffer,
+    listener = Eavesdropper(NoSound(), client, settings.step, settings.hold, settings.rewind, settings.max_buffer,
                         settings.sound_every_steps, settings.sound_seconds, settings.ambient_memory)
     assert client.report.ok and cutter.report.ok and listener.report.ok
 

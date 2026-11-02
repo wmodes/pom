@@ -1,4 +1,4 @@
-"""The MicSource: the microphone, through the Pi's `arecord`.
+"""The MicDeck: the microphone, through the Pi's `arecord`.
 
 It starts `arecord` for the capture device and hands out the sound in 30 ms frames. The Printer's whole job is to
 listen, so this is where its hearing starts.
@@ -11,7 +11,7 @@ Design decisions, and why:
     recorded once for each stretch of dropping.
   * Nothing here may stop the oracle (see pom/__init__.py). No `arecord`, a microphone that cannot be opened, or a
     microphone that stops sending (unplugged) is a CRITICAL fault in `report` and `frames()` simply ends; it never
-    raises. The Conductor decides what to do about it. `strict=True` raises MicSourceError instead, for tests and dev
+    raises. The Conductor decides what to do about it. `strict=True` raises MicDeckError instead, for tests and dev
     tools.
   * The program that is run is a setting (`arecord`), so tests can use a stand-in; the capture format is fixed at
     what whisper takes (see audio_format).
@@ -37,7 +37,7 @@ DEFAULT_BUFFER_SECONDS = 10.0
 _STOP_WAIT = 2.0                      # seconds to wait for arecord and its reader to finish when closing
 
 
-class MicSourceError(ValueError):
+class MicDeckError(ValueError):
     """Raised for any microphone problem, but only in strict mode (development and tests)."""
 
 
@@ -45,7 +45,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class MicSource:
+class MicDeck:
     """Frames from the microphone.
 
     Attributes:
@@ -65,9 +65,9 @@ class MicSource:
             device: The ALSA capture device, e.g. plughw:0,0 (`arecord -l` lists them).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
-            strict: Raise MicSourceError on any problem instead of recording it.
+            strict: Raise MicDeckError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=MicSourceError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=MicDeckError, logger=_log)
         self.dropped_frames = 0
         if not (isinstance(device, str) and device.strip()):
             self.report.warn(f"the capture device must be a name such as {self._FALLBACK_DEVICE}, got {device!r}; "
@@ -80,7 +80,7 @@ class MicSource:
         self._closing = threading.Event()
         self._finished = False
         self._dropping = False
-        self._thread_error: Optional[MicSourceError] = None
+        self._thread_error: Optional[MicDeckError] = None
         self._process: Optional[subprocess.Popen] = None
         self._reader: Optional[threading.Thread] = None
         self._start(device, arecord)
@@ -143,7 +143,7 @@ class MicSource:
         waiting for it, so it is kept and raised by frames() when the sound ends."""
         try:
             getattr(self.report, severity)(message)
-        except MicSourceError as problem:
+        except MicDeckError as problem:
             self._thread_error = problem
 
     def frames(self) -> Iterator[bytes]:

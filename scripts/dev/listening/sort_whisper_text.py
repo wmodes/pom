@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Play with the WhisperTextSorter: see how whisper's text is sorted into words, ambient captions and nothing.
+"""Play with the TrackSplitter: see how whisper's text is sorted into words, ambient captions and nothing.
 
 Give it text as arguments, or pipe text in, and it prints the words (speech, and lyrics with the music symbols taken
 out), the kind of words they are, and the captions of sounds that were set aside. The sorting is
-src/pom/listening/whisper_text_sorter.py; this is only a window onto it.
+src/pom/listening/track_splitter.py; this is only a window onto it.
 
 Usage:
     sort_whisper_text.py "(dog barks) Hello there. [BLANK_AUDIO]"
@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
-from pom.listening import WhisperTextSorter  # noqa: E402
+from pom.listening import TrackSplitter  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 
@@ -30,7 +30,7 @@ def main():
 
     configure_logging("WARNING")
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    heard = WhisperTextSorter().sort(raw, plain_text=not args.lyrics_only)
+    heard = TrackSplitter().sort(raw, plain_text=not args.lyrics_only)
     print(f"words:   {heard.words or '(none)'}")
     print(f"kind:    {heard.kind or '(none)'}")
     print(f"ambient: {', '.join(heard.ambient) if heard.ambient else '(none)'}")

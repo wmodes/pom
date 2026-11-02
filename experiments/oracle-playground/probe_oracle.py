@@ -131,7 +131,7 @@ def main() -> None:
             prompt = builder.build(hinge)
             if prompt is not None:
                 print("\n".join(exemplar_columns(prompt.exemplars, shutil.get_terminal_size().columns)) or "exemplars: none")
-                portent = client.portent(prompt.text)
+                portent = client.consult(prompt.text)
                 if portent is not None:
                     print(f"\n{portent}\n")
                     print(f"({len(portent.split())} words, {client.last_seconds:.1f} s"

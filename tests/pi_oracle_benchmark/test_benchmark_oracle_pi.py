@@ -160,7 +160,7 @@ class TestStreamTimer:
     def test_works_as_the_posting_function_of_the_real_client(self, server_url):
         from pom.voice import OracleModelClient
         client = OracleModelClient(server_url, 5, 300, 0.3, post=StreamTimer())
-        assert client.portent("a prompt") == "Hello world"
+        assert client.consult("a prompt") == "Hello world"
         assert client.last_cut_off is False
 
 

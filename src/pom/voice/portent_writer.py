@@ -97,7 +97,7 @@ class PortentWriter:
         prompt = self._builder.build(hinge)
         if prompt is None:
             return None
-        text = self._client.portent(prompt.text)
+        text = self._client.consult(prompt.text)
         if text is None:
             return None
         _log.debug("wrote a portent of %d words from %d exemplar(s)", len(text.split()), len(prompt.exemplars))

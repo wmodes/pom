@@ -45,6 +45,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Writing**: `OracleModelClient.portent()` is `consult()` (put the finished prompt to the oracle model). The `pom.voice` package keeps its name until the packages move together. Behavior is unchanged.
 - **The Great Rename, Printing**: the output side takes the lexicon's names. `TypewriterFormatter` is `PortentFormatter`, `TypewriterPort` is `TerminalPort` (its `type()` is `transmit()`), `ConsoleTypewriter` is `ConsoleTerminal`,
   `TypingReport` is `PrintResult`, and `OutputSettings` is `PrintingSettings`. The modules are `portent_formatter.py` and `terminal_port.py`, the tests follow. **Config:** the `[output]` section is `[printing]`
   (`config.printing`), and `terminal.type_during_output` is `terminal.type_during_printing`; `config/pom.toml` is changed to match, and a copy of the old names in `config/pom.local.toml` would now be ignored with a warning (the shipped one has

@@ -56,12 +56,12 @@ def _is_number(value) -> bool:
 
 
 class OracleModelClient:
-    """Asks a language model served by llama-server for a portent.
+    """Asks a language model served by llama-server for a consult.
 
     Attributes:
-        report: Problems met (server down, odd reply, bad setting). Never holds the prompt or the portent.
+        report: Problems met (server down, odd reply, bad setting). Never holds the prompt or the consult.
         last_seconds: How long the most recent request took, or None before the first.
-        last_cut_off: True if the most recent portent stopped because it reached `max_tokens`.
+        last_cut_off: True if the most recent consult stopped because it reached `max_tokens`.
     """
 
     def __init__(self, url: str, timeout: float = DEFAULT_TIMEOUT, max_tokens: int = DEFAULT_MAX_TOKENS,
@@ -105,7 +105,7 @@ class OracleModelClient:
         """False if the address was unusable, so the model will never be asked."""
         return self._usable
 
-    def portent(self, prompt: str) -> Optional[str]:
+    def consult(self, prompt: str) -> Optional[str]:
         """The model's portent for this prompt, or None if it wrote none.
 
         None means no portent could be had; the reason is in `report`. Never raises (except in strict mode).

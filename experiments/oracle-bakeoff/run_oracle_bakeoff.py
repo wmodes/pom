@@ -168,7 +168,7 @@ def main() -> None:
                 for draw in range(1, SEEDS + 1):
                     rng.seed(draw_seed(hinge, draw))
                     built = builder.build(hinge)
-                    portent = client.portent(built.text) if built is not None else None
+                    portent = client.consult(built.text) if built is not None else None
                     exemplars = [chunk.text for chunk in built.exemplars] if built is not None else []
                     record = {"type": "portent", "hinge": hinge, "draw": draw,
                               "exemplar_ids": [chunk.id for chunk in built.exemplars] if built is not None else [],

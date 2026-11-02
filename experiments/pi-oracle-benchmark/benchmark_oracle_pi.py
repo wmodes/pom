@@ -296,7 +296,7 @@ def command_run(args) -> None:
     def make(hinge: str, draw: int) -> dict:
         rng.seed(draw_seed(hinge, draw))                # the bake-off's own seed for this cell
         built = builder.build(hinge)
-        portent = client.portent(built.text) if built is not None else None
+        portent = client.consult(built.text) if built is not None else None
         return portent_record(args.phase, hinge, draw, client, timer, portent)
 
     run = {"type": "run", "phase": args.phase, **git_state(), "temperature": oracle.temperature,

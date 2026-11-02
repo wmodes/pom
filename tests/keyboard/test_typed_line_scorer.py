@@ -34,14 +34,14 @@ class Clock:
         return self.now
 
 
-def tracker(bar_level=6.0, cooldown=60.0):
-    """A tracker whose bar sits at `bar_level` (the starting line, with a window that will not fill)."""
+def bar_keeper(bar_level=6.0, cooldown=60.0):
+    """A BarKeeper whose bar sits at `bar_level` (the starting line, with a window that will not fill)."""
     return BarKeeper(PercentileBar(100.0, 300.0, 20, bar_level), cooldown)
 
 
 def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):
-    scorer, made_tracker, clock = FakeScorer(scores), tracker(bar_level, cooldown), Clock(now)
-    return TypedLineScorer(scorer, made_tracker, clock, **options), scorer, made_tracker, clock
+    scorer, made_bar_keeper, clock = FakeScorer(scores), bar_keeper(bar_level, cooldown), Clock(now)
+    return TypedLineScorer(scorer, made_bar_keeper, clock, **options), scorer, made_bar_keeper, clock
 
 
 class TestTheDefaults:
@@ -73,9 +73,9 @@ class TestTheSentence:
     def test_the_bar_and_window_are_shown_as_they_stood_before_the_line(self):
         made, _, _, _ = typed(bar_level=6.0)
         sentence = made.score("anything")
-        assert sentence.trigger_level == 6.0 and sentence.window_size == 0
+        assert sentence.bar == 6.0 and sentence.window_size == 0
 
-    def test_counted_is_the_trackers_count(self):
+    def test_counted_is_the_bar_keepers_count(self):
         made, _, _, _ = typed(affects_bar=True)
         assert made.score("a").counted == 1 and made.score("b").counted == 2
 
@@ -105,7 +105,7 @@ class TestTheMultiplier:
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0)
         assert made.score("x").is_hinge        # 4.5 * 1.5 = 6.75
 
-    def test_without_the_multiplier_the_same_line_does_not_trigger(self):
+    def test_without_the_multiplier_the_same_line_does_not_qualify(self):
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0, multiplier=1)
         assert not made.score("x").is_hinge
 
@@ -114,18 +114,18 @@ class TestAgainstTheBar:
     def test_a_line_that_clears_the_bar_is_a_hinge(self):
         made, _, _, _ = typed({"x": 5.0}, bar_level=6.0)
         sentence = made.score("x")
-        assert sentence.is_hinge and sentence.effect is Ruling.QUALIFIED
+        assert sentence.is_hinge and sentence.ruling is Ruling.QUALIFIED
 
     def test_a_line_that_does_not_is_only_judged_and_is_not_a_hinge(self):
         made, _, _, _ = typed({"hello": 1.0}, bar_level=6.0)
         sentence = made.score("hello")
-        assert not sentence.is_hinge and sentence.effect is Ruling.TYPED_DNQ
+        assert not sentence.is_hinge and sentence.ruling is Ruling.TYPED_DNQ
 
     def test_a_line_exactly_at_the_bar_is_not_a_hinge(self):
         made, _, _, _ = typed({"x": 4.0}, bar_level=6.0)    # 4.0 * 1.5 = 6.0
         assert not made.score("x").is_hinge
 
-    def test_typed_lines_in_a_row_all_trigger_because_there_is_no_cooldown(self):
+    def test_typed_lines_in_a_row_all_qualify_because_there_is_no_cooldown(self):
         made, _, _, _ = typed({"x": 9.0})
         assert [made.score("x").is_hinge for _ in range(3)] == [True, True, True]
 
@@ -154,7 +154,7 @@ class TestTheBarStaysTheRooms:
     def test_affecting_the_bar_counts_the_line_with_the_rooms_scores(self):
         made, _, shared, _ = typed({"x": 2.0}, affects_bar=True)
         sentence = made.score("x")
-        assert shared.counted == 1 and sentence.effect is Ruling.DID_NOT_QUALIFY
+        assert shared.counted == 1 and sentence.ruling is Ruling.DID_NOT_QUALIFY
 
     def test_an_affecting_line_enters_the_window(self):
         made, _, shared, _ = typed({"x": 2.0}, affects_bar=True)
@@ -166,28 +166,28 @@ class TestWhenThereIsNoScore:
     def test_a_blank_line_is_unscored_and_the_scorer_is_not_asked(self):
         made, scorer, _, _ = typed()
         sentence = made.score("   \n")
-        assert (sentence.score, sentence.scored_by, sentence.effect, sentence.text) == (None, ScoredBy.UNSCORED, None, "")
+        assert (sentence.score, sentence.scored_by, sentence.ruling, sentence.text) == (None, ScoredBy.UNSCORED, None, "")
         assert scorer.asked == []
 
     def test_a_line_that_is_not_text_is_unscored(self):
         made, scorer, _, _ = typed()
         assert made.score(None).score is None and scorer.asked == []
 
-    def test_a_line_the_scorer_cannot_score_is_ignored_by_the_trigger(self):
+    def test_a_line_the_scorer_cannot_score_is_ignored_by_the_bar_keeper(self):
         class Unable(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
                 return ScoredClip(result.clip, None, ScoredBy.UNSCORED)
-        made = TypedLineScorer(Unable(), tracker(), Clock())
+        made = TypedLineScorer(Unable(), bar_keeper(), Clock())
         sentence = made.score("hello")
-        assert (sentence.score, sentence.effect, sentence.is_hinge) == (None, Ruling.NO_MARK, False)
+        assert (sentence.score, sentence.ruling, sentence.is_hinge) == (None, Ruling.NO_MARK, False)
 
     def test_the_clip_filters_score_is_multiplied_like_any_other(self):
         class Filtered(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
                 return ScoredClip(result.clip, 1.0, ScoredBy.CLIP_FILTER)
-        sentence = TypedLineScorer(Filtered(), tracker(), Clock()).score("hello")
+        sentence = TypedLineScorer(Filtered(), bar_keeper(), Clock()).score("hello")
         assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.CLIP_FILTER, False)
 
 

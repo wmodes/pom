@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Play with the ClipScorer and the trigger: type sentences, see each one's score and whether the trigger would fire.
+"""Play with the ClipScorer and the BarKeeper: type sentences, see each one's score and whether it would qualify.
 
 The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address
-in `scorer.url`), and so is the BarKeeper that decides the trigger. Each sentence is taken to have been said
+in `scorer.url`), and so is the BarKeeper that rules on each score. Each sentence is taken to have been said
 `--gap` seconds after the one before, so you can watch the room's window fill and the bar settle. The scoring is
 src/pom/scoring/; this is only a window onto it.
 
@@ -10,7 +10,7 @@ Usage:
     score_typed_sentences.py "My wife doesn't know I lost the house." "Pass the salt, please."
     echo "I can hear the people in the walls again." | score_typed_sentences.py
     score_typed_sentences.py                       # type sentences at the prompt; an empty line quits
-    score_typed_sentences.py --min-scores 5 --gap 20 "..."     # let the trigger fire after 5 scores, with 20 s between sentences
+    score_typed_sentences.py --min-scores 5 --gap 20 "..."     # let a score qualify after 5 scores, with 20 s between sentences
 
 Nothing you type is kept: it is scored and forgotten.
 """
@@ -43,13 +43,13 @@ def build(config: Config, min_scores: int):
     return scorer, bar_keeper_from_settings(qualifying), client
 
 
-def standing(effect: Ruling, bar, held: int) -> str:
+def standing(ruling: Ruling, bar, held: int) -> str:
     """Where a score stands, for the end of its line."""
-    if effect is Ruling.NO_MARK or bar is None:
+    if ruling is Ruling.NO_MARK or bar is None:
         return "[no score]"
     note = f"[window {held} scores, bar {bar:.2f}"
-    return ("<-- would trigger  " if effect is Ruling.QUALIFIED else "") + note + \
-        ("; cooling down" if effect is Ruling.HELD else "") + "]"
+    return ("<-- would qualify  " if ruling is Ruling.QUALIFIED else "") + note + \
+        ("; held" if ruling is Ruling.HELD else "") + "]"
 
 
 def main():
@@ -58,14 +58,14 @@ def main():
     parser.add_argument("--config", default=str(ROOT / "config" / "pom.toml"), help="the config file to read")
     parser.add_argument("--gap", type=float, default=10.0, help="seconds between one sentence and the next (default 10)")
     parser.add_argument("--min-scores", type=int, default=0,
-                        help="scores needed before the trigger may fire (default: the config's, 20)")
+                        help="scores needed before a score may qualify (default: the config's, 20)")
     args = parser.parse_args()
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    scorer, tracker, client = build(config, args.min_scores)
+    scorer, bar_keeper, client = build(config, args.min_scores)
     take_cutter = TakeCutter()
-    print(f"scorer at {config.scorer.url}; trigger ({config.qualifying.algorithm}): a score above {tracker.describe()}")
+    print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")
 
@@ -77,11 +77,11 @@ def main():
             if clip.level is not ClipLevel.SENTENCE:
                 continue
             scored = scorer.score(clip)
-            bar, held = tracker.bar_at(now), tracker.window_size_at(now)
-            effect = tracker.rule(scored.score, now)
+            bar, held = bar_keeper.bar_at(now), bar_keeper.window_size_at(now)
+            ruling = bar_keeper.rule(scored.score, now)
             shown = f"{scored.score:5.2f}" if scored.score is not None else "  -  "
             print(f"  {shown}  {scored.scored_by.value:<16} {clip.text}   "
-                  f"{standing(effect, bar, held)}")
+                  f"{standing(ruling, bar, held)}")
             now += args.gap
 
     if args.sentences:
@@ -100,7 +100,7 @@ def main():
                 handle(line)
         except (EOFError, KeyboardInterrupt):
             print()
-    for line in [*client.report.lines(), *tracker.report.lines()]:
+    for line in [*client.report.lines(), *bar_keeper.report.lines()]:
         print(line)
 
 

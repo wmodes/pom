@@ -4,7 +4,7 @@
 Nothing here is its own version of the oracle: the prompt comes from `oracle.prompt` in config/pom.toml (and
 config/pom.local.toml), and the real PortentWriter draws the exemplars (Bibliomancer), builds the prompt
 (PromptBuilder) and gets the portent (OracleModelClient). What you see here is what the Printer does. The only thing this
-script adds is the typing of the hinge, which the trigger supplies.
+script adds is the typing of the hinge, which a qualifying sentence supplies.
 
 It starts a llama-server for the model you name, on the port of `oracle.url`, and stops it when you quit. Use `--server` to
 talk to one that is already running instead.

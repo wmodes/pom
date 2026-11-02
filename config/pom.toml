@@ -4,7 +4,7 @@
 #   POM_EXEMPLARS_MIN=3   POM_EXEMPLARS_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
 #
 # The file is divided by the part of the Printer each setting affects, in the order of the work: GLOBAL
-# first, then hearing and scoring (SCORER), deciding when to respond (TRIGGER), then building the portent's
+# first, then hearing and scoring (SCORER), deciding when to respond (QUALIFYING), then building the portent's
 # prompt and asking the oracle model for it (ORACLE). (TOML needs the settings without a
 # [section] to come first, so GLOBAL is at the top.)
 
@@ -105,10 +105,10 @@ Output the score as a single digit | the sentence | what content you found that 
 
 
 # ================================================
-# TRIGGER: when the Printer responds
+# QUALIFYING: when the Printer responds
 # ================================================
 
-# The trigger decides when a score is interesting enough for the Printer to respond: when it is above a bar worked out
+# The BarKeeper decides when a score is interesting enough for the Printer to respond: when it is above a bar worked out
 # from the scores the room has recently earned, judged against the room as it was before the score was heard. Every score
 # counts, the lowest too. There is more than one way to work out the bar, and `algorithm` picks it; each way reads only its
 # own settings below, so switching is one line and the others can stay as they are. (A statistical fence was tried first.
@@ -125,16 +125,16 @@ Output the score as a single digit | the sentence | what content you found that 
 algorithm = "decaying_quantile"
 
 # Where the bar begins, before the room has said enough for one to be worked out from its own scores. It fades as the room
-# speaks, so it is a starting point and not a limit. There is no silent warm-up: a score above it can trigger in the first
+# speaks, so it is a starting point and not a limit. There is no silent warm-up: a score above it can qualify in the first
 # minute. About the usual top of the scores on the recordings (a 99th percentile near 7).
 starting_bar = 6.8
 
-# How many seconds after a trigger before the next score may trigger. A score above the bar inside the cooldown is held
-# back (it still goes to the bar), so a burst of strong sentences, such as a run of jokes, gives one trigger and not six.
+# How many seconds after a qualifier before the next score may qualify. A score above the bar inside the cooldown is held
+# back (it still goes to the bar), so a burst of strong sentences, such as a run of jokes, gives one qualifier and not six.
 # 0 turns it off. 0 or more.
 cooldown_seconds = 60
 
-# A triggering score is normally part of what the bar is built from, so the zinger that fired becomes the room's best and
+# A qualifying score is normally part of what the bar is built from, so the zinger that fired becomes the room's best and
 # holds the bar up for a while. true leaves it out: the bar then stays at the room's usual high tide, and a good score soon
 # after a great one can still fire. (percentile and decaying_quantile)
 exclude_qualifiers = true
@@ -152,7 +152,7 @@ typed_lines_affect_bar = false
 # --- percentile and decaying_quantile ---
 
 # How much of the room's recent scores a score must beat. 100 means beating the best score; 99.5 lets about one score in 200
-# stand above the bar; 90 means the top tenth. Above 0 and at most 100. A lower number triggers more often.
+# stand above the bar; 90 means the top tenth. Above 0 and at most 100. A lower number qualifies more often.
 percentile = 99.5
 
 # --- percentile ---
@@ -170,7 +170,7 @@ min_scores = 20
 # --- decaying_quantile ---
 
 # How many seconds for a score to count half as much: after one half-life it counts half, after two a quarter. Decay is by
-# time, so a quiet room and a busy one both remember "the last few minutes". Above 0. In replays, 300 gave about 7 triggers
+# time, so a quiet room and a busy one both remember "the last few minutes". Above 0. In replays, 300 gave about 7 qualifiers
 # an hour at percentile 99.5.
 half_life_seconds = 300
 
@@ -240,7 +240,7 @@ exemplars_min = 1
 exemplars_max = 1
 
 # What the model is given. {exemplars} is replaced by a few corpus chunks drawn at random, and {hinge} by
-# the clip that triggered, word for word. Nothing else is added, so everything the model needs to
+# the clip that qualified, word for word. Nothing else is added, so everything the model needs to
 # be told goes here.
 
 prompt = """

@@ -29,7 +29,7 @@ class TestTheDefaults:
         assert MovingAverageBar().report.ok
         assert MovingAverageBar(fraction=0, half_life_scores=0.001, floor_fraction=0, starting_bar=-1).report.ok
 
-    def test_it_is_a_trigger_bar(self):
+    def test_it_is_a_bar(self):
         assert isinstance(MovingAverageBar(), Bar)
 
 
@@ -129,7 +129,7 @@ class TestTheFloor:
         b.add(junk, 0.0, False)
         assert b.level_at(0.0) == before and b.counted == 0
 
-    def test_a_triggering_score_joins_the_average_like_any_other(self):
+    def test_a_qualifying_score_joins_the_average_like_any_other(self):
         b = bar(starting_bar=4.0, fraction=0)
         b.add(8.0, 0.0, True)
         assert b.level_at(0.0) == pytest.approx(6.0)

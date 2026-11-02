@@ -1,6 +1,6 @@
 """The OracleModelClient: asks the oracle model for a portent.
 
-When the trigger fires, the PromptBuilder makes the oracle prompt and this module sends it to the oracle model
+When a hinge qualifies, the PromptBuilder makes the oracle prompt and this module sends it to the oracle model
 (served by llama.cpp's `llama-server`, apart from the scorer's) and returns what the model wrote. It is only the
 conversation with that server: one prompt in, one portent out, or None if none could be had. It knows nothing
 about hinges or exemplars; the PromptBuilder does that.

@@ -10,16 +10,16 @@ Design decisions, and why:
   * THE TYPED SCORE MULTIPLIER. A typed score is multiplied by `multiplier` (1.5 to begin with) before it meets the bar, because a person typing to
     the Printer is asking for an answer. The product is not capped at 9, so a typed 7 (10.5) beats any spoken 9.
   * THE SAME BAR, NO COOLDOWN. The line is held to the room's own bar, so a dull one ("hello") is simply ignored: it gets no answer
-    and nothing is printed. It has no cooldown, and a trigger it causes does not start one, so the room's rhythm is the room's.
+    and nothing is printed. It has no cooldown, and a qualifier it causes does not start one, so the room's rhythm is the room's.
   * THE BAR STAYS THE ROOM'S. By default a typed score is kept out of what the bar is built from (`affects_bar` False), so the bar
     stays a picture of the room. True lets it feed the bar like any other score. Both are in the config (`[qualifying]`).
-  * Time is the stream's. `clock` gives seconds on the same timeline as the Eavesdropper's (`heard_at`), so the tracker never sees time
+  * Time is the stream's. `clock` gives seconds on the same timeline as the Eavesdropper's (`heard_at`), so the BarKeeper never sees time
     run backwards. The Conductor passes the clock it uses for listening.
   * Nothing here may stop the oracle (see pom/__init__.py). A line the Scorer cannot score, or that is blank, gives an unscored
-    sentence the tracker ignores; a bad multiplier is replaced by its default with a warning (`strict` raises instead).
+    sentence the BarKeeper ignores; a bad multiplier is replaced by its default with a warning (`strict` raises instead).
   * What was typed is never logged or put in a report: the text lives only in the sentence this returns.
-  * The Scorer, the tracker and the clock are passed in, already built (the entry point takes the multiplier and `affects_bar` from
-    `config.qualifying`); this module never reads Config. It adds no lock: the tracker is shared with the HingeFinder's thread, and
+  * The Scorer, the BarKeeper and the clock are passed in, already built (the entry point takes the multiplier and `affects_bar` from
+    `config.qualifying`); this module never reads Config. It adds no lock: the BarKeeper is shared with the HingeFinder's thread, and
     keeping the two from calling it at once is the Conductor's job.
 """
 import math
@@ -44,11 +44,11 @@ class TypedLineScorerError(ValueError):
 class TypedLineScorer:
     """Scores the lines typed at the keyboard and says which of them the Printer should answer."""
 
-    def __init__(self, scorer, tracker, clock: Callable[[], float], multiplier: float = DEFAULT_MULTIPLIER,
+    def __init__(self, scorer, bar_keeper, clock: Callable[[], float], multiplier: float = DEFAULT_MULTIPLIER,
                  affects_bar: bool = False, strict: bool = False):
         """Args:
             scorer: A Scorer (anything with score_text(text, heard_at) giving a score and scored_by).
-            tracker: The BarKeeper the room's sentences also meet (anything with bar_at, window_size_at,
+            bar_keeper: The BarKeeper the room's sentences also meet (anything with bar_at, window_size_at,
                 rule_typed and counted).
             clock: Gives now, in seconds on the Eavesdropper's timeline.
             multiplier: What a score is multiplied by before it meets the bar, 0 or more.
@@ -57,7 +57,7 @@ class TypedLineScorer:
         """
         self.report = FaultRecorder(strict=strict, error=TypedLineScorerError, logger=_log)
         self._scorer = scorer
-        self._tracker = tracker
+        self._bar_keeper = bar_keeper
         self._clock = clock
         self._multiplier = self._valid_multiplier(multiplier)
         self._affects_bar = bool(affects_bar)
@@ -73,15 +73,15 @@ class TypedLineScorer:
         """Scores one typed line and judges it against the bar. Blocks while the Scorer works.
 
         The returned sentence's `score` is the multiplied one (the number the bar was asked about); `is_hinge` says whether the Printer
-        should answer. A blank line, or one the Scorer could not score, comes back unscored with no effect.
+        should answer. A blank line, or one the Scorer could not score, comes back unscored with no ruling.
         """
         now = self._clock()
         text = line.strip() if isinstance(line, str) else ""
-        bar, held = self._tracker.bar_at(now), self._tracker.window_size_at(now)
+        bar, held = self._bar_keeper.bar_at(now), self._bar_keeper.window_size_at(now)
         if not text:
-            return Attempt(text, TYPED, None, ScoredBy.UNSCORED, None, now, bar, held, self._tracker.counted)
+            return Attempt(text, TYPED, None, ScoredBy.UNSCORED, None, now, bar, held, self._bar_keeper.counted)
         result = self._scorer.score_text(text, now)
         multiplied = None if result.score is None else result.score * self._multiplier
-        effect = self._tracker.rule_typed(multiplied, now, affects_bar=self._affects_bar)
-        _log.debug("scored a typed line of %d words: %s", len(text.split()), effect.value)
-        return Attempt(text, TYPED, multiplied, result.scored_by, effect, now, bar, held, self._tracker.counted)
+        ruling = self._bar_keeper.rule_typed(multiplied, now, affects_bar=self._affects_bar)
+        _log.debug("scored a typed line of %d words: %s", len(text.split()), ruling.value)
+        return Attempt(text, TYPED, multiplied, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)

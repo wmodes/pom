@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Play with the whole listening side: the microphone (or a recording) through the Eavesdropper, the ClipScorer and the trigger.
+"""Play with the whole listening side: the microphone (or a recording) through the Eavesdropper, the ClipScorer and the BarKeeper.
 
 It is the real HingeFinder (the Eavesdropper, the TakeCutter, the ClipScorer and the BarKeeper joined) and nothing
-else: every sentence it hears is shown with its score and where the trigger stands, and the ones that would trigger the
+else: every sentence it hears is shown with its score and where the bar stands, and the ones that would qualify as the
 Printer are marked. It needs a whisper-server running (the address is `listening.whisper_url`) and the scorer model's
 llama-server; the settings are all in config/pom.toml.
 
@@ -39,11 +39,11 @@ def stamp(seconds: float) -> str:
 
 def standing(sentence) -> str:
     """Where a score stands, for the end of its line."""
-    if sentence.effect is Ruling.NO_MARK or sentence.trigger_level is None:
+    if sentence.ruling is Ruling.NO_MARK or sentence.bar is None:
         return "[no score]"
-    return (("<-- would trigger  " if sentence.is_hinge else "") +
-            f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
-            ("; cooling down" if sentence.effect is Ruling.HELD else "") + "]")
+    return (("<-- would qualify  " if sentence.is_hinge else "") +
+            f"[window {sentence.window_size} scores, bar {sentence.bar:.2f}" +
+            ("; held" if sentence.ruling is Ruling.HELD else "") + "]")
 
 
 def main():
@@ -71,14 +71,14 @@ def main():
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-    tracker = bar_keeper_from_settings(qualifying)
-    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
+    bar_keeper = bar_keeper_from_settings(qualifying)
+    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, heard_settings.score_room_tone)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
     print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
           f"a whisper run every {heard_settings.cut_every_seconds:g} s")
-    print(f"  trigger ({qualifying.algorithm}): a score above {tracker.describe()}")
+    print(f"  qualifying ({qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"  room tone {'is' if heard_settings.score_room_tone else 'is not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
@@ -86,7 +86,7 @@ def main():
     try:
         for sentence in finder.find():
             when = stamp(sentence.heard_at)
-            if sentence.score is None and sentence.effect is None:
+            if sentence.score is None and sentence.ruling is None:
                 print(f"\n[{when}] room tone, not scored: {sentence.text}", flush=True)
                 continue
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "

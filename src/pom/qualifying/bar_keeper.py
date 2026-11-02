@@ -1,18 +1,18 @@
 """The BarKeeper: whether a score stands out from how the room has been scoring lately.
 
-The trigger does not use a fixed score. It asks what this room's recent scores look like and responds when a new one stands well above
+The BarKeeper does not use a fixed score. It asks what this room's recent scores look like and responds when a new one stands well above
 them. In a dull room a 5 can stand out; in a lively one it may take an 8. Each score goes in through `record`, with the time it was
-heard, and the tracker answers what it did with it.
+heard, and the BarKeeper answers what it did with it.
 
 WHERE the bar sits is not decided here. It is worked out by a Bar, and there are several (a percentile of a window of recent
 scores, a decaying quantile, a moving average), each its own class, so the way of deciding can be chosen in the config. This class does the
 parts every way shares:
 
-  * The trigger: a score triggers when it is ABOVE the bar, as the bar stood BEFORE that score was added, so a sentence is judged
-    against the room as it was before it was said. A triggering score is then handed to the bar like any other (the bar may leave it out).
-  * The cooldown: after a trigger, a score above the bar is not marked until `cooldown_seconds` have passed since that trigger (60 to
+  * Qualifying: a score qualifies when it is ABOVE the bar, as the bar stood BEFORE that score was added, so a sentence is judged
+    against the room as it was before it was said. A qualifying score is then handed to the bar like any other (the bar may leave it out).
+  * The cooldown: after a qualifier, a score above the bar is not marked until `cooldown_seconds` have passed since that qualifier (60 to
     begin with; 0 turns it off). It is HELD: it still goes to the bar, and it does not restart the cooldown. A burst of strong
-    sentences, such as a run of jokes, gives one trigger and not six, and the next one comes from the room once the cooldown is over.
+    sentences, such as a run of jokes, gives one qualifier and not six, and the next one comes from the room once the cooldown is over.
   * Time: the caller passes it. Live it is a clock reading; replaying a recording it is the place in the recording, which is why a
     recording can be replayed faster than real time and give the same answers. If a time ever goes backwards (a clock stepping back) it
     is held at the latest time seen, so the bar cannot be asked about the past.
@@ -42,15 +42,15 @@ DEFAULT_COOLDOWN_SECONDS = 60.0
 
 
 class BarKeeperError(ValueError):
-    """Raised for any tracker problem, but only in strict mode (development and tests)."""
+    """Raised for any BarKeeper problem, but only in strict mode (development and tests)."""
 
 
 class Ruling(Enum):
-    """What the tracker did with a score."""
+    """What the BarKeeper did with a score."""
     NO_MARK = "no mark"        # no score, not a number, no usable time, or a score the bar ignores
     DID_NOT_QUALIFY = "did not qualify"        # handed to the bar
     QUALIFIED = "qualified"    # stood above the bar (and was handed to the bar too)
-    HELD = "held"    # stood above the bar, but a trigger was too recent (handed to the bar too)
+    HELD = "held"    # stood above the bar, but a qualifier was too recent (handed to the bar too)
     TYPED_DNQ = "typed DNQ"          # a direct score (typed) that did not stand above the bar and was kept out of it
 
 
@@ -66,7 +66,7 @@ class BarKeeper:
                  strict: bool = False):
         """Args:
             bar: The Bar that works out where the bar sits. None means a PercentileBar with its defaults.
-            cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 means no cooldown).
+            cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 means no cooldown).
             strict: Raise BarKeeperError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=BarKeeperError, logger=_log)
@@ -78,7 +78,7 @@ class BarKeeper:
         self._bar = bar
         self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
         self._last_time: Optional[float] = None
-        self._last_trigger: Optional[float] = None
+        self._last_qualifier: Optional[float] = None
         self.counted = 0
 
     def _valid_cooldown_seconds(self, value) -> float:
@@ -96,11 +96,11 @@ class BarKeeper:
     # --- Questions ------------------------------------------------------------------
 
     def describe(self) -> str:
-        """One line saying how the trigger works and how it is set."""
-        return f"{self._bar.describe()}; at most one trigger every {self._cooldown_seconds:g} s"
+        """One line saying how the BarKeeper works and how it is set."""
+        return f"{self._bar.describe()}; at most one qualifier every {self._cooldown_seconds:g} s"
 
     def bar_at(self, now: float) -> Optional[float]:
-        """The score a new score must be above to trigger at time `now`, or None if `now` is not a number or the bar has none."""
+        """The score a new score must be above to qualify at time `now`, or None if `now` is not a number or the bar has none."""
         return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
 
     def window_size_at(self, now: float) -> int:
@@ -118,30 +118,30 @@ class BarKeeper:
 
         A score that is missing or not a number, one the bar ignores, or a time that is not a number, is NO_MARK and changes nothing.
         Otherwise the score is compared with the bar as it stands now, then handed to the bar, whatever happens to it. It is QUALIFIED if it
-        was above the bar and at least `cooldown_seconds` have passed since the last trigger; HELD if it was above the bar but
-        that trigger was too recent; DID_NOT_QUALIFY otherwise.
+        was above the bar and at least `cooldown_seconds` have passed since the last qualifier; HELD if it was above the bar but
+        that qualifier was too recent; DID_NOT_QUALIFY otherwise.
         """
         if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
             return Ruling.NO_MARK
         now = self._steady(now)
         level = self._bar.level_at(now)
         above = level is not None and score > level
-        cooling = above and self._last_trigger is not None and now - self._last_trigger < self._cooldown_seconds
-        triggered = above and not cooling
-        if triggered:
-            self._last_trigger = now
-        self._bar.add(float(score), now, triggered)
+        cooling = above and self._last_qualifier is not None and now - self._last_qualifier < self._cooldown_seconds
+        qualified = above and not cooling
+        if qualified:
+            self._last_qualifier = now
+        self._bar.add(float(score), now, qualified)
         self._last_time = now
         self.counted += 1
-        effect = Ruling.QUALIFIED if triggered else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
-        _log.debug("score %s: bar %s, %d counted", effect.value, "none" if level is None else f"{level:.3f}", self.counted)
-        return effect
+        ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
+        _log.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
+        return ruling
 
     def rule_typed(self, score: Optional[float], now: float, affects_bar: bool = False) -> Ruling:
         """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
 
         Such a score is held to the same bar as the room's, but it takes no part in the room's rhythm: no cooldown applies to it,
-        and a trigger it causes does not start one. Whether it also affects the bar (feeds what it is built from) is `affects_bar`: False (the
+        and a qualifier it causes does not start one. Whether it also affects the bar (feeds what it is built from) is `affects_bar`: False (the
         default) keeps the bar a picture of the room alone, so the score changes nothing here.
 
         A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar. If not, it is
@@ -151,11 +151,11 @@ class BarKeeper:
             return Ruling.NO_MARK
         now = self._steady(now)
         level = self._bar.level_at(now)
-        triggered = level is not None and score > level
+        qualified = level is not None and score > level
         if affects_bar:
-            self._bar.add(float(score), now, triggered)
+            self._bar.add(float(score), now, qualified)
             self._last_time = now
             self.counted += 1
-        effect = Ruling.QUALIFIED if triggered else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ
-        _log.debug("direct score %s: bar %s", effect.value, "none" if level is None else f"{level:.3f}")
-        return effect
+        ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ
+        _log.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
+        return ruling

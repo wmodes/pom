@@ -32,7 +32,7 @@ from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
 
 
 def build(config: Config, args):
-    """The real ClipScorer, tracker and TypedLineScorer, from the config and the command line."""
+    """The real ClipScorer, BarKeeper and TypedLineScorer, from the config and the command line."""
     nltk_dir = ROOT / "data" / "nltk"
     tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None)
     settings = config.scorer
@@ -43,12 +43,12 @@ def build(config: Config, args):
     qualifying = config.qualifying
     if args.bar is not None:
         qualifying = dataclasses.replace(qualifying, starting_bar=args.bar)
-    tracker = bar_keeper_from_settings(qualifying)
+    bar_keeper = bar_keeper_from_settings(qualifying)
     multiplier = qualifying.typed_handicap if args.multiplier is None else args.multiplier
     affects_bar = qualifying.typed_lines_affect_bar or args.affect_bar
     started = time.monotonic()
-    typed = TypedLineScorer(scorer, tracker, lambda: time.monotonic() - started, multiplier, affects_bar)
-    return scorer, tracker, typed, client, multiplier, affects_bar
+    typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, multiplier, affects_bar)
+    return scorer, bar_keeper, typed, client, multiplier, affects_bar
 
 
 def main():
@@ -62,8 +62,8 @@ def main():
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    scorer, tracker, typed, client, multiplier, affects_bar = build(config, args)
-    print(f"scorer at {config.scorer.url}; trigger ({config.qualifying.algorithm}): a score above {tracker.describe()}")
+    scorer, bar_keeper, typed, client, multiplier, affects_bar = build(config, args)
+    print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"typed lines: score x {multiplier:g}, no cooldown, {'feed' if affects_bar else 'do not feed'} the bar")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: lines will come back unscored (start its llama-server)")
@@ -75,7 +75,7 @@ def main():
             return
         raw = sentence.score / multiplier if multiplier else 0.0
         verdict = "<-- the Printer would answer" if sentence.is_hinge else "[silence]"
-        bar = "none" if sentence.trigger_level is None else f"{sentence.trigger_level:.2f}"
+        bar = "none" if sentence.bar is None else f"{sentence.bar:.2f}"
         print(f"  {raw:5.2f} x {multiplier:g} = {sentence.score:5.2f}  bar {bar:>4}  "
               f"{sentence.scored_by.value:<16} {verdict}")
 
@@ -95,7 +95,7 @@ def main():
                 handle(line)
         except (EOFError, KeyboardInterrupt):
             print()
-    for line in [*client.report.lines(), *tracker.report.lines(), *typed.report.lines()]:
+    for line in [*client.report.lines(), *bar_keeper.report.lines(), *typed.report.lines()]:
         print(line)
 
 

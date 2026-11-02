@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (5): trigger is qualify, tracker is BarKeeper, effect is ruling**: outside the monitor, a score no longer *triggers*, it *qualifies*, the thing that decides is the *BarKeeper* (not "the trigger" or "the tracker"), and what it says about an attempt is a
+  *ruling*. That is the variables and parameters (`bar_keeper`, `HingeFinder(eavesdropper, take_cutter, scorer, bar_keeper)`), `Attempt.trigger_level` as `Attempt.bar`, `Attempt.effect` as `Attempt.ruling`, `last_trigger` as `last_qualifier`,
+  the messages (`at most one qualifier every 60 s`, `the qualifying algorithm must be one of ...`), the dev tools' output (`<-- would qualify`, `; held`), the comments and the test names. The monitoring site, its page and its API still say *trigger*, and so do the
+  config and docs that describe it; they change together in the monitor pass, with a preview. Behavior is unchanged apart from those messages; 2,580 tests pass.
 - **The Great Rename, words (4): source is deck, sorter is splitter, a nothing-here mark is a blank**: on the listening side, what feeds the Eavesdropper is a *deck* (the parameter, the `ScriptedDeck` test stand-in, the messages, comments and test names), `TrackSplitter.sort()` is `split()` (and the `sorter`
   parameter is `splitter`), and the marks whisper writes for nothing are *blanks*. The other uses of the word *source* (the library's holdings, a model file in a dev tool) are other things and stay for their own pass. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, words (3): listener is eavesdropper**: variables, parameters, messages, comments and test names (`HingeFinder(eavesdropper, ...)`). This commit also fixes two dev tools, `scripts/dev/listening/listen_to_room.py` and `scripts/dev/pipeline/listening_to_portent.py`,

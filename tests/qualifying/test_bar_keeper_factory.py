@@ -1,4 +1,4 @@
-"""Tests for pom.qualifying.bar_keeper_factory: the settings name an algorithm and the factory builds the tracker with its bar."""
+"""Tests for pom.qualifying.bar_keeper_factory: the settings name an algorithm and the factory builds the BarKeeper with its bar."""
 from types import SimpleNamespace
 
 import pytest
@@ -73,17 +73,17 @@ class TestBuildingABar:
             bar_from_settings(settings(algorithm="decaying_quantile", percentile=500), strict=True)
 
 
-class TestBuildingATracker:
-    def test_it_is_a_tracker_with_the_named_bar_and_the_cooldown(self):
-        tracker = bar_keeper_from_settings(settings(algorithm="decaying_quantile", cooldown_seconds=45.0))
-        assert isinstance(tracker, BarKeeper) and isinstance(tracker._bar, DecayingQuantileBar)
-        assert tracker._cooldown_seconds == 45.0 and tracker.report.ok
+class TestBuildingABarKeeper:
+    def test_it_is_a_bar_keeper_with_the_named_bar_and_the_cooldown(self):
+        bar_keeper = bar_keeper_from_settings(settings(algorithm="decaying_quantile", cooldown_seconds=45.0))
+        assert isinstance(bar_keeper, BarKeeper) and isinstance(bar_keeper._bar, DecayingQuantileBar)
+        assert bar_keeper._cooldown_seconds == 45.0 and bar_keeper.report.ok
 
-    def test_a_bad_cooldown_is_the_trackers_to_report(self):
-        tracker = bar_keeper_from_settings(settings(cooldown_seconds=-5))
-        assert len(tracker.report.warnings) == 1 and "cooldown_seconds" in tracker.report.warnings[0]
+    def test_a_bad_cooldown_is_the_bar_keepers_to_report(self):
+        bar_keeper = bar_keeper_from_settings(settings(cooldown_seconds=-5))
+        assert len(bar_keeper.report.warnings) == 1 and "cooldown_seconds" in bar_keeper.report.warnings[0]
 
-    def test_strict_is_passed_to_the_tracker(self):
+    def test_strict_is_passed_to_the_bar_keeper(self):
         with pytest.raises(BarKeeperError):
             bar_keeper_from_settings(settings(cooldown_seconds=-5), strict=True)
 
@@ -92,12 +92,12 @@ class TestBuildingATracker:
             bar_keeper_from_settings(settings(algorithm="decaying_quantile", percentile=500), strict=True)
 
     @pytest.mark.parametrize("name", ["percentile", "decaying_quantile", "moving_average"])
-    def test_every_tracker_starts_at_the_starting_line_and_triggers_on_a_strong_score(self, name):
-        tracker = bar_keeper_from_settings(settings(algorithm=name, starting_bar=5.0, percentile=100.0))
-        assert tracker.bar_at(0.0) == pytest.approx(5.0)
-        assert tracker.rule(9.0, 1.0) is Ruling.QUALIFIED
+    def test_every_bar_keeper_starts_at_the_starting_line_and_qualifies_on_a_strong_score(self, name):
+        bar_keeper = bar_keeper_from_settings(settings(algorithm=name, starting_bar=5.0, percentile=100.0))
+        assert bar_keeper.bar_at(0.0) == pytest.approx(5.0)
+        assert bar_keeper.rule(9.0, 1.0) is Ruling.QUALIFIED
 
     @pytest.mark.parametrize("name", ["percentile", "decaying_quantile", "moving_average"])
-    def test_every_tracker_describes_itself_with_the_cooldown(self, name):
+    def test_every_bar_keeper_describes_itself_with_the_cooldown(self, name):
         text = bar_keeper_from_settings(settings(algorithm=name, cooldown_seconds=45.0)).describe()
-        assert text.endswith("at most one trigger every 45 s") and "starting at 5.5" in text
+        assert text.endswith("at most one qualifier every 45 s") and "starting at 5.5" in text

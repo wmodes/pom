@@ -2,7 +2,7 @@
 """Play with the whole Printer except the typewriter: a room (or a recording) goes in, portents come out on the screen.
 
 Sound goes through the real Eavesdropper (whisper cuts it), each thing heard is scored sentence by sentence and watched by the
-trigger (the real HingeFinder), and when the trigger fires the sentence that fired it is the hinge: the real PortentWriter
+BarKeeper (the real HingeFinder), and when a sentence qualifies it is the hinge: the real PortentWriter
 asks the oracle model for a portent and prints it where the typewriter would. Then it listens again. Every part is the one
 the Printer will use; the only things this script adds are the printing and, with --mac-mic, a different microphone.
 
@@ -69,10 +69,10 @@ def stamp(seconds: float) -> str:
 
 def standing(sentence) -> str:
     """Where a score stands, for the end of its line."""
-    if sentence.effect is Ruling.NO_MARK or sentence.trigger_level is None:
+    if sentence.ruling is Ruling.NO_MARK or sentence.bar is None:
         return "[no score]"
-    return (f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
-            ("; cooling down" if sentence.effect is Ruling.HELD else "") + "]")
+    return (f"[window {sentence.window_size} scores, bar {sentence.bar:.2f}" +
+            ("; held" if sentence.ruling is Ruling.HELD else "") + "]")
 
 
 def answers(url: str) -> bool:
@@ -148,8 +148,8 @@ def main() -> None:
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
-    tracker = bar_keeper_from_settings(qualifying)
-    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
+    bar_keeper = bar_keeper_from_settings(qualifying)
+    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, heard_settings.score_room_tone)
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "circulation.json"), rng,
@@ -166,13 +166,13 @@ def main() -> None:
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
         site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, status_source=lambda: MonitorStatus(
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
-            services=watch(), algorithm=qualifying.algorithm, trigger_description=tracker.describe()))
+            services=watch(), algorithm=qualifying.algorithm, trigger_description=bar_keeper.describe()))
         if not site.start(monitor.host, monitor.port):
             sys.exit("the monitoring site did not start: " + "; ".join(site.report.lines()))
 
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
-    print(f"  trigger ({qualifying.algorithm}): a score above {tracker.describe()}")
+    print(f"  qualifying ({qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"  room tone {'is' if heard_settings.score_room_tone else 'is not'} scored")
     if site is not None:
         print(f"  monitoring site: http://{'<this machine>' if config.monitor.host == '0.0.0.0' else config.monitor.host}:{site.port}  "
@@ -185,16 +185,16 @@ def main() -> None:
     try:
         for sentence in finder.find():
             when = stamp(sentence.heard_at)
-            if sentence.score is None and sentence.effect is None:
+            if sentence.score is None and sentence.ruling is None:
                 print(f"\n[{when}] room tone, not scored: {sentence.text}", flush=True)
                 continue
             shown = f"{sentence.score:5.2f}" if sentence.score is not None else "  -  "
             print(f"\n[{when}] {sentence.kind:<6} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "
                   f"{standing(sentence)}", flush=True)
             snapshot.update(heard=snapshot["heard"] + 1, scored=snapshot["scored"] + (sentence.score is not None),
-                            bar=tracker.bar_at(sentence.heard_at), window=tracker.window_size_at(sentence.heard_at))
+                            bar=bar_keeper.bar_at(sentence.heard_at), window=bar_keeper.window_size_at(sentence.heard_at))
             if trace is not None and sentence.score is not None:
-                trace.add(sentence.score, sentence.trigger_level, sentence.heard_at, sentence.is_hinge)      # numbers only, for the chart
+                trace.add(sentence.score, sentence.bar, sentence.heard_at, sentence.is_hinge)      # numbers only, for the chart
             if not sentence.is_hinge:
                 continue
 
@@ -205,7 +205,7 @@ def main() -> None:
                                    OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature), rng)
             portent = writer.write(sentence.text)
             if history is not None:
-                history.add(sentence.text, sentence.score, sentence.trigger_level, sentence.window_size, sentence.heard_at, portent)
+                history.add(sentence.text, sentence.score, sentence.bar, sentence.window_size, sentence.heard_at, portent)
             if portent is None:
                 print("  >>> no portent this time:", *writer.report_lines(), sep="\n      ")
                 continue

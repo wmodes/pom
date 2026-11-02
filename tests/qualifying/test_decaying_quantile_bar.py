@@ -19,9 +19,9 @@ def bar(**options):
     return DecayingQuantileBar(**options)
 
 
-def feed(b, scores, start=0.0, step=1.0, triggered=False):
+def feed(b, scores, start=0.0, step=1.0, qualified=False):
     for i, score in enumerate(scores):
-        b.add(score, start + i * step, triggered)
+        b.add(score, start + i * step, qualified)
 
 
 def line_through_the_shares(scores, percentile):
@@ -43,7 +43,7 @@ class TestTheDefaults:
         assert DecayingQuantileBar().report.ok
         assert DecayingQuantileBar(percentile=100, half_life_seconds=0.001, starting_bar=-3, starting_weight=0.001).report.ok
 
-    def test_it_is_a_trigger_bar(self):
+    def test_it_is_a_bar(self):
         assert isinstance(DecayingQuantileBar(), Bar)
 
     def test_it_ignores_no_score(self):
@@ -207,18 +207,18 @@ class TestTheDecay:
         assert b.level_at(50.0) is not None
 
 
-class TestExcludingTriggers:
-    def test_a_triggering_score_is_left_out_when_asked(self):
+class TestExcludingQualifiers:
+    def test_a_qualifying_score_is_left_out_when_asked(self):
         b = DecayingQuantileBar(exclude_qualifiers=True)
         b.add(9.0, 0.0, True)
         assert b.window_size_at(0.0) == 0
 
-    def test_a_triggering_score_is_kept_by_default(self):
+    def test_a_qualifying_score_is_kept_by_default(self):
         b = DecayingQuantileBar()
         b.add(9.0, 0.0, True)
         assert b.window_size_at(0.0) == 1
 
-    def test_only_the_triggering_scores_are_left_out(self):
+    def test_only_the_qualifying_scores_are_left_out(self):
         b = DecayingQuantileBar(exclude_qualifiers=True)
         b.add(3.0, 0.0, False)
         b.add(9.0, 1.0, True)
@@ -232,7 +232,7 @@ class TestExcludingTriggers:
             b.add(9.0, 30.0, True)
         assert keep.level_at(31.0) == pytest.approx(8.07, abs=0.01) and leave.level_at(31.0) == pytest.approx(3.0)
 
-    def test_a_score_that_did_not_trigger_is_kept_either_way(self):
+    def test_a_score_that_did_not_qualify_is_kept_either_way(self):
         b = DecayingQuantileBar(exclude_qualifiers=True)
         b.add(9.0, 0.0, False)
         assert b.window_size_at(0.0) == 1
@@ -305,9 +305,9 @@ class TestDescribing:
         assert DecayingQuantileBar(99.5, 300, 6.8).describe() == \
             "the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8"
 
-    def test_it_mentions_leaving_triggers_out_only_when_it_does(self):
-        assert "triggering scores left out" in DecayingQuantileBar(exclude_qualifiers=True).describe()
-        assert "triggering scores left out" not in DecayingQuantileBar().describe()
+    def test_it_mentions_leaving_qualifiers_out_only_when_it_does(self):
+        assert "qualifying scores left out" in DecayingQuantileBar(exclude_qualifiers=True).describe()
+        assert "qualifying scores left out" not in DecayingQuantileBar().describe()
 
 
 class TestBadSettings:

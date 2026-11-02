@@ -3,7 +3,7 @@
 It joins the parts of the listening side. Sound comes from an AudioDeck; the RollingCutter feeds it to whisper
 every few seconds and keeps the segments whisper finished; the TrackSplitter sorts each segment into words, room tone
 captions and nothing; and `hear()` yields one Take for each segment that holds something new. What happens next
-(cutting, scoring, the trigger) is for the modules after it.
+(cutting, scoring, qualifying) is for the modules after it.
 
 Two things beyond the cutter, both from the hearing-debug experiment:
   * REPEATS. Words identical to the last words are skipped, and captions identical to the last captions are not
@@ -24,7 +24,7 @@ Design decisions, and why:
     thread of its own, so sound is not lost while the Eavesdropper waits for whisper.
   * Time is counted in audio received, not wall-clock time, so a recording replayed at any speed is heard exactly as a
     live stream would be. `ends_at` is the place in the stream where the segment ended, in seconds; it is the time the
-    trigger is given. (In a fast replay the room-tone pass looks at the audio received when the round ran, which is also what a
+    BarKeeper is given. (In a fast replay the room-tone pass looks at the audio received when the round ran, which is also what a
     live run would have; the hearing-debug experiment, whose audio thread ran ahead, looked further on.)
   * Nothing here may stop the oracle (see pom/__init__.py). Whisper being down is a warning in `report`, once for each
     outage, and the audio is kept and tried again. A bad setting is replaced by its default and recorded.

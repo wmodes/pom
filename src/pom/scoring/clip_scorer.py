@@ -1,4 +1,4 @@
-"""The ClipScorer: gives each overheard clip an interest score, so the Trigger can pick a hinge.
+"""The ClipScorer: gives each overheard clip an interest score, so the BarKeeper can pick a hinge.
 
 A clip goes in (normally a whole sentence, from the TakeCutter); a `ScoredClip` comes out,
 the clip plus a score and where the score came from. Scores run from 0 (nothing to hold on to)
@@ -29,7 +29,7 @@ Design decisions, and why:
   * The word tagger feeds the filter; the model is the judge. They are separate objects passed in,
     so tests use fakes.
   * One clip at a time, no context, so a clip scores the same whatever came before it. Any
-    memory of what was heard recently (repeats, fading) belongs to the pool the Trigger keeps, not here.
+    memory of what was heard recently (repeats, fading) belongs to the pool the BarKeeper keeps, not here.
   * Clip text is never logged or put in a report; logs hold scores, sources and counts.
   * The settings (the clip_filter's score, how many content words are needed, breaker numbers) are passed in by the
     entry point from Config; this module never reads Config.

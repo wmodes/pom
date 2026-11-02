@@ -19,10 +19,10 @@ def bar(**options):
     return PercentileBar(**options)
 
 
-def feed(b, scores, start=0.0, step=1.0, triggered=False):
+def feed(b, scores, start=0.0, step=1.0, qualified=False):
     for i, score in enumerate(scores):
         if score is not None:
-            b.add(score, start + i * step, triggered)
+            b.add(score, start + i * step, qualified)
 
 
 def warmed_up(**options):
@@ -41,7 +41,7 @@ class TestTheDefaults:
         assert bar(percentile=0.001, window_seconds=0.5, min_scores=2).report.ok
         assert bar(percentile=100, starting_bar=-2).report.ok
 
-    def test_it_is_a_trigger_bar(self):
+    def test_it_is_a_bar(self):
         assert isinstance(PercentileBar(), Bar)
 
     def test_it_ignores_no_score(self):
@@ -188,18 +188,18 @@ class TestTheWindow:
         assert b.level_at(0.0) == 5.0
 
 
-class TestExcludingTriggers:
-    def test_a_triggering_score_is_left_out_when_asked(self):
+class TestExcludingQualifiers:
+    def test_a_qualifying_score_is_left_out_when_asked(self):
         b = bar(exclude_qualifiers=True)
-        feed(b, [9, 9, 9], triggered=True)
+        feed(b, [9, 9, 9], qualified=True)
         assert b.window_size_at(3.0) == 0
 
-    def test_a_triggering_score_is_kept_by_default(self):
+    def test_a_qualifying_score_is_kept_by_default(self):
         b = bar()
-        feed(b, [9, 9, 9], triggered=True)
+        feed(b, [9, 9, 9], qualified=True)
         assert b.window_size_at(3.0) == 3
 
-    def test_only_the_triggering_scores_are_left_out(self):
+    def test_only_the_qualifying_scores_are_left_out(self):
         b = bar(exclude_qualifiers=True)
         b.add(3.0, 0.0, False)
         b.add(9.0, 1.0, True)
@@ -213,7 +213,7 @@ class TestExcludingTriggers:
             b.add(9.0, 5.0, True)
         assert keep.level_at(6.0) == 9.0 and leave.level_at(6.0) == 3.0
 
-    def test_a_score_that_did_not_trigger_is_kept_either_way(self):
+    def test_a_score_that_did_not_qualify_is_kept_either_way(self):
         b = bar(exclude_qualifiers=True)
         b.add(9.0, 0.0, False)
         assert b.window_size_at(0.0) == 1
@@ -280,9 +280,9 @@ class TestDescribing:
         text = PercentileBar(99.5, 300, 20, 6.8).describe()
         assert text == "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"
 
-    def test_it_mentions_leaving_triggers_out_only_when_it_does(self):
-        assert "triggering scores left out" in PercentileBar(exclude_qualifiers=True).describe()
-        assert "triggering scores left out" not in PercentileBar().describe()
+    def test_it_mentions_leaving_qualifiers_out_only_when_it_does(self):
+        assert "qualifying scores left out" in PercentileBar(exclude_qualifiers=True).describe()
+        assert "qualifying scores left out" not in PercentileBar().describe()
 
 
 class TestBadSettings:

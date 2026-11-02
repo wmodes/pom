@@ -22,7 +22,7 @@ of being threaded through by hand. Today there are five:
                `config.oracle` and passes `config.exemplar_range` to the Bibliomancer, which never reads Config.
     [qualifying]  A section (see QualifyingSettings): when the Printer responds, when a score is above a bar worked out from the
                room's recent scores. `algorithm` picks how ("percentile", "decaying_quantile" or "moving_average"; each reads only
-               its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a trigger the next
+               its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a qualifier the next
                may come (60; 0 for none), `typed_handicap` what a typed line's score is multiplied by (1.5) and
                `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
@@ -228,16 +228,16 @@ class QualifyingSettings:
     switching is one line.
 
     Attributes:
-        percentile: How much of the room's recent scores a score must beat to trigger, above 0 and at most 100. 100 means beating
+        percentile: How much of the room's recent scores a score must beat to qualify, above 0 and at most 100. 100 means beating
             the best score; 99.5 beating all but about one in two hundred; 90 being in the top tenth. (percentile and decaying_quantile)
         window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (300 is the last five minutes). Measured in
             time, not in scores, so it means the same in a busy room and a quiet one. (percentile)
         min_scores: The window always holds at least this many scores, and until this many have been heard the bar is the
             starting bar, a whole number of at least 2. (percentile)
-        cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 is no cooldown). (all)
+        cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 is no cooldown). (all)
         starting_bar: The bar before the room has said enough to work one out, and where it begins; it fades as the room speaks.
             There is no silent warm-up. (all)
-        exclude_qualifiers: True leaves a score that triggered out of what the bar is built from, so one zinger does not hold the bar up
+        exclude_qualifiers: True leaves a score that qualified out of what the bar is built from, so one zinger does not hold the bar up
             and shut out the next. (percentile and decaying_quantile)
         half_life_seconds: Seconds for a score to count half as much, above 0. (decaying_quantile)
         average_fraction: How far above the decaying average the bar sits, 0 or more (0.25 is 25% above). (moving_average)

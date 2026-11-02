@@ -1,9 +1,9 @@
-"""The tracker factory: builds the BarKeeper the config asks for.
+"""The BarKeeper factory: builds the BarKeeper the config asks for.
 
-The trigger can decide where its bar sits in more than one way. Each way is a Bar class with a small factory of its own
+The BarKeeper can decide where its bar sits in more than one way. Each way is a Bar class with a small factory of its own
 (`from_settings`); this module is the list of them and the one function the entry point and the playgrounds call:
 
-    tracker = bar_keeper_from_settings(config.qualifying)
+    bar_keeper = bar_keeper_from_settings(config.qualifying)
 
 `settings.algorithm` names the way: "percentile", "decaying_quantile" or "moving_average". Each bar reads only the settings it needs,
 so one `[qualifying]` section can hold the settings of all of them and switching is a single line. A new way of deciding is a new class
@@ -34,7 +34,7 @@ def bar_from_settings(settings, strict: bool = False) -> Bar:
     known = name in ALGORITHMS if isinstance(name, str) else False
     bar = ALGORITHMS[name if known else DEFAULT_ALGORITHM].from_settings(settings, strict=strict)
     if not known:
-        bar.report.warn(f"the trigger algorithm must be one of {', '.join(ALGORITHMS)}, got {name!r}; using {DEFAULT_ALGORITHM}")
+        bar.report.warn(f"the qualifying algorithm must be one of {', '.join(ALGORITHMS)}, got {name!r}; using {DEFAULT_ALGORITHM}")
     return bar
 
 

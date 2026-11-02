@@ -16,7 +16,7 @@ beside it:
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises PercentileBarError instead, for tests and dev tools.
-  * `exclude_qualifiers` leaves a triggering score out of what the bar remembers. Otherwise the zinger that fired is the room's best score
+  * `exclude_qualifiers` leaves a qualifying score out of what the bar remembers. Otherwise the zinger that fired is the room's best score
     and holds the bar up for the rest of the window, shutting out the next good one.
   * Only the scores in the window are kept (never fewer than `min_scores`), so memory is bounded however long the room talks.
   * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
@@ -63,7 +63,7 @@ class PercentileBar(Bar):
             min_scores: The window always holds at least this many scores, and until this many have been heard the bar is
                 `starting_bar`; a whole number of at least 2.
             starting_bar: The bar until `min_scores` scores have been heard.
-            exclude_qualifiers: True leaves a score that triggered out of what the bar remembers.
+            exclude_qualifiers: True leaves a score that qualified out of what the bar remembers.
             strict: Raise PercentileBarError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=PercentileBarError, logger=_log)
@@ -109,11 +109,11 @@ class PercentileBar(Bar):
         window = self._window(now) if _is_number(now) else None
         return len(window) if window is not None else len(self._recent)
 
-    def add(self, score: float, now: float, triggered: bool) -> None:
-        """Takes in a judged score. A triggering score is left out when `exclude_qualifiers` is on."""
+    def add(self, score: float, now: float, qualified: bool) -> None:
+        """Takes in a judged score. A qualifying score is left out when `exclude_qualifiers` is on."""
         if not (_is_number(score) and _is_number(now)):
             return
-        if triggered and self._exclude_qualifiers:
+        if qualified and self._exclude_qualifiers:
             return
         self._recent.append((now, float(score)))
         self._forget_old(now)
@@ -122,7 +122,7 @@ class PercentileBar(Bar):
         """For example: the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8."""
         return (f"the {self._percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
                 f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}"
-                + (", triggering scores left out" if self._exclude_qualifiers else ""))
+                + (", qualifying scores left out" if self._exclude_qualifiers else ""))
 
     # --- The window -----------------------------------------------------------------
 

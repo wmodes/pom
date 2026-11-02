@@ -1,9 +1,9 @@
-"""The MovingAverageBar: the bar is a set fraction above a decaying average of the room's scores (the first trigger rule).
+"""The MovingAverageBar: the bar is a set fraction above a decaying average of the room's scores (the first qualifying rule).
 
 This is the way the Printer first decided, restored beside the newer bars so it can still be chosen:
 
   * The floor: a score below `average_floor_fraction` of the way up the score range (5% to begin with: 0.45 on the 0 to 9 scale) is
-    ignored. It never feeds the average and can never trigger. It is a fixed line, which is exactly what the newer bars avoid, and it is
+    ignored. It never feeds the average and can never qualify. It is a fixed line, which is exactly what the newer bars avoid, and it is
     why this one is kept as a choice and not as the default.
   * The average: a decaying moving average of the scores at or above the floor. Each new score moves it part of the way toward itself,
     so old talk fades without a clock. How fast is a half-life in scores, `average_half_life_scores`: a score's influence halves after
@@ -11,13 +11,13 @@ This is the way the Printer first decided, restored beside the newer bars so it 
   * The bar: the average times (1 + `average_fraction`), so 0.25 puts it 25% above the average.
   * THE STARTING LINE. The average begins at `starting_bar` divided by (1 + `average_fraction`), so the bar begins at `starting_bar`
     and slides to the room's level as scores arrive. (The first design had no starting line: the first score became the average and
-    nothing could trigger until ten had counted.)
+    nothing could qualify until ten had counted.)
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises MovingAverageBarError instead, for tests and dev tools.
   * Decay is by score, as it always was, not by time, so silence leaves the average where it was.
-  * A triggering score joins the average like any other (the original did, and there is no opt-out).
+  * A qualifying score joins the average like any other (the original did, and there is no opt-out).
   * The score range (0 to 9, the digits the scorer is asked for) is a parameter with that default, not a setting.
   * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
 """
@@ -125,7 +125,7 @@ class MovingAverageBar(Bar):
         """True for a score below the floor, and for anything that is not a number."""
         return not (_is_number(score) and score >= self._floor)
 
-    def add(self, score: float, now: float, triggered: bool) -> None:
+    def add(self, score: float, now: float, qualified: bool) -> None:
         """Moves the average toward a score at or above the floor. Scores below it, and junk, are left out."""
         if self.ignores(score):
             return

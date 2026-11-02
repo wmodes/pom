@@ -426,12 +426,12 @@ def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
 
 # --- The [qualifying] section ---------------------------------------------------------------
 
-def test_the_trigger_defaults_when_nothing_is_set():
+def test_the_qualifying_defaults_when_nothing_is_set():
     config = Config.load(environ={})
     assert config.qualifying == QualifyingSettings() and config.qualifying.percentile == 99.5 and config.report.ok
 
 
-def test_the_trigger_defaults_match_the_bars_defaults():
+def test_the_qualifying_defaults_match_the_bars_defaults():
     from pom.qualifying import bar_keeper, decaying_quantile_bar, moving_average_bar, percentile_bar
     s = QualifyingSettings()
     assert (s.percentile, s.window_seconds, s.min_scores, s.starting_bar) == (
@@ -446,11 +446,11 @@ def test_the_trigger_defaults_match_the_bars_defaults():
     assert s.cooldown_seconds == pom.qualifying.bar_keeper.DEFAULT_COOLDOWN_SECONDS
 
 
-def test_the_starting_trigger_values():
+def test_the_starting_qualifying_values():
     assert QualifyingSettings() == QualifyingSettings(99.5, 300.0, 20, 60.0, 6.8, False, 300.0, 0.25, 10.0, 0.05, "percentile")
 
 
-def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
+def test_all_the_qualifying_values_are_read_from_the_section(tmp_path):
     text = ("[qualifying]\nalgorithm = \"decaying_quantile\"\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
             "starting_bar = 5.5\nexclude_qualifiers = true\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
             "average_half_life_scores = 4\naverage_floor_fraction = 0.1\n")
@@ -475,7 +475,7 @@ def test_a_typed_handicap_of_zero_and_one_are_accepted(tmp_path):
         assert config.qualifying.typed_handicap == expected and config.report.ok
 
 
-def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
+def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
     text = ("[qualifying]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
             "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
     config = Config.load(write(tmp_path, text), environ={})
@@ -504,53 +504,53 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("typed_handicap", "-0.1"), ("typed_handicap", '"1.5"'), ("typed_handicap", "true"),
     ("typed_handicap", "[1.5]"),
     ("typed_lines_affect_bar", "5"), ("typed_lines_affect_bar", '"maybe"'), ("typed_lines_affect_bar", "[true]")])
-def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
+def test_a_bad_qualifying_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {value}\n"), environ={})
     assert config.qualifying == QualifyingSettings()
     assert len(config.report.warnings) == 1 and f"qualifying.{key}" in config.report.warnings[0]
 
 
 @pytest.mark.parametrize("key", ["floor_ignore_fraction", "trigger_fraction", "interest_half_life", "floor_fractoin", "fence_multiple"])
-def test_an_unknown_or_removed_trigger_key_is_warned_about(tmp_path, key):
+def test_an_unknown_or_removed_qualifying_key_is_warned_about(tmp_path, key):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = 0.1\n"), environ={})
     assert any(f"qualifying.{key}" in w for w in config.report.warnings) and config.qualifying == QualifyingSettings()
 
 
-def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
+def test_the_qualifying_section_merges_key_by_key_with_the_local_file(tmp_path):
     main = write(tmp_path, "[qualifying]\npercentile = 95\nmin_scores = 8\n")
     (tmp_path / "pom.local.toml").write_text("[qualifying]\npercentile = 90\nalgorithm = \"moving_average\"\n", encoding="utf-8")
     assert Config.load(main, environ={}).qualifying == QualifyingSettings(percentile=90.0, min_scores=8, algorithm="moving_average")
 
 
-def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
+def test_the_qualifying_settings_plug_straight_into_the_bar_keeper(tmp_path):
     from pom.qualifying import bar_keeper_from_settings, Ruling
     text = "[qualifying]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
     settings = Config.load(write(tmp_path, text), environ={}).qualifying
-    tracker = bar_keeper_from_settings(settings)
-    assert tracker.report.ok
-    assert [tracker.rule(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [Ruling.DID_NOT_QUALIFY] * 5
-    assert tracker.bar_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
-    assert tracker.rule(3.5, 5) is Ruling.QUALIFIED
+    bar_keeper = bar_keeper_from_settings(settings)
+    assert bar_keeper.report.ok
+    assert [bar_keeper.rule(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [Ruling.DID_NOT_QUALIFY] * 5
+    assert bar_keeper.bar_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
+    assert bar_keeper.rule(3.5, 5) is Ruling.QUALIFIED
 
 
 @pytest.mark.parametrize("algorithm", ["percentile", "decaying_quantile", "moving_average"])
 def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm):
     from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     settings = Config.load(write(tmp_path, f'[qualifying]\nalgorithm = "{algorithm}"\n'), environ={}).qualifying
-    tracker = bar_keeper_from_settings(settings)
-    assert isinstance(tracker._bar, ALGORITHMS[algorithm]) and tracker.report.ok and tracker._bar.report.ok
+    bar_keeper = bar_keeper_from_settings(settings)
+    assert isinstance(bar_keeper._bar, ALGORITHMS[algorithm]) and bar_keeper.report.ok and bar_keeper._bar.report.ok
 
 
-def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
-    """The trigger values are tuned often, so they are not pinned: only that the shipped file reads without a warning
+def test_the_shipped_config_loads_cleanly_with_usable_qualifying_values():
+    """The qualifying values are tuned often, so they are not pinned: only that the shipped file reads without a warning
     and that each algorithm accepts the values."""
     import dataclasses
     from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
     assert shipped.report.ok
     for algorithm in ALGORITHMS:
-        tracker = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm))
-        assert tracker.report.ok and tracker._bar.report.ok
+        bar_keeper = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm))
+        assert bar_keeper.report.ok and bar_keeper._bar.report.ok
 
 
 def test_the_shipped_algorithm_is_one_the_factory_knows():

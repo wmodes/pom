@@ -59,14 +59,14 @@ def segment(words="", ends_at=10.0, kind="speech", room_tone=()):
     return Take(words if words else "", kind if words else "", tuple(room_tone), ends_at)
 
 
-def tracker(min_scores=3, cooldown=60.0):
-    """A tracker over a PercentileBar whose starting line is out of reach (1000), so nothing triggers until `min_scores` scores are heard."""
+def bar_keeper(min_scores=3, cooldown=60.0):
+    """A BarKeeper over a PercentileBar whose starting line is out of reach (1000), so nothing qualifies until `min_scores` scores are heard."""
     return BarKeeper(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
 
 
 def finder(segments, scores=None, score_room_tone=False, take_cutter=None, scored_by=ScoredBy.MODEL, **tracking):
     eavesdropper, scorer = FakeEavesdropper(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(), scorer, tracker(**tracking), score_room_tone)
+    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(), scorer, bar_keeper(**tracking), score_room_tone)
     return made, eavesdropper, scorer
 
 
@@ -135,7 +135,7 @@ class TestWhatIsYielded:
         assert found(made) == []
 
 
-class TestTheTrigger:
+class TestQualifying:
     SEGMENTS = [segment("One.", 10.0), segment("Two.", 20.0), segment("Three.", 30.0), segment("Four.", 40.0)]
 
     def scored(self, **extra):
@@ -145,7 +145,7 @@ class TestTheTrigger:
 
     def test_early_scores_are_counted_and_a_high_one_after_them_is_the_hinge(self):
         sentences = self.scored()
-        assert [s.effect for s in sentences] == [Ruling.DID_NOT_QUALIFY] * 3 + [Ruling.QUALIFIED]
+        assert [s.ruling for s in sentences] == [Ruling.DID_NOT_QUALIFY] * 3 + [Ruling.QUALIFIED]
         assert [s.is_hinge for s in sentences] == [False, False, False, True]
 
     def test_the_hinge_is_the_sentence_word_for_word(self):
@@ -153,11 +153,11 @@ class TestTheTrigger:
 
     def test_the_bar_and_the_window_are_as_they_stood_before_the_score_joined(self):
         last = self.scored()[-1]
-        assert last.window_size == 3 and last.trigger_level == QUIET
+        assert last.window_size == 3 and last.bar == QUIET
 
     def test_the_first_score_meets_an_empty_window_and_the_starting_line(self):
         first = self.scored()[0]
-        assert first.window_size == 0 and first.trigger_level == 1000.0
+        assert first.window_size == 0 and first.bar == 1000.0
 
     def test_the_count_includes_the_score_just_made(self):
         assert [s.counted for s in self.scored()] == [1, 2, 3, 4]
@@ -166,19 +166,19 @@ class TestTheTrigger:
         segments = self.SEGMENTS + [segment("Five.", 50.0)]
         made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD + 0.5})
         last = found(made)[-1]
-        assert last.effect is Ruling.HELD and not last.is_hinge
+        assert last.ruling is Ruling.HELD and not last.is_hinge
 
     def test_a_high_score_after_the_cooldown_is_a_hinge_again(self):
         segments = self.SEGMENTS + [segment("Five.", 200.0)]
         made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD + 0.5})
         assert found(made)[-1].is_hinge
 
-    def test_a_sentence_that_could_not_be_scored_is_ignored_by_the_trigger(self):
+    def test_a_sentence_that_could_not_be_scored_is_ignored_by_the_bar_keeper(self):
         made, _, _ = finder([segment("Hello there.")], scored_by=ScoredBy.UNSCORED, scores={"Hello there.": None})
         sentence = found(made)[0]
-        assert sentence.score is None and sentence.effect is Ruling.NO_MARK and not sentence.is_hinge
+        assert sentence.score is None and sentence.ruling is Ruling.NO_MARK and not sentence.is_hinge
 
-    def test_nothing_triggers_before_the_trigger_has_seen_enough_scores(self):
+    def test_nothing_qualifies_before_the_bar_keeper_has_seen_enough_scores(self):
         made, _, _ = finder([segment("One.", 10.0), segment("Two.", 20.0)], scores={"One.": QUIET, "Two.": LOUD})
         assert not any(s.is_hinge for s in found(made))
 
@@ -190,10 +190,10 @@ class TestRoomToneSounds:
         made, _, scorer = finder([self.CAPTIONS])
         sentence = found(made)[0]
         assert (sentence.text, sentence.kind) == ("(dog barks)", "room_tone")
-        assert sentence.score is None and sentence.scored_by is ScoredBy.UNSCORED and sentence.effect is None
+        assert sentence.score is None and sentence.scored_by is ScoredBy.UNSCORED and sentence.ruling is None
         assert scorer.asked == []
 
-    def test_a_caption_that_is_not_considered_is_never_seen_by_the_trigger(self):
+    def test_a_caption_that_is_not_considered_is_never_seen_by_the_bar_keeper(self):
         made, _, _ = finder([self.CAPTIONS, segment("Hello there.", 25.0)])
         sentences = found(made)
         assert sentences[0].counted == 0 and sentences[1].counted == 1
@@ -207,7 +207,7 @@ class TestRoomToneSounds:
         sentence = found(made)[0]
         assert scorer.asked == [("(dog barks)", 15.0)]
         assert (sentence.kind, sentence.score, sentence.scored_by) == ("room_tone", 4.0, ScoredBy.MODEL)
-        assert sentence.effect is Ruling.DID_NOT_QUALIFY and sentence.counted == 1
+        assert sentence.ruling is Ruling.DID_NOT_QUALIFY and sentence.counted == 1
 
     def test_a_considered_caption_can_be_the_hinge(self):
         segments = [segment("One.", 10.0), segment("Two.", 20.0), segment("Three.", 30.0),
@@ -245,13 +245,13 @@ class TestClosingAndReporting:
 
     def test_the_report_lines_gather_the_four_parts_problems(self):
         eavesdropper, scorer = FakeEavesdropper([]), FakeScorer()
-        take_cutter, the_tracker = TakeCutter(), tracker()
+        take_cutter, the_bar_keeper = TakeCutter(), bar_keeper()
         eavesdropper.report.warn("eavesdropper trouble")
         scorer.report.warn("scorer trouble")
         take_cutter.report.warn("take cutter trouble")
-        the_tracker.report.warn("tracker trouble")
-        lines = HingeFinder(eavesdropper, take_cutter, scorer, the_tracker).report_lines()
-        for word in ("eavesdropper", "take cutter", "scorer", "tracker"):
+        the_bar_keeper.report.warn("BarKeeper trouble")
+        lines = HingeFinder(eavesdropper, take_cutter, scorer, the_bar_keeper).report_lines()
+        for word in ("eavesdropper", "take cutter", "scorer", "BarKeeper"):
             assert any(f"{word} trouble" in line for line in lines)
 
     def test_there_is_nothing_to_report_when_all_went_well(self):

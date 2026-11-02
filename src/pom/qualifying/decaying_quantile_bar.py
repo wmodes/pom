@@ -19,7 +19,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises DecayingQuantileBarError instead, for tests and dev tools.
   * Decay is by time, not by number of scores, so a quiet room and a busy one both remember "the last few minutes".
-  * `exclude_qualifiers` leaves a triggering score out of what the bar remembers. Otherwise the zinger that fired becomes the room's best
+  * `exclude_qualifiers` leaves a qualifying score out of what the bar remembers. Otherwise the zinger that fired becomes the room's best
     score and holds the bar up for a while, shutting out the next good one. With it on, the bar stays at the room's usual high tide.
   * Scores older than 8 half-lives (under 0.4% of their weight) are dropped, so memory stays bounded however long the room talks.
   * The starting line is a blend, not an extra score in the list: a stand-in score with almost no weight would still anchor the
@@ -67,7 +67,7 @@ class DecayingQuantileBar(Bar):
             percentile: How much of the weighted scores the bar sits above, above 0 and at most 100.
             half_life_seconds: Seconds for a score's weight to halve, above 0.
             starting_bar: The bar before any real score has been heard, and where it returns after a long silence.
-            exclude_qualifiers: True leaves a score that triggered out of what the bar remembers.
+            exclude_qualifiers: True leaves a score that qualified out of what the bar remembers.
             starting_weight: How many scores' worth of weight the starting line begins with, above 0.
             strict: Raise DecayingQuantileBarError on any problem instead of recording it.
         """
@@ -120,12 +120,12 @@ class DecayingQuantileBar(Bar):
         self._forget_old(now)
         return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
 
-    def add(self, score: float, now: float, triggered: bool) -> None:
-        """Takes in a judged score. A triggering score is left out when `exclude_qualifiers` is on."""
+    def add(self, score: float, now: float, qualified: bool) -> None:
+        """Takes in a judged score. A qualifying score is left out when `exclude_qualifiers` is on."""
         if not (_is_number(score) and _is_number(now)):
             return
         self._start(now)
-        if triggered and self._exclude_qualifiers:
+        if qualified and self._exclude_qualifiers:
             return
         self._memory.append((now, float(score)))
         self._forget_old(now)
@@ -133,7 +133,7 @@ class DecayingQuantileBar(Bar):
     def describe(self) -> str:
         """For example: the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8."""
         return (f"the {self._percentile:g}th percentile of scores that count half as much every {self._half_life:g} s, "
-                f"starting at {self._starting_bar:g}" + (", triggering scores left out" if self._exclude_qualifiers else ""))
+                f"starting at {self._starting_bar:g}" + (", qualifying scores left out" if self._exclude_qualifiers else ""))
 
     # --- The arithmetic -------------------------------------------------------------
 

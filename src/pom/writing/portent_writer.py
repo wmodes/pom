@@ -3,7 +3,7 @@
 It joins the two halves of the voice side. The PromptBuilder draws exemplars and fills the oracle's prompt with the
 hinge; the OracleModelClient sends that prompt to the oracle model and returns what it wrote. `write(hinge)` runs
 both and hands back a Portent: the text, the exemplars that were shown to the model, and how long it took. It is the
-one call the Conductor makes when the trigger fires.
+one call the Conductor makes when a hinge qualifies.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). If the prompt cannot be built or the model writes nothing,
@@ -83,7 +83,7 @@ class PortentWriter:
         """The portent for this hinge, or None if none could be had.
 
         Args:
-            hinge: The sentence that triggered, word for word.
+            hinge: The sentence that qualified, word for word.
             seed: Seeds the exemplar draw so the same hinge and seed show the same exemplars. None leaves it random.
 
         Returns None if there is no prompt, the hinge is empty, or the model wrote nothing; the part that met the

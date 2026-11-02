@@ -58,21 +58,21 @@ Where this file and the code disagree, trust the code and fix this file. Day-to-
 
 ```
 microphone -> whisper-driven cutting -> whisper -> sort: words / captions / nothing
-  -> SegmentFragmenter -> Scorer -> Trigger -> hinge -> PromptBuilder -> oracle model -> Output -> typewriter
+  -> TakeCutter -> Scorer -> Qualifying -> hinge -> PromptBuilder -> oracle model -> Printing -> typewriter
 ```
 
 | Stage | Status |
 |---|---|
-| Microphone, audio sources, whisper client, cutting, the three-way sort, the Listener | Built (`src/pom/listening/`), matched against the experiment on a recorded meeting; the new `MicSource` has not yet heard a real room |
-| SegmentFragmenter | Built |
-| Scorer (fragment_filter, scorer model, circuit breaker) | Built |
-| Trigger (`ConvoInterestTracker`) | Built; used by the hearing-debug probe, not yet by a Conductor |
-| Hinge (the sentence that triggered) | Decided; nothing to build but the hand-off |
+| Microphone, audio decks, whisper model client, cutting, the track split, the Eavesdropper | Built (`src/pom/listening/`), matched against the experiment on a recorded meeting; the new `MicDeck` has not yet heard a real room |
+| TakeCutter | Built |
+| Scorer (clip_filter, scorer model, circuit breaker) | Built |
+| Qualifying (`BarKeeper`) | Built; used by the hearing-debug probe, not yet by a Conductor |
+| Hinge (the sentence that qualified) | Decided; nothing to build but the hand-off |
 | PromptBuilder, `OracleModelClient` | Built |
 | Input: typed line scoring (`TypedLineScorer`) | Built |
-| Output: formatter (`TypewriterFormatter`) | Built |
-| Output: serial port (`TypewriterPort`) and the keyboard coming back | Built |
-| Output: pausing listening while it types | Planned (the Conductor) |
+| Printing: formatter (`PortentFormatter`) | Built |
+| Printing: serial port (`TerminalPort`) and the keyboard coming back | Built |
+| Printing: pausing listening while it types | Planned (the Conductor) |
 | Input (keyboard) | Planned |
 | Conductor | Planned |
 
@@ -88,44 +88,44 @@ stayed available.
 
 ## Listening: from sound to text
 
-1. **Microphone** (*built*, `MicSource`): listens all the time through `arecord` and hands audio on in 30 ms frames. It reads in a thread of its own into a 10-second buffer, so a slow whisper run cannot lose sound; if the buffer fills, the oldest frames are dropped and counted. A recording can be played instead (`WavSource`), for tests and replays.
+1. **Microphone** (*built*, `MicDeck`): listens all the time through `arecord` and hands audio on in 30 ms frames. It reads in a thread of its own into a 10-second buffer, so a slow whisper run cannot lose sound; if the buffer fills, the oldest frames are dropped and counted. A recording can be played instead (`WavDeck`), for tests and replays.
 2. **Cutting** (*built*, `RollingCutter`): whisper decides where the speech is. Every 5 seconds a whisper run covers a rolling
    buffer with whisper's own Silero voice detection on (threshold 0.5); the segments whisper has finished (held back
    2 seconds so a sentence is not cut mid-thought) are kept, and the buffer never grows past 30 seconds. This replaced
    cutting by loudness (a slowly moving noise floor and a 0.7 s pause), which never found a pause in a room with bursty
    noise; the loudness cutter survives behind `--energy-cutter` in the experiment only. Time is counted in audio received, so
    a recording replays exactly as a live stream would, at any speed.
-3. **Transcriber** (*built*, `WhisperServerClient`; whisper.cpp v1.9.5 as `whisper-server`): turns the audio into punctuated text with
+3. **Transcriber** (*built*, `WhisperModelClient`; whisper.cpp v1.9.5 as `whisper-server`): turns the audio into punctuated text with
    segment times. Model `base.en`; `small.en` is slower (about 0.5 times real time against 0.2) for almost the same
    text on speech.
-4. **The three-way sort** (*built*, `WhisperTextSorter`). Whisper's output is sorted before anything is scored:
+4. **The track split** (*built*, `TrackSplitter`). Whisper's output is sorted before anything is scored:
    - *Words* go on: speech, and sung lyrics with the music symbol stripped. The Printer reacts to what it hears, not
      only to conversation, so lyrics compete on score like any other sentence.
-   - *Ambient captions* such as "(dog barks)" or "[Music]" are never scored (a hallucinated "(gunshot)" scored 8.0).
+   - *Room tone* such as "(dog barks)" or "[Music]" is never scored (a hallucinated "(gunshot)" scored 8.0).
      They are kept as a short list of recent sounds, to give the oracle model as context (*proposed*).
-   - *Nothing-here markers* such as "[BLANK_AUDIO]" are dropped.
-5. **SegmentFragmenter** (*built*): cuts the words into fragments stamped with a time. Sentences are what get scored;
+   - *Blanks* such as "[BLANK_AUDIO]" are dropped.
+5. **TakeCutter** (*built*): cuts the words into clips stamped with a time. Sentences are what get scored;
    clauses and phrases remain available behind a setting (*proposed*: a config setting for which levels it emits).
-6. **Listener** (*built*): joins the microphone, the cutter and the sorter. `hear()` is a plain generator the Conductor
-   will run in a thread; it yields a `HeardSegment` (the new words and their kind, the new captions, and where in the stream
-   it ended) for each segment that holds something new, skipping repeats and remembering the last six captions. After three
-   rounds in a row with no speech it asks whisper once, without the voice detector, for lyrics and captions. Whisper being
+6. **Eavesdropper** (*built*): joins the microphone, the cutter and the track splitter. `hear()` is a plain generator the Conductor
+   will run in a thread; it yields a `Take` (the new words and their kind, the new room tone, and where in the stream
+   it ended) for each segment that holds something new, skipping repeats and remembering the last six bits of room tone. After three
+   rounds in a row with no speech it asks whisper once, without the voice detector, for lyrics and room tone. Whisper being
    down is one warning for each outage; the audio is kept and tried again. *Known limit, inherited from the experiment:*
    that pass hears about two seconds, not ten, because a stretch with no speech is trimmed to its last two seconds first,
-   so lyrics sung between passes are mostly missed. Fixing it means the Listener keeping its own recent audio.
+   so lyrics sung between passes are mostly missed. Fixing it means the Eavesdropper keeping its own recent audio.
 
 **The known-good hearing setup.** The only combination that worked well in the room, and it is fragile: on `pom1`,
 `./probe_hearing_run.sh --no-explain` from `experiments/hearing-debug`, whisper `base.en`, 4 threads, VAD threshold 0.5,
 mic gain 24, the 4B scorer model on port 8098, the committed config. Change one thing at a time from here. The values
 that belong to the listening side are the `[listening]` section of the config, and a test pins the committed file to them.
 
-## Scoring: how interesting is a fragment?
+## Scoring: how interesting is a clip?
 
 **The Scorer** (*built*, `src/pom/scoring/`) gives each sentence a score from 0 to 9. It replaced the first plan
 (a weighted sum of word lists). Its pieces:
 
-- **fragment_filter**: the word tagger (NLTK) labels each word as a name, number, filler, stopword or content word. A
-  fragment with too few content words ("or not.") skips the model and gets a fixed low score (`fragment_filter_score`,
+- **clip_filter**: the word tagger (NLTK) labels each word as a name, number, filler, stopword or content word. A
+  clip with too few content words ("or not.") skips the model and gets a fixed low score (`clip_filter_score`,
   1.0), which saves a model call on talk that cannot be interesting.
 - **Scorer model**: a small local language model, Qwen3-4B (Q4_K_M), served by `llama-server`. Llama-3.2-3B is the
   faster alternative. The prompt is human-written and kept in config; the definition of "interesting" is kept separate from the
@@ -134,15 +134,15 @@ that belong to the listening side are the `[listening]` section of the config, a
   earlier lines were both measured and rejected: each made a score depend on its neighbours and their order.
 - **The score** is the average of the digits the model might answer with, each weighted by how likely the model thinks
   it is: 75% sure of 6 and 25% sure of 7 scores 6.25.
-- **Unscored**: if the model does not answer, the fragment has no score (None), and the trigger leaves it out. A
+- **Unscored**: if the model does not answer, the clip has no score (None), and the BarKeeper leaves it out. A
   circuit breaker stops asking after `failure_limit` (3) failures and tries again after `retry_seconds` (30). The
   Printer stays quiet and keeps listening. (A word-counting fallback is shelved, unused, in `fallback_scorer.py`.)
 - **Warm-up.** The first request after the server starts takes 12 to 28 seconds on the Pi, so startup warms it first.
 
 **What the scores look like** (4,278 sentences from four recorded meetings): they are lumpy, not bell-shaped. About 27%
-sit at 1 (the fragment_filter's 497 plus the model's own), with humps near 3 and near 5, and almost nothing above 7
+sit at 1 (the clip_filter's 497 plus the model's own), with humps near 3 and near 5, and almost nothing above 7
 (0.9% reach 7; the 99th percentile is 7.0). There is no long tail of outliers, which is why a fixed high threshold
-was abandoned and why the textbook outlier rule fails here (see Trigger).
+was abandoned and why the textbook outlier rule fails here (see Qualifying).
 
 **On the Pi** (`experiments/pi-benchmark/`): with whisper running flat out on shared cores, the 4B scorer model scores a
 sentence in a median 2.3 s (95th percentile 3.2 s), uses about 3 GB, peaks at 72 °C with no throttling, and slows
@@ -153,11 +153,11 @@ NRC-VAD feeling, names/numbers/questions, filler and recent-use penalties). The 
 word list design remains a documented fallback in `project-state.md`; the NRC-VAD file is not redistributable and is
 downloaded per machine.
 
-## The Trigger: when does the Printer speak?
+## Qualifying: when does the Printer speak?
 
-**Built**: `ConvoInterestTracker` (`src/pom/scoring/convo_interest_tracker.py`), settings in `[trigger]`. The way the bar is worked out is selectable
+**Built**: `BarKeeper` (`src/pom/qualifying/bar_keeper.py`), settings in `[qualifying]`. The way the bar is worked out is selectable
 (`algorithm`): the percentile rule described below (`PercentileBar`, the default), a decaying quantile (`DecayingQuantileBar`, EWMQ), or the first
-method, a decaying moving average (`MovingAverageBar`). The tracker keeps what they share (the trigger decision, the cooldown, the clock) and a small
+method, a decaying moving average (`MovingAverageBar`). The BarKeeper keeps what they share (the qualifying decision, the cooldown, the clock) and a small
 factory builds the bar from the settings. Every bar starts at `starting_bar` and slides to the room's own level, so there is no warm-up silence.
 
 The rule is a percentile of the room's recent scores. It makes no assumption about their shape:
@@ -170,11 +170,11 @@ The rule is a percentile of the room's recent scores. It makes no assumption abo
   one with at least that share of the window at or below it. It is always a score the room really earned. At 100 it is the
   best score of the window, so a sentence has to beat everything said lately; at 99.5 about one score in two hundred stands
   above it; at 90 it is the top tenth.
-- **The trigger**: a score triggers when it is strictly above the bar as it stood before that score joined, the window
-  holds at least `min_scores` scores, and at least `cooldown_seconds` (60) have passed since the last trigger. A score
+- **Qualifying**: a score qualifies when it is strictly above the bar as it stood before that score joined, the window
+  holds at least `min_scores` scores, and at least `cooldown_seconds` (60) have passed since the last qualifier. A score
   above the bar inside the cooldown is held back (it still joins the window and does not restart the cooldown).
 - **Time is passed in**: `record(score, now)`. Live it is a clock reading; in a replay it is the place in the
-  recording, so a recording gives the same answers faster than real time. Unscored fragments are ignored.
+  recording, so a recording gives the same answers faster than real time. Unscored clips are ignored.
 
 **Why this rule.** The first design was a threshold that moved with the room: 25% above a decaying average of the
 recent scores, plus a floor below which scores were ignored. Replayed on four recorded meetings (307 minutes,
@@ -184,54 +184,54 @@ above a bar set just over it. The second design was Tukey's fence (a bar at Q3 p
 range). It does not suit these scores: they are lumpy, a pile at 1, humps near 3 and 5, almost nothing above 7, so the
 spread between the lumps stretches the interquartile range and the bar lands above the real top. At a multiple of 0.8
 the bar was above the best score of its own window in two windows out of three, it reached 9.85 on a scale that ends at
-9 in a live call, and it gave 12.5 triggers an hour in a live room against 4 to 9 in the Zoom meetings. A percentile
+9 in a live call, and it gave 12.5 qualifiers an hour in a live room against 4 to 9 in the Zoom meetings. A percentile
 measures where the top of the window actually is instead of predicting it from the middle. 100 (beat the best of ten
 minutes) fit the recordings best, but one lucky high score then holds the bar up for the whole window, so the shipped
 setting is 99.5 over five minutes, chosen by hand to make the Printer answer more often (9.8 an hour on the recordings,
 against 6.7 with twenty minutes). 99.5 only differs from 100 once the window holds about 200 scores, and a busy five
 minutes holds about 75, so with this window it is still the best score of the window: below that size the rate follows the
 window, above it how much the room talks (about one sentence in two hundred). The cooldown exists
-because one meeting had six triggers in eight seconds (a run of one-line jokes).
+because one meeting had six qualifiers in eight seconds (a run of one-line jokes).
 
-**Result with the shipped settings** (5 recorded meetings, four Zoom calls and one live room, 7.1 hours): about 6.7 triggers
-an hour, one every 9 minutes, between 3.4 and 9.3 an hour by meeting (the live room is the 9.3: 15 triggers in 96 minutes,
+**Result with the shipped settings** (5 recorded meetings, four Zoom calls and one live room, 7.1 hours): about 6.7 qualifiers
+an hour, one every 9 minutes, between 3.4 and 9.3 an hour by meeting (the live room is the 9.3: 15 qualifiers in 96 minutes,
 in bursts, with a 27-minute gap). 100 with ten minutes gave 6.4 (4.0 to 8.1). The goal is about 6 an hour. The settings were tuned on these recordings only; a quiet real room is still the open test.
 
 **Principles behind it.** Absolute scoring is the enemy of emergence: thresholds should come from what is happening in
 the room, not from a constant. The filters must work reasonably well in every room, not perfectly in one; nothing is
 tuned per room.
 
-### What the trigger must do
+### What qualifying must do
 
 Whatever rule is used, it is judged against these. They came out of the replays and the arguments about them, and they are the
 reason some rules were dropped.
 
-1. **Two good triggers can follow each other.** A strong trigger must not hold the bar so high that an almost-as-strong one cannot
+1. **Two good qualifiers can follow each other.** A strong qualifier must not hold the bar so high that an almost-as-strong one cannot
    fire soon after it. (An 8.9 should not shut out a 7.2 that is still well above the room's usual high tide.) The cooldown is the
    only thing allowed to space them.
-2. **Responsive to room heat.** Any trigger scheme must respond to changes in the room's heat in the five-to-ten-minute range. Rooms
+2. **Responsive to room heat.** Any qualifying scheme must respond to changes in the room's heat in the five-to-ten-minute range. Rooms
    change tenor on that time scale, so the memory behind the bar has to be about that long, and a bar that adapts more slowly stops
    being responsive.
-3. **A quiet room is not silenced by one good trigger.** With few scores in the window, one strong score must not hold the bar for the
+3. **A quiet room is not silenced by one good qualifier.** With few scores in the window, one strong score must not hold the bar for the
    better part of an hour.
 4. **Nothing absolute.** No fixed floor, no score that counts everywhere, nothing tuned for one room: the bar comes from what the
    room is doing.
 
-Preference, tuned and not required: about six triggers an hour on average, at random. Timing should not be evenly spaced: triggers may
+Preference, tuned and not required: about six qualifiers an hour on average, at random. Timing should not be evenly spaced: qualifiers may
 bunch, several may come in the first twenty minutes, and a quiet stretch may follow. The average is a setting to tune, not a test a rule
 must pass.
 
 Practical choice, not a requirement: a short cooldown (60 s) stays, because a run of one-line jokes clears any bar one after another
-and one meeting had six triggers in eight seconds. It is the only thing allowed to space two good triggers (see 1).
+and one meeting had six qualifiers in eight seconds. It is the only thing allowed to space two good qualifiers (see 1).
 
 Where the current rule stands: a short window with a high percentile is really "beat the best of the window", which fails 1 and
 makes the timing too regular, and a long window fixes those and fails 2 and 3. A decaying memory (exponentially weighted quantiles)
-meets 1 and 2 better and still leaves a quiet room silent for long stretches after a strong trigger. A rule that meets all four is
+meets 1 and 2 better and still leaves a quiet room silent for long stretches after a strong qualifier. A rule that meets all four is
 still being looked for.
 
-### Triggers we tried
+### Bar rules we tried
 
-The same question every time: given the score of a new fragment and the scores of the room lately, is this one worth answering? Each
+The same question every time: given the score of a new clip and the scores of the room lately, is this one worth answering? Each
 rule was replayed on the recorded meetings before it was kept or dropped. In order:
 
 **1. A fixed threshold** (a score of 7 or more).
@@ -250,15 +250,15 @@ rule was replayed on the recorded meetings before it was kept or dropped. In ord
   A cooldown handled bursts. At the textbook setting it was very strict, and a lower multiple brought the rate to about the goal.
 - *Did not:* it predicts where the top of the scores should be from the width of the middle half, and that assumes a bell shape. The
   scorer's numbers are lumpy: a pile at 1, humps near 3 and 5, almost nothing above 7. The pile stretches the spread, so the bar often
-  landed above the best score the room had actually produced, and once above the top of the scale, where nothing can trigger. The rate
+  landed above the best score the room had actually produced, and once above the top of the scale, where nothing can qualify. The rate
   also swung from room to room at one setting.
 
 **4. A percentile of a timed window** (the current rule: beat a high percentile of the last few minutes).
 - *Worked:* it makes no assumption about shape. It measures where the top of the window is instead of guessing. The bar is always a score
   the room really earned, so it can never leave the scale, and across rooms the rate stayed closer to the goal than the fence did.
-- *Did not, or not yet:* with a short window it is really "beat the best score of the window", so a trigger's own score becomes the bar
-  and a strong trigger is followed by a long quiet stretch; one lucky high score holds the bar up. The rate is set mostly by the window's
-  length and not by how much the room talks, until the window holds a couple of hundred scores. Triggers arrive at random, so they can bunch
+- *Did not, or not yet:* with a short window it is really "beat the best score of the window", so a qualifier's own score becomes the bar
+  and a strong qualifier is followed by a long quiet stretch; one lucky high score holds the bar up. The rate is set mostly by the window's
+  length and not by how much the room talks, until the window holds a couple of hundred scores. Qualifiers arrive at random, so they can bunch
   and they can leave long gaps.
 
 **5. Double MAD** (a median, and a spread measured only from the scores above it).
@@ -271,14 +271,14 @@ rule was replayed on the recorded meetings before it was kept or dropped. In ord
 **What the attempts taught**
 - The scores are bounded and lumpy, so any bar worked out from the middle of the scores tends to overshoot the top. A bar that measures the top
   directly behaves better.
-- The rate of triggers is a result, not a setting. Every rule trades how often it fires against how much that depends on the room, and
+- The rate of qualifiers is a result, not a setting. Every rule trades how often it fires against how much that depends on the room, and
   there is no neutral point: a rule that follows the room's talk fires more in a lively room by design.
 - A cooldown is needed whatever the rule: a run of one-line jokes clears any bar one after another.
-- Every rule inherits the scorer's own quirks (an odd stretched spelling can score high), because the trigger only ever sees numbers.
+- Every rule inherits the scorer's own quirks (an odd stretched spelling can score high), because the BarKeeper only ever sees numbers.
 - All of this was tuned on four video-call meetings and one live room. A quiet real room is the test that is still to come.
 
 **Not built, and not decided:**
-- (proposed) *Paper guards*, so nobody comes back to a pile of paper: nothing triggers unless speech was heard in the
+- (proposed) *Paper guards*, so nobody comes back to a pile of paper: nothing qualifies unless speech was heard in the
   last 10 minutes (this also keeps whisper's phantom phrases from printing in an empty room, and matters because the
   window can reach back past hours of silence), and hard ceilings of about 12 prints an hour and 60 a day as a last
   resort. The activity measure for the quiet timeout would be seconds of accepted speech per minute from the
@@ -286,22 +286,22 @@ rule was replayed on the recorded meetings before it was kept or dropped. In ord
 - (open) The retired design had a target print rate that followed room activity (0 silent, about 4 with a little
   talking, about 8 busy) and a rate governor. The fence plus the cooldown replaced them; the rate is now a result to
   watch, not a quantity steered. If a real room shows the rate drifting, a governor can come back.
-- Typed input has its own way in (the TypedLineScorer, not the Listener): the Scorer scores the line, `typed_score_multiplier` (1.5, uncapped) multiplies it, and the same bar judges it. No cooldown, and a line under the bar is silently ignored. By default it stays out of the bar (`typed_lines_affect_bar`), which listens to the room.
+- Typed input has its own way in (the TypedLineScorer, not the Eavesdropper): the Scorer scores the line, `typed_handicap` (1.5, uncapped) multiplies it, and the same bar judges it. No cooldown, and a line under the bar is silently ignored. By default it stays out of the bar (`typed_lines_affect_bar`), which listens to the room.
 - (open) Everything above is tuned on four chatty meetings. A real room, especially a quiet one, is the real test.
 
 ## The hinge
 
-- The hinge is the fragment the portent answers: a word, a phrase or a topic (in practice a sentence).
+- The hinge is the clip the portent answers: a word, a phrase or a topic (in practice a sentence).
 - Its connection to the portent is tangential and lyrical, not a direct answer and not random. Examples: talk about
   dogs gets an insult in the manner of Shakespeare calling someone a dog; something called weird gets something in
   the spirit of Blake on the uncanny; complaining about friends gets something about gossip.
-- The leap is made by the oracle model, not looked up. A corpus lookup was rejected as too literal.
-- **The hinge is the sentence that triggered** (decided 2026-10-27). The scorer and the trigger (the percentile bar with its
+- The leap is made by the oracle model, not looked up. A library lookup was rejected as too literal.
+- **The hinge is the sentence that qualified** (decided 2026-10-27). The scorer and the BarKeeper (the percentile bar with its
   cooldown) were built to hand over about six sentences an hour, so the one that clears the bar is used as it
   occurs. If that is a little inconsistent, scaring some hinges and catching on others, that is what talking to an
   oracle means. The first design's weighted random pick among the best recent candidates is dropped. The hand-off
-  (the triggering fragment to the PromptBuilder) is the Conductor's job.
-- (open) *Defining "interesting".* Conclusion of 2026-10-22: the prompt and the trigger keep circling because the project
+  (the qualifying clip to the PromptBuilder) is the Conductor's job.
+- (open) *Defining "interesting".* Conclusion of 2026-10-22: the prompt and the BarKeeper keep circling because the project
   has not defined for itself what is worth answering, and the algorithm was left to choose in the hope it would work out. A
   human definition comes first; the scorer prompt then states it. Deferred, not dropped.
 
@@ -312,8 +312,8 @@ rule was replayed on the recorded meetings before it was kept or dropped. In ord
 - **The prompt is human-written.** It lives in config (`oracle.prompt`), with `{exemplars}` and `{hinge}` marking where those
   go. It asks for a new passage in the manner of the style example without printing the theme or the example, under
   150 words. Models are used to measure prompts, not to write them.
-- **Exemplars** (register exemplars): each time the Printer speaks, the ExemplarSelector draws chunks from the
-  weighted corpus, independently and never matched to the hinge. They show the voice and nothing more. The bake-off and
+- **Exemplars** (shelf exemplars): each time the Printer speaks, the Bibliomancer draws passages from the
+  weighted library, independently and never matched to the hinge. They show the voice and nothing more. The bake-off and
   the config use **one** exemplar (`exemplars_min`/`exemplars_max` both 1); the range can be 1 to 5 or more.
 - **Settings** (`[oracle]`): temperature 0.3, `max_tokens` 300 (a runaway guard; the prompt asks for under 150 words),
   timeout 120 s.
@@ -364,53 +364,53 @@ same on the Pi, 12 portents a phase from an emptied page cache, with whisper and
   40 s and a long one in up to about 100 s, then 5 to 20 s of typing. (open) Why the server caches none of the prompt;
   fixing it could cut the 20 s wait.
 
-### Two voices (Track B not started)
+### Two oracle tracks (Track B not started)
 
-The first design had two voices behind one interface: Track A, a stock instruct model with a prompt, and Track B, a
-base model fine-tuned (LoRA, on the Mac with MLX, never on the Pi) on the corpus plus curated hinge pairs, run with an
-almost empty prompt so that it cannot speak outside its registers. The bake-off is Track A: stock models, the project's own prompt.
-Track B and the curated hinge pairs (an overheard line paired with a tangential in-register reply, curated by Wes,
+The first design had two ways of writing behind one interface: Track A, a stock instruct model with a prompt, and Track B, a
+base model fine-tuned (LoRA, on the Mac with MLX, never on the Pi) on the library plus curated hinge pairs, run with an
+almost empty prompt so that it cannot speak outside its shelves. The bake-off is Track A: stock models, the project's own prompt.
+Track B and the curated hinge pairs (an overheard line paired with a tangential in-shelf reply, curated by Wes,
 Neil and River with a large model drafting candidates, logged in the AI-use ledger) have not been started. (open)
 Whether to start them depends on how far the prompted oracle model gets.
 
-## Corpus
+## Library
 
-- 81 sources in 14 registers, about 72,000 chunks of 15 to 150 words (the 14th register, `nonsense`, was added to test
-  how hard growing the corpus is: easy). Public on GitHub.
-- `corpus/ready/` holds clean utterances, one per paragraph, with no trace of their source. `corpus/chunks/` turns them
-  into JSONL chunks. Everything is built by scripts from the manifest `corpus/sources.csv`, so it is repeatable.
-- Registers are *what the oracle might say*, not where text came from. Draws are weighted: every utterance is in one
-  pool and has its own chance, a register with few utterances gets a heavier weight per utterance, and the register
+- 81 holdings in 14 shelves, about 72,000 passages of 15 to 150 words (the 14th shelf, `nonsense`, was added to test
+  how hard growing the library is: easy). Public on GitHub.
+- `library/ready/` holds clean utterances, one per paragraph, with no trace of their holding. `library/passages/` turns them
+  into JSONL passages. Everything is built by scripts from the manifest `library/holdings.csv`, so it is repeatable.
+- Shelves are *what the oracle might say*, not where text came from. Draws are weighted: every utterance is in one
+  pool and has its own chance, a shelf with few utterances gets a heavier weight per utterance, and the shelf
   shares start equal. Nothing is chosen category-first, so any combination can come up, including five obituaries in a
-  row; it is just rare. `corpus/chunks/weights.json` is the one hand-edited file for shares and source weights (for
+  row; it is just rare. `library/passages/circulation.json` is the one hand-edited file for shares and holding weights (for
   example Shakespeare's plays 0.2). Draw odds are computed at load time, never stored.
 - Rights: public domain, plus `owner-cleared` material (the IBM/Lexmark Wheelwriter manuals and the dad jokes), decided
   by the project owner. Licensing and content are not concerns for this project: it is an art installation, far from
   the consumer market.
-- (open) Equal register shares make small registers repeat. A simulation showed repeats are negligible over an evening
+- (open) Equal shelf shares make small shelves repeat. A simulation showed repeats are negligible over an evening
   (0.1%) and matter over months; a recency decay was prototyped and deliberately left out.
-- Adding material: `adding-material.md`. How the standardizer works and what went wrong: `corpus-notes.md`.
+- Adding material: `adding-material.md`. How the standardizer works and what went wrong: `library-notes.md`.
 
-## Output
+## Printing
 
-- Built: the `TypewriterFormatter` (`src/pom/output/`) makes a portent printable. It takes out the triple-backtick fences
+- Built: the `PortentFormatter` (`src/pom/printing/`) makes a portent printable. It takes out the triple-backtick fences
   (the prompt shows the model its exemplars and the hinge in fences, so it may echo them); a fenced piece is a quotation and
   is typed indented four spaces with a blank line on each side, since the typewriter has no italics. It swaps curly quotes,
   dashes and accents for plain ASCII and drops what has no plain form, wraps to the line width, and ends the text with
   `linefeeds_after_portent` line feeds (4) so the paper has moved on for the next portent. Most wheels lack nine ASCII characters
   (`< > \ ^ ` { | } ~`); the CadetWriter builds them from periods, slowly. `<` and `>` are left to it; the other seven are swapped for
   a look-alike (`'`, `-`, `( )`, `/`) unless `keep_composed_characters` says otherwise, and `ascii_printwheel` keeps all of them. The line width is worked out
-  in `[output]` from the paper width, the margins and the wheel's characters per inch (8.5 inch paper with 1 inch margins:
+  in `[printing]` from the paper width, the margins and the wheel's characters per inch (8.5 inch paper with 1 inch margins:
   65 characters at 10 cpi, 78 at 12, 97 at 15; 10 is the default, the widest letters, so it fits any wheel).
-- Built: the `TypewriterPort` (`src/pom/output/typewriter_port.py`, config `[terminal]`) sends the formatted portent over serial, paced (16
+- Built: the `TerminalPort` (`src/pom/printing/terminal_port.py`, config `[terminal]`) sends the formatted portent over serial, paced (16
   characters a second to start; to be measured), with flow control, CR+LF line endings and only safe bytes. `type()` blocks until the
   machine has had time to finish, so the Conductor pauses listening, calls it, and resumes (half-duplex); the port knows nothing about
   listening. The same port reads the keyboard: `read_line()` returns what someone types when they press C Rtn. In the CadetWriter's default
   full-duplex mode the Pi echoes each key (`echoplex`), a Backspace overstrikes but edits the line, and keys pressed during a portent are
-  thrown away (unless `type_during_output` is on). The `ConsoleTypewriter` is the same code on the terminal, for development.
-- The TypedLineScorer (`src/pom/scoring/`) turns a typed line into a `ScoredSentence` (kind `typed`), judged by `ConvoInterestTracker.record_direct()`. Serializing its calls with the HingeFinder's thread, and handing a typed hinge to the oracle, are the Conductor's.
-- The output validation hook (`scripts/dev/corpus/validate_output.py`) is a deliberate stub. Checking for verbatim
-  overlap with the corpus was judged the wrong measure: false positives on quotes that land, false negatives on
+  thrown away (unless `type_during_printing` is on). The `ConsoleTerminal` is the same code on the terminal, for development.
+- The TypedLineScorer (`src/pom/keyboard/`) turns a typed line into a `Attempt` (kind `typed`), judged by `BarKeeper.rule_typed()`. Serializing its calls with the HingeFinder's thread, and handing a typed hinge to the oracle, are the Conductor's.
+- The output validation hook (`scripts/dev/library/validate_output.py`) is a deliberate stub. Checking for verbatim
+  overlap with the library was judged the wrong measure: false positives on quotes that land, false negatives on
   near-copies, blind to echoing the hinge.
 - (open) A "silence" tic across portents: the rubric rated portents one at a time, so a habit that repeats across them
   would not show up.
@@ -450,7 +450,7 @@ the serial port, so most of it is tested on the Mac.
 - (open) *Failing loudly.* If the scorer model or the oracle model is down the Printer can never respond, and a log
   line is not loud when someone is switching a printer on. Decide what loud means (a beep, an email to the project owner, something
   at the venue) and make those startup steps critical in that way. Today the scorer step is not critical and an
-  unscorable fragment is left unscored.
+  unscorable clip is left unscored.
 
 ### Modules
 
@@ -458,29 +458,31 @@ the serial port, so most of it is tested on the Mac.
 src/pom/
   fault_recorder.py, log_setup.py, config.py     built
   startup.py                                     built runner; the ten startup duties are placeholders
-  corpus/      draw_weights, chunk_store, exemplar_selector      built
-  listening/   segment_fragmenter                                built
-               audio_source, mic_source, wav_source,             built
-               whisper_server_client, whisper_text_sorter,       built
-               rolling_cutter, listener, audio_format            built
-               mac_mic_source (laptop testing)                   built
-  scoring/     word_tagger, scorer_model_client, scorer,         built
-               hinge_finder (listening to hinge)                 built
-               convo_interest_tracker (window, bar, cooldown)    built
+  library/     catalog, circulation, bibliomancer                built
+  listening/   audio_deck, mic_deck, wav_deck,                   built
+               whisper_model_client, track_splitter,             built
+               rolling_cutter, eavesdropper, take_cutter,        built
+               audio_format                                      built
+               mac_mic_deck (laptop testing)                     built
+  scoring/     word_tagger, scorer_model_client, clip_scorer     built
                fallback_scorer                                   shelved, unused
-  prompt/      prompt_builder                                    built
-  voice/       oracle_model_client, portent_writer               built
-  monitor/     trigger_history (the last hour, memory only),     built
-               monitor_site (the web page, Flask, password)      built; not yet fed by the pipeline
-  output/      typewriter_formatter, typewriter_port             built
+  qualifying/  bar_keeper (window, bar, cooldown), attempt,      built
+               the bars (percentile, decaying quantile,
+               moving average)
+  conductor/   hinge_finder (listening to hinge)                 built
+               the Conductor                                     planned; the only module that knows the whole pipeline
+  keyboard/    typed_line_scorer                                 built
+  writing/     prompt_builder, oracle_model_client,              built
+               portent_writer
+  printing/    portent_formatter, terminal_port                  built
                reply selection                                   planned
-  input/       keyboard                                          planned
-  conductor                                                      planned; the only module that knows the whole pipeline
+  monitor/     turn_history (the last hour, memory only),        built
+               monitor_site (the web page, Flask, password)      built; not yet fed by the pipeline
 ```
 
 ### Startup duties (placeholders in `startup.py`)
 
-Config report; data check (corpus, weights, NLTK data; critical); microphone gain; audio device; transcriber;
+Config report; data check (library, weights, NLTK data; critical); microphone gain; audio device; transcriber;
 scorer server; scorer warm-up; oracle model server (critical); typewriter port (critical); one-line readiness summary
 (counts and seconds only).
 
@@ -490,20 +492,20 @@ scorer server; scorer warm-up; oracle model server (critical); typewriter port (
 |---|---|---|
 | Interest scorer | `interest-scorer/` | One sentence, no context, digit-probability score; Qwen3-4B; a bigger model (8B) scores gentle-weird lines higher |
 | Pi benchmark | `pi-benchmark/` | The 4B scorer model next to flat-out whisper on the Pi: median 2.3 s a sentence |
-| Hearing debug | `hearing-debug/` | Whisper-driven cutting, the three-way sort, the known-good setup, the trigger replays |
-| Oracle playground | `oracle-playground/` | Hand trials of oracle models and prompts |
+| Hearing debug | `hearing-debug/` | Whisper-driven cutting, the track split, the known-good setup, the qualifying replays |
+| Oracle testbench | `oracle-playground/` | Hand trials of oracle models and prompts |
 | Oracle bake-off | `oracle-bakeoff/` | Seven models, 160 rated portents each; Qwen3.5-9B first |
 | Pi oracle benchmark | `pi-oracle-benchmark/` | The 9B on the Pi with whisper and the 4B idle: a typical portent in 35 to 40 s, the first word after 20 s |
 
-The trigger replays used four recorded team meetings (public by design, kept in gitignored `data/`).
+The qualifying replays used four recorded team meetings (public by design, kept in gitignored `data/`).
 
 ## Build order
 
 1. (Done 2026-10-27) The oracle model is Qwen3.5-9B; the wait on the Pi (about 40 s typical, 100 s long) is acceptable.
    Look into why nothing is cached when convenient.
-2. (Decided 2026-10-27) The hinge is the sentence that triggered. The hand-off is the Conductor's.
+2. (Decided 2026-10-27) The hinge is the sentence that qualified. The hand-off is the Conductor's.
 3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/listen_to_room.py`).
-4. Output side: the formatter and the serial port are built; reply selection is next.
+4. Printing side: the formatter and the serial port are built; reply selection is next.
 5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
 6. Paper guards; "failing loudly".
 7. Run it on the Pi; test in a real room (a quiet one too) and retune from that.
@@ -514,9 +516,9 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 - What is "interesting", defined by us before the model is asked.
 - Why the server caches none of the prompt (fixing it could cut the 20 s wait); a prompt tuned for the top two oracle
   models; a human spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
-- How the trigger behaves in a real, quiet room; the paper guards.
+- How qualifying behaves in a real, quiet room; the paper guards.
 - How the Conductor enforces half-duplex without lockfiles.
-- How the Conductor serializes the typed path and the listening thread (the tracker has no lock).
+- How the Conductor serializes the typed path and the listening thread (the BarKeeper has no lock).
 - Mic placement and cable routing.
 - What "failing loudly" means.
 - Whether Track B and the hinge pairs are worth building.
@@ -527,17 +529,17 @@ The trigger replays used four recorded team meetings (public by design, kept in 
 
 - **Scorer**: word lists -> a small local language model (Qwen3-4B), one sentence per request, no context, a 0 to 9
   probability-weighted score.
-- **Trigger**: a pool of faded scores against a moving threshold with a rate governor, activity curve and no cooldown
+- **Qualifying**: a pool of faded scores against a moving threshold with a rate governor, activity curve and no cooldown
   -> a percentile (99.5) of the last five minutes of scores with a 60 s cooldown and no floor.
 - **Hearing**: cutting by loudness with a moving noise floor -> whisper's own voice detection on a rolling buffer; the
-  three-way sort of whisper's output (words, ambient captions, nothing).
-- **Voice**: two tracks behind an interface -> the oracle model, a prompted stock model with a human-written prompt (Track B
+  track split of whisper's output (words, room tone, nothing).
+- **Oracle**: two tracks behind an interface -> the oracle model, a prompted stock model with a human-written prompt (Track B
   not started); Qwen3.5-9B leads the bake-off.
-- **Corpus**: about 69,000 utterances in 13 registers -> about 72,000 chunks in 14 registers, chunks of 15 to 150 words.
+- **Library**: about 69,000 utterances in 13 shelves -> about 72,000 passages in 14 shelves, passages of 15 to 150 words.
 - **Whisper**: `small.en` -> `base.en` as the model that worked in the room.
 - **Half-duplex**: deaf while printing -> nothing is sent to whisper or the scorer model while the oracle model writes
   or the typewriter prints; both stay loaded.
-- **Hinge**: a weighted random pick among the best recent candidates, with a temperature -> the sentence that triggered.
-- **Retired**: the activity tracker and target-rate curve, the faded-score pool, the hinge picker, the Mimic splicing
+- **Hinge**: a weighted random pick among the best recent candidates, with a temperature -> the sentence that qualified.
+- **Retired**: the activity BarKeeper and target-rate curve, the faded-score pool, the hinge picker, the Mimic splicing
   fallback, the word-list Scorer (kept as a documented fallback), and the license questions about wordfreq (no longer a dependency of
   the Scorer).

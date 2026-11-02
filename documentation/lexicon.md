@@ -65,15 +65,6 @@ The corpus words used to be generic data terms (chunk, source, weights). Nothing
 -   **bibliomancy**: Opening a book at random and reading the passage as a sign, which is what this does. Example: `Bibliomancer` (was: `ExemplarSelector`)
 -   **exemplar**: A passage once it's lent for a portent. It's also the oracle prompt's word, so it stays as the bridge. Example: `exemplar` (was/still: exemplar)
 
-Orig text:
-
--   **corpus**: the material exemplars are drawn from.
--   **register** †: one kind of writing in the corpus (the 14 registers include `nonsense`).
--   **source** †: one text in the corpus, such as Alice's Adventures in Wonderland.
--   **chunk**: one piece of the prepared corpus (made by the chunker); exemplars are drawn from chunks.
--   **exemplar**: a chunk drawn by weight for one portent, as an example of style.
--   **draw weights**: values we assign to scale things proportionally, such as how often each register and source is drawn. Not to be confused with a model's weights.
-
 ## Listening: from sound to text
 
 Takes sound from the room, hands on clips to Scoring.
@@ -121,24 +112,6 @@ Caul's, this tape is never kept.
 - **splice**: joining a half sentence to the next (today `join_unfinished`).
 - **outtakes**: everything dropped: blanks, and what was already passed on.
 
-Orig text:
-
--   **segment**: whisper's raw output, using whisper's own name for it.
--   **fragment**: one piece of a split segment, usually a sentence; the thing that gets scored.
--   **audio source** †: anything that gives out 30 ms frames of sound: the microphone (`MicSource`; `MacMicSource` on a Mac) or, for tests and replays, a recording (`WavSource`).
--   **rolling cutter** †: the component that cuts the stream: every few seconds it hands whisper the audio since the last kept segment and keeps the segments whisper finished (`RollingCutter`).
--   **whisper text sorter** †: the component that sorts whisper's text into words, ambient captions and nothing-here marks (`WhisperTextSorter`).
--   **listener** †: the component that joins the audio source, the rolling cutter and the whisper text sorter, and hands on what was heard (`Listener`).
--   **heard segment** †: one thing the listener heard that was new: the words (speech or lyrics), any new ambient captions, and where in the stream it ended (`HeardSegment`).
--   **segment fragmenter** †: the component that cuts a heard segment's words into fragments, each stamped with a time. Sentences are what get scored (`SegmentFragmenter`; the levels are `FragmentLevel`).
--   **whisper client** †: the component that talks to whisper-server: it sends audio and gets segments back (`WhisperServerClient`).
--   **ambient caption**: whisper's guess at a sound in the room, like `(dog barks)` or `[Music]`. Not scored unless `consider_ambient_sounds` is on (it is off: how a caption scores is untried, and whisper sometimes invents them); kept as context for the oracle model.
--   **lyrics** †: sung words whisper marks with music symbols. They are words, so they are scored.
--   **step and hold** †: the rolling cutter's rhythm (`[listening]`). Whisper is asked about the audio every `step` seconds (5). A finished segment is kept only once it ends `hold` seconds (2) before the end of what whisper was given, so a thought still going is not cut in two. A stretch of talk past `max_buffer` seconds (30) without finishing is forced out; `rewind` (0, off) would start each run earlier.
--   **sound pass** †: whisper's voice detector treats singing and most sounds as not speech. After `sound_every_steps` (3) runs in a row with no speech, whisper is asked once, without the detector, about the last `sound_seconds` of sound, and only lyrics and ambient captions are kept. It can only hear what is still held, about two seconds after a quiet stretch.
--   **ambient memory** †: the latest `ambient_memory` (6) ambient captions, kept to tell the oracle model what the room sounds like.
--   **known-good hearing setup** †: the only combination that worked well in the room: whisper `base.en` with its voice detection at 0.5, a run every 5 seconds on a rolling buffer. It is fragile, so it is changed one thing at a time and pinned by a test.
-
 ## Scoring: how interesting is a clip
 
 Takes a clip (or a typed line from the Keyboard), hands on its score to Qualifying.
@@ -176,18 +149,6 @@ eye, and it never decides who goes through; that is Qualifying's job. The scorer
 **Words in reserve.** Ready if the code ever needs a name for them:
 - **judge**: the scorer model, in prose.
 - **deduction**: a mark taken off for a flaw, if scoring ever penalizes something (filler, a repeat).
-
-Orig text:
-
--   **score**: the process of assigning a value to each incoming fragment, and the value itself (0 to 9, anywhere in between). The scorer does it, mostly with the scorer model. The model answers with one digit but is rarely certain, so the score is the average of the digits it might say, each weighted by how likely the model thinks it is: 75% sure of 6 and 25% sure of 7 scores 6.25. A model that is certain scores a whole number.
--   **scorer**: the component that scores fragments: the fragment_filter, then the scorer model, with a fragment left unscored if the scorer model doesn't reply.
--   **scorer model**: the small language model that scores fragments (Qwen3-4B for now).
--   **scorer model client** †: the component that asks the scorer model for a score and gets back the digits it might say, each with how likely it is (`ScorerModelClient`). The oracle model client is its counterpart for the oracle model.
--   **fragment_filter**: the check in front of the scorer model that gives fragments with no content words (such as "or not.") a fixed low score, `fragment_filter_score`, without asking the scorer model.
--   **unscored** †: a fragment the scorer model gave no score; its score is None. The ConvoInterestTracker leaves it out.
--   **fallback**: shelved, unused: a rough word-based score once used when the scorer model did not reply (`fallback_scorer.py`).
--   **word tagger** †: the component that labels each word of a fragment as a name, number, filler, stopword or content word. The fragment_filter uses its labels.
--   **content word** †: a word that is not filler, a stopword or a number. A fragment with too few content words skips the scorer model.
 
 ## Qualifying: choosing what to respond to
 
@@ -232,19 +193,6 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
 - **standard**: a fixed qualifying mark. Deliberately unused: nothing absolute.
 - **personal best**: the highest score the room has reached tonight.
 
-Orig text:
-
--   **window** †: the room's recent scores the trigger is judged against: the scores heard in the last `window_seconds` (300, the last five minutes), or the last `min_scores` (20) if the room is so quiet that fewer were heard in that time. A length of time, not a count of scores. Every score joins it, the lowest too.
--   **bar** †: the score a new score must be above to trigger: the `percentile` of the window's scores.
--   **percentile** †: how much of the window a score must beat to trigger (`percentile`, 99.5 to begin with; 100 is the best score).
--   **trigger** †: the moment a score is above the bar, once the window holds `min_scores` scores and the cooldown is over. The score is compared with the bar as it stood before that score was added. Then the Printer responds.
--   **cooldown** †: how long after a trigger the next may come, `cooldown_seconds` (60 to begin with; 0 for none). A score above the bar inside the cooldown is held back but still joins the window.
--   **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.
--   **trigger algorithm** †: how the bar is worked out (`algorithm` in `[trigger]`): `percentile` (a percentile of the window, as the entries above describe it), `decaying_quantile` (a percentile in which a score counts half as much every `half_life_seconds`; the shipped choice) or `moving_average` (a decaying average plus a margin). Each is a `TriggerBar` with its own settings. With `exclude_triggers` on, a score that triggered is left out of the window, so one zinger does not hold the bar up.
--   **starting bar** †: `starting_bar`, where the bar begins before the room has said enough for one to be worked out; it fades as the room speaks. There is no silent warm-up.
--   **score effect** †: what the trigger did with a score: *ignored* (no usable score), *counted*, *triggered*, *cooling down* (above the bar but inside the cooldown), or *judged* (a typed score that stayed under the bar and out of the window) (`ScoreEffect`).
--   **scored sentence** †: one thing heard or typed, with its score and what the trigger made of it (`ScoredSentence`). Its kind is speech, lyrics, ambient or typed; the one the trigger fired on is the hinge.
-
 ## Writing: from hinge to portent
 
 Takes a hinge, hands on a portent to Printing.
@@ -270,15 +218,6 @@ and what it speaks is a portent.
 **Words in reserve.** Ready if the code ever needs a name for them:
 - **consultation**: one prompt put to the oracle and the portent that came back.
 - **riddle**: a portent that leaves its hinge entirely behind.
-
-Orig text:
-
--   **oracle model**: the medium language model that writes the portent from the hinge and the exemplars.
--   **portent**: the oracle model's output; what gets typed.
--   **oracle prompt** †: the text the oracle model is given, written by Wes in the config (`oracle.prompt`), with `{exemplars}` and `{hinge}` marking where those go.
--   **prompt builder** †: the component that fills the exemplars and the hinge into the oracle prompt (`PromptBuilder`).
--   **oracle model client** †: the component that talks to the oracle model's llama-server (`OracleModelClient`).
--   **portent writer** †: the component that takes a hinge and returns a portent, joining the prompt builder and the oracle model client (`PortentWriter`). What it returns is a `Portent`: the text, the exemplars shown, the seconds, and whether it was cut off.
 
 ## Printing: from portent to paper
 
@@ -326,19 +265,6 @@ These words say *terminal*; a machine's name appears only where a fact belongs t
 - **hard copy**: what ends up on paper, as against a screen.
 - **carriage**: what moves across the line; the carriage return in `end_of_line`.
 
-Orig text:
-
--   **terminal** †: the serial connection to the typewriter, which acts as a terminal (settings in `[terminal]`). The Printer sends it text and the keyboard sends keys back.
--   **CadetWriter** †: the open-source board that turns the IBM Wheelwriter 1000 into a serial terminal. Its own settings (line ending, flow control, duplex) must match `[terminal]`: a mismatch loses text or types every character twice.
--   **typewriter formatter** †: the component that makes a portent printable: code fences out, plain ASCII only, wrapped to the line width, and ending with `linefeeds_after_portent` line feeds (4) so the paper has moved on (`TypewriterFormatter`, `[output]`).
--   **quote** †: a piece of a portent the oracle model fenced in triple backticks. The typewriter has no italics, so a quote is typed indented `quote_indent` (4) spaces with a blank line before and after; the fence lines are never printed.
--   **line width** †: how many characters fit on a line, worked out from `paper_width_inches`, `margin_inches` and `characters_per_inch` (65 for 8.5 inch paper, 1 inch margins and 10 characters per inch).
--   **print wheel** †: the wheel of characters the typewriter prints with. Its pitch is `characters_per_inch` (10, 12 or 15).
--   **composed characters** †: the nine ASCII characters most print wheels lack, `< > \ ^` { | } ~`, which the CadetWriter builds from periods and micro-movements ("period graphics"), slowly and dotty.` <`and`>`can carry meaning, so they are always typed as they are. The other seven are swapped for look-alikes (``` `` becomes `'`, `~` becomes `-`, `{ }` become `( )`, `\` and `|` become `/`, `^` is dropped) unless `keep_composed_characters` keeps them; `ascii_printwheel` keeps all seven.
--   **typewriter port** †: the component that sends formatted text over the terminal's serial line, paced at `characters_per_second` (16) with flow control and the line ending the CadetWriter expects, waits `finish_wait_seconds` after the last character, and reads the keyboard coming back (`TypewriterPort`). The **console typewriter** † is the same code typing on the screen, for development (`ConsoleTypewriter`).
--   **echoplex** †: the old terminal name for the host echoing each key back as it arrives (`echoplex`). With it on, backspace moves the carriage left and edits the typed line; the CadetWriter does not use the typewriter's correction tape.
--   **type during output** †: `type_during_output`. False (the default) throws away any keys pressed while a portent is being typed, and any half-typed line, so nothing typed over a portent appears after it. True keeps them for the next line read.
-
 ## Keyboard: what people type
 
 Beside the line: a person types a typed line, which enters at Scoring and is ruled on by Qualifying.
@@ -358,11 +284,6 @@ word, and *typed DNQ* is Qualifying's ruling.
 - **typed lines affect bar**: Off (the default) keeps typed scores out of the window, so the keyboard can't move the room's bar; on
   lets them join. Example: `typed_lines_affect_bar` (was/still)
 - **keyboard watcher**: Defined under *Conductor*, beside the hinge finder.
-
-Orig text:
-
--   **typed line**: a line typed at the terminal's keyboard, someone speaking to the Printer directly rather than being overheard. It does not go through the listener. The scorer scores it, the typed score multiplier is applied, and the same bar judges it (`TypedLineScorer`, which yields a `ScoredSentence` of kind `typed`). It has no cooldown, and a typed line under the bar is ignored: nothing is printed. A typed score stays out of the window unless `typed_lines_affect_bar` is on.
--   **typed score multiplier**: what a typed line's score is multiplied by before it meets the bar (`typed_score_multiplier`, 1.5 to begin with; 1 is no bonus). The product is not capped at 9.
 
 ## Conductor: running the pipeline
 
@@ -394,15 +315,6 @@ time: that is half-duplex.
 **Words in reserve.** Ready if the code ever needs a name for them:
 - **interruption**: something that wants the floor during a turn (today it is simply not heard).
 - **overrun**: a state that runs too long; what the watchdog ends.
-
-Orig text:
-
--   **hinge finder** †: the component that joins the listener, the fragmenter, the scorer and the trigger, and yields each thing heard as a `ScoredSentence`; the one the trigger fired on is the hinge (`HingeFinder`).
--   **keyboard watcher**: *(planned)* the component that reads typed lines while the Printer is listening and yields each as a `ScoredSentence`, as the hinge finder does for the room (`KeyboardWatcher`).
--   **half-duplex gate**: *(planned)* the keeper of the turn: the state (listening, generating, printing, recovering), the rule that one hinge takes the floor at a time (first come, first served), and the watchdog that returns to listening if a state runs too long (`HalfDuplexGate`).
--   **portent deliverer** †: *(planned)* the component that takes one hinge through the steps of a turn, writing the portent, formatting it and typing it, and reports what happened (`PortentDeliverer`).
--   **skip ahead** †: *(planned)* after a turn the listener drops the sound that piled up while the Printer wrote and typed (`Listener.skip_ahead`), so it does not hear its own typing. Sound during a turn is not heard: that is what half-duplex means.
--   **entry point** †: *(planned)* the program that builds the one `Config`, builds the parts from it and starts the Conductor; on the Pi it runs as a service. Modules never read the config themselves. It takes the playgrounds' choices as options: a microphone or a recording, the real terminal or the console typewriter, the monitoring site.
 
 ## Running the Printer
 

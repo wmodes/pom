@@ -15,33 +15,33 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 ## Where things stand (2026-10-27)
 
 - **Built and tested** (1,494 tests, all passing): the shared plumbing (`fault_recorder`, `log_setup`, `config` with
-  `[scorer]`, `[trigger]`, `[listening]` and `[oracle]` sections, the `startup` runner whose ten duties are still placeholders); the corpus
-  module (`DrawWeights`, `ChunkStore`, `ExemplarSelector`); the `SegmentFragmenter`; the whole listening side (`MicSource`, `WavSource`, `WhisperServerClient`, `RollingCutter`,
-  `WhisperTextSorter`, `Listener`); the Scorer (`WordTagger`,
-  `ScorerModelClient`, `Scorer`); the `ConvoInterestTracker` (the trigger); the `PromptBuilder`; the `OracleModelClient`.
+  `[scorer]`, `[qualifying]`, `[listening]` and `[oracle]` sections, the `startup` runner whose ten duties are still placeholders); the library
+  module (`Circulation`, `Catalog`, `Bibliomancer`); the `TakeCutter`; the whole listening side (`MicDeck`, `WavDeck`, `WhisperModelClient`, `RollingCutter`,
+  `TrackSplitter`, `Eavesdropper`); the Scorer (`WordTagger`,
+  `ScorerModelClient`, `ClipScorer`); the `BarKeeper` (qualifying); the `PromptBuilder`; the `OracleModelClient`.
 - **Decided:**
   - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score.
-  - **Trigger:** a percentile of the last five minutes of scores (the larger of 5 minutes or the last 20 scores), `percentile`
+  - **Qualifying:** a percentile of the last five minutes of scores (the larger of 5 minutes or the last 20 scores), `percentile`
     99.5 (about one score in 200 stands above the bar), 60 s cooldown, no floor. Replayed on five recorded meetings (four Zoom,
-    one live room) it gives about 9.8 triggers an hour (8.1 to 11.2 by meeting; the live room 11.2, one every 5.4 minutes). The goal is about six an hour. Tukey's fence was tried first and replaced
+    one live room) it gives about 9.8 qualifiers an hour (8.1 to 11.2 by meeting; the live room 11.2, one every 5.4 minutes). The goal is about six an hour. Tukey's fence was tried first and replaced
     (2026-10-29): it sat above the window's best score in two windows out of three.
-  - **Hinge:** the sentence that triggered (Wes, 2026-10-27). No separate hinge picker.
+  - **Hinge:** the sentence that qualified (Wes, 2026-10-27). No separate hinge picker.
   - **Oracle model:** Qwen3.5-9B, with Gemma 2 9B as the named alternate. On the Pi a typical portent takes 35 to 40 s
     (first word after 20 s, up to about 100 s for a long one); Wes judged that acceptable.
   - **Half-duplex:** nothing is sent to whisper or the scorer model while the oracle model writes or the typewriter prints.
 - **Experiments** (`experiments/`, not part of the Printer until rebuilt in `src/pom/`): `hearing-debug` (the working
   listening prototype), `interest-scorer`, `pi-benchmark`, `oracle-playground`, `oracle-bakeoff` (seven models, 160 rated
   portents each), `pi-oracle-benchmark` (the 9B on the Pi, run 2026-10-27).
-- **Corpus:** 81 sources, 14 registers, about 72,000 chunks, public on GitHub.
+- **Library:** 81 holdings, 14 shelves, about 72,000 passages, public on GitHub.
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see what is
   unpushed. The Pi's checkout (`~/pom`) was last pulled at `b0b68e9`, with the 4B and 9B model files in `data/models/`.
-- **Playgrounds** (`scripts/dev/`, small tools that use the real modules): `listening/sort_whisper_text.py`, `listening/listen_to_room.py` (the
-  microphone or a recording through the Listener, Scorer and trigger), `scoring/score_typed_sentences.py` (type sentences, see scores and
-  the trigger), `scoring/score_typed_lines.py` (the typed-line path: score, multiplier, answer or silence), `voice/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
+- **Testbenches** (`scripts/dev/`, small tools that use the real modules): `listening/split_whisper_tracks.py`, `listening/listen_to_room.py` (the
+  microphone or a recording through the Eavesdropper, Scorer and BarKeeper), `scoring/score_typed_sentences.py` (type sentences, see scores and
+  the BarKeeper's ruling), `scoring/score_typed_lines.py` (the typed-line path: score, multiplier, answer or silence), `writing/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
   live from the microphone, `--mac-mic` on a Mac).
 - **Not built yet:** the Conductor (including the wiring of typed lines),
   the entry point, the paper guards, "failing loudly", and the Printer running as a service on the Pi. Track B (the fine-tuned
-  voice) and the curated hinge pairs have not been started.
+  oracle) and the curated hinge pairs have not been started.
 
 ## The rules we work by
 
@@ -54,7 +54,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
-  (for example `ConvoInterestTracker(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`). Anything a
+  (for example `BarKeeper(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`). Anything a
   person might tune (system messages, thresholds, counts, times) goes in config, so all the user-serviceable parts are
   in one place.
 - Config layers, highest priority first: environment variables (`POM_STRICT`, `POM_DEBUG`,
@@ -67,8 +67,8 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   `logs/pom.log` (gitignored, rotating) for work on the Mac.
 - **No transcript of the room is ever kept.** Heard speech lives in memory only; logs hold counts and
   scores, never words. The one exception is the four recorded team meetings (the "Zoom" files, public by design, Wes's
-  say-so), kept only in gitignored `data/recordings/`, used to test the trigger.
-- Time is passed in, never read from inside a leaf module (the tracker takes `now`), so a recording replayed fast
+  say-so), kept only in gitignored `data/recordings/`, used to test the BarKeeper.
+- Time is passed in, never read from inside a leaf module (the BarKeeper takes `now`), so a recording replayed fast
   behaves like a live run.
 
 **Process**
@@ -99,85 +99,89 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 src/pom/
   fault_recorder.py    built   faults as data (WARNING / CRITICAL, strict mode, cap, logging)
   log_setup.py         built   stdout logging, debug flag, per-module override, local log file
-  config.py            built   shared settings, layered; [scorer], [trigger], [oracle]
+  config.py            built   shared settings, layered; [scorer], [qualifying], [oracle]
   startup.py           built   the startup runner; its ten duties are placeholders in planned_steps()
-  corpus/
-    draw_weights.py    built   weights.json: register shares, source weights, defaults, drift checks
-    chunk_store.py     built   reads corpus/chunks/*.jsonl into immutable Chunk objects
-    exemplar_selector.py built weighted random draws; chunks per pull set by [oracle]; no repeats in a pull
+  library/
+    circulation.py     built   circulation.json: shelf shares, holding weights, defaults, drift checks
+    catalog.py         built   reads library/passages/*.jsonl into immutable Passage objects
+    bibliomancer.py    built   weighted random draws; passages per pull set by [oracle]; no repeats in a pull
   listening/
-    segment_fragmenter.py built transcript text -> sentence / clause / phrase fragments, all levels
-    audio_source, mic_source, wav_source built the microphone (arecord, read in a thread) and a recording replay
-    whisper_server_client built audio to whisper-server from memory; text or timed segments back
-    whisper_text_sorter built whisper's text -> words / ambient captions / nothing
+    take_cutter.py     built   a take's words -> sentence / clause / phrase clips, all levels
+    audio_deck, mic_deck, wav_deck built the microphone (arecord, read in a thread) and a recording replay
+    whisper_model_client built audio to whisper-server from memory; text or timed segments back
+    track_splitter     built   whisper's text -> words / room tone / blanks
     rolling_cutter     built   whisper's own voice detection cuts the stream, every 5 s
-    listener           built   joins them: sound in, HeardSegments out (a generator the Conductor runs in a thread)
+    eavesdropper       built   joins them: sound in, takes out (a generator the Conductor runs in a thread)
     audio_format       built   16 kHz mono 16-bit, 30 ms frames: the numbers they share
   scoring/
     word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
-    scorer_model_client.py built one fragment to the scorer model, one score (or an explanation) back
-    scorer.py          built   fragment_filter, scorer model, circuit breaker; unscored if no answer
-    convo_interest_tracker.py built the window, the percentile bar, the cooldown: whether a score triggers
+    scorer_model_client.py built one clip to the scorer model, one score (or an explanation) back
+    clip_scorer.py     built   clip_filter, scorer model, circuit breaker; unscored if no answer
     fallback_scorer.py shelved word-counting stand-in for the scorer model; unused
-  prompt/
+  qualifying/
+    bar_keeper.py      built   the window, the bar, the cooldown: whether an attempt qualifies (bars: percentile, decaying quantile, moving average)
+    attempt.py         built   one score trying to qualify, and the ruling it got
+  conductor/
+    hinge_finder.py    built   listening to hinge
+                       planned the Conductor, the only module that knows the whole pipeline; hands the qualifying sentence on as the hinge
+  keyboard/
+    typed_line_scorer.py built a typed line scored (multiplied by `typed_handicap`) and judged by the same bar
+  writing/
     prompt_builder.py  built   hinge + drawn exemplars into the oracle prompt from config
-  voice/
     oracle_model_client.py built the finished oracle prompt to the oracle model's llama-server, one portent back
     portent_writer.py  built   a hinge in, a Portent out (joins the prompt builder and the model client; seedable exemplars)
-  output/
-    typewriter_formatter.py built  portent in, printable wrapped text out (fences removed, quote indented, ASCII, line feeds after)
-    typewriter_port.py   built     text to the typewriter over serial, paced; keyboard lines back (echoplex); ConsoleTypewriter stand-in
+  printing/
+    portent_formatter.py built portent in, printable wrapped text out (fences removed, quote indented, ASCII, line feeds after)
+    terminal_port.py   built   text to the typewriter over serial, paced; keyboard lines back (echoplex); ConsoleTerminal stand-in
                        planned reply selection
-  input/               planned keyboard, same path as speech with a small score bonus
-  conductor            planned the only module that knows the whole pipeline; hands the triggering sentence on as the hinge
 ```
 
 ## Design decisions to keep
 
 The reasoning and the numbers are in `pom_design_doc.md`. In short:
 
-- **The pipeline:** whisper (cutting the audio itself) -> the three-way sort (words / ambient captions / nothing) ->
-  SegmentFragmenter -> Scorer -> ConvoInterestTracker -> the triggering sentence is the hinge -> PromptBuilder -> oracle
-  model -> Output. Typed input has its own way in: the TypedLineScorer scores the line, multiplies it by `typed_score_multiplier` (1.5), and the same bar judges it (no cooldown; below the bar it is ignored; it stays out of the bar unless `typed_lines_affect_bar`).
+- **The pipeline:** whisper (cutting the audio itself) -> the track split (words / room tone / nothing) ->
+  TakeCutter -> Scorer -> BarKeeper -> the qualifying sentence is the hinge -> PromptBuilder -> oracle
+  model -> Printing. Typed input has its own way in: the TypedLineScorer scores the line, multiplies it by `typed_handicap` (1.5), and the same bar judges it (no cooldown; below the bar it is ignored; it stays out of the bar unless `typed_lines_affect_bar`).
 - **The scorer** is a small local model scoring one sentence, no context, so a sentence scores the same whatever came
-  before. Scores are relative and run low (almost nothing above 7), which is why the trigger works from the room's own
+  before. Scores are relative and run low (almost nothing above 7), which is why the BarKeeper works from the room's own
   recent scores and not a fixed threshold.
-- **The hinge is not a corpus lookup.** The leap from room to reply is made by the oracle model; lookup was rejected as
-  too literal. The corpus enters as register exemplars in the prompt.
-- **Two voices** was the first plan: a prompted stock model (what the bake-off tested) and a fine-tuned base model
+- **The hinge is not a library lookup.** The leap from room to reply is made by the oracle model; lookup was rejected as
+  too literal. The library enters as shelf exemplars in the prompt.
+- **Two oracle tracks** was the first plan: a prompted stock model (what the bake-off tested) and a fine-tuned base model
   (Track B, never started; LoRA on the Mac with MLX, never on the Pi).
 - **Output** is usually 15 to 50 words, up to 150 (the oracle prompt's ceiling). The output validation hook
-  (`scripts/dev/corpus/validate_output.py`) is a deliberate stub: verbatim-overlap checking was judged the wrong measure.
-- **Hinge pairs** (a mundane overheard line paired with a tangential in-register reply) will be curated by Wes, Neil
+  (`scripts/dev/library/validate_output.py`) is a deliberate stub: verbatim-overlap checking was judged the wrong measure.
+- **Hinge pairs** (a mundane overheard line paired with a tangential in-shelf reply) will be curated by Wes, Neil
   and River, with a large LLM drafting candidates; that drafting is logged in the AI-use ledger
   (`documentation/ai-ledger.md`, which counts remote AI use only, never local models).
 - **The Observation Session theatre.** The site's "clean room" and wireless ban are pure theatre; the
   Pi keeps its radios. Speech is transcribed and discarded; nothing is kept. A door notice such as "Speech in the room
   is transcribed and discarded. Nothing is kept." is the honest line.
 
-## The corpus, in short
+## The library, in short
 
-`corpus/ready/` holds clean utterances, one paragraph each, no trace of their source. `corpus/chunks/`
-turns them into 15 to 150 word JSONL chunks (short ones stay whole, exact duplicates are dropped).
-`corpus/chunks/weights.json` is the single hand-edited file for draw weights: a tree of registers,
-each with a `share` and its sources' `weight`s; anything unlisted counts 1.0. Draw odds are computed
-at load time, never stored. Registers are *what the oracle might say*, not where text came from, and
-by default share the draws equally. `corpus/samples/` holds Wes's 100 benchmark sentences for the Scorer (test inputs, not
-corpus material).
+`library/ready/` holds clean utterances, one paragraph each, no trace of their holding. `library/passages/`
+turns them into 15 to 150 word JSONL passages (short ones stay whole, exact duplicates are dropped).
+`library/passages/circulation.json` is the single hand-edited file for circulation: a tree of shelves,
+each with a `share` and its holdings' `weight`s; anything unlisted counts 1.0. Draw odds are computed
+at load time, never stored. Shelves are *what the oracle might say*, not where text came from, and
+by default share the draws equally. `library/samples/` holds Wes's 100 benchmark sentences for the Scorer (test inputs, not
+library material).
 
 - Adding material, start to finish: `documentation/adding-material.md`.
-- Rules, columns, flags: `corpus/README.md`. How the standardizer works and what went wrong:
-  `documentation/corpus-notes.md`.
+- Rules, columns, flags: `library/README.md`. How the standardizer works and what went wrong:
+  `documentation/library-notes.md`.
 - Rights: public domain, plus `owner-cleared` (not public domain, decided by Wes: the IBM/Lexmark
-  Wheelwriter manuals and the dad jokes). Wes made the repo public knowing this; `corpus.py
+  Wheelwriter manuals and the dad jokes). Wes made the repo public knowing this; `library.py
   publish-check` still flags them by design. Licensing and content are not concerns for this project.
 - `ready/` files are marked reviewed provisionally; Wes (and River, via the public repo) still have to
   review them.
 - Known gaps: the CadetWriter guide (needs a rights decision), Jung's 1916 book (candidate), leads with
   no source yet (telegrams, memos, modern classifieds and obituaries, US federal text such as IRS and
   NASA), Doyle's *History of Spiritualism*, I Ching hexagrams 32 to 64, the rest of Psalms and Isaiah.
-- Sampling note: chunks are not remembered across pulls. A simulation showed repeats are negligible
-  over an evening (0.1%) and only matter over months (the ExemplarSelector docstring has the numbers); a
+- Sampling note: passages are not remembered across pulls. A simulation showed repeats are negligible
+  over an evening (0.1%) and only matter over months (the Bibliomancer docstring has the numbers); a
   recency decay was prototyped and deliberately left out.
 
 ## How to work here
@@ -187,15 +191,15 @@ corpus material).
 /Users/wmodes/dev/envs/pom/bin/python
 
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q           # all tests
-python scripts/dev/corpus/sample.py --pulls 3           # play with the ExemplarSelector (--stats N for shares)
-python scripts/dev/listening/cut_speech_into_hinges.py "Hi, there."   # play with the SegmentFragmenter
-python scripts/dev/listening/sort_whisper_text.py "(dog barks) Hello."   # play with the WhisperTextSorter
-python scripts/dev/scoring/score_typed_sentences.py "Some sentence."        # scores and the trigger (needs the scorer model's server)
-python scripts/dev/voice/write_portent_from_hinge.py --server                # type a hinge, get a portent (needs the oracle model's server)
+python scripts/dev/library/sample.py --pulls 3           # play with the Bibliomancer (--stats N for shares)
+python scripts/dev/listening/cut_speech_into_hinges.py "Hi, there."   # play with the TakeCutter
+python scripts/dev/listening/split_whisper_tracks.py "(dog barks) Hello."   # play with the TrackSplitter
+python scripts/dev/scoring/score_typed_sentences.py "Some sentence."        # scores and the BarKeeper's ruling (needs the scorer model's server)
+python scripts/dev/writing/write_portent_from_hinge.py --server                # type a hinge, get a portent (needs the oracle model's server)
 python scripts/dev/listening/listen_to_room.py --wav FILE --speed 0   # the whole listening side on a recording (needs whisper too)
-python scripts/dev/corpus/audit.py                      # artifact rates per ready/ file
-python scripts/dev/corpus/chunk.py                      # regenerate corpus/chunks/
-python scripts/dev/corpus/draw_weights.py               # the draw-odds table
+python scripts/dev/library/audit.py                      # artifact rates per ready/ file
+python scripts/dev/library/cataloguer.py                      # regenerate library/passages/
+python scripts/dev/library/circulation.py               # the draw-odds table
 ```
 
 To hear the Printer's judgment live, on the Pi: `cd ~/pom/experiments/hearing-debug && ./probe_hearing_run.sh
@@ -210,8 +214,8 @@ Comitup Wi-Fi fallback and the whisper.cpp and llama.cpp setup scripts.
 
 Dated, kept short. Anything marked *superseded* is here for the reasoning, not as current design.
 
-- **Pipeline written out as workers with handoff triggers** (2026-10-21; now in the design doc).
-- **Words:** a *fragment* is a piece the SegmentFragmenter cuts; the *hinge* is the one that triggered.
+- **Pipeline written out as workers with handoff qualifiers** (2026-10-21; now in the design doc).
+- **Words:** a *clip* is a piece the TakeCutter cuts; the *hinge* is the one that qualified.
 - **Conductor uses asyncio** (2026-10-21; Wes dislikes blocking Python): each worker is an async task with an
   `asyncio.Queue` between them; leaf modules stay plain synchronous code; anything that blocks is awaited or run in a
   thread; `TaskGroup` (Python 3.11) for clean shutdown.
@@ -226,7 +230,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   Fragile; change one thing at a time.
 - **The Scorer is a small local LLM** (2026-10-22, replacing a word-list plan). One sentence per request, no context,
   score read from the digit probabilities. Batching and shown-context both made scores depend on order and neighbours and
-  were rejected. Qwen3-4B (Q4_K_M) chosen 2026-10-23; Llama-3.2-3B is the faster alternative. Fragments are whole
+  were rejected. Qwen3-4B (Q4_K_M) chosen 2026-10-23; Llama-3.2-3B is the faster alternative. Clips are whole
   sentences. The word-counting fallback is shelved, unused. Evidence: `experiments/interest-scorer/`.
 - **Pi timing of the scorer** (2026-10-22, `experiments/pi-benchmark/`): with whisper running flat out on shared cores,
   Qwen3-4B scores a sentence in a median 2.3 s (p95 3.2 s); both use about 3 GB, peak 72 °C, no throttling. The first call
@@ -242,9 +246,9 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 - **Absolute scoring is the enemy of emergence** (Wes, 2026-10-23): thresholds and scales come from what is happening in
   the room, not from constants. Related: the filters must work reasonably well in every room, not perfectly in one; nothing
   is tuned per room.
-- **Trigger** (2026-10-27). *Superseded:* a fixed 7.0 threshold, then 25% above a decaying average with a floor (it fired on
+- **Qualifying** (2026-10-27). *Superseded:* a fixed 7.0 threshold, then 25% above a decaying average with a floor (it fired on
   34% of sentences in recorded meetings and barely responded to its setting). Then Tukey's fence (2026-10-27 to 29; above the real top of the scores).
-  *Current:* a percentile of a time window with a cooldown, no floor (see the design doc and `[trigger]` in `config/pom.toml`).
+  *Current:* a percentile of a time window with a cooldown, no floor (see the design doc and `[qualifying]` in `config/pom.toml`).
 - **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `model-bakeoff.md`; the Pi run
   is in `experiments/pi-oracle-benchmark/`. Writing is memory-speed-bound on the Pi (about 2 tokens a second) and the first
   word waits on the prompt (about 0.095 s a token). llama.cpp reuses none of a changed prompt for Qwen3.5 (a hybrid model);
@@ -262,21 +266,21 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 1. **Try the new listening code in the real room, on the Pi.** `git pull`, start whisper and the scorer model
    (the known-good commands are in `scripts/dev/listening/listen_to_room.py`), then run `listen_to_room.py` and compare with the
    known-good `probe_hearing_run.sh` run. The code matches the experiment on a recorded meeting (all 705 things heard
-   identical), but the new `MicSource` has only met stand-in `arecord` programs. One known limit: the sound pass for
+   identical), but the new `MicDeck` has only met stand-in `arecord` programs. One known limit: the room-tone pass for
    lyrics hears about two seconds, not ten (see the design doc).
-2. **The Output side:** the "stop listening while printing" signal belongs to the Conductor. (The `TypewriterPort` is built too: paced serial, flow control, CR+LF, keyboard lines back with echoplex; config `[terminal]`; tested on fakes only, not yet on the machine. The `TypewriterFormatter` is built:
-   fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[output]` line width, `linefeeds_after_portent` line feeds at the end.)
-3. **The Conductor,** with the half-duplex state and its watchdog; the hand-off of the triggering sentence to the
+2. **The Printing side:** the "stop listening while printing" signal belongs to the Conductor. (The `TerminalPort` is built too: paced serial, flow control, CR+LF, keyboard lines back with echoplex; config `[terminal]`; tested on fakes only, not yet on the machine. The `PortentFormatter` is built:
+   fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[printing]` line width, `linefeeds_after_portent` line feeds at the end.)
+3. **The Conductor,** with the half-duplex state and its watchdog; the hand-off of the qualifying sentence to the
    PromptBuilder; the entry point; the startup duties in `startup.py` (mic gain, scorer warm-up, checks for whisper, the
    oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script (Wes's idea: fast-forward
    pull only, refuse on a dirty tree, install dependencies only if they changed, check the new config before touching the
    running service, skip the restart for docs-only changes, then show the startup "ready" line); that needs an entry point,
    a systemd unit and a Pi virtualenv.
-4. **Paper guards** (nothing triggers unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour
+4. **Paper guards** (nothing qualifies unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour
    and 60 a day; proposed values) and **"failing loudly"** (Wes, 2026-10-24): if the scorer model or the oracle model is
    down, the Printer can never respond, and a log line is not loud when someone is switching a printer on. Decide what loud
    means (a beep, an email to Wes, something at the venue).
-5. **A real-room test,** a quiet room too, then retune from that. The trigger settings were tuned on four chatty meetings.
+5. **A real-room test,** a quiet room too, then retune from that. The `[qualifying]` settings were tuned on four chatty meetings.
 6. Later: the Conductor's typed-input wiring, the curated hinge pairs, Track B if wanted.
 7. Open and small: Wes's spot-check of about 20 bake-off ratings; a prompt tuned for the top two oracle models; defining
    "interesting" ourselves before asking the model (Wes, 2026-10-22, deferred); `ratings/report.md` still says Stheno 4.72
@@ -292,10 +296,10 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 - `caplog.at_level(level, logger="name")` resets that logger's level, which cancels a module's
   `DEBUG` override; to test the override, set the level on the root logger only.
 - The test of the committed `config/pom.toml` checks a copy, so a developer's `pom.local.toml` cannot
-  change it. Tests that touch the real corpus derive their expectations from the data (no
-  hardcoded register counts).
-- `sources.csv` no longer has a `weight` column; weights live only in `corpus/chunks/weights.json`.
-- `.gitignore` has a `samples/` rule to keep recordings out; `!corpus/samples/` exempts the benchmark sentences. A new
+  change it. Tests that touch the real library derive their expectations from the data (no
+  hardcoded shelf counts).
+- `holdings.csv` no longer has a `weight` column; circulation lives only in `library/passages/circulation.json`.
+- `.gitignore` has a `samples/` rule to keep recordings out; `!library/samples/` exempts the benchmark sentences. A new
   folder named `samples` anywhere else is ignored.
 - whisper.cpp 1.9.5's server **crashes** on `verbose_json` with voice detection on when the audio holds no speech; ask
   for SRT subtitles to get timestamps.

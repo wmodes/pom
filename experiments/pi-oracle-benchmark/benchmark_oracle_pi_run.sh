@@ -96,7 +96,7 @@ preflight() {
   if [ ! -s "$ORACLE_FILE" ]; then
     die "oracle model missing: $ORACLE_FILE. Fetch it on the Pi with: curl -L -C - -o '$ORACLE_FILE' https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf"
   fi
-  [ -s "$ROOT/corpus/chunks/weights.json" ] || die "the corpus chunks are missing from this clone (git pull)"
+  [ -s "$ROOT/library/passages/circulation.json" ] || die "the corpus chunks are missing from this clone (git pull)"
   [ -s "$ROOT/experiments/oracle-bakeoff/benchmark_hinges.txt" ] || die "the bake-off hinges are missing (git pull)"
   command -v "$PYTHON" >/dev/null || die "$PYTHON not found"
   if [ "${ALLOW_BUSY:-0}" != 1 ] && { pgrep -x llama-server >/dev/null || pgrep -x whisper-server >/dev/null; }; then

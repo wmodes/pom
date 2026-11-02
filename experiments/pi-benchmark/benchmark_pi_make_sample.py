@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Makes sample-large.txt, the long sample for the Pi benchmark.
 
-Part of experiments/pi-benchmark. Draws sentences from the corpus (corpus/ready/<register>/*.txt),
+Part of experiments/pi-benchmark. Draws sentences from the corpus (library/ready/<register>/*.txt),
 the same number from every register, with a fixed seed so the file is the same every time. The
 corpus is written text, not overheard speech, but for a load test what matters is that the
 sentences are varied and of ordinary speech length (30 to 140 characters, one complete sentence).
@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-CORPUS_READY = HERE.parents[1] / "corpus" / "ready"
+CORPUS_READY = HERE.parents[1] / "library" / "ready"
 OUTPUT = HERE / "sample-large.txt"
 
 

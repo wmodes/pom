@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Print the draw odds the Bibliomancer will use, so a weights.json edit can be checked at a glance.
+"""Print the draw odds the Bibliomancer will use, so a circulation.json edit can be checked at a glance.
 
 The oracle draws a few exemplar chunks at random. The corpus is lopsided, so the Bibliomancer weights
 every chunk to give each register its target share over many draws (see
-src/pom/corpus/bibliomancer.py for the math). This script builds the real Bibliomancer from
-corpus/chunks/ and corpus/chunks/weights.json and reports, per register, its target share, its chunk count, how
+src/pom/library/bibliomancer.py for the math). This script builds the real Bibliomancer from
+library/passages/ and library/passages/circulation.json and reports, per register, its target share, its chunk count, how
 much likelier an average chunk of that register is than in a flat draw, and the chance that one
 pull of five comes entirely from that register.
 
@@ -22,20 +22,20 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
-from pom.corpus import Catalog, Circulation, Bibliomancer  # noqa: E402
+from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
-CORPUS = os.path.join(HERE, "..", "..", "..", "corpus")
+CORPUS = os.path.join(HERE, "..", "..", "..", "library")
 PULL = 5      # the pull size used for the "all alike" column
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--weights", default=os.path.join(CORPUS, "chunks", "weights.json"))
+    parser.add_argument("--weights", default=os.path.join(CORPUS, "passages", "circulation.json"))
     args = parser.parse_args()
 
     configure_logging("WARNING")
-    store = Catalog.load(os.path.join(CORPUS, "chunks"))
+    store = Catalog.load(os.path.join(CORPUS, "passages"))
     selector = Bibliomancer(store, Circulation.from_file(args.weights))
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")

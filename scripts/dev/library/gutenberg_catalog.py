@@ -3,19 +3,19 @@
 
 Gutenberg publishes its whole catalog as one CSV. Searching that locally is more
 reliable than the public search APIs, which time out and rate-limit. The CSV is
-cached under corpus/raw/_catalog/ (gitignored, like all of raw/).
+cached under library/raw/_catalog/ (gitignored, like all of raw/).
 
 Usage:
-    scripts/dev/corpus/gutenberg_catalog.py update               # download the catalog
-    scripts/dev/corpus/gutenberg_catalog.py search REGEX [...]   # title, author or subject
-    scripts/dev/corpus/gutenberg_catalog.py authors REGEX        # author field only
+    scripts/dev/library/gutenberg_catalog.py update               # download the catalog
+    scripts/dev/library/gutenberg_catalog.py search REGEX [...]   # title, author or subject
+    scripts/dev/library/gutenberg_catalog.py authors REGEX        # author field only
     add --limit N to show more than 12 hits per pattern
 
 Notes:
 - Only English-language text is searched.
 - The 'rel' column is the year Gutenberg RELEASED the ebook, not the year the work
   was published. Check the publication year on the ebook's title page before
-  recording it in sources.csv.
+  recording it in holdings.csv.
 - Gutenberg only distributes works it has cleared for the US, so a hit is a strong
   hint of public-domain status, not a legal opinion. Record the basis in the manifest.
 """
@@ -27,7 +27,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-CATALOG = ROOT / "corpus" / "raw" / "_catalog" / "pg_catalog.csv"
+CATALOG = ROOT / "library" / "raw" / "_catalog" / "pg_catalog.csv"
 CATALOG_URL = "https://www.gutenberg.org/cache/epub/feeds/pg_catalog.csv"
 USER_AGENT = ("printer-of-mysteries-corpus/0.1 "
               "(https://github.com/wmodes/pom; private art project; rate-limited)")

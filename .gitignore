@@ -8,13 +8,13 @@ CLAUDE.md
 
 # Recordings of real people and generated audio stay out of the repo
 samples/
-!corpus/samples/
+!library/samples/
 *.wav
 *.m4a
 *.mp3
 
-# Raw corpus downloads are reproducible from corpus/SOURCES.md; processed text is committed
-corpus/raw/
+# Raw corpus downloads are reproducible from library/SOURCES.md; processed text is committed
+library/raw/
 
 # Python
 .venv/

@@ -1,10 +1,10 @@
 # Corpus notes: how the corpus is built, and how to repeat it
 
-Written 2026-10-18 while building the first batch. This is the *process and lessons*. The rules and column reference are in [`corpus/README.md`](../corpus/README.md); the per-source decisions are in the `notes` column of [`corpus/sources.csv`](../corpus/sources.csv). If this file and the code disagree, the code wins.
+Written 2026-10-18 while building the first batch. This is the *process and lessons*. The rules and column reference are in [`library/README.md`](../library/README.md); the per-source decisions are in the `notes` column of [`library/holdings.csv`](../library/holdings.csv). If this file and the code disagree, the code wins.
 
 ## What the corpus is for
 
-Examples of the kind of thing the oracle should say: few-shot examples now, retrieval next, possibly fine-tuning later. Only text in `corpus/ready/` (and the chunks derived from it) is safe to feed to anything. Everything upstream of `ready/` is scratch.
+Examples of the kind of thing the oracle should say: few-shot examples now, retrieval next, possibly fine-tuning later. Only text in `library/ready/` (and the chunks derived from it) is safe to feed to anything. Everything upstream of `ready/` is scratch.
 
 The key design decision (Wes, 2026-10-18): **`ready/` is a list of utterances, one per paragraph, with no trace of their source**: no headings, labels, numbering, speaker names or references. Blank-line-delimited paragraphs are the whole format. This also keeps the oracle's output from looking sourced.
 
@@ -14,7 +14,7 @@ The key design decision (Wes, 2026-10-18): **`ready/` is a list of utterances, o
 raw/      untouched download                                  not safe, gitignored
 draft/    trimmed and standardized into utterances by script  not safe, committed
 ready/    approved, cleared, reviewed by a human              SAFE
-chunks/   ready/ paragraphs, merged under 20 words and split  SAFE (planned, not built yet)
+passages/   ready/ paragraphs, merged under 20 words and split  SAFE (planned, not built yet)
           over 300 (JSONL with metadata)
 inbox/    human-supplied files that cannot be fetched, committed
 ```
@@ -23,15 +23,15 @@ Every transformation is a script reading the manifest. Nothing in `draft/` or `r
 
 ## Tools
 
-All in `scripts/dev/corpus/`, standard-library Python on the Mac:
+All in `scripts/dev/library/`, standard-library Python on the Mac:
 
 | Script | Job |
 |---|---|
-| `corpus.py` | `add`, `set`, `process`, `status`, `fetch`, `inspect`, `clean` (`-v`, `--audit N`), `review`, `promote`, `publish-check` |
-| `cataloguer.py` | Makes `chunks/` from `ready/`: splits over-long utterances, drops exact duplicates |
-| `circulation.py` | Draw odds that give each register its target share, computed at load time from the chunk counts (never stored); all weights in `chunks/weights.json` |
+| `library.py` | `add`, `set`, `process`, `status`, `fetch`, `inspect`, `clean` (`-v`, `--audit N`), `review`, `promote`, `publish-check` |
+| `cataloguer.py` | Makes `passages/` from `ready/`: splits over-long utterances, drops exact duplicates |
+| `circulation.py` | Draw odds that give each register its target share, computed at load time from the chunk counts (never stored); all weights in `passages/circulation.json` |
 | `audit.py` | Read-only artifact rates per `ready/` (or `draft/`) file, and examples of any check; the pre-review sweep |
-| `normalize.py` | The standardizer that turns trimmed text into utterances; imported by `corpus.py` |
+| `normalize.py` | The standardizer that turns trimmed text into utterances; imported by `library.py` |
 | `gutenberg_catalog.py` | `update`, `search`, `authors`: offline search of Gutenberg's whole catalog |
 
 External programs (Homebrew): `poppler` (`pdftotext`, `pdfinfo`, `pdftoppm`) and `tesseract` for PDFs. Versions used: Python 3.14.7, tesseract 5.5.0, poppler pdftotext 26.04.0, macOS 26.6.2. **OCR output depends on the tesseract version**, so a different version can give slightly different text.
@@ -41,10 +41,10 @@ External programs (Homebrew): `poppler` (`pdftotext`, `pdfinfo`, `pdftoppm`) and
 ```
 git clone <repo> && cd pom
 brew install poppler tesseract                       # only needed for PDF sources
-scripts/dev/corpus/corpus.py fetch                   # raw/ (not committed; ~2s delay per request)
-scripts/dev/corpus/corpus.py clean                   # draft/ (OCR sources take minutes)
-scripts/dev/corpus/corpus.py review                  # read the reports
-scripts/dev/corpus/corpus.py promote                 # ready/ (needs reviewed=yes in the manifest)
+scripts/dev/library/library.py fetch                   # raw/ (not committed; ~2s delay per request)
+scripts/dev/library/library.py clean                   # draft/ (OCR sources take minutes)
+scripts/dev/library/library.py review                  # read the reports
+scripts/dev/library/library.py promote                 # ready/ (needs reviewed=yes in the manifest)
 ```
 
 `ready/` is committed, so a fresh checkout already has the text. You only need to run the pipeline to rebuild it or add sources.
@@ -54,7 +54,7 @@ scripts/dev/corpus/corpus.py promote                 # ready/ (needs reviewed=ye
 The short version: `add`, then `process ID`, then adjust with `set` and re-run `process`, read the audit, human sign-off, `promote`. The manifest is only ever changed through `add` and `set`. After `promote` the text still needs chunking and a weight; the whole path is in `documentation/adding-material.md`. In detail:
 
 1. **Find it.** For books: `gutenberg_catalog.py search 'regex'`. Gutenberg only distributes works it has cleared for the US, which is a strong hint, not a legal opinion. For other hosts see "Where sources came from" below.
-2. **Record it first.** `corpus.py add --id ... --form ... --title ... --rights ... --basis ... --url ...`, as `candidate` until the rights are confirmed (or straight to `approved`). The pipeline refuses to approve anything that is not cleared.
+2. **Record it first.** `library.py add --id ... --form ... --title ... --rights ... --basis ... --url ...`, as `candidate` until the rights are confirmed (or straight to `approved`). The pipeline refuses to approve anything that is not cleared.
 3. **`process ID`.** It fetches, and with no markers yet it prints the landmark-looking lines (contents, preface, index, "THE END", notes) with the exact marker string to paste, plus the first and last lines. When a heading repeats (contents entry, then the real heading) it gives `text#N`. Then it cleans with an audit, shows the trimmed edges, and samples utterances from the start, middle and end.
 4. **Choose markers and flags with `set`.** `start_marker` is the first line of the real text; `end_marker` is the first line after it. Prose gets `unwrap`; verse does not; rhymed runs get `couplets`; plays get `speeches`; an edition with margin glosses gets `glosses`. Source-specific junk goes in `drop`. Write a `Trim:` sentence in `notes`. Re-run `process ID`.
 5. **Read the audit.** It samples what each rule removed; this is how real content being dropped with the furniture gets caught.
@@ -74,7 +74,7 @@ Title pages, copyright and warranty notices, contents, indexes, publisher ads, t
 | Wikisource | `fetch` lists a title's subpages with the API and renders each with `action=parse`, then strips HTML | Used for Legge's I Ching. Only hexagrams 1-32 are transcribed, and 32 is partial. |
 | Direct PDF | `fetch` saves `source.pdf`; `clean` uses the text layer, or OCR | See "PDFs" below. |
 | Direct `.txt` | `fetch` saves `source.txt` | Used for the Internet Archive's own OCR text (`*_djvu.txt`). |
-| `inbox/` | The file is committed in `corpus/inbox/` and the manifest `url` is `inbox/<name>` | For Drive docs that need sign-in, and for original writing from contributors. |
+| `inbox/` | The file is committed in `library/inbox/` and the manifest `url` is `inbox/<name>` | For Drive docs that need sign-in, and for original writing from contributors. |
 
 ### PDFs
 
@@ -87,7 +87,7 @@ Title pages, copyright and warranty notices, contents, indexes, publisher ads, t
 - `public-domain` and `cc0`: the normal case. Basis is recorded per source.
 - `in-copyright` and `unknown`: logged as `excluded` or `candidate`, never fetched. The pipeline refuses.
 - `owner-cleared`: **not public domain.** Wes decided on 2026-10-18 to use these in this private project, on the grounds that mid-20th-century and similar material has no realistic economic stake: the IBM and Lexmark Wheelwriter manuals and the dad-jokes list so far, and mid-century material in general. The text is committed to the private repo.
-  - Do not publish these. `corpus.py publish-check` exits non-zero if any non-public-domain text is tracked by git; run it before making the repo public or sharing it.
+  - Do not publish these. `library.py publish-check` exits non-zero if any non-public-domain text is tracked by git; run it before making the repo public or sharing it.
   - The CadetWriter user guide is `unknown`: that repo declares no license. Ask the authors, or decide it as `owner-cleared`.
 
 ## Lessons (each became a rule or a tool)

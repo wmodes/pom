@@ -45,7 +45,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                                      # noqa: E402
-from pom.corpus import Catalog, Circulation, Bibliomancer                                    # noqa: E402
+from pom.library import Catalog, Circulation, Bibliomancer                                    # noqa: E402
 from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck,         # noqa: E402
                            WhisperModelClient)
 from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TurnHistory                      # noqa: E402
@@ -56,7 +56,7 @@ from pom.scoring import (HingeFinder, Ruling, ClipScorer, ScorerModelClient,  # 
 from pom.voice import OracleModelClient, PortentWriter                                              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-CHUNKS = ROOT / "corpus" / "chunks"
+CHUNKS = ROOT / "library" / "passages"
 PAPER_WIDTH = 64                  # a line of the typewriter, for the look of it only; the real width is the formatter's
 
 
@@ -151,7 +151,7 @@ def main() -> None:
     finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
 
     rng = random.Random()
-    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "weights.json"), rng,
+    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "circulation.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

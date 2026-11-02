@@ -113,7 +113,7 @@ def test_samples_default_to_three_to_five():
 
 def test_the_defaults_match_the_bibliomancers_defaults():
     """Config and Bibliomancer each carry the default (neither imports the other), so keep them equal."""
-    from pom.corpus.bibliomancer import DEFAULT_EXEMPLAR_RANGE
+    from pom.library.bibliomancer import DEFAULT_EXEMPLAR_RANGE
     from pom.config import DEFAULT_EXEMPLAR_RANGE as CONFIG_DEFAULT
     assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
 
@@ -156,7 +156,7 @@ def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
 
 def test_config_samples_plug_straight_into_the_sampler():
     import random
-    from pom.corpus import Passage, Catalog, Circulation, Bibliomancer
+    from pom.library import Passage, Catalog, Circulation, Bibliomancer
     config = Config.load(environ={"POM_EXEMPLARS_MIN": "2", "POM_EXEMPLARS_MAX": "2"})
     store = Catalog.from_chunks([Passage(f"a#{i}", "a", "red", f"Passage {i}", 2) for i in range(9)])
     selector = Bibliomancer(store, Circulation.from_dict({}), random.Random(1),

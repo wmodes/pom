@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Play with the Bibliomancer: print pulls of random chunks, or measure the long-run register shares.
 
-It builds the real Bibliomancer from corpus/chunks/, corpus/chunks/weights.json and the exemplar range in
+It builds the real Bibliomancer from library/passages/, library/passages/circulation.json and the exemplar range in
 config/pom.toml (plus config/pom.local.toml), so what you see is what the oracle's exemplar draw
 will do. Try a different weights file with --weights to see the effect before editing the real one.
 
@@ -25,7 +25,7 @@ ROOT = os.path.join(HERE, "..", "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "src"))    # scripts may import pom
 
 from pom.config import Config  # noqa: E402
-from pom.corpus import Catalog, Circulation, Bibliomancer  # noqa: E402
+from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 
 
@@ -61,13 +61,13 @@ def main():
     parser.add_argument("--seed", type=int, default=None, help="seed the random generator")
     parser.add_argument("--stats", type=int, metavar="PULLS", default=None,
                         help="draw this many pulls quietly and print the register shares")
-    parser.add_argument("--weights", default=os.path.join(ROOT, "corpus", "chunks", "weights.json"))
+    parser.add_argument("--weights", default=os.path.join(ROOT, "library", "passages", "circulation.json"))
     parser.add_argument("-v", "--verbose", action="store_true", help="use the config's log level")
     args = parser.parse_args()
 
     config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
     configure_logging(config.log_level if args.verbose else "WARNING")
-    store = Catalog.load(os.path.join(ROOT, "corpus", "chunks"))
+    store = Catalog.load(os.path.join(ROOT, "library", "passages"))
     selector = Bibliomancer(store, Circulation.from_file(args.weights), random.Random(args.seed),
                       exemplar_range=config.exemplar_range)
     if not selector.ready:

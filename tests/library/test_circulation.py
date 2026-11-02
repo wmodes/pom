@@ -1,4 +1,4 @@
-"""Tests for pom.corpus.circulation: parsing, defaults, normalization and validation.
+"""Tests for pom.library.circulation: parsing, defaults, normalization and validation.
 
 The module follows the project principle that nothing may stop the oracle: in its default
 (lenient) mode every bad input recovers and is recorded in a FaultRecorder. In strict mode, used by
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from pom.corpus import Circulation, CirculationError
+from pom.library import Circulation, CirculationError
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -66,7 +66,7 @@ def test_zero_is_allowed_to_switch_something_off():
 
 
 def test_from_file_reads_json(tmp_path):
-    path = tmp_path / "weights.json"
+    path = tmp_path / "circulation.json"
     path.write_text(json.dumps(doc(news={"share": 4})), encoding="utf-8")
     weights = Circulation.from_file(path)
     assert weights.share("news") == 4.0 and weights.report.ok
@@ -81,7 +81,7 @@ def test_missing_file_gives_defaults_and_a_warning_not_a_crash(tmp_path):
 
 
 def test_invalid_json_gives_defaults_and_a_warning(tmp_path):
-    path = tmp_path / "weights.json"
+    path = tmp_path / "circulation.json"
     path.write_text("{not json", encoding="utf-8")
     weights = Circulation.from_file(path)
     assert weights.source_weight("x") == 1.0
@@ -149,14 +149,14 @@ def test_many_problems_at_once_never_raise_and_all_are_reported():
 
 
 def test_problems_are_logged_so_they_reach_journald(caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.corpus.circulation"):
+    with caplog.at_level(logging.WARNING, logger="pom.library.circulation"):
         Circulation.from_dict(doc(news={"share": "oops"}))
     assert any(r.levelno == logging.WARNING and "register 'news' share" in r.message
                for r in caplog.records)
 
 
 def test_a_clean_file_logs_no_warnings(caplog):
-    with caplog.at_level(logging.DEBUG, logger="pom.corpus.circulation"):
+    with caplog.at_level(logging.DEBUG, logger="pom.library.circulation"):
         Circulation.from_dict(doc(news={"share": 2}))
     assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
@@ -165,13 +165,13 @@ def test_a_clean_file_logs_no_warnings(caplog):
 def module_debug():
     """Lets a test force this module's debug flag, and restores 'follow the project' after."""
     from pom.log_setup import get_logger
-    yield lambda flag: get_logger("pom.corpus.circulation", flag)
-    get_logger("pom.corpus.circulation", None)
+    yield lambda flag: get_logger("pom.library.circulation", flag)
+    get_logger("pom.library.circulation", None)
 
 
 def test_debug_lines_appear_only_when_the_module_flag_is_on(caplog, module_debug):
     module_debug(True)
-    with caplog.at_level(logging.DEBUG, logger="pom.corpus.circulation"):
+    with caplog.at_level(logging.DEBUG, logger="pom.library.circulation"):
         Circulation.from_dict(doc(news={"share": 2})).shares_for(["news"])
     debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
     assert any("parsed 1 register share" in m for m in debug)
@@ -186,7 +186,7 @@ def test_debug_lines_are_hidden_when_the_module_flag_is_off(caplog, module_debug
 
 
 def test_check_problems_are_logged_too(caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.corpus.circulation"):
+    with caplog.at_level(logging.WARNING, logger="pom.library.circulation"):
         Circulation.from_dict(doc(news={"sources": {"ads": 1}})).check(LAYOUT)
     assert any("not in weights file" in r.message for r in caplog.records)
 
@@ -218,7 +218,7 @@ def test_strict_mode_raises_where_lenient_mode_recovers(tmp_path, label, documen
 
 
 def test_strict_invalid_json_raises(tmp_path):
-    path = tmp_path / "weights.json"
+    path = tmp_path / "circulation.json"
     path.write_text("{not json", encoding="utf-8")
     with pytest.raises(CirculationError, match="not valid JSON"):
         Circulation.from_file(path, strict=True)
@@ -368,13 +368,13 @@ def matching_document():
 
 # --- The committed file ----------------------------------------------------------------
 
-@pytest.mark.skipif(not (REPO / "corpus" / "chunks" / "weights.json").exists(),
-                    reason="corpus/chunks/weights.json not present")
+@pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
+                    reason="library/passages/circulation.json not present")
 def test_real_weights_file_is_clean_even_in_strict_mode():
-    chunks = REPO / "corpus" / "chunks"
+    chunks = REPO / "library" / "passages"
     layout = {folder.name: [f.stem for f in sorted(folder.glob("*.jsonl"))]
               for folder in sorted(chunks.iterdir()) if folder.is_dir()}
-    weights = Circulation.from_file(chunks / "weights.json", strict=True)   # raises on any typo
+    weights = Circulation.from_file(chunks / "circulation.json", strict=True)   # raises on any typo
     assert weights.check(layout).ok
     shares = weights.shares_for(layout)
     assert sum(shares.values()) == pytest.approx(1.0)

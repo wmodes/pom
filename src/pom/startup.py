@@ -175,7 +175,7 @@ def planned_steps() -> list:
     """The startup duties, in order, each still a placeholder. See the module docstring."""
     return [
         PlannedStep("config-report", "log what the config loader had to correct (config.report)"),
-        PlannedStep("data-check", "the corpus chunks, weights.json and the NLTK data are present; the "
+        PlannedStep("data-check", "the corpus chunks, circulation.json and the NLTK data are present; the "
                     "Bibliomancer cannot draw without chunks", critical=True),
         PlannedStep("mic-gain", "set the microphone's capture gain from config (24 of 30 worked on the "
                     "ATR4697-USB); Pi only, and it resets on every reboot"),

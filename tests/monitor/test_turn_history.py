@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from pom.corpus import Passage
+from pom.library import Passage
 from pom.monitor import TurnHistory, TurnHistoryError, TurnRecord
 from pom.monitor.turn_history import DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS
 from pom.voice import Portent

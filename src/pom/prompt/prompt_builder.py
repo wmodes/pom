@@ -47,8 +47,8 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-from pom.corpus.catalog import Passage
-from pom.corpus.bibliomancer import Bibliomancer
+from pom.library.catalog import Passage
+from pom.library.bibliomancer import Bibliomancer
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 

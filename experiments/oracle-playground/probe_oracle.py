@@ -41,13 +41,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                      # noqa: E402
-from pom.corpus import Catalog, Circulation, Bibliomancer   # noqa: E402
+from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
 from pom.voice import OracleModelClient                            # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-CHUNKS = ROOT / "corpus" / "chunks"
+CHUNKS = ROOT / "library" / "passages"
 CONTEXT_SIZE = 4096
 
 
@@ -110,7 +110,7 @@ def main() -> None:
     configure_logging("WARNING")
     config = Config.load(CONFIG_PATH)
     rng = random.Random()
-    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "weights.json"), rng,
+    selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "circulation.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

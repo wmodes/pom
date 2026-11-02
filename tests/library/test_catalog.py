@@ -1,4 +1,4 @@
-"""Tests for pom.corpus.catalog: loading chunk files and answering layout questions.
+"""Tests for pom.library.catalog: loading chunk files and answering layout questions.
 
 The module follows the project principle that nothing may stop the oracle: by default every bad
 file or record is skipped or repaired and recorded in a FaultRecorder. In strict mode, used by tests and
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from pom.corpus import Passage, CatalogError, Catalog, Circulation
+from pom.library import Passage, CatalogError, Catalog, Circulation
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -146,7 +146,7 @@ def test_blank_lines_are_skipped(tmp_path):
 
 
 def test_only_register_folders_with_jsonl_files_are_read(corpus):
-    (corpus / "weights.json").write_text("{}", encoding="utf-8")
+    (corpus / "circulation.json").write_text("{}", encoding="utf-8")
     (corpus / "news" / "notes.txt").write_text("not a chunk file", encoding="utf-8")
     write(corpus, ".hidden", "secret", [record(".hidden", "secret", 0, "Never loaded")])
     store = Catalog.load(corpus)
@@ -307,7 +307,7 @@ def test_a_corrupt_file_cannot_flood_the_report(tmp_path):
 
 def test_problems_are_logged_so_they_reach_journald(tmp_path, caplog):
     write(tmp_path, "news", "ads", None, raw="{bad\n")
-    with caplog.at_level(logging.WARNING, logger="pom.corpus.catalog"):
+    with caplog.at_level(logging.WARNING, logger="pom.library.catalog"):
         Catalog.load(tmp_path)
     assert any(r.levelno == logging.WARNING and "not valid JSON" in r.message for r in caplog.records)
     assert any(r.levelno == logging.CRITICAL and "nothing to say" in r.message for r in caplog.records)
@@ -331,12 +331,12 @@ def test_an_empty_in_memory_store_is_critical():
 
 def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(corpus, caplog):
     from pom.log_setup import get_logger
-    get_logger("pom.corpus.catalog", True)
+    get_logger("pom.library.catalog", True)
     try:
-        with caplog.at_level(logging.DEBUG, logger="pom.corpus.catalog"):
+        with caplog.at_level(logging.DEBUG, logger="pom.library.catalog"):
             Catalog.load(corpus)
     finally:
-        get_logger("pom.corpus.catalog", None)
+        get_logger("pom.library.catalog", None)
     info = [r.message for r in caplog.records if r.levelno == logging.INFO]
     debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
     assert info == ["loaded 6 chunks from 3 source(s) in 2 register(s)"]
@@ -345,12 +345,12 @@ def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(corpus, caplog
 
 def test_per_file_detail_is_hidden_when_the_module_flag_is_off(corpus, caplog):
     from pom.log_setup import get_logger
-    get_logger("pom.corpus.catalog", False)
+    get_logger("pom.library.catalog", False)
     try:
         with caplog.at_level(logging.DEBUG):   # root only: naming the logger would reset its level
             Catalog.load(corpus)
     finally:
-        get_logger("pom.corpus.catalog", None)
+        get_logger("pom.library.catalog", None)
     assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
     assert any(r.levelno == logging.INFO for r in caplog.records)   # the summary still shows
 
@@ -422,14 +422,14 @@ def test_layout_feeds_weights_check(corpus):
     assert weights.check(Catalog.load(corpus).layout()).ok
 
 
-@pytest.mark.skipif(not (REPO / "corpus" / "chunks" / "weights.json").exists(),
+@pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
                     reason="committed chunks not present")
 def test_real_chunks_load_and_agree_with_the_real_weights_file():
-    store = Catalog.load(REPO / "corpus" / "chunks", strict=True)   # raises on any bad record
+    store = Catalog.load(REPO / "library" / "passages", strict=True)   # raises on any bad record
     assert store.report.ok
     assert len(store) > 50000
-    folders = sorted(f.name for f in (REPO / "corpus" / "chunks").iterdir() if f.is_dir())
+    folders = sorted(f.name for f in (REPO / "library" / "passages").iterdir() if f.is_dir())
     assert store.registers() == folders      # every register folder loaded, however many there are
     assert all(chunk.words <= 150 for chunk in store)
-    weights = Circulation.from_file(REPO / "corpus" / "chunks" / "weights.json", strict=True)
+    weights = Circulation.from_file(REPO / "library" / "passages" / "circulation.json", strict=True)
     assert weights.check(store.layout()).ok

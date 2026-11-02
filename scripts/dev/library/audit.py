@@ -22,7 +22,7 @@ import re
 import sys
 from collections import Counter
 
-CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "corpus")
+CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
 
 CHECKS = {
     "nonascii": lambda p: bool(re.search(r"[^\x20-\x7e\n]", p)),

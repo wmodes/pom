@@ -55,8 +55,8 @@ import bisect
 import random
 from typing import Optional, Sequence
 
-from pom.corpus.catalog import Passage, Catalog
-from pom.corpus.circulation import Circulation
+from pom.library.catalog import Passage, Catalog
+from pom.library.circulation import Circulation
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 

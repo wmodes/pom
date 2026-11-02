@@ -9,7 +9,7 @@ import random
 
 import pytest
 
-from pom.corpus import Passage, Catalog, Circulation, Bibliomancer
+from pom.library import Passage, Catalog, Circulation, Bibliomancer
 from pom.prompt import PromptBuilder
 from pom.voice import OracleModelClient, Portent, PortentWriter, PortentWriterError
 

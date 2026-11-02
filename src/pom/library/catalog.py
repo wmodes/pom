@@ -1,9 +1,9 @@
 """Chunks and the store that holds them.
 
 A chunk is one utterance sized for the oracle's output. The chunk files are made by
-scripts/dev/corpus/cataloguer.py, one JSON object per line, one file per source:
+scripts/dev/library/cataloguer.py, one JSON object per line, one file per source:
 
-    corpus/chunks/<register>/<source>.jsonl
+    library/passages/<register>/<source>.jsonl
 
 This module reads those files and answers questions about them. It does not decide how likely a
 chunk is to be drawn (that is the Circulation and the Bibliomancer) and it never writes anything.
@@ -24,7 +24,7 @@ Design decisions, and why:
     find the bad record.
   * Order is deterministic (sorted registers, sources, then file order), so a seeded selector
     gives the same draws on every machine.
-  * The folder may hold other files (weights.json). Only `<register>/<source>.jsonl` are read.
+  * The folder may hold other files (circulation.json). Only `<register>/<source>.jsonl` are read.
 """
 import json
 from dataclasses import dataclass

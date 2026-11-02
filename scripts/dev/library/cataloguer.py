@@ -18,15 +18,15 @@ Rules, in order:
      copy records how many times it occurred.
 
 A chunk holds only facts about itself (source, register, text). How likely it is to be
-drawn depends on the whole corpus and on the weights in chunks/weights.json, so that is
-computed at load time by the Bibliomancer (src/pom/corpus) and never stored here: adding one utterance, or
+drawn depends on the whole corpus and on the weights in passages/circulation.json, so that is
+computed at load time by the Bibliomancer (src/pom/library) and never stored here: adding one utterance, or
 changing a weight, touches no chunk file.
 
-Output is deterministic: one JSONL file per source under corpus/chunks/<register>/<id>.jsonl.
+Output is deterministic: one JSONL file per source under library/passages/<register>/<id>.jsonl.
 Re-run after any change to ready/ or the manifest.
 
 Usage:
-    cataloguer.py                          write corpus/chunks/ and print a report
+    cataloguer.py                          write library/passages/ and print a report
     cataloguer.py --max-words 200          change the ceiling
     cataloguer.py --min-words 15           merge short utterances forward
     cataloguer.py --check                  report only; write nothing
@@ -42,12 +42,12 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
-from pom.corpus import Circulation  # noqa: E402  (scripts may import the package, never the reverse)
+from pom.library import Circulation  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.log_setup import configure_logging  # noqa: E402
 
-CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "corpus")
+CORPUS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
 READY = os.path.join(CORPUS, "ready")
-OUT = os.path.join(CORPUS, "chunks")
+OUT = os.path.join(CORPUS, "passages")
 
 # Sentence ends: terminal punctuation (optionally closed by a quote or bracket), then a
 # capital, quote or digit. Abbreviations are rejoined afterwards.
@@ -164,7 +164,7 @@ def read_utterances(path):
 def build(limit, minimum):
     """Chunks every approved source. Returns (records_by_source, stats)."""
     manifest = {}
-    with open(os.path.join(CORPUS, "sources.csv"), newline="", encoding="utf-8") as handle:
+    with open(os.path.join(CORPUS, "holdings.csv"), newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             if row["status"] == "approved":
                 manifest[row["id"]] = row
@@ -204,7 +204,7 @@ def build(limit, minimum):
 
 
 def target_shares(records, weights_path):
-    """Returns each register's normalized target share; drift in weights.json is logged."""
+    """Returns each register's normalized target share; drift in circulation.json is logged."""
     weights = Circulation.from_file(weights_path)
     layout = {}
     for source, rs in records.items():
@@ -260,7 +260,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--max-words", type=int, default=150)
     parser.add_argument("--min-words", type=int, default=0)
-    parser.add_argument("--weights", default=os.path.join(CORPUS, "chunks", "weights.json"))
+    parser.add_argument("--weights", default=os.path.join(CORPUS, "passages", "circulation.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
     configure_logging("WARNING")

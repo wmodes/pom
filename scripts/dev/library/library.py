@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch and clean the corpus sources listed in corpus/sources.csv.
+"""Fetch and clean the corpus sources listed in library/holdings.csv.
 
 The manifest is the single source of truth. This script never edits it; it
-reads it, enforces the rights rule, and writes only under corpus/raw/ (not
-committed), corpus/draft/<form>/ and corpus/ready/<form>/ (both committed).
+reads it, enforces the rights rule, and writes only under library/raw/ (not
+committed), library/draft/<form>/ and library/ready/<form>/ (both committed).
 
 Stages, in order. Only ready/ is safe to use as training, few-shot or
 retrieval data; raw/ and draft/ are not.
@@ -13,16 +13,16 @@ retrieval data; raw/ and draft/ are not.
                                           and reviewed (manifest column)
 
 Usage:
-    scripts/dev/corpus/corpus.py add --id ID --form F --title T --rights R --basis B --url U
-    scripts/dev/corpus/corpus.py set ID column=value ...   # edit markers, flags, status
-    scripts/dev/corpus/corpus.py process ID         # fetch, clean, audit, sample; stops before promote
-    scripts/dev/corpus/corpus.py status             # what is on disk, per source
-    scripts/dev/corpus/corpus.py fetch [--id ID]    # download approved sources
-    scripts/dev/corpus/corpus.py inspect --id ID    # landmarks + edges, to pick trim markers
-    scripts/dev/corpus/corpus.py inspect --id ID --trimmed   # edges after the markers
-    scripts/dev/corpus/corpus.py clean [--id ID]    # raw -> draft
-    scripts/dev/corpus/corpus.py review [--id ID]   # review report: edges, samples, junk checks
-    scripts/dev/corpus/corpus.py promote [--id ID]  # reviewed drafts -> ready
+    scripts/dev/library/library.py add --id ID --form F --title T --rights R --basis B --url U
+    scripts/dev/library/library.py set ID column=value ...   # edit markers, flags, status
+    scripts/dev/library/library.py process ID         # fetch, clean, audit, sample; stops before promote
+    scripts/dev/library/library.py status             # what is on disk, per source
+    scripts/dev/library/library.py fetch [--id ID]    # download approved sources
+    scripts/dev/library/library.py inspect --id ID    # landmarks + edges, to pick trim markers
+    scripts/dev/library/library.py inspect --id ID --trimmed   # edges after the markers
+    scripts/dev/library/library.py clean [--id ID]    # raw -> draft
+    scripts/dev/library/library.py review [--id ID]   # review report: edges, samples, junk checks
+    scripts/dev/library/library.py promote [--id ID]  # reviewed drafts -> ready
 
 Trim markers (manifest columns start_marker / end_marker): the exact text of a
 whole line, optionally followed by '#N' to pick the Nth occurrence. start_marker
@@ -56,8 +56,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import normalize  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
-CORPUS = ROOT / "corpus"
-MANIFEST = CORPUS / "sources.csv"
+CORPUS = ROOT / "library"
+MANIFEST = CORPUS / "holdings.csv"
 
 # Wikimedia's policy asks for contact info in the User-Agent; we give the repo URL.
 USER_AGENT = ("printer-of-mysteries-corpus/0.1 "
@@ -79,12 +79,12 @@ FETCHABLE_STATUSES = {"approved", "fetched", "processed"}
 LATE_COLUMNS = []
 
 # Columns that moved elsewhere. read_manifest drops them, so the next save removes them.
-# `weight` now lives in corpus/chunks/weights.json, next to the chunks it affects.
+# `weight` now lives in library/passages/circulation.json, next to the chunks it affects.
 DROPPED_COLUMNS = ["weight"]
 
 
 def read_manifest():
-    """Reads sources.csv, returning (column names in file order, list of row dicts)."""
+    """Reads holdings.csv, returning (column names in file order, list of row dicts)."""
     with MANIFEST.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         fields, rows = list(reader.fieldnames), list(reader)
@@ -102,12 +102,12 @@ def read_manifest():
 
 
 def load_manifest():
-    """Reads sources.csv into a list of row dicts."""
+    """Reads holdings.csv into a list of row dicts."""
     return read_manifest()[1]
 
 
 def save_manifest(fields, rows):
-    """Writes sources.csv atomically (temp file, then replace), keeping column order."""
+    """Writes holdings.csv atomically (temp file, then replace), keeping column order."""
     temp = MANIFEST.with_suffix(".csv.tmp")
     with temp.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=fields, lineterminator="\n")
@@ -345,7 +345,7 @@ def ocr_pdf(pdf, cache):
     """OCRs a scanned PDF with tesseract and caches the result next to the PDF.
 
     OCR is slow, so the text is cached in raw/ (ignored by git). The output
-    depends on the tesseract version, which is noted in documentation/corpus-notes.md.
+    depends on the tesseract version, which is noted in documentation/library-notes.md.
     """
     if cache.exists():
         return cache.read_text(encoding="utf-8")
@@ -405,7 +405,7 @@ def tidy(text):
 # --- Inbox (human-supplied files that cannot be downloaded) --------------------
 
 def fetch_inbox(row, raw_dir):
-    """Copies a human-supplied file from corpus/inbox/ into raw/<id>/ as source.<ext>.
+    """Copies a human-supplied file from library/inbox/ into raw/<id>/ as source.<ext>.
 
     For text that has no public URL, such as a shared Google Doc or original writing
     from a contributor. The inbox file is committed, since it cannot be refetched.
@@ -565,7 +565,7 @@ def cmd_inspect(args):
     """Shows what's needed to choose start_marker and end_marker for a source.
 
     Prints the landmark-looking lines of the untrimmed text with the marker
-    string to paste into sources.csv ('text' if the line is unique, otherwise
+    string to paste into holdings.csv ('text' if the line is unique, otherwise
     'text#N' for its Nth exact occurrence), plus the first and last lines. With
     --trimmed, shows the edges after the current markers are applied instead.
     """
@@ -653,7 +653,7 @@ def cmd_review(args):
         sys.exit("No drafts to review (run clean first, or check --id).")
     for row in rows:
         review_report(row)
-    print("\nSign-off is manual: when satisfied, set reviewed=yes in sources.csv.")
+    print("\nSign-off is manual: when satisfied, set reviewed=yes in holdings.csv.")
 
 
 def cmd_clean(args):
@@ -719,7 +719,7 @@ def cmd_publish_check(_args):
     rights are 'owner-cleared' (or anything other than public-domain/cc0) must
     not have its text in a committed file.
     """
-    tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "corpus"],
+    tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "library"],
                              capture_output=True, text=True, check=True).stdout.split("\n")
     offenders = []
     for row in load_manifest():
@@ -768,12 +768,12 @@ def cmd_add(args):
     rows.append(row)
     save_manifest(fields, rows)
     print(f"added  {args.id} (status {args.status}, rights {args.rights})")
-    print(f"next   corpus.py process {args.id}" if args.status == "approved"
-          else "next   confirm the rights, then: corpus.py set {id} status=approved".format(id=args.id))
+    print(f"next   library.py process {args.id}" if args.status == "approved"
+          else "next   confirm the rights, then: library.py set {id} status=approved".format(id=args.id))
 
 
 def cmd_set(args):
-    """Changes manifest columns for one source: corpus.py set ID column=value [...]."""
+    """Changes manifest columns for one source: library.py set ID column=value [...]."""
     fields, rows = read_manifest()
     row = next((r for r in rows if r["id"] == args.id), None)
     if row is None:
@@ -782,7 +782,7 @@ def cmd_set(args):
     for pair in args.assignments:
         column, sep, value = pair.partition("=")
         if column == "weight":
-            sys.exit("Weights live in corpus/chunks/weights.json now; edit that file.")
+            sys.exit("Weights live in library/passages/circulation.json now; edit that file.")
         if not sep or column not in fields or column == "id":
             sys.exit(f"Bad assignment '{pair}'. Use column=value; columns: "
                      f"{', '.join(f for f in fields if f != 'id')}")
@@ -824,7 +824,7 @@ def cmd_process(args):
         sys.exit(f"No source with id '{args.id}'. Add it first with `add`.")
     if row["status"] != "approved":
         sys.exit(f"{args.id} is '{row['status']}'. Confirm its rights, then: "
-                 f"corpus.py set {args.id} status=approved")
+                 f"library.py set {args.id} status=approved")
     if not raw_dir_for(row).exists():
         cmd_fetch(argparse.Namespace(id=args.id, force=False))
     if not (row["start_marker"] or row["end_marker"]):
@@ -839,8 +839,8 @@ def cmd_process(args):
 
 
 def source_weights():
-    """Per-source weights from corpus/chunks/weights.json (a missing source counts 1.0)."""
-    path = CORPUS / "chunks" / "weights.json"
+    """Per-source weights from library/passages/circulation.json (a missing source counts 1.0)."""
+    path = CORPUS / "passages" / "circulation.json"
     if not path.exists():
         return {}
     doc = json.loads(path.read_text(encoding="utf-8"))
@@ -849,7 +849,7 @@ def source_weights():
 
 
 def source_weight(row, weights=None):
-    """A source's relative weight: its entry in weights.json, or 1.0 if absent."""
+    """A source's relative weight: its entry in circulation.json, or 1.0 if absent."""
     return (weights if weights is not None else source_weights()).get(row["id"], 1.0)
 
 
@@ -858,7 +858,7 @@ def cmd_mix(args):
 
     Effective words = words in ready/ x weight. Use it to keep one flavor (say, the
     Bible) from overwhelming the rest: change a source's weight in
-    corpus/chunks/weights.json, run this again.
+    library/passages/circulation.json, run this again.
     """
     stats = []
     weights = source_weights()

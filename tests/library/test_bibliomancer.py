@@ -1,4 +1,4 @@
-"""Tests for pom.corpus.bibliomancer: weighted random draws that balance registers over time.
+"""Tests for pom.library.bibliomancer: weighted random draws that balance registers over time.
 
 Statistical tests use a seeded random generator, so they are deterministic: a pass is a pass every
 time. Tolerances are generous (several standard deviations) so they check the odds, not the luck.
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from pom.corpus import Passage, Catalog, Circulation, Bibliomancer, BibliomancerError
+from pom.library import Passage, Catalog, Circulation, Bibliomancer, BibliomancerError
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -435,15 +435,15 @@ def test_layout_drift_is_reported_but_does_not_stop_the_sampler():
 
 def test_building_logs_a_summary_and_problems(caplog):
     store = make_store({"red": {"r": 5}, "blue": {"b": 5}})
-    with caplog.at_level(logging.INFO, logger="pom.corpus.bibliomancer"):
+    with caplog.at_level(logging.INFO, logger="pom.library.bibliomancer"):
         Bibliomancer(store, weights_for(red={"sources": {"r": 0}}, blue={}))
-    messages = [r.message for r in caplog.records if r.name == "pom.corpus.bibliomancer"]
+    messages = [r.message for r in caplog.records if r.name == "pom.library.bibliomancer"]
     assert any("no drawable chunks" in m for m in messages)
     assert any("selector ready: 5 drawable chunk(s) in 1 register(s)" in m for m in messages)
 
 
 def test_an_empty_store_logs_a_critical_line(caplog):
-    with caplog.at_level(logging.INFO, logger="pom.corpus.bibliomancer"):
+    with caplog.at_level(logging.INFO, logger="pom.library.bibliomancer"):
         Bibliomancer(Catalog.from_chunks([]), Circulation.from_dict({}))
     assert any(r.levelno == logging.CRITICAL and "nothing to draw from" in r.message
                for r in caplog.records)
@@ -452,13 +452,13 @@ def test_an_empty_store_logs_a_critical_line(caplog):
 def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
     from pom.log_setup import get_logger
     store, weights = tiles()
-    get_logger("pom.corpus.bibliomancer", True)
+    get_logger("pom.library.bibliomancer", True)
     try:
         selector = Bibliomancer(store, weights, random.Random(1))
         with caplog.at_level(logging.DEBUG):
             selector.draw(3)
     finally:
-        get_logger("pom.corpus.bibliomancer", None)
+        get_logger("pom.library.bibliomancer", None)
     assert any(r.levelno == logging.DEBUG and r.message.startswith("drew 3 chunk(s):")
                for r in caplog.records)
 
@@ -466,24 +466,24 @@ def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
 def test_draws_are_not_logged_when_the_module_flag_is_off(caplog):
     from pom.log_setup import get_logger
     store, weights = tiles()
-    get_logger("pom.corpus.bibliomancer", False)
+    get_logger("pom.library.bibliomancer", False)
     try:
         selector = Bibliomancer(store, weights, random.Random(1))
         with caplog.at_level(logging.DEBUG):
             selector.draw(3)
     finally:
-        get_logger("pom.corpus.bibliomancer", None)
+        get_logger("pom.library.bibliomancer", None)
     assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
 
 
 # --- The committed corpus --------------------------------------------------------------
 
-@pytest.mark.skipif(not (REPO / "corpus" / "chunks" / "weights.json").exists(),
+@pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
                     reason="committed chunks not present")
 def test_the_real_corpus_builds_cleanly_and_balances_the_registers():
-    chunks = REPO / "corpus" / "chunks"
+    chunks = REPO / "library" / "passages"
     store = Catalog.load(chunks, strict=True)
-    weights = Circulation.from_file(chunks / "weights.json", strict=True)
+    weights = Circulation.from_file(chunks / "circulation.json", strict=True)
     selector = Bibliomancer(store, weights, random.Random(51), strict=True)
     assert selector.report.ok and selector.check_report.ok
     assert sum(selector.register_shares().values()) == pytest.approx(1.0)

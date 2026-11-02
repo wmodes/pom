@@ -1,11 +1,11 @@
 """Draw weights: how often each register and source should come up.
 
-This module owns one file, corpus/chunks/weights.json, and nothing else. It parses the file,
+This module owns one file, library/passages/circulation.json, and nothing else. It parses the file,
 applies the defaults, normalizes register shares, and checks the file against what is actually
 in the corpus. It does not draw anything (that is the Bibliomancer's job) and it does not read
 chunks (that is the Catalog's job), so it can be tested with nothing but a small JSON file.
 
-The file is a tree that mirrors the folders in chunks/:
+The file is a tree that mirrors the folders in passages/:
 
     {"registers": {"news": {"share": 1.0, "sources": {"news-annual-monitor-...": 0.2}}}}
 
@@ -23,7 +23,7 @@ Design decisions, and why:
     probability from the others. If every share is zero the registers count 1.0 each, since
     drawing nothing is worse than drawing evenly.
   * The module never prints. Each problem is recorded in a FaultRecorder and also logged through the
-    standard `logging` module (logger `pom.corpus.circulation`), which reaches journald once the
+    standard `logging` module (logger `pom.library.circulation`), which reaches journald once the
     entry point has configured logging.
 """
 import json

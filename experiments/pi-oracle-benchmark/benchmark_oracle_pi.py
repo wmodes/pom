@@ -50,7 +50,7 @@ sys.path.insert(0, str(ROOT / "experiments" / "oracle-playground"))
 sys.path.insert(0, str(ROOT / "experiments" / "oracle-bakeoff"))
 sys.path.insert(0, str(ROOT / "experiments" / "pi-benchmark"))
 from pom.config import Config                                      # noqa: E402
-from pom.corpus import Catalog, Circulation, Bibliomancer   # noqa: E402
+from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
 from pom.voice import OracleModelClient                            # noqa: E402
@@ -60,7 +60,7 @@ from benchmark_pi_scorer import (describe_throttling, mem_available_mb, rss_mb, 
                                  soc_temp_c, throttled_flags)
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-CHUNKS = ROOT / "corpus" / "chunks"
+CHUNKS = ROOT / "library" / "passages"
 HINGE_STRIDE = 3        # every third bake-off hinge ...
 DRAWS = (1, 2)          # ... at these draws: 6 hinges x 2 draws = 12 cells
 WARM_UP_CELL_INDEX = 1  # the warm-up portent uses the hinge at this position (not one of the counted ones)
@@ -278,7 +278,7 @@ def command_run(args) -> None:
     oracle = config.oracle
     rng = random.Random()
     store = Catalog.load(CHUNKS)
-    selector = Bibliomancer(store, Circulation.from_file(CHUNKS / "weights.json"), rng,
+    selector = Bibliomancer(store, Circulation.from_file(CHUNKS / "circulation.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

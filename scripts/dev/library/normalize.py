@@ -13,13 +13,13 @@ What is removed, in general terms:
   - paragraphs that are not usable utterances (OCR garbage, fragments)
 What is kept: the utterances themselves, lightly standardized.
 
-Applied by corpus.py after trimming (so trim markers still match the extracted
+Applied by library.py after trimming (so trim markers still match the extracted
 lines). Every rule is deterministic and counts what it changed into a Counter. When
 an `audit` dict is passed, rules also record samples of what they removed, so a
 human can check that real content was not lost.
 
 Per-source behavior comes from flags in the manifest `normalize` column
-(space-separated), and an optional `drop` column of regexes (see corpus.py):
+(space-separated), and an optional `drop` column of regexes (see library.py):
 
     unwrap        join hard-wrapped prose lines into paragraphs (not for verse)
     entries       start a new paragraph at each =Term.=-- dictionary entry

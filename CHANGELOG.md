@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, folders (1): Library**: the corpus code and data take the library's names. The package `pom.corpus` is `pom.library` (the tests are in `tests/library/`), the data folder `corpus/` is `library/` with `chunks/` as `passages/`
+  (the shelves inside keep their names), `weights.json` as `passages/circulation.json` and `sources.csv` as `holdings.csv`, the dev tools are in `scripts/dev/library/` (`corpus.py` is `library.py`), and `documentation/corpus-notes.md` is
+  `library-notes.md`. Every path in the code, tests, scripts, experiments, `.gitignore` and docs follows; the gitignored `raw/` folder moved with the rest. The JSONL keys (`source`, `register`) and the words in comments are unchanged until the word pass.
+  A clone that pulls this has a new `library/` folder and keeps nothing named `corpus/` (git removes the old folder; a gitignored `corpus/raw/` left behind can be deleted or moved to `library/raw/`). Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, Qualifying (and the monitor's and startup's names)**: the part that decides what to respond to takes the lexicon's names. `ConvoInterestTracker` is `BarKeeper` (module `bar_keeper.py`; `tracker_from_settings` is
   `bar_keeper_from_settings` in `bar_keeper_factory.py`), `ScoredSentence` is `Attempt`, `TriggerBar` is `Bar` (module `bar.py`), and `ScoreEffect` is `Ruling` with `record()` as `rule()`, `record_direct()` as `rule_typed()` and `trigger_level_at()` as
   `bar_at()`. The rulings are `NO_MARK` ("no mark"), `DID_NOT_QUALIFY`, `QUALIFIED`, `HELD` and `TYPED_DNQ` ("typed DNQ"), so a score that used to be *triggered* now *qualifies*. **Config:** `[trigger]` is `[qualifying]` (`config.qualifying`,

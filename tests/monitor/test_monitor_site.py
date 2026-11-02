@@ -10,7 +10,7 @@ import urllib.request
 
 import pytest
 
-from pom.corpus import Passage
+from pom.library import Passage
 from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TurnHistory
 from pom.voice import Portent
 

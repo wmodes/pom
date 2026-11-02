@@ -26,7 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
-from pom.corpus import Passage                                                  # noqa: E402
+from pom.library import Passage                                                  # noqa: E402
 from pom.monitor import MonitorSite, MonitorStatus, TurnHistory            # noqa: E402
 from pom.voice import Portent                                                 # noqa: E402
 

@@ -1,4 +1,4 @@
-# corpus/
+# library/
 
 Examples of the kind of thing the oracle should say: few-shot examples now, retrieval next, possibly fine-tuning later.
 
@@ -11,9 +11,9 @@ A file in `ready/` is a list of **utterances**: each utterance is its own paragr
 ## Layout
 
 ```
-corpus/
+library/
 ├── README.md       this file
-├── sources.csv     one row per source: the single source of truth
+├── holdings.csv     one row per source: the single source of truth
 ├── inbox/          human-supplied files that cannot be downloaded (committed)
 ├── raw/            untouched downloads, one directory per source id.  NOT safe. (gitignored)
 ├── draft/          trimmed and standardized, awaiting review.         NOT safe.
@@ -24,19 +24,19 @@ corpus/
 
 `<form>` is what the oracle might write, not where the text came from. In use: `divination`, `wisdom`, `poetry`, `drama`, `humor`, `horoscope`, `manual`, `prophecy`, `epitaph`, `aphorism`, `rhyme`, `spiritualism`, `news`, `nonsense`. Add a form only when a source needs it, and list it here.
 
-Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/corpus/corpus.py` reading `raw/` and the manifest, deterministically: re-running `clean` gives byte-identical files. To change a text, change its row in `sources.csv` (or a rule in `normalize.py`) and re-run.
+Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/library/library.py` reading `raw/` and the manifest, deterministically: re-running `clean` gives byte-identical files. To change a text, change its row in `holdings.csv` (or a rule in `normalize.py`) and re-run.
 
 ## Rules
 
 1. **Rights.** Every source records its rights and the basis for that claim.
    - `public-domain` and `cc0`: the normal case.
-   - `owner-cleared`: not public domain. The project owner decided to use it. Covers mid-20th-century and similar material (the IBM/Lexmark Wheelwriter manuals, the dad-jokes list) that has no realistic economic stake. It is committed to the private repo, and `corpus.py publish-check` fails if any such text is tracked, so run it before the repo is ever made public.
+   - `owner-cleared`: not public domain. The project owner decided to use it. Covers mid-20th-century and similar material (the IBM/Lexmark Wheelwriter manuals, the dad-jokes list) that has no realistic economic stake. It is committed to the private repo, and `library.py publish-check` fails if any such text is tracked, so run it before the repo is ever made public.
    - `in-copyright` and `unknown`: logged as `excluded` or `candidate`, never fetched. The pipeline refuses.
-2. **Every source gets a row in `sources.csv` first.** If it isn't in the manifest, it isn't in the corpus.
+2. **Every source gets a row in `holdings.csv` first.** If it isn't in the manifest, it isn't in the corpus.
 3. **Source furniture does not reach `ready/`.** Title pages, copyright notices, contents, indexes, ads, transcriber notes, footnotes, and prefaces, forewords and introductions that talk *about* the book, by anyone. The test: text starts at the first section of the work itself; an opening essay that is part of the work stays.
 4. **A human reviews before promotion.** `promote` refuses anything not marked `reviewed`.
 
-## sources.csv columns
+## holdings.csv columns
 
 | Column | Meaning |
 |---|---|
@@ -44,7 +44,7 @@ Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/c
 | `form` | One of the forms above. |
 | `title`, `author`, `year` | As published. `year` is the first publication year when known. |
 | `rights`, `rights_basis` | See Rules. The basis says why we believe it. |
-| `url` | Where it came from; decides how it is fetched. `inbox/<file>` means a file in `corpus/inbox/`. Handlers: Project Gutenberg, Wikisource, direct `.pdf`, direct `.txt`, inbox. |
+| `url` | Where it came from; decides how it is fetched. `inbox/<file>` means a file in `library/inbox/`. Handlers: Project Gutenberg, Wikisource, direct `.pdf`, direct `.txt`, inbox. |
 | `status` | `candidate` (found, rights not confirmed), `approved` (ok to fetch), or `excluded` (rejected, kept on record). |
 | `reviewed` | `yes` once a human has checked the draft. Blank until then. |
 | `start_marker`, `end_marker` | Where the real text begins and ends (see Trim markers). Blank means the whole text. |
@@ -67,30 +67,30 @@ After trimming, `normalize.py` turns the text into utterances. In order: typogra
 
 ## Chunks and draw weights
 
-`chunks/<register>/<id>.jsonl` is made from `ready/` by `cataloguer.py`, and is what the voice models use. Each line is one chunk with its source, register and word count, and nothing about the rest of the corpus or its weight. Never edit a chunk file by hand: change `ready/` or the manifest and re-run `cataloguer.py`.
+`passages/<register>/<id>.jsonl` is made from `ready/` by `cataloguer.py`, and is what the voice models use. Each line is one chunk with its source, register and word count, and nothing about the rest of the corpus or its weight. Never edit a chunk file by hand: change `ready/` or the manifest and re-run `cataloguer.py`.
 
 - **Size.** Utterances over 150 words are cut at sentence breaks (line breaks for verse) into near-equal pieces. Shorter ones are kept whole; `--min-words N` would merge them forward. Exact duplicates anywhere in the corpus are dropped, and the survivor records its `repeats`.
-- **Weights.** We weight the corpus to account for differences in quantity. Every chunk is in one pool and has its own chance of being drawn, set so each register gets its target share over many draws. The chance is computed from the register totals when the corpus is loaded and is never stored, so adding a chunk changes only its own register's numbers. Any combination of draws stays possible, including several from one register. All the weights live in one file, `chunks/weights.json`, laid out as a tree that mirrors the folders: each register has a relative `share` (equal to start) and lists every one of its sources with a `weight` (how often it is drawn compared with its neighbors in the same register; a source left out counts 1.0). Edit it by hand and nothing else needs regenerating. `circulation.py` prints the result.
+- **Weights.** We weight the corpus to account for differences in quantity. Every chunk is in one pool and has its own chance of being drawn, set so each register gets its target share over many draws. The chance is computed from the register totals when the corpus is loaded and is never stored, so adding a chunk changes only its own register's numbers. Any combination of draws stays possible, including several from one register. All the weights live in one file, `passages/circulation.json`, laid out as a tree that mirrors the folders: each register has a relative `share` (equal to start) and lists every one of its sources with a `weight` (how often it is drawn compared with its neighbors in the same register; a source left out counts 1.0). Edit it by hand and nothing else needs regenerating. `circulation.py` prints the result.
 
 ## Commands
 
 ```
-scripts/dev/corpus/corpus.py add --id ID --form F --title T --rights R --basis B --url U [--status approved]
-scripts/dev/corpus/corpus.py set ID column=value ...  # edit markers, flags, drop patterns, status
-scripts/dev/corpus/corpus.py process ID               # fetch, clean, audit, sample (stops before promote)
-scripts/dev/corpus/corpus.py status                   # what is on disk
-scripts/dev/corpus/corpus.py mix [--prefix bible-]    # weighted share of each source and form (weights from chunks/weights.json)
-scripts/dev/corpus/corpus.py fetch [--id ID]          # raw/
-scripts/dev/corpus/corpus.py inspect --id ID          # landmarks + first/last lines, to choose markers
-scripts/dev/corpus/corpus.py clean [-v] [--audit N]   # draft/
-scripts/dev/corpus/corpus.py inspect --id ID --trimmed
-scripts/dev/corpus/corpus.py review [--id ID]         # one-screen report per draft
-scripts/dev/corpus/corpus.py promote [--id ID]        # ready/
-scripts/dev/corpus/corpus.py publish-check            # fail if non-public-domain text is committed
-scripts/dev/corpus/cataloguer.py [--max-words N] [--min-words N] [--check]   # ready/ -> chunks/ (JSONL)
-scripts/dev/corpus/circulation.py                  # expected share of draws per register
-scripts/dev/corpus/audit.py [ID CHECK]               # artifact rates per file of ready/ (--dir draft for drafts)
-scripts/dev/corpus/gutenberg_catalog.py search REGEX  # find Gutenberg candidates offline
+scripts/dev/library/library.py add --id ID --form F --title T --rights R --basis B --url U [--status approved]
+scripts/dev/library/library.py set ID column=value ...  # edit markers, flags, drop patterns, status
+scripts/dev/library/library.py process ID               # fetch, clean, audit, sample (stops before promote)
+scripts/dev/library/library.py status                   # what is on disk
+scripts/dev/library/library.py mix [--prefix bible-]    # weighted share of each source and form (weights from passages/circulation.json)
+scripts/dev/library/library.py fetch [--id ID]          # raw/
+scripts/dev/library/library.py inspect --id ID          # landmarks + first/last lines, to choose markers
+scripts/dev/library/library.py clean [-v] [--audit N]   # draft/
+scripts/dev/library/library.py inspect --id ID --trimmed
+scripts/dev/library/library.py review [--id ID]         # one-screen report per draft
+scripts/dev/library/library.py promote [--id ID]        # ready/
+scripts/dev/library/library.py publish-check            # fail if non-public-domain text is committed
+scripts/dev/library/cataloguer.py [--max-words N] [--min-words N] [--check]   # ready/ -> passages/ (JSONL)
+scripts/dev/library/circulation.py                  # expected share of draws per register
+scripts/dev/library/audit.py [ID CHECK]               # artifact rates per file of ready/ (--dir draft for drafts)
+scripts/dev/library/gutenberg_catalog.py search REGEX  # find Gutenberg candidates offline
 ```
 
 ## Adding a source
@@ -107,4 +107,4 @@ A long file with several self-contained parts (Chaucer, Shakespeare) becomes sev
 
 Promoting is not the end: the text still has to be chunked and given a weight. The whole path, from choosing a register to the commit, is in `documentation/adding-material.md`.
 
-See `documentation/corpus-notes.md` for the process, tool versions, lessons learned, and known gaps.
+See `documentation/library-notes.md` for the process, tool versions, lessons learned, and known gaps.

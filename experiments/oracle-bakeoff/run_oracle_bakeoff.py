@@ -44,7 +44,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "experiments" / "oracle-playground"))
 sys.path.insert(0, str(HERE))
 from pom.config import Config                                      # noqa: E402
-from pom.corpus import Catalog, Circulation, Bibliomancer   # noqa: E402
+from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
 from pom.prompt import PromptBuilder                               # noqa: E402
 from pom.voice import OracleModelClient                            # noqa: E402
@@ -52,7 +52,7 @@ from probe_oracle import start_server                              # noqa: E402 
 from bakeoff_checks import check_portent                           # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-CHUNKS = ROOT / "corpus" / "chunks"
+CHUNKS = ROOT / "library" / "passages"
 HINGES = HERE / "benchmark_hinges.txt"
 RESULTS = HERE / "results"
 SEEDS = 10
@@ -89,7 +89,7 @@ def corpus_fingerprint(store: Catalog) -> str:
     digest = hashlib.sha256()
     for line in sorted(f"{chunk.id}\t{chunk.text}" for chunk in store):
         digest.update(line.encode("utf-8"))
-    digest.update((CHUNKS / "weights.json").read_bytes())
+    digest.update((CHUNKS / "circulation.json").read_bytes())
     return digest.hexdigest()[:12]
 
 
@@ -141,7 +141,7 @@ def main() -> None:
     hinges = read_hinges(HINGES)
     rng = random.Random()
     store = Catalog.load(CHUNKS)
-    selector = Bibliomancer(store, Circulation.from_file(CHUNKS / "weights.json"), rng,
+    selector = Bibliomancer(store, Circulation.from_file(CHUNKS / "circulation.json"), rng,
                                 exemplar_range=config.exemplar_range)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

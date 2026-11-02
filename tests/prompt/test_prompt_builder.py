@@ -9,7 +9,7 @@ import random
 
 import pytest
 
-from pom.corpus import Passage, Catalog, Circulation, Bibliomancer
+from pom.library import Passage, Catalog, Circulation, Bibliomancer
 from pom.prompt import OraclePrompt, PromptBuilder, PromptBuilderError
 
 PROMPT = "Speak as the oracle.\n\nExamples:\n{exemplars}\n\nThey said: {hinge}\nYour portent:"

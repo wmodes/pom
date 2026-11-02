@@ -15,13 +15,17 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   built; the playgrounds replace them for the built parts.
 - **experiments**: the set-aside place (`experiments/`) where we prototype. Nothing there is part of
   the Printer until it is rebuilt in `src/pom/`.
+- **config** †: the settings, in `config/pom.toml` (committed, the quiet defaults the Printer runs with) over built-in defaults,
+  under the gitignored `config/pom.local.toml` (where the monitoring site's password lives) and then environment variables. A bad
+  value means the default plus a warning. Everything a person might tune is in it.
+- **AI ledger** †: `documentation/ai-ledger.md`, the record of remote AI (Claude) use. Local models are never counted.
 
 ## Listening: from sound to text
 
 - **segment**: whisper's raw output, using whisper's own name for it.
 - **fragment**: one piece of a split segment, usually a sentence; the thing that gets scored.
-- **audio source** †: anything that gives out 30 ms frames of sound: the microphone (`MicSource`) or, for tests and replays,
-  a recording (`WavSource`).
+- **audio source** †: anything that gives out 30 ms frames of sound: the microphone (`MicSource`; `MacMicSource` on a Mac) or, for
+  tests and replays, a recording (`WavSource`).
 - **rolling cutter** †: the component that cuts the stream: every few seconds it hands whisper the audio since the last kept
   segment and keeps the segments whisper finished (`RollingCutter`).
 - **whisper text sorter** †: the component that sorts whisper's text into words, ambient captions and nothing-here marks
@@ -30,6 +34,9 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   was heard (`Listener`).
 - **heard segment** †: one thing the listener heard that was new: the words (speech or lyrics), any new ambient captions, and
   where in the stream it ended (`HeardSegment`).
+- **segment fragmenter** †: the component that cuts a heard segment's words into fragments, each stamped with a time. Sentences are
+  what get scored (`SegmentFragmenter`; the levels are `FragmentLevel`).
+- **whisper client** †: the component that talks to whisper-server: it sends audio and gets segments back (`WhisperServerClient`).
 - **ambient caption**: whisper's guess at a sound in the room, like `(dog barks)` or `[Music]`.
   Never scored; kept as context for the oracle model.
 - **lyrics** †: sung words whisper marks with music symbols. They are words, so they are scored.
@@ -65,6 +72,16 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **cooldown** †: how long after a trigger the next may come, `cooldown_seconds` (60 to begin with; 0 for none). A
   score above the bar inside the cooldown is held back but still joins the window.
 - **hinge** (or **the hinge**): the fragment chosen at trigger; the basis for the portent.
+- **trigger algorithm** †: how the bar is worked out (`algorithm` in `[trigger]`): `percentile` (a percentile of the window, as the
+  entries above describe it), `decaying_quantile` (a percentile in which a score counts half as much every `half_life_seconds`; the
+  shipped choice) or `moving_average` (a decaying average plus a margin). Each is a `TriggerBar` with its own settings. With
+  `exclude_triggers` on, a score that triggered is left out of the window, so one zinger does not hold the bar up.
+- **starting bar** †: `starting_bar`, where the bar begins before the room has said enough for one to be worked out; it fades as the
+  room speaks. There is no silent warm-up.
+- **score effect** †: what the trigger did with a score: *ignored* (no usable score), *counted*, *triggered*, *cooling down* (above
+  the bar but inside the cooldown), or *judged* (a typed score that stayed under the bar and out of the window) (`ScoreEffect`).
+- **scored sentence** †: one thing heard or typed, with its score and what the trigger made of it (`ScoredSentence`). Its kind is
+  speech, lyrics, ambient or typed; the one the trigger fired on is the hinge.
 
 ## Corpus: the material the oracle model draws on
 
@@ -82,6 +99,9 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **fault** †: a problem a module recovered from and recorded instead of crashing.
 - **fault recorder** †: the component that keeps a module's faults (WARNING means recovered,
   CRITICAL means the module cannot do its job). The Printer never stops because of a fault.
+- **startup** †: the one-time preparation when the Printer starts: the config's corrections, the data, the microphone, whisper, the
+  scorer model and oracle model servers and the terminal, each a step that is checked, and a one-line readiness summary
+  (`Startup`, `startup.py`). Only the runner is built; the steps are placeholders.
 
 ## Writing: from hinge to portent
 
@@ -98,10 +118,42 @@ A term that names a model always ends in *model*: oracle model, scorer model.
 - **monitoring site** †: the password-protected web page of the last hour of triggers, with a detail page for each: the hinge,
   the exemplars, the portent, the score and the bar (`MonitorSite`, settings in `[monitor]`). Open it from another machine on the
   Printer's network.
+- **score chart** †: on the monitoring site, the chart of every scored sentence's score against the bar over the last hour, with each
+  trigger marked. Numbers only, never words (`ScoreTrace`, `render_score_chart`).
+- **oracle model client** †: the component that talks to the oracle model's llama-server (`OracleModelClient`).
 - **hinge finder** †: the component that joins the listener, the fragmenter, the scorer and the trigger, and yields each
   thing heard as a `ScoredSentence`; the one the trigger fired on is the hinge (`HingeFinder`).
 - **portent writer** †: the component that takes a hinge and returns a portent, joining the prompt builder and the oracle
   model client (`PortentWriter`). What it returns is a `Portent`: the text, the exemplars shown, the seconds, and whether it was cut off.
+
+## Output: from portent to paper
+
+The code may run on any Raspberry Pi with any terminal, so these words say *terminal* and *typewriter*. A machine's name appears only
+where a fact belongs to it.
+
+- **terminal** †: the serial connection to the typewriter, which acts as a terminal (settings in `[terminal]`). The Printer sends it
+  text and the keyboard sends keys back.
+- **CadetWriter** †: the open-source board that turns the IBM Wheelwriter 1000 into a serial terminal. Its own settings (line ending,
+  flow control, duplex) must match `[terminal]`: a mismatch loses text or types every character twice.
+- **typewriter formatter** †: the component that makes a portent printable: code fences out, plain ASCII only, wrapped to the line
+  width, and ending with `linefeeds_after_portent` line feeds (4) so the paper has moved on (`TypewriterFormatter`, `[output]`).
+- **quote** †: a piece of a portent the oracle model fenced in triple backticks. The typewriter has no italics, so a quote is typed
+  indented `quote_indent` (4) spaces with a blank line before and after; the fence lines are never printed.
+- **line width** †: how many characters fit on a line, worked out from `paper_width_inches`, `margin_inches` and `characters_per_inch`
+  (65 for 8.5 inch paper, 1 inch margins and 10 characters per inch).
+- **print wheel** †: the wheel of characters the typewriter prints with. Its pitch is `characters_per_inch` (10, 12 or 15).
+- **composed characters** †: the nine ASCII characters most print wheels lack, `< > \ ^ ` { | } ~`, which the CadetWriter builds from
+  periods and micro-movements ("period graphics"), slowly and dotty. `<` and `>` can carry meaning, so they are always typed as they
+  are. The other seven are swapped for look-alikes (`` ` `` becomes `'`, `~` becomes `-`, `{ }` become `( )`, `\` and `|` become `/`,
+  `^` is dropped) unless `keep_composed_characters` keeps them; `ascii_printwheel` keeps all seven.
+- **typewriter port** †: the component that sends formatted text over the terminal's serial line, paced at `characters_per_second`
+  (16) with flow control and the line ending the CadetWriter expects, waits `finish_wait_seconds` after the last character, and
+  reads the keyboard coming back (`TypewriterPort`). The **console typewriter** † is the same code typing on the screen, for
+  development (`ConsoleTypewriter`).
+- **echoplex** †: the old terminal name for the host echoing each key back as it arrives (`echoplex`). With it on, backspace moves
+  the carriage left and edits the typed line; the CadetWriter does not use the typewriter's correction tape.
+- **type during output** †: `type_during_output`. False (the default) throws away any keys pressed while a portent is being typed,
+  and any half-typed line, so nothing typed over a portent appears after it. True keeps them for the next line read.
 
 ## Typing and turns: the keyboard and one thing at a time
 
@@ -117,6 +169,9 @@ A term that names a model always ends in *model*: oracle model, scorer model.
   long (`HalfDuplexGate`).
 - **keyboard watcher**: *(planned)* the component that reads typed lines while the Printer is listening and yields each as a
   `ScoredSentence`, as the hinge finder does for the room (`KeyboardWatcher`).
+- **Conductor**: *(planned)* the one part that knows the whole pipeline. It runs the hinge finder and the keyboard watcher in threads
+  of their own, takes each hinge through a turn (write, format, type) while the Printer does not listen, and feeds the monitoring
+  site. The entry point starts it.
 
 ## Where the code does not match yet †
 
@@ -125,3 +180,5 @@ These names predate the lexicon. Each rename is Wes's decision.
 - The hearing-debug **`Segmenter`** cuts *audio* by loudness before whisper runs; it does not
   produce segments in whisper's sense.
 - Older docs say **pronouncement** for portent, and a few say **chunk** for fragments.
+- The part that decides whether a score triggers is `ConvoInterestTracker` (`convo_interest_tracker.py`); the lexicon's word for it
+  is the **trigger**. `TriggerJudge` was proposed as a name (not decided).

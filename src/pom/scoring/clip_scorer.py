@@ -1,6 +1,6 @@
 """The ClipScorer: gives each overheard fragment an interest score, so the Trigger can pick a hinge.
 
-A fragment goes in (normally a whole sentence, from the SegmentFragmenter); a `ScoredClip` comes out,
+A fragment goes in (normally a whole sentence, from the TakeCutter); a `ScoredClip` comes out,
 the fragment plus a score and where the score came from. Scores run from 0 (nothing to hold on to)
 to 9 (extremely interesting), as the probability-weighted value of the single digit the scorer model
 answers with, so they fall anywhere in between (6.35). They are relative, not absolute: ordinary talk
@@ -13,7 +13,7 @@ THREE KINDS OF RESULT, recorded in `ScoredClip.scored_by`:
               "Yeah, okay."), so the model is not asked and it gets the clip_filter's score. This saves a
               model call on talk that cannot be interesting. The word tagger decides.
   * UNSCORED: the scorer model gave no score, so the score is None. Nothing downstream may treat
-              it as a number: the ConvoInterestTracker leaves it out. The scorer model
+              it as a number: the BarKeeper leaves it out. The scorer model
               is local, so this means something larger is wrong, and the Printer stays quiet and
               keeps listening. (A word-counting fallback used to guess a score here. It is shelved
               in fallback_scorer.py, unused.)

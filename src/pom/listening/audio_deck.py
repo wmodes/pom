@@ -1,7 +1,7 @@
 """AudioDeck: what the listening side needs from anywhere sound comes from.
 
-The Listener does not care whether the sound is a microphone or a recording. It needs only an object that hands out
-audio in frames and can be closed. The Printer uses a MicSource; a WavSource replays a recording, for tests and for
+The Eavesdropper does not care whether the sound is a microphone or a recording. It needs only an object that hands out
+audio in frames and can be closed. The Printer uses a MicDeck; a WavDeck replays a recording, for tests and for
 trying a change on a meeting we already have.
 
 A frame is `audio_format.FRAME_BYTES` bytes (30 ms of 16 kHz mono 16-bit sound). `frames()` yields frames until the

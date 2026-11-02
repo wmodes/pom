@@ -1,4 +1,4 @@
-"""The TriggerBar: what the ConvoInterestTracker asks of the part that works out the bar.
+"""The Bar: what the BarKeeper asks of the part that works out the bar.
 
 The tracker decides whether a score triggers (it is above the bar, and the cooldown is over). WHERE the bar sits is worked out by a
 bar, and there are several ways to do it (a percentile of a window of recent scores, a decaying quantile, a moving average), each its
@@ -9,7 +9,7 @@ own class. They all answer the same four questions, so the tracker does not care
   * `window_size_at(now)`: how many real scores the bar is built from at `now`, for display (a bar that fades scores counts them by
     their weight). Starting-line scores do not count.
   * `add(score, now, triggered)`: takes in a score that was judged, and whether it triggered. A bar may leave a triggering score out
-    of what it remembers (`exclude_triggers`), which is why it is told.
+    of what it remembers (`exclude_qualifiers`), which is why it is told.
   * `ignores(score)`: True for a score the bar wants nothing to do with (a score under a floor). Most bars ignore nothing.
   * `describe()`: one line saying how this bar works and how it is set, for a playground or a log (numbers only).
 
@@ -23,8 +23,8 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
-class TriggerBar(ABC):
-    """Works out where the bar sits for the ConvoInterestTracker."""
+class Bar(ABC):
+    """Works out where the bar sits for the BarKeeper."""
 
     @abstractmethod
     def level_at(self, now: float) -> Optional[float]:

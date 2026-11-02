@@ -4,7 +4,7 @@ import logging
 import pytest
 
 import pom.startup as startup_module
-from pom.startup import (Outcome, PlannedStep, Startup, StartupError, StartupResult, Status, Step,
+from pom.startup import (StepOutcome, PlannedStep, Startup, StartupError, StartupResult, StepStatus, Step,
                          StepResult, planned_steps)
 
 
@@ -24,7 +24,7 @@ class Fake(Step):
 
     def __init__(self, name, outcome=None, critical=False, error=None, log=None):
         self.name, self.critical = name, critical
-        self._outcome, self._error, self._log = outcome or Outcome(Status.DONE), error, log
+        self._outcome, self._error, self._log = outcome or StepOutcome(StepStatus.DONE), error, log
 
     def run(self):
         if self._log is not None:
@@ -47,8 +47,8 @@ class TestRunning:
         assert [r.name for r in result.results] == ["zeta", "mic", "alpha"]
 
     def test_a_result_holds_status_note_time_and_criticality(self):
-        result = run([Fake("mic", Outcome(Status.DONE, "gain set to 24"), critical=True)])
-        assert result.results[0] == StepResult("mic", Status.DONE, "gain set to 24", 1.5, True)
+        result = run([Fake("mic", StepOutcome(StepStatus.DONE, "gain set to 24"), critical=True)])
+        assert result.results[0] == StepResult("mic", StepStatus.DONE, "gain set to 24", 1.5, True)
 
     def test_every_step_is_timed_from_its_own_start(self):
         result = run([Fake("a"), Fake("b"), Fake("c")])
@@ -63,28 +63,28 @@ class TestRunning:
         assert result.ready and result.report.ok and result.failed == ()
 
     def test_skipped_steps_are_not_a_problem(self):
-        result = run([Fake("pi-only", Outcome(Status.SKIPPED, "not on a Pi"), critical=True)])
+        result = run([Fake("pi-only", StepOutcome(StepStatus.SKIPPED, "not on a Pi"), critical=True)])
         assert result.ready and result.report.ok and len(result.skipped) == 1
 
 
 class TestFailures:
     def test_a_failed_optional_step_is_a_warning_and_the_printer_is_still_ready(self):
-        result = run([Fake("scorer", Outcome(Status.FAILED, "no answer"))])
+        result = run([Fake("scorer", StepOutcome(StepStatus.FAILED, "no answer"))])
         assert result.ready and len(result.report.warnings) == 1 and not result.report.criticals
         assert "scorer" in result.report.warnings[0] and "no answer" in result.report.warnings[0]
 
     def test_a_failed_critical_step_is_critical_and_the_printer_is_not_ready(self):
-        result = run([Fake("mic", Outcome(Status.FAILED, "no device"), critical=True)])
+        result = run([Fake("mic", StepOutcome(StepStatus.FAILED, "no device"), critical=True)])
         assert not result.ready and len(result.report.criticals) == 1 and not result.report.warnings
 
     def test_the_steps_after_a_failure_still_run(self):
         order = []
-        result = run([Fake("a", Outcome(Status.FAILED), critical=True, log=order), Fake("b", log=order)])
-        assert order == ["a", "b"] and not result.ready and result.results[1].status is Status.DONE
+        result = run([Fake("a", StepOutcome(StepStatus.FAILED), critical=True, log=order), Fake("b", log=order)])
+        assert order == ["a", "b"] and not result.ready and result.results[1].status is StepStatus.DONE
 
     def test_a_step_that_raises_is_a_failure_not_a_crash(self):
         result = run([Fake("a", error=RuntimeError("boom")), Fake("b")])
-        assert result.results[0].status is Status.FAILED and result.results[1].status is Status.DONE
+        assert result.results[0].status is StepStatus.FAILED and result.results[1].status is StepStatus.DONE
         assert result.results[0].note == "raised RuntimeError"
 
     def test_the_text_of_an_exception_is_not_recorded(self):
@@ -93,35 +93,35 @@ class TestFailures:
 
     def test_a_step_that_returns_the_wrong_thing_is_a_failure(self):
         result = run([Fake("a", outcome="done")])
-        assert result.results[0].status is Status.FAILED and "str" in result.results[0].note
+        assert result.results[0].status is StepStatus.FAILED and "str" in result.results[0].note
 
     def test_a_base_step_that_is_not_written_is_a_failure(self):
         result = run([Step()])
-        assert result.results[0].status is Status.FAILED
+        assert result.results[0].status is StepStatus.FAILED
 
     def test_failed_lists_only_the_failures(self):
-        result = run([Fake("a"), Fake("b", Outcome(Status.FAILED)), Fake("c", Outcome(Status.SKIPPED))])
+        result = run([Fake("a"), Fake("b", StepOutcome(StepStatus.FAILED)), Fake("c", StepOutcome(StepStatus.SKIPPED))])
         assert [r.name for r in result.failed] == ["b"] and [r.name for r in result.skipped] == ["c"]
 
     def test_strict_mode_raises_at_the_first_failure(self):
         order = []
         with pytest.raises(StartupError):
-            run([Fake("a", Outcome(Status.FAILED), log=order), Fake("b", log=order)], strict=True)
+            run([Fake("a", StepOutcome(StepStatus.FAILED), log=order), Fake("b", log=order)], strict=True)
         assert order == ["a"]
 
 
 class TestSummary:
     def test_summary_counts_and_says_ready(self):
-        text = run([Fake("a"), Fake("b", Outcome(Status.SKIPPED)), Fake("c", Outcome(Status.FAILED))]).summary()
+        text = run([Fake("a"), Fake("b", StepOutcome(StepStatus.SKIPPED)), Fake("c", StepOutcome(StepStatus.FAILED))]).summary()
         assert text == "startup: 1 done, 1 skipped, 1 failed; ready"
 
     def test_summary_says_when_it_is_not_ready(self):
-        text = run([Fake("a", Outcome(Status.FAILED), critical=True)]).summary()
+        text = run([Fake("a", StepOutcome(StepStatus.FAILED), critical=True)]).summary()
         assert text.endswith("NOT READY")
 
     def test_the_summary_and_each_step_are_logged(self, caplog):
         with caplog.at_level(logging.INFO, logger="pom.startup"):
-            run([Fake("mic"), Fake("scorer", Outcome(Status.FAILED, "no answer"))])
+            run([Fake("mic"), Fake("scorer", StepOutcome(StepStatus.FAILED, "no answer"))])
         assert "step mic: done" in caplog.text and "step scorer: failed" in caplog.text
         assert "startup: 1 done, 0 skipped, 1 failed; ready" in caplog.text
 

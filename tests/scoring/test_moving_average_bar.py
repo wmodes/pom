@@ -6,7 +6,7 @@ import pytest
 
 from pom.scoring.moving_average_bar import (DEFAULT_FLOOR_FRACTION, DEFAULT_FRACTION, DEFAULT_HALF_LIFE_SCORES, DEFAULT_SCORE_RANGE,
                                             DEFAULT_STARTING_BAR, MovingAverageBar, MovingAverageBarError)
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 
 def bar(**options):
@@ -30,7 +30,7 @@ class TestTheDefaults:
         assert MovingAverageBar(fraction=0, half_life_scores=0.001, floor_fraction=0, starting_bar=-1).report.ok
 
     def test_it_is_a_trigger_bar(self):
-        assert isinstance(MovingAverageBar(), TriggerBar)
+        assert isinstance(MovingAverageBar(), Bar)
 
 
 class TestTheStartingLine:

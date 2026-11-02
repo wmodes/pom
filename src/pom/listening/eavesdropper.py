@@ -2,7 +2,7 @@
 
 It joins the parts of the listening side. Sound comes from an AudioDeck; the RollingCutter feeds it to whisper
 every few seconds and keeps the segments whisper finished; the TrackSplitter sorts each segment into words, ambient
-captions and nothing; and `hear()` yields one HeardSegment for each segment that holds something new. What happens next
+captions and nothing; and `hear()` yields one Take for each segment that holds something new. What happens next
 (fragmenting, scoring, the trigger) is for the modules after it.
 
 Two things beyond the cutter, both from the hearing-debug experiment:
@@ -20,7 +20,7 @@ Two things beyond the cutter, both from the hearing-debug experiment:
 
 Design decisions, and why:
   * `hear()` is a plain generator, so this module needs no threads and no event loop. It blocks while it waits for sound
-    and while whisper works. The Conductor runs it in a thread of its own. A MicSource reads the microphone in a
+    and while whisper works. The Conductor runs it in a thread of its own. A MicDeck reads the microphone in a
     thread of its own, so sound is not lost while the Eavesdropper waits for whisper.
   * Time is counted in audio received, not wall-clock time, so a recording replayed at any speed is heard exactly as a
     live stream would be. `ends_at` is the place in the stream where the segment ended, in seconds; it is the time the
@@ -92,8 +92,8 @@ class Eavesdropper:
                  room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, sorter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, strict: bool = False):
         """Args:
-            source: Where the sound comes from (a MicSource, or a WavSource for a replay).
-            client: Asks whisper (a WhisperServerClient, or anything with its `segments`, `text` and `error`).
+            source: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
+            client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
             step, hold, rewind, max_cut_seconds: The RollingCutter's settings (see there).
             room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and captions.
                 A whole number of at least 0; 0 turns the sound pass off.
@@ -136,7 +136,7 @@ class Eavesdropper:
     def hear(self) -> Iterator[Take]:
         """Listens until the sound ends (a recording runs out, the microphone stops, or `close` is called).
 
-        Yields each HeardSegment as whisper finishes it, a few seconds after it was said. It blocks while waiting.
+        Yields each Take as whisper finishes it, a few seconds after it was said. It blocks while waiting.
         Whatever whisper had not yet finished when the sound ended is yielded last.
         """
         try:

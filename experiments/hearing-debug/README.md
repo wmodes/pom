@@ -13,14 +13,14 @@ microphone -> cut at pauses -> level normalized -> whisper -> sentences -> Score
 
 For every sentence it prints the real `pom` Scorer's score, and a little later the model's own written
 account of why: the content it found that earned the score. Each score also goes to the real
-`ConvoInterestTracker`, which keeps the room's recent scores, and a sentence that stands out from them (above
+`BarKeeper`, which keeps the room's recent scores, and a sentence that stands out from them (above
 Tukey's fence for that window) is marked `<-- would trigger`. There is no fixed threshold: the bar moves with the room.
 
 Every line ends with a note that says where the score stands, for example `[window 69 scores, bar 5.12]`: how many
 recent scores the sentence was judged against and the score it had to be above (the `percentile` of
 those scores). `[warming up 3/20]` means the window does not yet hold enough scores for anything to trigger, and
 `[window 69 scores, bar 5.12; cooling down]` means the sentence was above the bar but too soon after the last
-`<-- would trigger` (`cooldown_seconds`), and `[no score]` means the sentence got no score and was left out. The settings are in the `[trigger]` section of
+`<-- would trigger` (`cooldown_seconds`), and `[no score]` means the sentence got no score and was left out. The settings are in the `[qualifying]` section of
 `config/pom.toml`, and the startup banner prints the ones in force. Reloading the config restarts the window,
 because a changed prompt changes what a score means. The `r` command re-runs sentences without counting them
 again. With `--wav` the window runs on the position in the recording, not the wall clock, so a recording replayed
@@ -165,7 +165,7 @@ counted as speech even in the stretches where nobody spoke, so every utterance r
 clock, in the middle of a thought. `probe_whisper_segments.py recording.wav` replays a recording through the alternative:
 a rolling buffer handed to a whisper-server (with its voice detection on) every `--step` seconds, keeping the segments whisper finished, joining a segment that
 does not end like a sentence to the next, and splitting
-segments into sentences with the Printer's own `SegmentFragmenter`. It compares the result with whisper reading the whole
+segments into sentences with the Printer's own `TakeCutter`. It compares the result with whisper reading the whole
 file at once. Findings so far: on the attic recording, whisper found no speech in the noise-only stretches and cut at
 speech pauses, with every sentence of the whole-file answer found and none broken; a sentence split at a pause in the middle
 is handled by joining it to the next segment. Whisper's segment ends can run late and might clip the next sentence's

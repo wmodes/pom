@@ -120,7 +120,7 @@ Output the score as a single digit | the sentence | what content you found that 
 #                        a zinger fades by degrees instead of holding the bar until it falls off the edge of a window.
 #   "moving_average"     the bar is a set fraction above a decaying average of the scores. The first method; it has a fixed
 #                        floor below which scores are ignored.
-[trigger]
+[qualifying]
 
 algorithm = "decaying_quantile"
 
@@ -137,13 +137,13 @@ cooldown_seconds = 60
 # A triggering score is normally part of what the bar is built from, so the zinger that fired becomes the room's best and
 # holds the bar up for a while. true leaves it out: the bar then stays at the room's usual high tide, and a good score soon
 # after a great one can still fire. (percentile and decaying_quantile)
-exclude_triggers = true
+exclude_qualifiers = true
 
 # A line typed on the typewriter's keyboard is someone talking to the Printer directly, so it is judged against the same
 # bar as the room's sentences but gets a bonus: its score is multiplied by this before it meets the bar. 1 is no bonus;
 # 0 or more. The product is not capped at 9, so a typed 7 (10.5) beats any spoken 9. A typed line has no cooldown, and a
 # typed line that does not clear the bar is simply ignored (nothing is printed).
-typed_score_multiplier = 1.5
+typed_handicap = 1.5
 
 # true lets a typed line's score affect the bar, feeding what it is built from as the room's own scores do. false (the default)
 # keeps the bar a picture of the room alone: it listens to the room, and typed lines change nothing about it.

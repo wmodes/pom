@@ -6,7 +6,7 @@ import pytest
 
 from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_CLIP_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
-                        Config, ListeningSettings, OracleSettings, ScorerSettings, TriggerSettings)
+                        Config, ListeningSettings, OracleSettings, ScorerSettings, QualifyingSettings)
 
 
 def write(tmp_path, text):
@@ -112,7 +112,7 @@ def test_samples_default_to_three_to_five():
 
 
 def test_the_defaults_match_the_bibliomancers_defaults():
-    """Config and ExemplarSelector each carry the default (neither imports the other), so keep them equal."""
+    """Config and Bibliomancer each carry the default (neither imports the other), so keep them equal."""
     from pom.corpus.bibliomancer import DEFAULT_EXEMPLAR_RANGE
     from pom.config import DEFAULT_EXEMPLAR_RANGE as CONFIG_DEFAULT
     assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
@@ -420,16 +420,16 @@ def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
     assert any("scorer.prompt" in w for w in config.report.warnings) and config.scorer.prompt == ""
 
 
-# --- The [trigger] section ---------------------------------------------------------------
+# --- The [qualifying] section ---------------------------------------------------------------
 
 def test_the_trigger_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.trigger == TriggerSettings() and config.trigger.percentile == 99.5 and config.report.ok
+    assert config.qualifying == QualifyingSettings() and config.qualifying.percentile == 99.5 and config.report.ok
 
 
 def test_the_trigger_defaults_match_the_bars_defaults():
-    from pom.scoring import convo_interest_tracker, decaying_quantile_bar, moving_average_bar, percentile_bar
-    s = TriggerSettings()
+    from pom.scoring import bar_keeper, decaying_quantile_bar, moving_average_bar, percentile_bar
+    s = QualifyingSettings()
     assert (s.percentile, s.window_seconds, s.min_scores, s.starting_bar) == (
         percentile_bar.DEFAULT_PERCENTILE, percentile_bar.DEFAULT_WINDOW_SECONDS, percentile_bar.DEFAULT_MIN_SCORES,
         percentile_bar.DEFAULT_STARTING_BAR)
@@ -439,43 +439,43 @@ def test_the_trigger_defaults_match_the_bars_defaults():
     assert (s.average_fraction, s.average_half_life_scores, s.average_floor_fraction, s.starting_bar) == (
         moving_average_bar.DEFAULT_FRACTION, moving_average_bar.DEFAULT_HALF_LIFE_SCORES, moving_average_bar.DEFAULT_FLOOR_FRACTION,
         moving_average_bar.DEFAULT_STARTING_BAR)
-    assert s.cooldown_seconds == convo_interest_tracker.DEFAULT_COOLDOWN_SECONDS
+    assert s.cooldown_seconds == bar_keeper.DEFAULT_COOLDOWN_SECONDS
 
 
 def test_the_starting_trigger_values():
-    assert TriggerSettings() == TriggerSettings(99.5, 300.0, 20, 60.0, 6.8, False, 300.0, 0.25, 10.0, 0.05, "percentile")
+    assert QualifyingSettings() == QualifyingSettings(99.5, 300.0, 20, 60.0, 6.8, False, 300.0, 0.25, 10.0, 0.05, "percentile")
 
 
 def test_all_the_trigger_values_are_read_from_the_section(tmp_path):
-    text = ("[trigger]\nalgorithm = \"decaying_quantile\"\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
-            "starting_bar = 5.5\nexclude_triggers = true\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
+    text = ("[qualifying]\nalgorithm = \"decaying_quantile\"\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
+            "starting_bar = 5.5\nexclude_qualifiers = true\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
             "average_half_life_scores = 4\naverage_floor_fraction = 0.1\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(95.0, 120.0, 8, 90.0, 5.5, True, 180.0, 0.5, 4.0, 0.1, "decaying_quantile")
+    assert config.qualifying == QualifyingSettings(95.0, 120.0, 8, 90.0, 5.5, True, 180.0, 0.5, 4.0, 0.1, "decaying_quantile")
     assert config.report.ok
 
 
 def test_the_typed_line_settings_start_as_a_multiplier_of_one_and_a_half_that_stays_out_of_the_bar():
-    s = TriggerSettings()
-    assert s.typed_score_multiplier == 1.5 and s.typed_lines_affect_bar is False
+    s = QualifyingSettings()
+    assert s.typed_handicap == 1.5 and s.typed_lines_affect_bar is False
 
 
 def test_the_typed_line_settings_are_read_from_the_section(tmp_path):
-    config = Config.load(write(tmp_path, "[trigger]\ntyped_score_multiplier = 2\ntyped_lines_affect_bar = true\n"), environ={})
-    assert config.trigger.typed_score_multiplier == 2.0 and config.trigger.typed_lines_affect_bar is True and config.report.ok
+    config = Config.load(write(tmp_path, "[qualifying]\ntyped_handicap = 2\ntyped_lines_affect_bar = true\n"), environ={})
+    assert config.qualifying.typed_handicap == 2.0 and config.qualifying.typed_lines_affect_bar is True and config.report.ok
 
 
-def test_a_typed_score_multiplier_of_zero_and_one_are_accepted(tmp_path):
+def test_a_typed_handicap_of_zero_and_one_are_accepted(tmp_path):
     for text, expected in (("0", 0.0), ("1", 1.0)):
-        config = Config.load(write(tmp_path, f"[trigger]\ntyped_score_multiplier = {text}\n"), environ={})
-        assert config.trigger.typed_score_multiplier == expected and config.report.ok
+        config = Config.load(write(tmp_path, f"[qualifying]\ntyped_handicap = {text}\n"), environ={})
+        assert config.qualifying.typed_handicap == expected and config.report.ok
 
 
 def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
-    text = ("[trigger]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
+    text = ("[qualifying]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
             "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.trigger == TriggerSettings(0.001, 0.5, 2, 0.0, -3.0, False, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
+    assert config.qualifying == QualifyingSettings(0.001, 0.5, 2, 0.0, -3.0, False, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -489,7 +489,7 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("cooldown_seconds", "nan"),
     ("algorithm", '"median"'), ("algorithm", "5"), ("algorithm", "true"), ("algorithm", '"Percentile"'),
     ("starting_bar", '"6.8"'), ("starting_bar", "true"), ("starting_bar", "inf"), ("starting_bar", "nan"), ("starting_bar", "[6.8]"),
-    ("exclude_triggers", "5"), ("exclude_triggers", '"maybe"'), ("exclude_triggers", "[true]"),
+    ("exclude_qualifiers", "5"), ("exclude_qualifiers", '"maybe"'), ("exclude_qualifiers", "[true]"),
     ("half_life_seconds", "0"), ("half_life_seconds", "-1"), ("half_life_seconds", '"300"'), ("half_life_seconds", "true"),
     ("half_life_seconds", "inf"),
     ("average_fraction", "-0.1"), ("average_fraction", '"0.25"'), ("average_fraction", "true"), ("average_fraction", "[1]"),
@@ -497,43 +497,43 @@ def test_the_smallest_allowed_trigger_values_are_accepted(tmp_path):
     ("average_half_life_scores", "true"), ("average_half_life_scores", "inf"),
     ("average_floor_fraction", "-0.01"), ("average_floor_fraction", "1"), ("average_floor_fraction", "1.5"),
     ("average_floor_fraction", '"0.05"'), ("average_floor_fraction", "true"), ("average_floor_fraction", "false"),
-    ("typed_score_multiplier", "-0.1"), ("typed_score_multiplier", '"1.5"'), ("typed_score_multiplier", "true"),
-    ("typed_score_multiplier", "[1.5]"),
+    ("typed_handicap", "-0.1"), ("typed_handicap", '"1.5"'), ("typed_handicap", "true"),
+    ("typed_handicap", "[1.5]"),
     ("typed_lines_affect_bar", "5"), ("typed_lines_affect_bar", '"maybe"'), ("typed_lines_affect_bar", "[true]")])
 def test_a_bad_trigger_value_means_the_default_with_a_warning(tmp_path, key, value):
-    config = Config.load(write(tmp_path, f"[trigger]\n{key} = {value}\n"), environ={})
-    assert config.trigger == TriggerSettings()
-    assert len(config.report.warnings) == 1 and f"trigger.{key}" in config.report.warnings[0]
+    config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {value}\n"), environ={})
+    assert config.qualifying == QualifyingSettings()
+    assert len(config.report.warnings) == 1 and f"qualifying.{key}" in config.report.warnings[0]
 
 
 @pytest.mark.parametrize("key", ["floor_ignore_fraction", "trigger_fraction", "interest_half_life", "floor_fractoin", "fence_multiple"])
 def test_an_unknown_or_removed_trigger_key_is_warned_about(tmp_path, key):
-    config = Config.load(write(tmp_path, f"[trigger]\n{key} = 0.1\n"), environ={})
-    assert any(f"trigger.{key}" in w for w in config.report.warnings) and config.trigger == TriggerSettings()
+    config = Config.load(write(tmp_path, f"[qualifying]\n{key} = 0.1\n"), environ={})
+    assert any(f"qualifying.{key}" in w for w in config.report.warnings) and config.qualifying == QualifyingSettings()
 
 
 def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
-    main = write(tmp_path, "[trigger]\npercentile = 95\nmin_scores = 8\n")
-    (tmp_path / "pom.local.toml").write_text("[trigger]\npercentile = 90\nalgorithm = \"moving_average\"\n", encoding="utf-8")
-    assert Config.load(main, environ={}).trigger == TriggerSettings(percentile=90.0, min_scores=8, algorithm="moving_average")
+    main = write(tmp_path, "[qualifying]\npercentile = 95\nmin_scores = 8\n")
+    (tmp_path / "pom.local.toml").write_text("[qualifying]\npercentile = 90\nalgorithm = \"moving_average\"\n", encoding="utf-8")
+    assert Config.load(main, environ={}).qualifying == QualifyingSettings(percentile=90.0, min_scores=8, algorithm="moving_average")
 
 
 def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
-    from pom.scoring import ScoreEffect, tracker_from_settings
-    text = "[trigger]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
-    settings = Config.load(write(tmp_path, text), environ={}).trigger
-    tracker = tracker_from_settings(settings)
+    from pom.scoring import Ruling, bar_keeper_from_settings
+    text = "[qualifying]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
+    settings = Config.load(write(tmp_path, text), environ={}).qualifying
+    tracker = bar_keeper_from_settings(settings)
     assert tracker.report.ok
-    assert [tracker.record(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [ScoreEffect.COUNTED] * 5
-    assert tracker.trigger_level_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
-    assert tracker.record(3.5, 5) is ScoreEffect.TRIGGERED
+    assert [tracker.rule(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [Ruling.DID_NOT_QUALIFY] * 5
+    assert tracker.bar_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
+    assert tracker.rule(3.5, 5) is Ruling.QUALIFIED
 
 
 @pytest.mark.parametrize("algorithm", ["percentile", "decaying_quantile", "moving_average"])
 def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm):
-    from pom.scoring import ALGORITHMS, tracker_from_settings
-    settings = Config.load(write(tmp_path, f'[trigger]\nalgorithm = "{algorithm}"\n'), environ={}).trigger
-    tracker = tracker_from_settings(settings)
+    from pom.scoring import ALGORITHMS, bar_keeper_from_settings
+    settings = Config.load(write(tmp_path, f'[qualifying]\nalgorithm = "{algorithm}"\n'), environ={}).qualifying
+    tracker = bar_keeper_from_settings(settings)
     assert isinstance(tracker._bar, ALGORITHMS[algorithm]) and tracker.report.ok and tracker._bar.report.ok
 
 
@@ -541,18 +541,18 @@ def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
     """The trigger values are tuned often, so they are not pinned: only that the shipped file reads without a warning
     and that each algorithm accepts the values."""
     import dataclasses
-    from pom.scoring import ALGORITHMS, tracker_from_settings
+    from pom.scoring import ALGORITHMS, bar_keeper_from_settings
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
     assert shipped.report.ok
     for algorithm in ALGORITHMS:
-        tracker = tracker_from_settings(dataclasses.replace(shipped.trigger, algorithm=algorithm))
+        tracker = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm))
         assert tracker.report.ok and tracker._bar.report.ok
 
 
 def test_the_shipped_algorithm_is_one_the_factory_knows():
     """Which algorithm is shipped is a tuning choice, so it is not pinned."""
     from pom.scoring import ALGORITHMS
-    assert Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={}).trigger.algorithm in ALGORITHMS
+    assert Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={}).qualifying.algorithm in ALGORITHMS
 
 
 # --- The [listening] section ---------------------------------------------------------------

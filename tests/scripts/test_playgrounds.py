@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PLAYGROUNDS = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/listening/sort_whisper_text.py", "scripts/dev/listening/listen_to_room.py",
                "scripts/dev/scoring/score_typed_sentences.py", "scripts/dev/scoring/score_typed_lines.py",
                "scripts/dev/voice/write_portent_from_hinge.py",
-               "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_triggers.py",
+               "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_turns.py",
                "scripts/dev/output/format_text_for_typewriter.py",
                "scripts/dev/output/type_text_on_typewriter.py"]
 
@@ -69,7 +69,7 @@ def test_the_whole_pipeline_playground_wants_one_sound_source_only():
 
 
 def test_the_fake_trigger_site_serves_its_feed_and_exits():
-    result = run("scripts/dev/monitor/serve_fake_triggers.py", "--check")
+    result = run("scripts/dev/monitor/serve_fake_turns.py", "--check")
     assert result.returncode == 0 and "the site answered: 5 triggers" in result.stdout, result.stderr
 
 

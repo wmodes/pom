@@ -1,29 +1,29 @@
-"""The ConvoInterestTracker: whether a score stands out from how the room has been scoring lately.
+"""The BarKeeper: whether a score stands out from how the room has been scoring lately.
 
 The trigger does not use a fixed score. It asks what this room's recent scores look like and responds when a new one stands well above
 them. In a dull room a 5 can stand out; in a lively one it may take an 8. Each score goes in through `record`, with the time it was
 heard, and the tracker answers what it did with it.
 
-WHERE the bar sits is not decided here. It is worked out by a TriggerBar, and there are several (a percentile of a window of recent
+WHERE the bar sits is not decided here. It is worked out by a Bar, and there are several (a percentile of a window of recent
 scores, a decaying quantile, a moving average), each its own class, so the way of deciding can be chosen in the config. This class does the
 parts every way shares:
 
   * The trigger: a score triggers when it is ABOVE the bar, as the bar stood BEFORE that score was added, so a sentence is judged
     against the room as it was before it was said. A triggering score is then handed to the bar like any other (the bar may leave it out).
   * The cooldown: after a trigger, a score above the bar is not marked until `cooldown_seconds` have passed since that trigger (60 to
-    begin with; 0 turns it off). It is COOLING_DOWN: it still goes to the bar, and it does not restart the cooldown. A burst of strong
+    begin with; 0 turns it off). It is HELD: it still goes to the bar, and it does not restart the cooldown. A burst of strong
     sentences, such as a run of jokes, gives one trigger and not six, and the next one comes from the room once the cooldown is over.
   * Time: the caller passes it. Live it is a clock reading; replaying a recording it is the place in the recording, which is why a
     recording can be replayed faster than real time and give the same answers. If a time ever goes backwards (a clock stepping back) it
     is held at the latest time seen, so the bar cannot be asked about the past.
 
-A fragment that has no score (None), or one the bar ignores (a score under a floor), is IGNORED and stays out of everything here.
+A fragment that has no score (None), or one the bar ignores (a score under a floor), is NO_MARK and stays out of everything here.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad input to
-    `record` is simply ignored. `strict=True` raises ConvoInterestTrackerError instead, for tests and dev tools.
-  * The bar is passed in, already built (`tracker_from_settings` builds the one the config chose), so a new way of deciding is a new
-    TriggerBar and nothing here changes.
+    `record` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
+  * The bar is passed in, already built (`bar_keeper_from_settings` builds the one the config chose), so a new way of deciding is a new
+    Bar and nothing here changes.
   * This module never reads Config, and it never sees any words, only numbers.
 """
 import math
@@ -33,7 +33,7 @@ from typing import Optional
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.scoring.percentile_bar import PercentileBar
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -41,20 +41,20 @@ _log = get_logger(__name__, DEBUG)
 DEFAULT_COOLDOWN_SECONDS = 60.0
 
 
-class ConvoInterestTrackerError(ValueError):
+class BarKeeperError(ValueError):
     """Raised for any tracker problem, but only in strict mode (development and tests)."""
 
 
-class ScoreEffect(Enum):
+class Ruling(Enum):
     """What the tracker did with a score."""
-    IGNORED = "ignored"        # no score, not a number, no usable time, or a score the bar ignores
-    COUNTED = "counted"        # handed to the bar
-    TRIGGERED = "triggered"    # stood above the bar (and was handed to the bar too)
-    COOLING_DOWN = "cooling down"    # stood above the bar, but a trigger was too recent (handed to the bar too)
-    JUDGED = "judged"          # a direct score (typed) that did not stand above the bar and was kept out of it
+    NO_MARK = "no mark"        # no score, not a number, no usable time, or a score the bar ignores
+    DID_NOT_QUALIFY = "did not qualify"        # handed to the bar
+    QUALIFIED = "qualified"    # stood above the bar (and was handed to the bar too)
+    HELD = "held"    # stood above the bar, but a trigger was too recent (handed to the bar too)
+    TYPED_DNQ = "typed DNQ"          # a direct score (typed) that did not stand above the bar and was kept out of it
 
 
-class ConvoInterestTracker:
+class BarKeeper:
     """Decides whether a new score stands out from the room's recent scores, using a bar and a cooldown.
 
     Attributes:
@@ -62,18 +62,18 @@ class ConvoInterestTracker:
         counted: How many scores have counted so far.
     """
 
-    def __init__(self, bar: Optional[TriggerBar] = None, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
+    def __init__(self, bar: Optional[Bar] = None, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
                  strict: bool = False):
         """Args:
-            bar: The TriggerBar that works out where the bar sits. None means a PercentileBar with its defaults.
+            bar: The Bar that works out where the bar sits. None means a PercentileBar with its defaults.
             cooldown_seconds: How many seconds after a trigger before another score may trigger, 0 or more (0 means no cooldown).
-            strict: Raise ConvoInterestTrackerError on any problem instead of recording it.
+            strict: Raise BarKeeperError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=ConvoInterestTrackerError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=BarKeeperError, logger=_log)
         if bar is None:
             bar = PercentileBar()
-        elif not isinstance(bar, TriggerBar):
-            self.report.warn(f"bar must be a TriggerBar, got {type(bar).__name__}; using the default PercentileBar")
+        elif not isinstance(bar, Bar):
+            self.report.warn(f"bar must be a Bar, got {type(bar).__name__}; using the default PercentileBar")
             bar = PercentileBar()
         self._bar = bar
         self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
@@ -99,7 +99,7 @@ class ConvoInterestTracker:
         """One line saying how the trigger works and how it is set."""
         return f"{self._bar.describe()}; at most one trigger every {self._cooldown_seconds:g} s"
 
-    def trigger_level_at(self, now: float) -> Optional[float]:
+    def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to trigger at time `now`, or None if `now` is not a number or the bar has none."""
         return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
 
@@ -113,16 +113,16 @@ class ConvoInterestTracker:
 
     # --- Taking in scores -----------------------------------------------------------
 
-    def record(self, score: Optional[float], now: float) -> ScoreEffect:
+    def rule(self, score: Optional[float], now: float) -> Ruling:
         """Takes in one score heard at time `now` (seconds) and says what happened to it.
 
-        A score that is missing or not a number, one the bar ignores, or a time that is not a number, is IGNORED and changes nothing.
-        Otherwise the score is compared with the bar as it stands now, then handed to the bar, whatever happens to it. It is TRIGGERED if it
-        was above the bar and at least `cooldown_seconds` have passed since the last trigger; COOLING_DOWN if it was above the bar but
-        that trigger was too recent; COUNTED otherwise.
+        A score that is missing or not a number, one the bar ignores, or a time that is not a number, is NO_MARK and changes nothing.
+        Otherwise the score is compared with the bar as it stands now, then handed to the bar, whatever happens to it. It is QUALIFIED if it
+        was above the bar and at least `cooldown_seconds` have passed since the last trigger; HELD if it was above the bar but
+        that trigger was too recent; DID_NOT_QUALIFY otherwise.
         """
         if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
-            return ScoreEffect.IGNORED
+            return Ruling.NO_MARK
         now = self._steady(now)
         level = self._bar.level_at(now)
         above = level is not None and score > level
@@ -133,22 +133,22 @@ class ConvoInterestTracker:
         self._bar.add(float(score), now, triggered)
         self._last_time = now
         self.counted += 1
-        effect = ScoreEffect.TRIGGERED if triggered else ScoreEffect.COOLING_DOWN if cooling else ScoreEffect.COUNTED
+        effect = Ruling.QUALIFIED if triggered else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
         _log.debug("score %s: bar %s, %d counted", effect.value, "none" if level is None else f"{level:.3f}", self.counted)
         return effect
 
-    def record_direct(self, score: Optional[float], now: float, affects_bar: bool = False) -> ScoreEffect:
+    def rule_typed(self, score: Optional[float], now: float, affects_bar: bool = False) -> Ruling:
         """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
 
         Such a score is held to the same bar as the room's, but it takes no part in the room's rhythm: no cooldown applies to it,
         and a trigger it causes does not start one. Whether it also affects the bar (feeds what it is built from) is `affects_bar`: False (the
         default) keeps the bar a picture of the room alone, so the score changes nothing here.
 
-        A score or time that is not a number, or one the bar ignores, is IGNORED. Otherwise it is TRIGGERED if above the bar. If not, it is
-        COUNTED when it affected the bar and JUDGED when it did not.
+        A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar. If not, it is
+        DID_NOT_QUALIFY when it affected the bar and TYPED_DNQ when it did not.
         """
         if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
-            return ScoreEffect.IGNORED
+            return Ruling.NO_MARK
         now = self._steady(now)
         level = self._bar.level_at(now)
         triggered = level is not None and score > level
@@ -156,6 +156,6 @@ class ConvoInterestTracker:
             self._bar.add(float(score), now, triggered)
             self._last_time = now
             self.counted += 1
-        effect = ScoreEffect.TRIGGERED if triggered else ScoreEffect.COUNTED if affects_bar else ScoreEffect.JUDGED
+        effect = Ruling.QUALIFIED if triggered else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ
         _log.debug("direct score %s: bar %s", effect.value, "none" if level is None else f"{level:.3f}")
         return effect

@@ -65,7 +65,7 @@ class TrackSplitter:
                 as words.
 
         Returns:
-            The WhisperText. It is never None and this never raises.
+            The Tracks. It is never None and this never raises.
         """
         if not isinstance(raw, str):
             return Tracks("", (), KIND_NONE)

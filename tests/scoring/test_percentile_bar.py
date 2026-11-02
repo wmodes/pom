@@ -7,7 +7,7 @@ import pytest
 
 from pom.scoring.percentile_bar import (DEFAULT_MIN_SCORES, DEFAULT_PERCENTILE, DEFAULT_STARTING_BAR, DEFAULT_WINDOW_SECONDS,
                                         PercentileBar, PercentileBarError)
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 
 def bar(**options):
@@ -42,7 +42,7 @@ class TestTheDefaults:
         assert bar(percentile=100, starting_bar=-2).report.ok
 
     def test_it_is_a_trigger_bar(self):
-        assert isinstance(PercentileBar(), TriggerBar)
+        assert isinstance(PercentileBar(), Bar)
 
     def test_it_ignores_no_score(self):
         assert PercentileBar().ignores(0.0) is False and PercentileBar().ignores(9.0) is False
@@ -190,7 +190,7 @@ class TestTheWindow:
 
 class TestExcludingTriggers:
     def test_a_triggering_score_is_left_out_when_asked(self):
-        b = bar(exclude_triggers=True)
+        b = bar(exclude_qualifiers=True)
         feed(b, [9, 9, 9], triggered=True)
         assert b.window_size_at(3.0) == 0
 
@@ -200,21 +200,21 @@ class TestExcludingTriggers:
         assert b.window_size_at(3.0) == 3
 
     def test_only_the_triggering_scores_are_left_out(self):
-        b = bar(exclude_triggers=True)
+        b = bar(exclude_qualifiers=True)
         b.add(3.0, 0.0, False)
         b.add(9.0, 1.0, True)
         b.add(4.0, 2.0, False)
         assert b.window_size_at(2.0) == 2
 
     def test_leaving_a_zinger_out_keeps_the_bar_at_the_rooms_high_tide(self):
-        keep, leave = bar(), bar(exclude_triggers=True)
+        keep, leave = bar(), bar(exclude_qualifiers=True)
         for b in (keep, leave):
             feed(b, [3.0] * 5)
             b.add(9.0, 5.0, True)
         assert keep.level_at(6.0) == 9.0 and leave.level_at(6.0) == 3.0
 
     def test_a_score_that_did_not_trigger_is_kept_either_way(self):
-        b = bar(exclude_triggers=True)
+        b = bar(exclude_qualifiers=True)
         b.add(9.0, 0.0, False)
         assert b.window_size_at(0.0) == 1
 
@@ -281,7 +281,7 @@ class TestDescribing:
         assert text == "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"
 
     def test_it_mentions_leaving_triggers_out_only_when_it_does(self):
-        assert "triggering scores left out" in PercentileBar(exclude_triggers=True).describe()
+        assert "triggering scores left out" in PercentileBar(exclude_qualifiers=True).describe()
         assert "triggering scores left out" not in PercentileBar().describe()
 
 
@@ -327,20 +327,20 @@ class TestBadSettings:
 
 class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
-        settings = SimpleNamespace(percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, exclude_triggers=True, other="x")
+        settings = SimpleNamespace(percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, exclude_qualifiers=True, other="x")
         b = PercentileBar.from_settings(settings)
-        assert (b._percentile, b._window_seconds, b._min_scores, b._starting_bar, b._exclude_triggers) == (95.0, 120.0, 8, 5.5, True)
+        assert (b._percentile, b._window_seconds, b._min_scores, b._starting_bar, b._exclude_qualifiers) == (95.0, 120.0, 8, 5.5, True)
         assert b.report.ok
 
     def test_bad_settings_are_replaced_as_usual(self):
         b = PercentileBar.from_settings(SimpleNamespace(percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5,
-                                                        exclude_triggers=False))
+                                                        exclude_qualifiers=False))
         assert b._percentile == DEFAULT_PERCENTILE and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(PercentileBarError):
             PercentileBar.from_settings(SimpleNamespace(percentile=500, window_seconds=1.0, min_scores=8, starting_bar=1.0,
-                                                        exclude_triggers=False), strict=True)
+                                                        exclude_qualifiers=False), strict=True)
 
 
 class TestLogging:

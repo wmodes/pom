@@ -2,13 +2,13 @@
 
 Open it on the Printer's network (for example http://pom1.local:8080) and it shows how the Printer is doing and the newest
 triggers first. Click a trigger for its details: the hinge, the exemplars the oracle was shown, the portent it wrote, the
-score, the bar it had to beat and the window at that moment. The triggers come from a TriggerHistory; the Conductor adds to
+score, the bar it had to beat and the window at that moment. The triggers come from a TurnHistory; the Conductor adds to
 it and this module only reads.
 
 Design decisions, and why:
   * THE HINGE IS WHAT SOMEONE SAID IN THE ROOM. The page asks for a password (HTTP basic auth, any user name; the password
     is compared in constant time), the site will not start without one, and `show_hinges=False` hides the hinge text and
-    shows numbers only. Nothing the page shows is stored anywhere but the TriggerHistory's memory. The pages are never
+    shows numbers only. Nothing the page shows is stored anywhere but the TurnHistory's memory. The pages are never
     cached (`Cache-Control: no-store`), so a browser does not keep them.
   * All text is escaped by the template engine (Flask turns on autoescape for these templates), because the hinge and the
     portent are untrusted words. The only script is a few lines inline, and a Content-Security-Policy allows nothing else.
@@ -41,7 +41,7 @@ from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.monitor.score_chart import DEFAULT_SECONDS as CHART_SECONDS, render_score_chart
 from pom.monitor.score_trace import ScoreTrace
-from pom.monitor.trigger_history import TriggerHistory, TriggerRecord
+from pom.monitor.turn_history import TurnHistory, TurnRecord
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -222,7 +222,7 @@ class MonitorSite:
         app: The Flask application, or None if there is no password (the site cannot run).
     """
 
-    def __init__(self, history: TriggerHistory, password: str, show_hinges: bool = True,
+    def __init__(self, history: TurnHistory, password: str, show_hinges: bool = True,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
                  clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None):
         """Args:
@@ -321,13 +321,13 @@ class MonitorSite:
             "trigger_description": str(status.trigger_description or ""),
         }
 
-    def _hinge_text(self, record: TriggerRecord, short: bool) -> str:
+    def _hinge_text(self, record: TurnRecord, short: bool) -> str:
         if not self._show_hinges:
             return "(hidden)"
         return _snippet(record.hinge) if short else record.hinge
 
     @staticmethod
-    def _bar_text(record: TriggerRecord) -> str:
+    def _bar_text(record: TurnRecord) -> str:
         return f"{record.bar:.2f}" if record.bar is not None else "none yet"
 
     def _neighbours(self, record_id: int):
@@ -345,7 +345,7 @@ class MonitorSite:
         links = {record.heard_at: record.id for record in self._history.recent()}
         return render_score_chart(self._trace.recent(CHART_SECONDS), links, CHART_SECONDS)
 
-    def _row(self, record: TriggerRecord, now: float) -> dict:
+    def _row(self, record: TurnRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),
                 "score": f"{record.score:.2f}", "bar": self._bar_text(record), "window_size": record.window_size,
                 "hinge": self._hinge_text(record, short=True)}

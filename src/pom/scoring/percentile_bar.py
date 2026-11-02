@@ -1,6 +1,6 @@
 """The PercentileBar: the bar is a high percentile of the scores heard in a recent window of time.
 
-This is the rule the ConvoInterestTracker has used since the Tukey fence was dropped, moved into a bar of its own so other bars can sit
+This is the rule the BarKeeper has used since the Tukey fence was dropped, moved into a bar of its own so other bars can sit
 beside it:
 
   * The window: the scores heard in the last `window_seconds`, or the last `min_scores` scores if the room is so quiet that fewer than
@@ -16,7 +16,7 @@ beside it:
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises PercentileBarError instead, for tests and dev tools.
-  * `exclude_triggers` leaves a triggering score out of what the bar remembers. Otherwise the zinger that fired is the room's best score
+  * `exclude_qualifiers` leaves a triggering score out of what the bar remembers. Otherwise the zinger that fired is the room's best score
     and holds the bar up for the rest of the window, shutting out the next good one.
   * Only the scores in the window are kept (never fewer than `min_scores`), so memory is bounded however long the room talks.
   * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
@@ -27,7 +27,7 @@ from typing import Deque, List, Optional, Tuple
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -47,7 +47,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class PercentileBar(TriggerBar):
+class PercentileBar(Bar):
     """A nearest-rank percentile of the recent window.
 
     Attributes:
@@ -56,14 +56,14 @@ class PercentileBar(TriggerBar):
 
     def __init__(self, percentile: float = DEFAULT_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
                  min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR,
-                 exclude_triggers: bool = False, strict: bool = False):
+                 exclude_qualifiers: bool = False, strict: bool = False):
         """Args:
             percentile: How much of the window the bar sits above, above 0 and at most 100.
             window_seconds: How many seconds of recent scores the bar is drawn from, above 0.
             min_scores: The window always holds at least this many scores, and until this many have been heard the bar is
                 `starting_bar`; a whole number of at least 2.
             starting_bar: The bar until `min_scores` scores have been heard.
-            exclude_triggers: True leaves a score that triggered out of what the bar remembers.
+            exclude_qualifiers: True leaves a score that triggered out of what the bar remembers.
             strict: Raise PercentileBarError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=PercentileBarError, logger=_log)
@@ -75,14 +75,14 @@ class PercentileBar(TriggerBar):
                                        lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= MINIMUM_MIN_SCORES,
                                        f"a whole number of at least {MINIMUM_MIN_SCORES}", int)
         self._starting_bar = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number", float)
-        self._exclude_triggers = bool(exclude_triggers)
+        self._exclude_qualifiers = bool(exclude_qualifiers)
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
     def from_settings(cls, settings, strict: bool = False) -> "PercentileBar":
-        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores`, `starting_bar` and `exclude_triggers`."""
+        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores`, `starting_bar` and `exclude_qualifiers`."""
         return cls(settings.percentile, settings.window_seconds, settings.min_scores, settings.starting_bar,
-                   settings.exclude_triggers, strict=strict)
+                   settings.exclude_qualifiers, strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str, convert):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -91,7 +91,7 @@ class PercentileBar(TriggerBar):
         self.report.warn(f"{name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
-    # --- The TriggerBar questions ---------------------------------------------------
+    # --- The Bar questions ---------------------------------------------------
 
     def level_at(self, now: float) -> Optional[float]:
         """The percentile of the window at `now`, or the starting line while fewer than `min_scores` scores have been heard."""
@@ -110,10 +110,10 @@ class PercentileBar(TriggerBar):
         return len(window) if window is not None else len(self._recent)
 
     def add(self, score: float, now: float, triggered: bool) -> None:
-        """Takes in a judged score. A triggering score is left out when `exclude_triggers` is on."""
+        """Takes in a judged score. A triggering score is left out when `exclude_qualifiers` is on."""
         if not (_is_number(score) and _is_number(now)):
             return
-        if triggered and self._exclude_triggers:
+        if triggered and self._exclude_qualifiers:
             return
         self._recent.append((now, float(score)))
         self._forget_old(now)
@@ -122,7 +122,7 @@ class PercentileBar(TriggerBar):
         """For example: the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8."""
         return (f"the {self._percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
                 f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}"
-                + (", triggering scores left out" if self._exclude_triggers else ""))
+                + (", triggering scores left out" if self._exclude_qualifiers else ""))
 
     # --- The window -----------------------------------------------------------------
 

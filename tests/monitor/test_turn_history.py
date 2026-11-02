@@ -1,12 +1,12 @@
-"""Tests for pom.monitor.trigger_history: the last hour of triggers, in memory only."""
+"""Tests for pom.monitor.turn_history: the last hour of triggers, in memory only."""
 import logging
 import threading
 
 import pytest
 
 from pom.corpus import Passage
-from pom.monitor import TriggerHistory, TriggerHistoryError, TriggerRecord
-from pom.monitor.trigger_history import DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS
+from pom.monitor import TurnHistory, TurnHistoryError, TurnRecord
+from pom.monitor.turn_history import DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS
 from pom.voice import Portent
 
 
@@ -25,7 +25,7 @@ def portent(text="The ghosts keep the hours."):
 
 
 def history(clock=None, **options):
-    return TriggerHistory(clock=clock or Clock(), **options)
+    return TurnHistory(clock=clock or Clock(), **options)
 
 
 def add(h, hinge="The dog barks at ghosts.", **extra):
@@ -56,7 +56,7 @@ class TestRecording:
         clock = Clock(5000.0)
         h = history(clock)
         record = add(h, "Hello there.", score=8.25, bar=7.5, window_size=42, heard_at=61.5, portent=portent())
-        assert isinstance(record, TriggerRecord)
+        assert isinstance(record, TurnRecord)
         assert (record.id, record.at, record.heard_at) == (1, 5000.0, 61.5)
         assert (record.hinge, record.score, record.bar, record.window_size) == ("Hello there.", 8.25, 7.5, 42)
         assert record.portent == portent()
@@ -124,9 +124,9 @@ class TestWhatCannotBeRecorded:
         assert h.recent() == [] and len(h.report.warnings) == 1
 
     def test_strict_mode_raises_for_them(self):
-        with pytest.raises(TriggerHistoryError):
+        with pytest.raises(TurnHistoryError):
             add(history(strict=True), "")
-        with pytest.raises(TriggerHistoryError):
+        with pytest.raises(TurnHistoryError):
             add(history(strict=True), score="x")
 
     def test_a_zero_score_is_a_real_score(self):
@@ -289,7 +289,7 @@ class TestBadSettings:
 
     @pytest.mark.parametrize("option,bad", [("max_age_seconds", 0), ("max_records", 0)])
     def test_strict_mode_raises(self, option, bad):
-        with pytest.raises(TriggerHistoryError, match=option):
+        with pytest.raises(TurnHistoryError, match=option):
             history(strict=True, **{option: bad})
 
     def test_strict_mode_with_good_settings_does_not_raise(self):

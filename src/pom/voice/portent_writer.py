@@ -14,7 +14,7 @@ Design decisions, and why:
     the config again for each hinge (to see prompt edits at once). This module never reads Config.
   * REPEATABLE EXEMPLARS. `write(hinge, seed=N)` seeds the random generator before the exemplars are drawn, so the
     same hinge and seed show the model the same exemplars, which makes two prompts or two models comparable. The
-    generator must be the very one the ExemplarSelector was built with, passed in as `rng`; the writer cannot reach it
+    generator must be the very one the Bibliomancer was built with, passed in as `rng`; the writer cannot reach it
     any other way. Without a seed, draws stay random, which is what the Printer does. A seed given to a writer that
     has no `rng` is recorded, since it would otherwise be silently ignored.
   * The report of the writer, the builder and the client are read together with `report_lines()`, so whoever shows
@@ -71,7 +71,7 @@ class PortentWriter:
         """Args:
             builder: Draws the exemplars and builds the prompt.
             client: Sends the prompt to the oracle model.
-            rng: The random generator the builder's ExemplarSelector was built with; needed only for seeded writes.
+            rng: The random generator the builder's Bibliomancer was built with; needed only for seeded writes.
             strict: Raise PortentWriterError on the writer's own problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=PortentWriterError, logger=_log)

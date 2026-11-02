@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Play with the monitoring site: serve invented triggers so you can open the page and click around.
 
-It is the real MonitorSite over a real TriggerHistory; only the triggers are made up (invented lines, not anything said in a
+It is the real MonitorSite over a real TurnHistory; only the triggers are made up (invented lines, not anything said in a
 room), together with an invented status (a bar, a window, which servers are up). Open the address it prints, with any user
 name and the password you gave (the default is `demo`).
 
 Usage:
-    serve_fake_triggers.py                    # serve on port 8080 with the password "demo"
-    serve_fake_triggers.py --live 15          # add a new invented trigger every 15 seconds, to watch the page update itself
-    serve_fake_triggers.py --hide-hinges      # the page with the hinge text hidden (numbers only)
-    serve_fake_triggers.py --port 9000 --password hunter2
-    serve_fake_triggers.py --check            # serve on a free port, read the page's JSON feed once, and exit
+    serve_fake_turns.py                    # serve on port 8080 with the password "demo"
+    serve_fake_turns.py --live 15          # add a new invented trigger every 15 seconds, to watch the page update itself
+    serve_fake_turns.py --hide-hinges      # the page with the hinge text hidden (numbers only)
+    serve_fake_turns.py --port 9000 --password hunter2
+    serve_fake_turns.py --check            # serve on a free port, read the page's JSON feed once, and exit
 
 ctrl-C quits.
 """
@@ -27,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.corpus import Passage                                                  # noqa: E402
-from pom.monitor import MonitorSite, MonitorStatus, TriggerHistory            # noqa: E402
+from pom.monitor import MonitorSite, MonitorStatus, TurnHistory            # noqa: E402
 from pom.voice import Portent                                                 # noqa: E402
 
 HINGES = [
@@ -51,7 +51,7 @@ PORTENTS = [
 ]
 
 
-def fake_trigger(history: TriggerHistory, rng: random.Random, n: int) -> None:
+def fake_trigger(history: TurnHistory, rng: random.Random, n: int) -> None:
     """Adds one invented trigger; every fourth one has no portent, to see that page too."""
     exemplars = tuple(rng.sample(EXEMPLARS, 1))
     portent = None if n % 4 == 3 else Portent(rng.choice(PORTENTS), exemplars, rng.uniform(0.4, 38.0), n % 5 == 4)
@@ -69,7 +69,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rng = random.Random(7)
-    history = TriggerHistory()
+    history = TurnHistory()
     started = time.time()
     for n in range(5):
         fake_trigger(history, rng, n)

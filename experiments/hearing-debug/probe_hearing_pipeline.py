@@ -8,7 +8,7 @@ the Mac against a recording):
 
 For every sentence it prints the ClipScorer's score (the real `pom` ClipScorer, built from config/pom.toml) and,
 a little later, the model's own written account of why: the content it found that earned the score,
-from the debug prompt. Each score also goes to the real `pom` ConvoInterestTracker, which keeps the room's
+from the debug prompt. Each score also goes to the real `pom` BarKeeper, which keeps the room's
 recent scores, and a sentence that stands out from them (above the configured percentile of that window) is marked as one
 that would trigger. There is no fixed threshold: the bar moves with the room.
 
@@ -69,7 +69,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                  # noqa: E402
 from rolling_cutter import RollingCutter                         # noqa: E402  (next to this file)
 from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
-from pom.scoring import ScoreEffect, ScorerModelClient, ClipScorer, WordTagger, tracker_from_settings   # noqa: E402
+from pom.scoring import Ruling, ScorerModelClient, ClipScorer, WordTagger, bar_keeper_from_settings   # noqa: E402
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.take_cutter import TakeCutter, ClipLevel          # noqa: E402
 
@@ -398,10 +398,10 @@ class Brain:
                                 explain_prompt=settings.prompt_debug)
         self.scorer = ClipScorer(client, self._word_tagger, clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                              failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-        self.client, self.settings, self.trigger = client, settings, config.trigger
+        self.client, self.settings, self.trigger = client, settings, config.qualifying
         # A new config can mean new prompts, and a score under new wording is not the same measure, so the
         # room's recent scores start over whenever the config is reloaded.
-        self.tracker = tracker_from_settings(self.trigger)
+        self.tracker = bar_keeper_from_settings(self.trigger)
         problems = config.report.lines() + client.report.lines() + self.tracker.report.lines()
         note = "; ".join(problems)
         if first:
@@ -517,15 +517,15 @@ class Pipeline:
         """
         tracker = self.brain.tracker
         with self.tracker_lock:
-            bar, held = tracker.trigger_level_at(now), tracker.window_size_at(now)
-            effect = tracker.record(score, now)
+            bar, held = tracker.bar_at(now), tracker.window_size_at(now)
+            effect = tracker.rule(score, now)
             counted = tracker.counted
-        if effect is ScoreEffect.IGNORED:
+        if effect is Ruling.NO_MARK:
             return "   [no score]"
         if bar is None:
             return "   [no bar]"
-        cooling = "; cooling down" if effect is ScoreEffect.COOLING_DOWN else ""
-        return f"{'   <-- would trigger' if effect is ScoreEffect.TRIGGERED else ''}   [window {held} scores, bar {bar:.2f}{cooling}]"
+        cooling = "; cooling down" if effect is Ruling.HELD else ""
+        return f"{'   <-- would trigger' if effect is Ruling.QUALIFIED else ''}   [window {held} scores, bar {bar:.2f}{cooling}]"
 
     @staticmethod
     def vad_note(args) -> Optional[str]:
@@ -804,8 +804,8 @@ def main() -> None:
     display.line(f"  {brain.refresh() or 'config loaded'}  [{brain.fingerprint()}]")
     display.line(f"  scorer at {brain.settings.url}; whisper-server at {args.whisper_url}; "
                  f"{'explanations on' if args.explain and brain.client.can_explain else 'explanations off'}")
-    trigger = brain.trigger
-    display.line(f"  trigger ({trigger.algorithm}): mark a score above {brain.tracker.describe()}")
+    qualifying = brain.trigger
+    display.line(f"  trigger ({qualifying.algorithm}): mark a score above {brain.tracker.describe()}")
     display.line(f"  hearing: whisper, {'Silero VAD on' if Pipeline.vad_note(args) is None else Pipeline.vad_note(args)}"
                  f"{', then lyrics and sound captions the VAD ignores' if args.vad and args.sounds else ''}; "
                  f"sound captions are shown, not scored")

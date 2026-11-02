@@ -9,5 +9,5 @@ from pom.listening.wav_deck import WavDeck, WavDeckError
 from pom.listening.whisper_model_client import Segment, WhisperModelClient, WhisperModelClientError
 from pom.listening.track_splitter import Tracks, TrackSplitter
 
-__all__ = ["HeardSegment", "Eavesdropper", "EavesdropperError", "RollingCutter", "RollingCutterError", "AudioDeck", "MicDeck", "MicDeckError", "MacMicDeck", "WavDeck", "WavDeckError", "Fragment", "TakeCutter", "TakeCutterError", "ClipLevel", "Segment", "WhisperModelClient",
-           "WhisperModelClientError", "WhisperText", "TrackSplitter"]
+__all__ = ["Take", "Eavesdropper", "EavesdropperError", "RollingCutter", "RollingCutterError", "AudioDeck", "MicDeck", "MicDeckError", "MacMicDeck", "WavDeck", "WavDeckError", "Clip", "TakeCutter", "TakeCutterError", "ClipLevel", "Segment", "WhisperModelClient",
+           "WhisperModelClientError", "Tracks", "TrackSplitter"]

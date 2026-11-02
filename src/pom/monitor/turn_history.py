@@ -1,4 +1,4 @@
-"""The TriggerHistory: the last hour of triggers, for the monitoring site.
+"""The TurnHistory: the last hour of triggers, for the monitoring site.
 
 Each time the trigger fires, the Conductor records what happened: the hinge, its score, the bar it had to beat, the
 exemplars the oracle was shown and the portent it wrote. The monitoring site reads this list to show the newest
@@ -13,7 +13,7 @@ Design decisions, and why:
     takes one lock, and `recent()` returns a copy.
   * Nothing here may stop the oracle (see pom/__init__.py). A record that cannot be made (a blank hinge, a score that is
     not a number) is recorded as a warning without its text and `add` returns None; a bad setting is replaced by its
-    default. `strict=True` raises TriggerHistoryError instead, for tests and dev tools.
+    default. `strict=True` raises TurnHistoryError instead, for tests and dev tools.
   * The clock is injected (`clock`, seconds since the epoch), so tests need not wait. A record is stamped with the
     clock when it is added, not with the audio's own time; `heard_at` keeps the place in the audio for reference.
   * Records get a number that only goes up, starting at 1 and never reused, so a page can link to one and a link to a
@@ -38,12 +38,12 @@ DEFAULT_MAX_AGE_SECONDS = 3600.0
 DEFAULT_MAX_RECORDS = 500
 
 
-class TriggerHistoryError(ValueError):
+class TurnHistoryError(ValueError):
     """Raised for any history problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
-class TriggerRecord:
+class TurnRecord:
     """One trigger, and what came of it.
 
     Attributes:
@@ -70,7 +70,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class TriggerHistory:
+class TurnHistory:
     """Keeps the recent triggers, newest first.
 
     Attributes:
@@ -84,9 +84,9 @@ class TriggerHistory:
             max_age_seconds: How long a record is kept, above 0 (3600 is an hour).
             max_records: The most records kept, a whole number of at least 1; the oldest go first.
             clock: Returns seconds since the epoch; injected so tests need not wait.
-            strict: Raise TriggerHistoryError on any problem instead of recording it.
+            strict: Raise TurnHistoryError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=TriggerHistoryError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=TurnHistoryError, logger=_log)
         if not (_is_number(max_age_seconds) and max_age_seconds > 0):
             self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; "
                              f"using {DEFAULT_MAX_AGE_SECONDS:g}")
@@ -96,7 +96,7 @@ class TriggerHistory:
                              f"using {DEFAULT_MAX_RECORDS}")
             max_records = DEFAULT_MAX_RECORDS
         self._max_age = float(max_age_seconds)
-        self._records: Deque[TriggerRecord] = deque(maxlen=max_records)       # oldest first
+        self._records: Deque[TurnRecord] = deque(maxlen=max_records)       # oldest first
         self._clock = clock
         self._lock = threading.Lock()
         self._next_id = 1
@@ -108,7 +108,7 @@ class TriggerHistory:
         return self._max_age
 
     def add(self, hinge: str, score: float, bar: Optional[float], window_size: int, heard_at: float,
-            portent: Optional[Portent] = None) -> Optional[TriggerRecord]:
+            portent: Optional[Portent] = None) -> Optional[TurnRecord]:
         """Records a trigger and returns its record, or None if it could not be made (see `report`)."""
         if not (isinstance(hinge, str) and hinge.strip()):
             self.report.warn("a trigger was given without a hinge, so it was not recorded")
@@ -117,7 +117,7 @@ class TriggerHistory:
             self.report.warn("a trigger was given without a numeric score, so it was not recorded")
             return None
         with self._lock:
-            record = TriggerRecord(self._next_id, self._clock(), heard_at if _is_number(heard_at) else 0.0, hinge.strip(),
+            record = TurnRecord(self._next_id, self._clock(), heard_at if _is_number(heard_at) else 0.0, hinge.strip(),
                                    float(score), float(bar) if _is_number(bar) else None,
                                    window_size if isinstance(window_size, int) and not isinstance(window_size, bool) else 0,
                                    portent)
@@ -128,13 +128,13 @@ class TriggerHistory:
         _log.debug("recorded trigger %d (%d kept)", record.id, len(self._records))
         return record
 
-    def recent(self) -> List[TriggerRecord]:
+    def recent(self) -> List[TurnRecord]:
         """The records still within `max_age_seconds`, newest first. A copy, so it may be changed freely."""
         with self._lock:
             self._forget_old()
             return list(reversed(self._records))
 
-    def get(self, record_id: int) -> Optional[TriggerRecord]:
+    def get(self, record_id: int) -> Optional[TurnRecord]:
         """The record with this number, or None if there is none or it has expired."""
         with self._lock:
             self._forget_old()

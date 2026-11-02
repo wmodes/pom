@@ -11,7 +11,7 @@ import urllib.request
 import pytest
 
 from pom.corpus import Passage
-from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TriggerHistory
+from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TurnHistory
 from pom.voice import Portent
 
 PASSWORD = "open sesame"
@@ -36,7 +36,7 @@ def portent(text="The ghosts keep the hours.", cut_off=False):
 
 def make(clock=None, show_hinges=True, status=None, history=None, **options):
     clock = clock or Clock()
-    history = history if history is not None else TriggerHistory(clock=clock)
+    history = history if history is not None else TurnHistory(clock=clock)
     site = MonitorSite(history, PASSWORD, show_hinges=show_hinges, status_source=status, clock=clock, **options)
     return site, history, site.app.test_client(), clock
 
@@ -74,7 +74,7 @@ class TestThePassword:
         assert client.get("/", headers=basic(password=wrong)).status_code == 401
 
     def test_a_password_with_other_characters_works(self):
-        history = TriggerHistory()
+        history = TurnHistory()
         site = MonitorSite(history, "pässwörd: ñ=1")
         client = site.app.test_client()
         assert client.get("/", headers=basic(password="pässwörd: ñ=1")).status_code == 200
@@ -95,18 +95,18 @@ class TestThePassword:
 
     @pytest.mark.parametrize("bad", ["", None, 5, b"bytes", ["pw"]])
     def test_without_a_usable_password_the_site_does_not_exist(self, bad):
-        site = MonitorSite(TriggerHistory(), bad)
+        site = MonitorSite(TurnHistory(), bad)
         assert site.app is None
         assert site.start("127.0.0.1", 0) is False and site.port is None
         assert len(site.report.criticals) == 1 and "password" in site.report.criticals[0]
 
     def test_strict_mode_raises_for_a_missing_password(self):
         with pytest.raises(MonitorSiteError, match="password"):
-            MonitorSite(TriggerHistory(), "", strict=True)
+            MonitorSite(TurnHistory(), "", strict=True)
 
     def test_the_password_is_never_in_a_report_or_a_log(self, caplog):
         caplog.set_level(logging.DEBUG)
-        site = MonitorSite(TriggerHistory(), "")
+        site = MonitorSite(TurnHistory(), "")
         _, _, client, _ = make()
         client.get("/", headers=basic(password="wrong-guess-1234"))
         assert PASSWORD not in caplog.text and "wrong-guess-1234" not in caplog.text
@@ -183,7 +183,7 @@ class TestTheStats:
 
     def test_the_pace_scales_when_the_history_is_shorter_than_an_hour(self):
         clock = Clock()
-        history = TriggerHistory(max_age_seconds=1800, clock=clock)
+        history = TurnHistory(max_age_seconds=1800, clock=clock)
         _, _, client, _ = make(clock, history=history)
         for _ in range(3):
             add(history)
@@ -532,7 +532,7 @@ class TestMovingBetweenTriggers:
 
     def test_the_numbers_are_the_triggers_not_their_places(self):
         clock = Clock()
-        history = TriggerHistory(max_records=2, clock=clock)
+        history = TurnHistory(max_records=2, clock=clock)
         _, _, client, _ = make(clock, history=history)
         for text in ("one", "two", "three"):
             add(history, text)
@@ -632,7 +632,7 @@ class TestTheHeaders:
 
 class TestRunningForReal:
     def test_it_serves_over_http_and_stops(self):
-        history = TriggerHistory()
+        history = TurnHistory()
         add(history, "A hinge over the wire.")
         site = MonitorSite(history, PASSWORD)
         assert site.start("127.0.0.1", 0) is True
@@ -652,7 +652,7 @@ class TestRunningForReal:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)
 
     def test_starting_twice_keeps_one_server(self):
-        site = MonitorSite(TriggerHistory(), PASSWORD)
+        site = MonitorSite(TurnHistory(), PASSWORD)
         try:
             assert site.start("127.0.0.1", 0) is True
             port = site.port
@@ -661,17 +661,17 @@ class TestRunningForReal:
             site.stop()
 
     def test_stopping_twice_or_before_starting_is_safe(self):
-        site = MonitorSite(TriggerHistory(), PASSWORD)
+        site = MonitorSite(TurnHistory(), PASSWORD)
         site.stop()
         site.start("127.0.0.1", 0)
         site.stop()
         site.stop()
 
     def test_a_port_that_is_taken_is_reported_not_raised(self):
-        first = MonitorSite(TriggerHistory(), PASSWORD)
+        first = MonitorSite(TurnHistory(), PASSWORD)
         first.start("127.0.0.1", 0)
         try:
-            second = MonitorSite(TriggerHistory(), PASSWORD)
+            second = MonitorSite(TurnHistory(), PASSWORD)
             assert second.start("127.0.0.1", first.port) is False
             assert second.port is None and len(second.report.criticals) == 1
             assert str(first.port) in second.report.criticals[0]
@@ -680,11 +680,11 @@ class TestRunningForReal:
 
     @pytest.mark.parametrize("port", [-1, 70000, "x"])
     def test_a_bad_port_is_reported_not_raised(self, port):
-        site = MonitorSite(TriggerHistory(), PASSWORD)
+        site = MonitorSite(TurnHistory(), PASSWORD)
         assert site.start("127.0.0.1", port) is False and len(site.report.criticals) == 1
 
     def test_the_site_does_not_keep_the_process_alive(self):
-        site = MonitorSite(TriggerHistory(), PASSWORD)
+        site = MonitorSite(TurnHistory(), PASSWORD)
         site.start("127.0.0.1", 0)
         try:
             assert site._thread.daemon is True

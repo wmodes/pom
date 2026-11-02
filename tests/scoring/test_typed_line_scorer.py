@@ -1,6 +1,6 @@
-"""Tests for pom.scoring.typed_line_scorer: a typed line in, a multiplied and judged ScoredSentence out.
+"""Tests for pom.scoring.typed_line_scorer: a typed line in, a multiplied and judged Attempt out.
 
-The Scorer is a small fake (what it does is tested elsewhere); the ConvoInterestTracker is the real one over a PercentileBar, because
+The Scorer is a small fake (what it does is tested elsewhere); the BarKeeper is the real one over a PercentileBar, because
 how the typed line meets the room's bar is the point.
 """
 import logging
@@ -8,7 +8,7 @@ import logging
 import pytest
 
 from pom.fault_recorder import FaultRecorder
-from pom.scoring import (ConvoInterestTracker, PercentileBar, ScoreEffect, ScoredBy, ScoredClip, ScoredSentence, TypedLineScorer,
+from pom.scoring import (BarKeeper, PercentileBar, Ruling, ScoredBy, ScoredClip, Attempt, TypedLineScorer,
                          TypedLineScorerError)
 from pom.scoring.typed_line_scorer import DEFAULT_MULTIPLIER, TYPED
 
@@ -35,7 +35,7 @@ class Clock:
 
 def tracker(bar_level=6.0, cooldown=60.0):
     """A tracker whose bar sits at `bar_level` (the starting line, with a window that will not fill)."""
-    return ConvoInterestTracker(PercentileBar(100.0, 300.0, 20, bar_level), cooldown)
+    return BarKeeper(PercentileBar(100.0, 300.0, 20, bar_level), cooldown)
 
 
 def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):
@@ -55,7 +55,7 @@ class TestTheSentence:
     def test_it_is_a_scored_sentence_of_kind_typed_with_the_text_and_the_time(self):
         made, _, _, _ = typed({"Is anyone there?": 4.0}, now=42.5)
         sentence = made.score("Is anyone there?")
-        assert isinstance(sentence, ScoredSentence) and sentence.kind == "typed"
+        assert isinstance(sentence, Attempt) and sentence.kind == "typed"
         assert (sentence.text, sentence.heard_at, sentence.scored_by) == ("Is anyone there?", 42.5, ScoredBy.MODEL)
 
     def test_the_text_is_trimmed(self):
@@ -113,12 +113,12 @@ class TestAgainstTheBar:
     def test_a_line_that_clears_the_bar_is_a_hinge(self):
         made, _, _, _ = typed({"x": 5.0}, bar_level=6.0)
         sentence = made.score("x")
-        assert sentence.is_hinge and sentence.effect is ScoreEffect.TRIGGERED
+        assert sentence.is_hinge and sentence.effect is Ruling.QUALIFIED
 
     def test_a_line_that_does_not_is_only_judged_and_is_not_a_hinge(self):
         made, _, _, _ = typed({"hello": 1.0}, bar_level=6.0)
         sentence = made.score("hello")
-        assert not sentence.is_hinge and sentence.effect is ScoreEffect.JUDGED
+        assert not sentence.is_hinge and sentence.effect is Ruling.TYPED_DNQ
 
     def test_a_line_exactly_at_the_bar_is_not_a_hinge(self):
         made, _, _, _ = typed({"x": 4.0}, bar_level=6.0)    # 4.0 * 1.5 = 6.0
@@ -131,11 +131,11 @@ class TestAgainstTheBar:
     def test_a_typed_hinge_does_not_start_the_rooms_cooldown(self):
         made, _, shared, _ = typed({"x": 9.0})
         made.score("x")
-        assert shared.record(9.0, 101.0) is ScoreEffect.TRIGGERED
+        assert shared.rule(9.0, 101.0) is Ruling.QUALIFIED
 
     def test_the_rooms_cooldown_does_not_hold_a_typed_line_back(self):
         made, _, shared, _ = typed({"x": 9.0})
-        shared.record(9.0, 99.0)
+        shared.rule(9.0, 99.0)
         assert made.score("x").is_hinge
 
 
@@ -153,7 +153,7 @@ class TestTheBarStaysTheRooms:
     def test_affecting_the_bar_counts_the_line_with_the_rooms_scores(self):
         made, _, shared, _ = typed({"x": 2.0}, affects_bar=True)
         sentence = made.score("x")
-        assert shared.counted == 1 and sentence.effect is ScoreEffect.COUNTED
+        assert shared.counted == 1 and sentence.effect is Ruling.DID_NOT_QUALIFY
 
     def test_an_affecting_line_enters_the_window(self):
         made, _, shared, _ = typed({"x": 2.0}, affects_bar=True)
@@ -179,7 +179,7 @@ class TestWhenThereIsNoScore:
                 return ScoredClip(result.fragment, None, ScoredBy.UNSCORED)
         made = TypedLineScorer(Unable(), tracker(), Clock())
         sentence = made.score("hello")
-        assert (sentence.score, sentence.effect, sentence.is_hinge) == (None, ScoreEffect.IGNORED, False)
+        assert (sentence.score, sentence.effect, sentence.is_hinge) == (None, Ruling.NO_MARK, False)
 
     def test_the_clip_filters_score_is_multiplied_like_any_other(self):
         class Filtered(FakeScorer):

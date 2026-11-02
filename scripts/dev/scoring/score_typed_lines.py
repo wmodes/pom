@@ -2,8 +2,8 @@
 """Play with the typed-line path: type lines, see each one's score, the typed score multiplier, and whether the Printer would answer.
 
 The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address in
-`scorer.url`), and so are the ConvoInterestTracker and the TypedLineScorer, with the `[trigger]` settings
-`typed_score_multiplier` and `typed_lines_affect_bar`. A line that does not clear the bar is ignored: the Printer says nothing, and
+`scorer.url`), and so are the BarKeeper and the TypedLineScorer, with the `[qualifying]` settings
+`typed_handicap` and `typed_lines_affect_bar`. A line that does not clear the bar is ignored: the Printer says nothing, and
 this playground says "silence". The scoring is src/pom/scoring/; this is only a window onto it.
 
 Usage:
@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import (ClipScorer, ScorerModelClient, TypedLineScorer, WordTagger, tracker_from_settings)  # noqa: E402
+from pom.scoring import (ClipScorer, ScorerModelClient, TypedLineScorer, WordTagger, bar_keeper_from_settings)  # noqa: E402
 
 
 def build(config: Config, args):
@@ -38,12 +38,12 @@ def build(config: Config, args):
     scorer = ClipScorer(client, tagger, clip_filter_score=settings.clip_filter_score,
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
-    trigger = config.trigger
+    qualifying = config.qualifying
     if args.bar is not None:
-        trigger = dataclasses.replace(trigger, starting_bar=args.bar)
-    tracker = tracker_from_settings(trigger)
-    multiplier = trigger.typed_score_multiplier if args.multiplier is None else args.multiplier
-    affects_bar = trigger.typed_lines_affect_bar or args.affect_bar
+        qualifying = dataclasses.replace(qualifying, starting_bar=args.bar)
+    tracker = bar_keeper_from_settings(qualifying)
+    multiplier = qualifying.typed_handicap if args.multiplier is None else args.multiplier
+    affects_bar = qualifying.typed_lines_affect_bar or args.affect_bar
     started = time.monotonic()
     typed = TypedLineScorer(scorer, tracker, lambda: time.monotonic() - started, multiplier, affects_bar)
     return scorer, tracker, typed, client, multiplier, affects_bar
@@ -54,14 +54,14 @@ def main():
     parser.add_argument("lines", nargs="*", help="what to score (read from stdin, or typed at a prompt, if omitted)")
     parser.add_argument("--config", default=str(ROOT / "config" / "pom.toml"), help="the config file to read")
     parser.add_argument("--bar", type=float, default=None, help="start the bar here (default: the config's starting_bar)")
-    parser.add_argument("--multiplier", type=float, default=None, help="the typed score multiplier (default: the config's typed_score_multiplier)")
+    parser.add_argument("--multiplier", type=float, default=None, help="the typed score multiplier (default: the config's typed_handicap)")
     parser.add_argument("--affect-bar", action="store_true", help="let typed lines feed the bar (default: the config's typed_lines_affect_bar)")
     args = parser.parse_args()
 
     configure_logging("WARNING")
     config = Config.load(args.config)
     scorer, tracker, typed, client, multiplier, affects_bar = build(config, args)
-    print(f"scorer at {config.scorer.url}; trigger ({config.trigger.algorithm}): a score above {tracker.describe()}")
+    print(f"scorer at {config.scorer.url}; trigger ({config.qualifying.algorithm}): a score above {tracker.describe()}")
     print(f"typed lines: score x {multiplier:g}, no cooldown, {'feed' if affects_bar else 'do not feed'} the bar")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: lines will come back unscored (start its llama-server)")

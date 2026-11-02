@@ -7,7 +7,7 @@ import pytest
 
 from pom.scoring.decaying_quantile_bar import (DEFAULT_HALF_LIFE_SECONDS, DEFAULT_PERCENTILE, DEFAULT_STARTING_BAR,
                                                DEFAULT_STARTING_WEIGHT, DecayingQuantileBar, DecayingQuantileBarError)
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 TINY = 1e-12            # a starting weight so small that the starting line does not affect the result
 
@@ -44,7 +44,7 @@ class TestTheDefaults:
         assert DecayingQuantileBar(percentile=100, half_life_seconds=0.001, starting_bar=-3, starting_weight=0.001).report.ok
 
     def test_it_is_a_trigger_bar(self):
-        assert isinstance(DecayingQuantileBar(), TriggerBar)
+        assert isinstance(DecayingQuantileBar(), Bar)
 
     def test_it_ignores_no_score(self):
         assert DecayingQuantileBar().ignores(0.0) is False and DecayingQuantileBar().ignores(9.0) is False
@@ -209,7 +209,7 @@ class TestTheDecay:
 
 class TestExcludingTriggers:
     def test_a_triggering_score_is_left_out_when_asked(self):
-        b = DecayingQuantileBar(exclude_triggers=True)
+        b = DecayingQuantileBar(exclude_qualifiers=True)
         b.add(9.0, 0.0, True)
         assert b.window_size_at(0.0) == 0
 
@@ -219,21 +219,21 @@ class TestExcludingTriggers:
         assert b.window_size_at(0.0) == 1
 
     def test_only_the_triggering_scores_are_left_out(self):
-        b = DecayingQuantileBar(exclude_triggers=True)
+        b = DecayingQuantileBar(exclude_qualifiers=True)
         b.add(3.0, 0.0, False)
         b.add(9.0, 1.0, True)
         b.add(4.0, 2.0, False)
         assert b.window_size_at(2.0) == 2
 
     def test_leaving_a_zinger_out_keeps_the_bar_at_the_rooms_high_tide(self):
-        keep, leave = bar(percentile=99.5, starting_bar=3.0), bar(percentile=99.5, exclude_triggers=True, starting_bar=3.0)
+        keep, leave = bar(percentile=99.5, starting_bar=3.0), bar(percentile=99.5, exclude_qualifiers=True, starting_bar=3.0)
         for b in (keep, leave):
             feed(b, [3.0] * 30)
             b.add(9.0, 30.0, True)
         assert keep.level_at(31.0) == pytest.approx(8.07, abs=0.01) and leave.level_at(31.0) == pytest.approx(3.0)
 
     def test_a_score_that_did_not_trigger_is_kept_either_way(self):
-        b = DecayingQuantileBar(exclude_triggers=True)
+        b = DecayingQuantileBar(exclude_qualifiers=True)
         b.add(9.0, 0.0, False)
         assert b.window_size_at(0.0) == 1
 
@@ -306,7 +306,7 @@ class TestDescribing:
             "the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8"
 
     def test_it_mentions_leaving_triggers_out_only_when_it_does(self):
-        assert "triggering scores left out" in DecayingQuantileBar(exclude_triggers=True).describe()
+        assert "triggering scores left out" in DecayingQuantileBar(exclude_qualifiers=True).describe()
         assert "triggering scores left out" not in DecayingQuantileBar().describe()
 
 
@@ -352,20 +352,20 @@ class TestBadSettings:
 
 class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
-        settings = SimpleNamespace(percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, exclude_triggers=True, unrelated="x")
+        settings = SimpleNamespace(percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, exclude_qualifiers=True, unrelated="x")
         b = DecayingQuantileBar.from_settings(settings)
-        assert (b._percentile, b._half_life, b._starting_bar, b._exclude_triggers) == (95.0, 120.0, 5.5, True)
+        assert (b._percentile, b._half_life, b._starting_bar, b._exclude_qualifiers) == (95.0, 120.0, 5.5, True)
         assert b.report.ok
 
     def test_bad_settings_are_replaced_as_usual(self):
-        settings = SimpleNamespace(percentile=500, half_life_seconds=120.0, starting_bar=5.5, exclude_triggers=False)
+        settings = SimpleNamespace(percentile=500, half_life_seconds=120.0, starting_bar=5.5, exclude_qualifiers=False)
         b = DecayingQuantileBar.from_settings(settings)
         assert b._percentile == DEFAULT_PERCENTILE and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(DecayingQuantileBarError):
             DecayingQuantileBar.from_settings(SimpleNamespace(percentile=500, half_life_seconds=1.0, starting_bar=1.0,
-                                                              exclude_triggers=False), strict=True)
+                                                              exclude_qualifiers=False), strict=True)
 
 
 class TestLogging:

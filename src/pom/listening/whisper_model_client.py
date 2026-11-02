@@ -3,7 +3,7 @@
 whisper.cpp's `whisper-server` keeps the whisper model (and its Silero voice detection model) loaded, so each request
 is only the transcription. This module is only the conversation with that server: audio in, text or timed segments
 out, or nothing if the server could not be reached. It knows nothing about what the text means; the
-WhisperTextSorter does that.
+TrackSplitter does that.
 
 The server is started once with its voice detection on, for example (probe_hearing_run.sh does this on the Pi):
 

@@ -1,6 +1,6 @@
 """The ScoreTrace: every scored sentence's score and the bar it was judged against, for the chart on the monitoring site.
 
-The TriggerHistory keeps the words of the sentences that triggered. This keeps something lighter for all the others: just numbers, one
+The TurnHistory keeps the words of the sentences that triggered. This keeps something lighter for all the others: just numbers, one
 point per scored sentence (when it was heard, its score, the bar it had to beat, and whether it triggered), so the page can draw the
 room's scores and the bar riding above them. No words from the room are kept here, so it is safe to show even when hinges are hidden.
 

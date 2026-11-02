@@ -48,11 +48,11 @@ from pom.config import Config                                                   
 from pom.corpus import Catalog, Circulation, Bibliomancer                                    # noqa: E402
 from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck,         # noqa: E402
                            WhisperModelClient)
-from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TriggerHistory                      # noqa: E402
+from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TurnHistory                      # noqa: E402
 from pom.log_setup import configure_logging                                                         # noqa: E402
 from pom.prompt import PromptBuilder                                                                # noqa: E402
-from pom.scoring import (HingeFinder, ScoreEffect, ClipScorer, ScorerModelClient,  # noqa: E402
-                         WordTagger, tracker_from_settings)
+from pom.scoring import (HingeFinder, Ruling, ClipScorer, ScorerModelClient,  # noqa: E402
+                         WordTagger, bar_keeper_from_settings)
 from pom.voice import OracleModelClient, PortentWriter                                              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
@@ -68,10 +68,10 @@ def stamp(seconds: float) -> str:
 
 def standing(sentence) -> str:
     """Where a score stands, for the end of its line."""
-    if sentence.effect is ScoreEffect.IGNORED or sentence.trigger_level is None:
+    if sentence.effect is Ruling.NO_MARK or sentence.trigger_level is None:
         return "[no score]"
     return (f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
-            ("; cooling down" if sentence.effect is ScoreEffect.COOLING_DOWN else "") + "]")
+            ("; cooling down" if sentence.effect is Ruling.HELD else "") + "]")
 
 
 def answers(url: str) -> bool:
@@ -121,7 +121,7 @@ def main() -> None:
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    heard_settings, trigger, scoring = config.listening, config.trigger, config.scorer
+    heard_settings, qualifying, scoring = config.listening, config.qualifying, config.scorer
     if args.monitor and not config.monitor.password:
         sys.exit("--monitor needs a password: put  password = \"...\"  under [monitor] in config/pom.local.toml (git ignores that file)")
     client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
@@ -147,7 +147,7 @@ def main() -> None:
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
-    tracker = tracker_from_settings(trigger)
+    tracker = bar_keeper_from_settings(qualifying)
     finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
 
     rng = random.Random()
@@ -161,17 +161,17 @@ def main() -> None:
         monitor = config.monitor
         watch = ServiceWatch({"whisper": lambda: reachable(heard_settings.whisper_url), "scorer": lambda: answers(scoring.url),
                               "oracle": lambda: answers(config.oracle.url)})
-        history, trace = TriggerHistory(monitor.history_seconds), ScoreTrace(monitor.history_seconds)
+        history, trace = TurnHistory(monitor.history_seconds), ScoreTrace(monitor.history_seconds)
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
         site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, status_source=lambda: MonitorStatus(
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
-            services=watch(), algorithm=trigger.algorithm, trigger_description=tracker.describe()))
+            services=watch(), algorithm=qualifying.algorithm, trigger_description=tracker.describe()))
         if not site.start(monitor.host, monitor.port):
             sys.exit("the monitoring site did not start: " + "; ".join(site.report.lines()))
 
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
-    print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
+    print(f"  trigger ({qualifying.algorithm}): a score above {tracker.describe()}")
     print(f"  ambient sounds {'are' if heard_settings.score_room_tone else 'are not'} scored")
     if site is not None:
         print(f"  monitoring site: http://{'<this machine>' if config.monitor.host == '0.0.0.0' else config.monitor.host}:{site.port}  "
@@ -191,7 +191,7 @@ def main() -> None:
             print(f"\n[{when}] {sentence.kind:<6} {shown}  {sentence.scored_by.value:<16} {sentence.text}   "
                   f"{standing(sentence)}", flush=True)
             snapshot.update(heard=snapshot["heard"] + 1, scored=snapshot["scored"] + (sentence.score is not None),
-                            bar=tracker.trigger_level_at(sentence.heard_at), window=tracker.window_size_at(sentence.heard_at))
+                            bar=tracker.bar_at(sentence.heard_at), window=tracker.window_size_at(sentence.heard_at))
             if trace is not None and sentence.score is not None:
                 trace.add(sentence.score, sentence.trigger_level, sentence.heard_at, sentence.is_hinge)      # numbers only, for the chart
             if not sentence.is_hinge:

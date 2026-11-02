@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Play with the whole listening side: the microphone (or a recording) through the Eavesdropper, the ClipScorer and the trigger.
 
-It is the real HingeFinder (the Eavesdropper, the TakeCutter, the ClipScorer and the ConvoInterestTracker joined) and nothing
+It is the real HingeFinder (the Eavesdropper, the TakeCutter, the ClipScorer and the BarKeeper joined) and nothing
 else: every sentence it hears is shown with its score and where the trigger stands, and the ones that would trigger the
 Printer are marked. It needs a whisper-server running (the address is `listening.whisper_url`) and the scorer model's
 llama-server; the settings are all in config/pom.toml.
@@ -26,8 +26,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config  # noqa: E402
 from pom.listening import Eavesdropper, MicDeck, TakeCutter, WavDeck, WhisperModelClient  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import (HingeFinder, ScoreEffect, ClipScorer, ScorerModelClient,  # noqa: E402
-                         WordTagger, tracker_from_settings)
+from pom.scoring import (HingeFinder, Ruling, ClipScorer, ScorerModelClient,  # noqa: E402
+                         WordTagger, bar_keeper_from_settings)
 
 
 def stamp(seconds: float) -> str:
@@ -38,11 +38,11 @@ def stamp(seconds: float) -> str:
 
 def standing(sentence) -> str:
     """Where a score stands, for the end of its line."""
-    if sentence.effect is ScoreEffect.IGNORED or sentence.trigger_level is None:
+    if sentence.effect is Ruling.NO_MARK or sentence.trigger_level is None:
         return "[no score]"
     return (("<-- would trigger  " if sentence.is_hinge else "") +
             f"[window {sentence.window_size} scores, bar {sentence.trigger_level:.2f}" +
-            ("; cooling down" if sentence.effect is ScoreEffect.COOLING_DOWN else "") + "]")
+            ("; cooling down" if sentence.effect is Ruling.HELD else "") + "]")
 
 
 def main():
@@ -54,7 +54,7 @@ def main():
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    heard_settings, trigger = config.listening, config.trigger
+    heard_settings, qualifying = config.listening, config.qualifying
     client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
@@ -70,14 +70,14 @@ def main():
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-    tracker = tracker_from_settings(trigger)
+    tracker = bar_keeper_from_settings(qualifying)
     finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
     print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
           f"a whisper run every {heard_settings.step:g} s")
-    print(f"  trigger ({trigger.algorithm}): a score above {tracker.describe()}")
+    print(f"  trigger ({qualifying.algorithm}): a score above {tracker.describe()}")
     print(f"  ambient sounds {'are' if heard_settings.score_room_tone else 'are not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)

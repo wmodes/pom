@@ -2,7 +2,7 @@
 
 It hands out a 16 kHz mono 16-bit WAV file in 30 ms frames, paced like real time (speed 1), faster, or flat out
 (speed 0). This is how we try a change on a meeting we already have, and how the listening side is tested without a
-microphone. The Printer itself uses a MicSource and never constructs this.
+microphone. The Printer itself uses a MicDeck and never constructs this.
 
 After the last frame it adds a short stretch of silence (1.2 s), so whatever was being said when the recording ended
 is followed by a pause, as it would be in a room. A last piece of less than one frame is dropped.

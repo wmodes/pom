@@ -50,7 +50,7 @@ class StartupError(RuntimeError):
     """Raised for a failed step, but only in strict mode (development and tests)."""
 
 
-class Status(Enum):
+class StepStatus(Enum):
     """How a step ended."""
     DONE = "done"
     SKIPPED = "skipped"      # does not apply here, or is not written yet
@@ -58,9 +58,9 @@ class Status(Enum):
 
 
 @dataclass(frozen=True, slots=True)
-class Outcome:
+class StepOutcome:
     """What a step returns: how it ended, and a short note (never anything that was said)."""
-    status: Status
+    status: StepStatus
     note: str = ""
 
 
@@ -68,7 +68,7 @@ class Outcome:
 class StepResult:
     """One step's outcome as the runner recorded it."""
     name: str
-    status: Status
+    status: StepStatus
     note: str
     seconds: float
     critical: bool
@@ -82,7 +82,7 @@ class Step:
     name = "unnamed"
     critical = False
 
-    def run(self) -> Outcome:
+    def run(self) -> StepOutcome:
         raise NotImplementedError
 
 
@@ -92,8 +92,8 @@ class PlannedStep(Step):
     def __init__(self, name: str, description: str, critical: bool = False):
         self.name, self.description, self.critical = name, description, critical
 
-    def run(self) -> Outcome:
-        return Outcome(Status.SKIPPED, f"planned, not written yet: {self.description}")
+    def run(self) -> StepOutcome:
+        return StepOutcome(StepStatus.SKIPPED, f"planned, not written yet: {self.description}")
 
 
 @dataclass(frozen=True)
@@ -115,18 +115,18 @@ class StartupResult:
     @property
     def failed(self) -> tuple:
         """The results of the steps that failed."""
-        return tuple(r for r in self.results if r.status is Status.FAILED)
+        return tuple(r for r in self.results if r.status is StepStatus.FAILED)
 
     @property
     def skipped(self) -> tuple:
         """The results of the steps that were skipped."""
-        return tuple(r for r in self.results if r.status is Status.SKIPPED)
+        return tuple(r for r in self.results if r.status is StepStatus.SKIPPED)
 
     def summary(self) -> str:
         """One line: how many steps were done, skipped and failed, and whether the Printer is ready."""
-        counts = {status: sum(1 for r in self.results if r.status is status) for status in Status}
-        return (f"startup: {counts[Status.DONE]} done, {counts[Status.SKIPPED]} skipped, "
-                f"{counts[Status.FAILED]} failed; {'ready' if self.ready else 'NOT READY'}")
+        counts = {status: sum(1 for r in self.results if r.status is status) for status in StepStatus}
+        return (f"startup: {counts[StepStatus.DONE]} done, {counts[StepStatus.SKIPPED]} skipped, "
+                f"{counts[StepStatus.FAILED]} failed; {'ready' if self.ready else 'NOT READY'}")
 
 
 class Startup:
@@ -150,10 +150,10 @@ class Startup:
             started = self._clock()
             try:
                 outcome = step.run()
-                if not isinstance(outcome, Outcome):
-                    outcome = Outcome(Status.FAILED, f"returned {type(outcome).__name__}, not an Outcome")
+                if not isinstance(outcome, StepOutcome):
+                    outcome = StepOutcome(StepStatus.FAILED, f"returned {type(outcome).__name__}, not an Outcome")
             except Exception as error:               # a broken step must not stop the others
-                outcome = Outcome(Status.FAILED, f"raised {type(error).__name__}")
+                outcome = StepOutcome(StepStatus.FAILED, f"raised {type(error).__name__}")
             result = StepResult(step.name, outcome.status, outcome.note, self._clock() - started, step.critical)
             results.append(result)
             self._record(result, report)
@@ -166,7 +166,7 @@ class Startup:
         """Logs a step's result, and files a failure in the report at the right severity."""
         _log.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
                   f" ({result.note})" if result.note else "")
-        if result.status is Status.FAILED:
+        if result.status is StepStatus.FAILED:
             message = f"startup step '{result.name}' failed" + (f": {result.note}" if result.note else "")
             (report.critical if result.critical else report.warn)(message)
 
@@ -176,7 +176,7 @@ def planned_steps() -> list:
     return [
         PlannedStep("config-report", "log what the config loader had to correct (config.report)"),
         PlannedStep("data-check", "the corpus chunks, weights.json and the NLTK data are present; the "
-                    "ExemplarSelector cannot draw without chunks", critical=True),
+                    "Bibliomancer cannot draw without chunks", critical=True),
         PlannedStep("mic-gain", "set the microphone's capture gain from config (24 of 30 worked on the "
                     "ATR4697-USB); Pi only, and it resets on every reboot"),
         PlannedStep("audio-device", "a capture device exists; without ears there is nothing to do",

@@ -1,14 +1,14 @@
 """Tests for pom.scoring.hinge_finder: sound in, hinges out.
 
-The Listener and the Scorer are small fakes (what they do is tested elsewhere); the TakeCutter and the
-ConvoInterestTracker are the real ones, because how the finder joins them is the point.
+The Eavesdropper and the Scorer are small fakes (what they do is tested elsewhere); the TakeCutter and the
+BarKeeper are the real ones, because how the finder joins them is the point.
 """
 import logging
 
 from pom.fault_recorder import FaultRecorder
 from pom.listening import ClipLevel, Take, TakeCutter
 from pom.listening.take_cutter import Clip
-from pom.scoring import ConvoInterestTracker, HingeFinder, PercentileBar, ScoreEffect, ScoredBy, ScoredClip, ScoredSentence
+from pom.scoring import BarKeeper, HingeFinder, PercentileBar, Ruling, ScoredBy, ScoredClip, Attempt
 
 QUIET = 2.0
 LOUD = 9.0
@@ -59,7 +59,7 @@ def segment(words="", ends_at=10.0, kind="speech", ambient=()):
 
 def tracker(min_scores=3, cooldown=60.0):
     """A tracker over a PercentileBar whose starting line is out of reach (1000), so nothing triggers until `min_scores` scores are heard."""
-    return ConvoInterestTracker(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
+    return BarKeeper(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
 
 
 def finder(segments, scores=None, score_room_tone=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
@@ -77,7 +77,7 @@ class TestWhatIsYielded:
         made, _, _ = finder([segment("It is late. The dog barks.", ends_at=12.5)])
         sentences = found(made)
         assert [(s.text, s.heard_at) for s in sentences] == [("It is late.", 12.5), ("The dog barks.", 12.5)]
-        assert all(isinstance(s, ScoredSentence) for s in sentences)
+        assert all(isinstance(s, Attempt) for s in sentences)
 
     def test_the_kind_of_the_words_is_passed_on(self):
         made, _, _ = finder([segment("Hello there.", kind="speech"), segment("Sing along.", ends_at=20.0, kind="lyrics")])
@@ -121,7 +121,7 @@ class TestWhatIsYielded:
             sentence.text = "other"
         except AttributeError:
             return
-        raise AssertionError("a ScoredSentence should be frozen")
+        raise AssertionError("an Attempt should be frozen")
 
     def test_the_scorer_is_given_the_time_the_words_ended(self):
         made, _, scorer = finder([segment("Hello there.", ends_at=33.0)])
@@ -143,7 +143,7 @@ class TestTheTrigger:
 
     def test_early_scores_are_counted_and_a_high_one_after_them_is_the_hinge(self):
         sentences = self.scored()
-        assert [s.effect for s in sentences] == [ScoreEffect.COUNTED] * 3 + [ScoreEffect.TRIGGERED]
+        assert [s.effect for s in sentences] == [Ruling.DID_NOT_QUALIFY] * 3 + [Ruling.QUALIFIED]
         assert [s.is_hinge for s in sentences] == [False, False, False, True]
 
     def test_the_hinge_is_the_sentence_word_for_word(self):
@@ -164,7 +164,7 @@ class TestTheTrigger:
         segments = self.SEGMENTS + [segment("Five.", 50.0)]
         made, _, _ = finder(segments, scores={"One.": QUIET, "Two.": QUIET, "Three.": QUIET, "Four.": LOUD, "Five.": LOUD + 0.5})
         last = found(made)[-1]
-        assert last.effect is ScoreEffect.COOLING_DOWN and not last.is_hinge
+        assert last.effect is Ruling.HELD and not last.is_hinge
 
     def test_a_high_score_after_the_cooldown_is_a_hinge_again(self):
         segments = self.SEGMENTS + [segment("Five.", 200.0)]
@@ -174,7 +174,7 @@ class TestTheTrigger:
     def test_a_sentence_that_could_not_be_scored_is_ignored_by_the_trigger(self):
         made, _, _ = finder([segment("Hello there.")], scored_by=ScoredBy.UNSCORED, scores={"Hello there.": None})
         sentence = found(made)[0]
-        assert sentence.score is None and sentence.effect is ScoreEffect.IGNORED and not sentence.is_hinge
+        assert sentence.score is None and sentence.effect is Ruling.NO_MARK and not sentence.is_hinge
 
     def test_nothing_triggers_before_the_trigger_has_seen_enough_scores(self):
         made, _, _ = finder([segment("One.", 10.0), segment("Two.", 20.0)], scores={"One.": QUIET, "Two.": LOUD})
@@ -205,7 +205,7 @@ class TestAmbientSounds:
         sentence = found(made)[0]
         assert scorer.asked == [("(dog barks)", 15.0)]
         assert (sentence.kind, sentence.score, sentence.scored_by) == ("ambient", 4.0, ScoredBy.MODEL)
-        assert sentence.effect is ScoreEffect.COUNTED and sentence.counted == 1
+        assert sentence.effect is Ruling.DID_NOT_QUALIFY and sentence.counted == 1
 
     def test_a_considered_caption_can_be_the_hinge(self):
         segments = [segment("One.", 10.0), segment("Two.", 20.0), segment("Three.", 30.0),

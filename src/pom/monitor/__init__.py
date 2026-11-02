@@ -2,6 +2,6 @@
 from pom.monitor.monitor_site import MonitorSite, MonitorSiteError, MonitorStatus
 from pom.monitor.score_chart import render_score_chart
 from pom.monitor.score_trace import ScoreTrace, ScoreTraceError, TracePoint
-from pom.monitor.trigger_history import TriggerHistory, TriggerHistoryError, TriggerRecord
+from pom.monitor.turn_history import TurnHistory, TurnHistoryError, TurnRecord
 
-__all__ = ["render_score_chart", "ScoreTrace", "ScoreTraceError", "TracePoint", "MonitorSite", "MonitorSiteError", "MonitorStatus", "TriggerHistory", "TriggerHistoryError", "TriggerRecord"]
+__all__ = ["render_score_chart", "ScoreTrace", "ScoreTraceError", "TracePoint", "MonitorSite", "MonitorSiteError", "MonitorStatus", "TurnHistory", "TurnHistoryError", "TurnRecord"]

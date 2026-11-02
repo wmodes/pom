@@ -2,7 +2,7 @@
 """Play with the ClipScorer and the trigger: type sentences, see each one's score and whether the trigger would fire.
 
 The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address
-in `scorer.url`), and so is the ConvoInterestTracker that decides the trigger. Each sentence is taken to have been said
+in `scorer.url`), and so is the BarKeeper that decides the trigger. Each sentence is taken to have been said
 `--gap` seconds after the one before, so you can watch the room's window fill and the bar settle. The scoring is
 src/pom/scoring/; this is only a window onto it.
 
@@ -26,11 +26,11 @@ from pom.config import Config  # noqa: E402
 from pom.listening import TakeCutter  # noqa: E402
 from pom.listening.take_cutter import ClipLevel  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import ScoreEffect, ClipScorer, ScorerModelClient, WordTagger, tracker_from_settings  # noqa: E402
+from pom.scoring import Ruling, ClipScorer, ScorerModelClient, WordTagger, bar_keeper_from_settings  # noqa: E402
 
 
 def build(config: Config, min_scores: int):
-    """The real ClipScorer and ConvoInterestTracker, from the config."""
+    """The real ClipScorer and BarKeeper, from the config."""
     nltk_dir = ROOT / "data" / "nltk"
     tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None)
     settings = config.scorer
@@ -38,17 +38,17 @@ def build(config: Config, min_scores: int):
     scorer = ClipScorer(client, tagger, clip_filter_score=settings.clip_filter_score,
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
-    trigger = dataclasses.replace(config.trigger, min_scores=min_scores) if min_scores else config.trigger
-    return scorer, tracker_from_settings(trigger), client
+    qualifying = dataclasses.replace(config.qualifying, min_scores=min_scores) if min_scores else config.qualifying
+    return scorer, bar_keeper_from_settings(qualifying), client
 
 
-def standing(effect: ScoreEffect, bar, held: int) -> str:
+def standing(effect: Ruling, bar, held: int) -> str:
     """Where a score stands, for the end of its line."""
-    if effect is ScoreEffect.IGNORED or bar is None:
+    if effect is Ruling.NO_MARK or bar is None:
         return "[no score]"
     note = f"[window {held} scores, bar {bar:.2f}"
-    return ("<-- would trigger  " if effect is ScoreEffect.TRIGGERED else "") + note + \
-        ("; cooling down" if effect is ScoreEffect.COOLING_DOWN else "") + "]"
+    return ("<-- would trigger  " if effect is Ruling.QUALIFIED else "") + note + \
+        ("; cooling down" if effect is Ruling.HELD else "") + "]"
 
 
 def main():
@@ -64,7 +64,7 @@ def main():
     config = Config.load(args.config)
     scorer, tracker, client = build(config, args.min_scores)
     fragmenter = TakeCutter()
-    print(f"scorer at {config.scorer.url}; trigger ({config.trigger.algorithm}): a score above {tracker.describe()}")
+    print(f"scorer at {config.scorer.url}; trigger ({config.qualifying.algorithm}): a score above {tracker.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")
 
@@ -76,8 +76,8 @@ def main():
             if fragment.level is not ClipLevel.SENTENCE:
                 continue
             scored = scorer.score(fragment)
-            bar, held = tracker.trigger_level_at(now), tracker.window_size_at(now)
-            effect = tracker.record(scored.score, now)
+            bar, held = tracker.bar_at(now), tracker.window_size_at(now)
+            effect = tracker.rule(scored.score, now)
             shown = f"{scored.score:5.2f}" if scored.score is not None else "  -  "
             print(f"  {shown}  {scored.scored_by.value:<16} {fragment.text}   "
                   f"{standing(effect, bar, held)}")

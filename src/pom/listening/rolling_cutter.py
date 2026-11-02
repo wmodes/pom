@@ -59,7 +59,7 @@ class RollingCutterError(ValueError):
 
 
 class SegmentFinder(Protocol):
-    """What the cutter needs from whisper: the WhisperServerClient has it."""
+    """What the cutter needs from whisper: the WhisperModelClient has it."""
     error: Optional[str]
 
     def segments(self, pcm: bytes, offset_s: float = 0.0, vad: bool = True) -> List[Segment]:
@@ -94,7 +94,7 @@ class RollingCutter:
                  rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS, vad: bool = True,
                  clock: Optional[Callable[[], float]] = None, strict: bool = False):
         """Args:
-            client: Asks whisper for segments (a WhisperServerClient, or anything with its `segments` and `error`).
+            client: Asks whisper for segments (a WhisperModelClient, or anything with its `segments` and `error`).
             cut_every_seconds: Seconds of new audio between whisper runs, above 0.
             hold_back_seconds: A segment is kept once it ends this many seconds before the buffer's end, 0 or more.
             rewind_seconds: Seconds before the last kept segment's end that the next round starts, 0 or more (0 is off).

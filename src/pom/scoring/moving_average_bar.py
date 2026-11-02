@@ -26,7 +26,7 @@ from typing import Optional, Sequence
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -46,7 +46,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class MovingAverageBar(TriggerBar):
+class MovingAverageBar(Bar):
     """A decaying average of the scores above a floor, with the bar a fraction above it.
 
     Attributes:
@@ -106,7 +106,7 @@ class MovingAverageBar(TriggerBar):
                          f"using {DEFAULT_SCORE_RANGE}")
         return DEFAULT_SCORE_RANGE
 
-    # --- The TriggerBar questions ---------------------------------------------------
+    # --- The Bar questions ---------------------------------------------------
 
     def level_at(self, now: float) -> Optional[float]:
         """The average times (1 + fraction). `now` is not used: this bar decays by score, not by time."""

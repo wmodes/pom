@@ -54,7 +54,7 @@ class MicDeck:
     """
 
     # What differs on another machine: the capture program, the device a bad setting falls back to, and the hint
-    # given when the program is missing. MacMicSource overrides these and `_command`.
+    # given when the program is missing. MacMicDeck overrides these and `_command`.
     _TOOL = "arecord"
     _FALLBACK_DEVICE = DEFAULT_DEVICE
     _MISSING_HINT = "this is meant to run on the Pi"

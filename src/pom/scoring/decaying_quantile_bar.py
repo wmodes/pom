@@ -19,7 +19,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises DecayingQuantileBarError instead, for tests and dev tools.
   * Decay is by time, not by number of scores, so a quiet room and a busy one both remember "the last few minutes".
-  * `exclude_triggers` leaves a triggering score out of what the bar remembers. Otherwise the zinger that fired becomes the room's best
+  * `exclude_qualifiers` leaves a triggering score out of what the bar remembers. Otherwise the zinger that fired becomes the room's best
     score and holds the bar up for a while, shutting out the next good one. With it on, the bar stays at the room's usual high tide.
   * Scores older than 8 half-lives (under 0.4% of their weight) are dropped, so memory stays bounded however long the room talks.
   * The starting line is a blend, not an extra score in the list: a stand-in score with almost no weight would still anchor the
@@ -33,7 +33,7 @@ from typing import Deque, Optional, Tuple
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
-from pom.scoring.trigger_bar import TriggerBar
+from pom.scoring.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -53,7 +53,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class DecayingQuantileBar(TriggerBar):
+class DecayingQuantileBar(Bar):
     """A weighted, interpolated high quantile of the recent scores.
 
     Attributes:
@@ -61,13 +61,13 @@ class DecayingQuantileBar(TriggerBar):
     """
 
     def __init__(self, percentile: float = DEFAULT_PERCENTILE, half_life_seconds: float = DEFAULT_HALF_LIFE_SECONDS,
-                 starting_bar: float = DEFAULT_STARTING_BAR, exclude_triggers: bool = False,
+                 starting_bar: float = DEFAULT_STARTING_BAR, exclude_qualifiers: bool = False,
                  starting_weight: float = DEFAULT_STARTING_WEIGHT, strict: bool = False):
         """Args:
             percentile: How much of the weighted scores the bar sits above, above 0 and at most 100.
             half_life_seconds: Seconds for a score's weight to halve, above 0.
             starting_bar: The bar before any real score has been heard, and where it returns after a long silence.
-            exclude_triggers: True leaves a score that triggered out of what the bar remembers.
+            exclude_qualifiers: True leaves a score that triggered out of what the bar remembers.
             starting_weight: How many scores' worth of weight the starting line begins with, above 0.
             strict: Raise DecayingQuantileBarError on any problem instead of recording it.
         """
@@ -79,14 +79,14 @@ class DecayingQuantileBar(TriggerBar):
         self._starting_bar = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number")
         self._starting_weight = self._valid(starting_weight, "starting_weight", DEFAULT_STARTING_WEIGHT,
                                             lambda v: _is_number(v) and v > 0, "a number above 0")
-        self._exclude_triggers = bool(exclude_triggers)
+        self._exclude_qualifiers = bool(exclude_qualifiers)
         self._memory: Deque[Tuple[float, float]] = deque()          # (time heard, score), oldest first
         self._started_at: Optional[float] = None                    # when the starting line was "heard"
 
     @classmethod
     def from_settings(cls, settings, strict: bool = False) -> "DecayingQuantileBar":
-        """Builds the bar from an object with `percentile`, `half_life_seconds`, `starting_bar` and `exclude_triggers`."""
-        return cls(settings.percentile, settings.half_life_seconds, settings.starting_bar, settings.exclude_triggers,
+        """Builds the bar from an object with `percentile`, `half_life_seconds`, `starting_bar` and `exclude_qualifiers`."""
+        return cls(settings.percentile, settings.half_life_seconds, settings.starting_bar, settings.exclude_qualifiers,
                    strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
@@ -96,7 +96,7 @@ class DecayingQuantileBar(TriggerBar):
         self.report.warn(f"{name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
-    # --- The TriggerBar questions ---------------------------------------------------
+    # --- The Bar questions ---------------------------------------------------
 
     def level_at(self, now: float) -> Optional[float]:
         """The weighted, interpolated percentile of the real scores and the fading starting line at `now`."""
@@ -121,11 +121,11 @@ class DecayingQuantileBar(TriggerBar):
         return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
 
     def add(self, score: float, now: float, triggered: bool) -> None:
-        """Takes in a judged score. A triggering score is left out when `exclude_triggers` is on."""
+        """Takes in a judged score. A triggering score is left out when `exclude_qualifiers` is on."""
         if not (_is_number(score) and _is_number(now)):
             return
         self._start(now)
-        if triggered and self._exclude_triggers:
+        if triggered and self._exclude_qualifiers:
             return
         self._memory.append((now, float(score)))
         self._forget_old(now)
@@ -133,7 +133,7 @@ class DecayingQuantileBar(TriggerBar):
     def describe(self) -> str:
         """For example: the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8."""
         return (f"the {self._percentile:g}th percentile of scores that count half as much every {self._half_life:g} s, "
-                f"starting at {self._starting_bar:g}" + (", triggering scores left out" if self._exclude_triggers else ""))
+                f"starting at {self._starting_bar:g}" + (", triggering scores left out" if self._exclude_qualifiers else ""))
 
     # --- The arithmetic -------------------------------------------------------------
 

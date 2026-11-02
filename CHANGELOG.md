@@ -45,6 +45,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Qualifying (and the monitor's and startup's names)**: the part that decides what to respond to takes the lexicon's names. `ConvoInterestTracker` is `BarKeeper` (module `bar_keeper.py`; `tracker_from_settings` is
+  `bar_keeper_from_settings` in `bar_keeper_factory.py`), `ScoredSentence` is `Attempt`, `TriggerBar` is `Bar` (module `bar.py`), and `ScoreEffect` is `Ruling` with `record()` as `rule()`, `record_direct()` as `rule_typed()` and `trigger_level_at()` as
+  `bar_at()`. The rulings are `NO_MARK` ("no mark"), `DID_NOT_QUALIFY`, `QUALIFIED`, `HELD` and `TYPED_DNQ` ("typed DNQ"), so a score that used to be *triggered* now *qualifies*. **Config:** `[trigger]` is `[qualifying]` (`config.qualifying`,
+  `QualifyingSettings`), `exclude_triggers` is `exclude_qualifiers` and `typed_score_multiplier` is `typed_handicap`; `config/pom.toml` is changed to match, and a copy of an old name in `config/pom.local.toml` (here or on the Pi) would now be ignored with
+  a warning. The monitor keeps a `TurnRecord` in a `TurnHistory` (were `TriggerRecord` and `TriggerHistory`, module `turn_history.py`), startup's `Status` and `Outcome` are `StepStatus` and `StepOutcome`, and the playground
+  `serve_fake_triggers.py` is `serve_fake_turns.py`. A sweep also put the new class names into the comments and docs that rope had left, fixed two stale `__all__` entries, and corrected a/an before the new names. The word *trigger* in prose and the `pom.scoring`
+  package name are separate passes. Behavior is unchanged except that the ruling values (`"qualified"`, `"typed DNQ"` and so on) show in the debug log; 2,580 tests pass.
 - **The Great Rename, Listening (2 of 2): the config keys**: the `[listening]` keys say what they do and carry their units. `step` is `cut_every_seconds`, `hold` is `hold_back_seconds`, `rewind` is `rewind_seconds`, `max_buffer` is `max_cut_seconds`,
   `sound_every_steps` is `room_tone_pass_every`, `sound_seconds` is `room_tone_pass_seconds`, `ambient_memory` is `room_tone_memory` and `consider_ambient_sounds` is `score_room_tone`. The `RollingCutter` and `Eavesdropper` parameters, the `ListeningSettings` fields and
   the `DEFAULT_` constants follow, and `config/pom.toml` is changed to match. A copy of an old name in `config/pom.local.toml` (here or on the Pi) would now be ignored with a warning; the shipped files have none. The words ambient, fragment, listener

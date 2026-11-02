@@ -16,7 +16,7 @@ QUIET = 2.0
 LOUD = 9.0
 
 
-class FakeListener:
+class FakeEavesdropper:
     """Hears the segments it was given, then ends."""
 
     def __init__(self, segments):
@@ -65,9 +65,9 @@ def tracker(min_scores=3, cooldown=60.0):
 
 
 def finder(segments, scores=None, score_room_tone=False, take_cutter=None, scored_by=ScoredBy.MODEL, **tracking):
-    listener, scorer = FakeListener(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(listener, take_cutter or TakeCutter(), scorer, tracker(**tracking), score_room_tone)
-    return made, listener, scorer
+    eavesdropper, scorer = FakeEavesdropper(segments), FakeScorer(scores, scored_by)
+    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(), scorer, tracker(**tracking), score_room_tone)
+    return made, eavesdropper, scorer
 
 
 def found(made):
@@ -232,26 +232,26 @@ class TestRoomToneSounds:
 
 
 class TestClosingAndReporting:
-    def test_closing_closes_the_listener(self):
-        made, listener, _ = finder([])
+    def test_closing_closes_the_eavesdropper(self):
+        made, eavesdropper, _ = finder([])
         made.close()
-        assert listener.closed == 1
+        assert eavesdropper.closed == 1
 
     def test_closing_twice_is_safe(self):
-        made, listener, _ = finder([])
+        made, eavesdropper, _ = finder([])
         made.close()
         made.close()
-        assert listener.closed == 2
+        assert eavesdropper.closed == 2
 
     def test_the_report_lines_gather_the_four_parts_problems(self):
-        listener, scorer = FakeListener([]), FakeScorer()
+        eavesdropper, scorer = FakeEavesdropper([]), FakeScorer()
         take_cutter, the_tracker = TakeCutter(), tracker()
-        listener.report.warn("listener trouble")
+        eavesdropper.report.warn("eavesdropper trouble")
         scorer.report.warn("scorer trouble")
         take_cutter.report.warn("take cutter trouble")
         the_tracker.report.warn("tracker trouble")
-        lines = HingeFinder(listener, take_cutter, scorer, the_tracker).report_lines()
-        for word in ("listener", "take cutter", "scorer", "tracker"):
+        lines = HingeFinder(eavesdropper, take_cutter, scorer, the_tracker).report_lines()
+        for word in ("eavesdropper", "take cutter", "scorer", "tracker"):
             assert any(f"{word} trouble" in line for line in lines)
 
     def test_there_is_nothing_to_report_when_all_went_well(self):

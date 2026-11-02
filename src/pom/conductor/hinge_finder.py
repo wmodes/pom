@@ -39,15 +39,15 @@ ROOM_TONE = "room_tone"
 class HingeFinder:
     """Finds the sentences worth answering in what the room says."""
 
-    def __init__(self, listener, take_cutter, scorer, tracker, score_room_tone: bool = False):
+    def __init__(self, eavesdropper, take_cutter, scorer, tracker, score_room_tone: bool = False):
         """Args:
-            listener: A Eavesdropper (anything with hear(), close() and report).
+            eavesdropper: An Eavesdropper (anything with hear(), close() and report).
             take cutter: A TakeCutter that cuts words into sentences.
             scorer: A Scorer that scores a clip, or plain text with score_text().
             tracker: A BarKeeper that says whether a score is a trigger.
             score_room_tone: True lets captions of sounds be scored and become hinges; False leaves them unscored.
         """
-        self._listener = listener
+        self._eavesdropper = eavesdropper
         self._take_cutter = take_cutter
         self._scorer = scorer
         self._tracker = tracker
@@ -58,7 +58,7 @@ class HingeFinder:
 
         Ends when the Eavesdropper's sound ends or the finder is closed.
         """
-        for heard in self._listener.hear():
+        for heard in self._eavesdropper.hear():
             for caption in heard.room_tone:
                 yield self._sentence(caption, ROOM_TONE, heard.ends_at, score_it=self._score_room_tone)
             if not heard.words:
@@ -79,9 +79,9 @@ class HingeFinder:
 
     def close(self) -> None:
         """Stops listening. Safe to call more than once."""
-        self._listener.close()
+        self._eavesdropper.close()
 
     def report_lines(self) -> list[str]:
-        """The problems met by the listener, the take cutter, the scorer and the trigger, as lines to show."""
-        return [*self._listener.report.lines(), *self._take_cutter.report.lines(), *self._scorer.report.lines(),
+        """The problems met by the eavesdropper, the take cutter, the scorer and the trigger, as lines to show."""
+        return [*self._eavesdropper.report.lines(), *self._take_cutter.report.lines(), *self._scorer.report.lines(),
                 *self._tracker.report.lines()]

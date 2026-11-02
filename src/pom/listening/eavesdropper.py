@@ -52,7 +52,7 @@ DEFAULT_ROOM_TONE_MEMORY = 6
 
 
 class EavesdropperError(ValueError):
-    """Raised for any listener problem, but only in strict mode (development and tests)."""
+    """Raised for any eavesdropper problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True)

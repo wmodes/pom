@@ -657,9 +657,9 @@ def test_the_listening_settings_plug_straight_into_the_modules():
     settings = Config.load(environ={}).listening
     client = WhisperModelClient(settings.whisper_url, settings.whisper_timeout)
     cutter = RollingCutter(client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds)
-    listener = Eavesdropper(NoSound(), client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds,
+    eavesdropper = Eavesdropper(NoSound(), client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds,
                         settings.room_tone_pass_every, settings.room_tone_pass_seconds, settings.room_tone_memory)
-    assert client.report.ok and cutter.report.ok and listener.report.ok
+    assert client.report.ok and cutter.report.ok and eavesdropper.report.ok
 
 
 # --- The [oracle] section --------------------------------------------------------------

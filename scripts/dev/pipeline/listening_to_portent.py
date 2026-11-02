@@ -139,7 +139,7 @@ def main() -> None:
         source, where = MacMicDeck(args.mac_mic, buffer_seconds=heard_settings.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
     else:
         source, where = MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
-    listener = Eavesdropper(source, client, heard_settings.step, heard_settings.hold, heard_settings.rewind,
+    eavesdropper = Eavesdropper(source, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
                         heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
                         heard_settings.room_tone_memory)
 
@@ -149,7 +149,7 @@ def main() -> None:
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     tracker = bar_keeper_from_settings(qualifying)
-    finder = HingeFinder(listener, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
+    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, tracker, heard_settings.score_room_tone)
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(CHUNKS), Circulation.from_file(CHUNKS / "circulation.json"), rng,

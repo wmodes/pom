@@ -45,6 +45,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (3): listener is eavesdropper**: variables, parameters, messages, comments and test names (`HingeFinder(eavesdropper, ...)`). This commit also fixes two dev tools, `scripts/dev/listening/listen_to_room.py` and `scripts/dev/pipeline/listening_to_portent.py`,
+  which still read the `[listening]` settings by their old names (`step`, `hold`, `rewind`) after the config rename; neither was caught by the suite because both need the servers running. A scan of every settings attribute used in the code, tests and tools found no other stale one. 2,580 tests pass.
 - **The Great Rename, words (2): ambient is room tone**: whisper's captions of sounds like "(dog barks)" are *room tone* (the `Take.room_tone` and `Tracks.room_tone` fields, `Eavesdropper.recent_room_tone`, the `ROOM_TONE` kind, now the string `"room_tone"`, and the
   comments, messages and tests), and the *sound pass* is the *room-tone pass* (the testbench tool prints `room tone:` and its labels are re-aligned). Behavior is unchanged except for that kind string; 2,580 tests pass.
 - **The Great Rename, words (1): fragment is clip**: in the listening, scoring, qualifying and writing code, the tests, the dev tools and the config comments, a *fragment* is a *clip* and the *fragmenter* is the *take cutter* (variables, parameters, the `ScoredClip.clip` field, the `{clip_text}` placeholder

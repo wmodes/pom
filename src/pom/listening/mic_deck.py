@@ -6,7 +6,7 @@ listen, so this is where its hearing starts.
 Design decisions, and why:
   * `arecord` is read by a thread of its own into a buffer, and `frames()` takes from the buffer. Whisper takes a
     second or more to answer, and the loop that waits for it must not make the microphone's pipe fill up and lose
-    sound. The buffer holds `buffer_seconds` of audio (10 by default). If the listener falls so far behind that the
+    sound. The buffer holds `buffer_seconds` of audio (10 by default). If the eavesdropper falls so far behind that the
     buffer fills, the OLDEST frames are dropped (the room has moved on), counted in `dropped_frames`, and a warning is
     recorded once for each stretch of dropping.
   * Nothing here may stop the oracle (see pom/__init__.py). No `arecord`, a microphone that cannot be opened, or a
@@ -50,7 +50,7 @@ class MicDeck:
 
     Attributes:
         report: Problems met (no arecord, the microphone stopped, frames dropped). CRITICAL means no sound will come.
-        dropped_frames: How many frames were thrown away because the listener fell behind.
+        dropped_frames: How many frames were thrown away because the eavesdropper fell behind.
     """
 
     # What differs on another machine: the capture program, the device a bad setting falls back to, and the hint

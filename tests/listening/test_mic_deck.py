@@ -113,7 +113,7 @@ class TestTheFrames:
         assert collect(source) == [] and source.report.has_critical
 
 
-class TestWhenTheListenerFallsBehind:
+class TestWhenTheEavesdropperFallsBehind:
     def test_the_oldest_frames_are_dropped_and_the_newest_kept_in_order(self, tmp_path):
         source = MicDeck(buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))      # room for 10 frames
         wait_for_the_reader(source)
@@ -131,7 +131,7 @@ class TestWhenTheListenerFallsBehind:
         for n in range(4):
             source._put(frame_of(n))                                      # the first stretch: two frames are dropped
         assert len([w for w in source.report.warnings if "dropping" in w]) == 1
-        source._queue.get_nowait()                                         # the listener catches up a little
+        source._queue.get_nowait()                                         # the eavesdropper catches up a little
         source._put(frame_of(10))                                         # room for it: the stretch is over
         for n in range(11, 14):
             source._put(frame_of(n))                                      # the second stretch
@@ -156,20 +156,20 @@ class TestClosing:
     def test_closing_ends_a_wait_for_sound(self, tmp_path):
         source = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         got = []
-        listener = threading.Thread(target=lambda: got.extend(collect(source)))
-        listener.start()
+        eavesdropper = threading.Thread(target=lambda: got.extend(collect(source)))
+        eavesdropper.start()
         time.sleep(0.3)
         source.close()
-        listener.join(5)
-        assert not listener.is_alive() and [value_of(f) for f in got] == [1]
+        eavesdropper.join(5)
+        assert not eavesdropper.is_alive() and [value_of(f) for f in got] == [1]
 
     def test_closing_on_purpose_is_not_a_fault(self, tmp_path):
         source = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
-        listener = threading.Thread(target=lambda: collect(source))
-        listener.start()
+        eavesdropper = threading.Thread(target=lambda: collect(source))
+        eavesdropper.start()
         time.sleep(0.3)
         source.close()
-        listener.join(5)
+        eavesdropper.join(5)
         assert source.report.ok
 
     def test_closing_twice_is_fine(self, tmp_path):
@@ -226,7 +226,7 @@ class TestStrictMode:
         with pytest.raises(MicDeckError, match="stopped sending"):
             collect(source)
 
-    def test_in_strict_mode_dropping_does_not_hang_the_listener(self, tmp_path):
+    def test_in_strict_mode_dropping_does_not_hang_the_eavesdropper(self, tmp_path):
         source = MicDeck(strict=True, buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(source)
         with pytest.raises(MicDeckError):

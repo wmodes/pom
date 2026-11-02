@@ -32,7 +32,7 @@ class MacMicDeck(MicDeck):
 
     Attributes:
         report: Problems met (no ffmpeg, the microphone stopped, frames dropped). CRITICAL means no sound will come.
-        dropped_frames: How many frames were thrown away because the listener fell behind.
+        dropped_frames: How many frames were thrown away because the eavesdropper fell behind.
     """
 
     _TOOL = "ffmpeg"

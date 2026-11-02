@@ -30,7 +30,7 @@ def main():
 
     configure_logging("WARNING")
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    heard = TrackSplitter().sort(raw, plain_text=not args.lyrics_only)
+    heard = TrackSplitter().split(raw, plain_text=not args.lyrics_only)
     print(f"words:     {heard.words or '(none)'}")
     print(f"kind:      {heard.kind or '(none)'}")
     print(f"room tone: {', '.join(heard.room_tone) if heard.room_tone else '(none)'}")

@@ -9,7 +9,7 @@ is followed by a pause, as it would be in a room. A last piece of less than one 
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing file, or a file in the wrong format, gives a
-    CRITICAL fault in `report` and a source that yields nothing, never an exception. `strict=True` raises
+    CRITICAL fault in `report` and a deck that yields nothing, never an exception. `strict=True` raises
     WavDeckError instead, for tests and dev tools. The message for a wrong format says how to convert it.
   * Pacing is only a pause after each frame, and the pause function is injected (`sleep`), so tests run instantly.
     The listening side counts time in the audio it has received, not in wall-clock time, so a recording replayed at
@@ -34,7 +34,7 @@ DEFAULT_END_PAUSE_SECONDS = 1.2
 
 
 class WavDeckError(ValueError):
-    """Raised for any source problem, but only in strict mode (development and tests)."""
+    """Raised for any deck problem, but only in strict mode (development and tests)."""
 
 
 def _is_number(value) -> bool:
@@ -46,7 +46,7 @@ class WavDeck:
 
     Attributes:
         report: Problems met (file missing or in the wrong format, bad setting). A recording that cannot be played is
-            a CRITICAL fault and the source yields nothing.
+            a CRITICAL fault and the deck yields nothing.
         seconds: The length of the recording in seconds, or 0.0 if it could not be opened.
     """
 

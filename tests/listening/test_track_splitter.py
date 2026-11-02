@@ -1,4 +1,4 @@
-"""Tests for pom.listening.track_splitter: words, room tone and nothing-here marks."""
+"""Tests for pom.listening.track_splitter: words, room tone and blanks."""
 import dataclasses
 import random
 
@@ -11,140 +11,140 @@ NOTE = MUSIC_SYMBOL
 
 
 @pytest.fixture
-def sort():
-    return TrackSplitter().sort
+def split():
+    return TrackSplitter().split
 
 
 class TestSpeech:
-    def test_plain_speech_is_all_words(self, sort):
-        assert sort("Hello there, how are you?") == Tracks("Hello there, how are you?", (), KIND_SPEECH)
+    def test_plain_speech_is_all_words(self, split):
+        assert split("Hello there, how are you?") == Tracks("Hello there, how are you?", (), KIND_SPEECH)
 
-    def test_whitespace_is_tidied(self, sort):
-        assert sort("  Hello \n  there\t ").words == "Hello there"
+    def test_whitespace_is_tidied(self, split):
+        assert split("  Hello \n  there\t ").words == "Hello there"
 
-    def test_an_empty_reply_is_nothing(self, sort):
-        assert sort("") == Tracks("", (), KIND_NONE)
-        assert sort("   \n ") == Tracks("", (), KIND_NONE)
+    def test_an_empty_reply_is_nothing(self, split):
+        assert split("") == Tracks("", (), KIND_NONE)
+        assert split("   \n ") == Tracks("", (), KIND_NONE)
 
     @pytest.mark.parametrize("not_text", [None, 5, 2.5, b"hello", ["hello"], {"a": 1}, True])
-    def test_anything_that_is_not_a_string_is_an_empty_reply(self, sort, not_text):
-        assert sort(not_text) == Tracks("", (), KIND_NONE)
+    def test_anything_that_is_not_a_string_is_an_empty_reply(self, split, not_text):
+        assert split(not_text) == Tracks("", (), KIND_NONE)
 
 
 class TestNothingHereMarks:
     @pytest.mark.parametrize("mark", ["[BLANK_AUDIO]", "(silence)", "[ Silence ]", "(SILENT)", "[no audio]",
                                       "(no speech)", "[blank audio]", "( Blank_Audio )"])
-    def test_a_mark_on_its_own_is_nothing(self, sort, mark):
-        assert sort(mark) == Tracks("", (), KIND_NONE)
+    def test_a_mark_on_its_own_is_nothing(self, split, mark):
+        assert split(mark) == Tracks("", (), KIND_NONE)
 
-    def test_a_mark_is_dropped_and_not_kept_as_a_caption(self, sort):
-        heard = sort("hello [BLANK_AUDIO] there")
+    def test_a_mark_is_dropped_and_not_kept_as_a_caption(self, split):
+        heard = split("hello [BLANK_AUDIO] there")
         assert heard.words == "hello there" and heard.room_tone == ()
 
-    def test_two_marks_in_a_row_are_nothing(self, sort):
-        assert sort("[BLANK_AUDIO] (silence)") == Tracks("", (), KIND_NONE)
+    def test_two_marks_in_a_row_are_nothing(self, split):
+        assert split("[BLANK_AUDIO] (silence)") == Tracks("", (), KIND_NONE)
 
-    def test_a_caption_that_only_mentions_silence_is_still_a_caption(self, sort):
-        assert sort("(deafening silence)").room_tone == ("(deafening silence)",)
+    def test_a_caption_that_only_mentions_silence_is_still_a_caption(self, split):
+        assert split("(deafening silence)").room_tone == ("(deafening silence)",)
 
 
 class TestRoomToneCaptions:
-    def test_a_caption_is_kept_apart_from_the_words(self, sort):
-        heard = sort("(dog barks) hello there")
+    def test_a_caption_is_kept_apart_from_the_words(self, split):
+        heard = split("(dog barks) hello there")
         assert heard.words == "hello there" and heard.room_tone == ("(dog barks)",) and heard.kind == KIND_SPEECH
 
-    def test_square_brackets_count_too(self, sort):
-        heard = sort("[Music] and then we left")
+    def test_square_brackets_count_too(self, split):
+        heard = split("[Music] and then we left")
         assert heard.words == "and then we left" and heard.room_tone == ("[Music]",)
 
-    def test_a_caption_alone_leaves_no_words_and_no_kind(self, sort):
-        assert sort("(dog barks)") == Tracks("", ("(dog barks)",), KIND_NONE)
+    def test_a_caption_alone_leaves_no_words_and_no_kind(self, split):
+        assert split("(dog barks)") == Tracks("", ("(dog barks)",), KIND_NONE)
 
-    def test_a_captions_inner_spacing_is_tidied(self, sort):
-        assert sort("(dog   barks\n loudly)").room_tone == ("(dog barks loudly)",)
+    def test_a_captions_inner_spacing_is_tidied(self, split):
+        assert split("(dog   barks\n loudly)").room_tone == ("(dog barks loudly)",)
 
-    def test_each_caption_is_kept_once_in_the_order_it_first_came(self, sort):
-        heard = sort("(dog barks) one [Music] two (dog barks) three (door slams) [Music]")
+    def test_each_caption_is_kept_once_in_the_order_it_first_came(self, split):
+        heard = split("(dog barks) one [Music] two (dog barks) three (door slams) [Music]")
         assert heard.room_tone == ("(dog barks)", "[Music]", "(door slams)")
         assert heard.words == "one two three"
 
-    def test_only_the_innermost_brackets_are_a_caption(self, sort):
-        heard = sort("(a (b) c)")
+    def test_only_the_innermost_brackets_are_a_caption(self, split):
+        heard = split("(a (b) c)")
         assert heard.room_tone == ("(b)",) and heard.words == "(a c)"
 
-    def test_the_captions_are_a_tuple(self, sort):
-        assert isinstance(sort("(dog barks)").room_tone, tuple)
+    def test_the_captions_are_a_tuple(self, split):
+        assert isinstance(split("(dog barks)").room_tone, tuple)
 
-    def test_a_caption_with_a_music_symbol_stays_a_caption(self, sort):
-        heard = sort(f"[{NOTE} dramatic music {NOTE}] hello")
+    def test_a_caption_with_a_music_symbol_stays_a_caption(self, split):
+        heard = split(f"[{NOTE} dramatic music {NOTE}] hello")
         assert heard.room_tone == (f"[{NOTE} dramatic music {NOTE}]",) and heard.words == "hello"
 
 
 class TestLyrics:
-    def test_the_symbol_is_the_eighth_note_whisper_writes(self, sort):
+    def test_the_symbol_is_the_eighth_note_whisper_writes(self, split):
         assert MUSIC_SYMBOL == "\u266a"
-        assert sort("\u266a la la \u266a") == Tracks("la la", (), KIND_LYRICS)
+        assert split("\u266a la la \u266a") == Tracks("la la", (), KIND_LYRICS)
 
-    def test_words_between_music_symbols_are_lyrics(self, sort):
-        assert sort(f"{NOTE} la la la {NOTE}") == Tracks("la la la", (), KIND_LYRICS)
+    def test_words_between_music_symbols_are_lyrics(self, split):
+        assert split(f"{NOTE} la la la {NOTE}") == Tracks("la la la", (), KIND_LYRICS)
 
-    def test_the_music_symbols_are_removed(self, sort):
-        assert NOTE not in sort(f"{NOTE} twinkle twinkle {NOTE} {NOTE} little star {NOTE}").words
+    def test_the_music_symbols_are_removed(self, split):
+        assert NOTE not in split(f"{NOTE} twinkle twinkle {NOTE} {NOTE} little star {NOTE}").words
 
-    def test_two_sung_phrases_are_both_kept(self, sort):
-        assert sort(f"{NOTE} twinkle twinkle {NOTE} {NOTE} little star {NOTE}").words == "twinkle twinkle little star"
+    def test_two_sung_phrases_are_both_kept(self, split):
+        assert split(f"{NOTE} twinkle twinkle {NOTE} {NOTE} little star {NOTE}").words == "twinkle twinkle little star"
 
-    def test_speech_around_lyrics_makes_the_kind_speech(self, sort):
-        heard = sort(f"he said {NOTE} hello world {NOTE} and left")
+    def test_speech_around_lyrics_makes_the_kind_speech(self, split):
+        heard = split(f"he said {NOTE} hello world {NOTE} and left")
         assert heard.words == "he said hello world and left" and heard.kind == KIND_SPEECH
 
-    def test_a_lone_music_symbol_is_dropped_and_the_rest_is_speech(self, sort):
-        assert sort(f"{NOTE} hello") == Tracks("hello", (), KIND_SPEECH)
+    def test_a_lone_music_symbol_is_dropped_and_the_rest_is_speech(self, split):
+        assert split(f"{NOTE} hello") == Tracks("hello", (), KIND_SPEECH)
 
-    def test_music_symbols_with_nothing_between_are_nothing(self, sort):
-        assert sort(f"{NOTE} {NOTE}") == Tracks("", (), KIND_NONE)
-        assert sort(NOTE) == Tracks("", (), KIND_NONE)
+    def test_music_symbols_with_nothing_between_are_nothing(self, split):
+        assert split(f"{NOTE} {NOTE}") == Tracks("", (), KIND_NONE)
+        assert split(NOTE) == Tracks("", (), KIND_NONE)
 
-    def test_a_caption_and_lyrics_are_kept_apart(self, sort):
-        heard = sort(f"(crowd cheers) {NOTE} la la {NOTE}")
+    def test_a_caption_and_lyrics_are_kept_apart(self, split):
+        heard = split(f"(crowd cheers) {NOTE} la la {NOTE}")
         assert heard == Tracks("la la", ("(crowd cheers)",), KIND_LYRICS)
 
 
 class TestWithoutTheVoiceDetector:
-    def test_plain_text_is_thrown_away(self, sort):
-        assert sort("hello there", plain_text=False) == Tracks("", (), KIND_NONE)
+    def test_plain_text_is_thrown_away(self, split):
+        assert split("hello there", plain_text=False) == Tracks("", (), KIND_NONE)
 
-    def test_lyrics_are_kept(self, sort):
-        assert sort(f"hello {NOTE} la la {NOTE} there", plain_text=False) == Tracks("la la", (), KIND_LYRICS)
+    def test_lyrics_are_kept(self, split):
+        assert split(f"hello {NOTE} la la {NOTE} there", plain_text=False) == Tracks("la la", (), KIND_LYRICS)
 
-    def test_captions_are_kept(self, sort):
-        assert sort("(dog barks) hello", plain_text=False) == Tracks("", ("(dog barks)",), KIND_NONE)
+    def test_captions_are_kept(self, split):
+        assert split("(dog barks) hello", plain_text=False) == Tracks("", ("(dog barks)",), KIND_NONE)
 
-    def test_a_doubled_symbol_still_opens_the_lyric_that_follows(self, sort):
-        assert sort(f"{NOTE}{NOTE} la la {NOTE}", plain_text=False) == Tracks("la la", (), KIND_LYRICS)
+    def test_a_doubled_symbol_still_opens_the_lyric_that_follows(self, split):
+        assert split(f"{NOTE}{NOTE} la la {NOTE}", plain_text=False) == Tracks("la la", (), KIND_LYRICS)
 
-    def test_a_pair_of_symbols_around_only_space_is_not_a_lyric(self, sort):
-        assert sort(f"{NOTE} la la {NOTE} {NOTE} {NOTE}", plain_text=False) == Tracks("la la", (), KIND_LYRICS)
-        assert sort(f"{NOTE} {NOTE} {NOTE} {NOTE}", plain_text=False) == Tracks("", (), KIND_NONE)
+    def test_a_pair_of_symbols_around_only_space_is_not_a_lyric(self, split):
+        assert split(f"{NOTE} la la {NOTE} {NOTE} {NOTE}", plain_text=False) == Tracks("la la", (), KIND_LYRICS)
+        assert split(f"{NOTE} {NOTE} {NOTE} {NOTE}", plain_text=False) == Tracks("", (), KIND_NONE)
 
-    def test_nothing_here_marks_are_still_dropped(self, sort):
-        assert sort("[BLANK_AUDIO]", plain_text=False) == Tracks("", (), KIND_NONE)
+    def test_blanks_are_still_dropped(self, split):
+        assert split("[BLANK_AUDIO]", plain_text=False) == Tracks("", (), KIND_NONE)
 
-    def test_the_default_keeps_plain_text(self, sort):
-        assert sort("hello").words == "hello" and sort("hello", plain_text=True).words == "hello"
+    def test_the_default_keeps_plain_text(self, split):
+        assert split("hello").words == "hello" and split("hello", plain_text=True).words == "hello"
 
 
 class TestTheResult:
-    def test_it_cannot_be_changed(self, sort):
-        heard = sort("hello")
+    def test_it_cannot_be_changed(self, split):
+        heard = split("hello")
         with pytest.raises(dataclasses.FrozenInstanceError):
             heard.words = "goodbye"
 
-    def test_the_sorter_has_no_memory_between_calls(self):
-        sorter = TrackSplitter()
-        first = sorter.sort("(dog barks) hello")
-        sorter.sort(f"{NOTE} la {NOTE}")
-        assert sorter.sort("(dog barks) hello") == first
+    def test_the_splitter_has_no_memory_between_calls(self):
+        splitter = TrackSplitter()
+        first = splitter.split("(dog barks) hello")
+        splitter.split(f"{NOTE} la {NOTE}")
+        assert splitter.split("(dog barks) hello") == first
 
 
 class TestWhateverWhisperWrites:
@@ -152,11 +152,11 @@ class TestWhateverWhisperWrites:
               "(", ")", "[", "]", " ", "  ", "\n", "you", "I'm sorry", "(a (b) c)"]
 
     @pytest.mark.parametrize("plain_text", [True, False])
-    def test_the_sorted_pieces_obey_the_rules_for_any_text(self, sort, plain_text):
+    def test_the_split_pieces_obey_the_rules_for_any_text(self, split, plain_text):
         rng = random.Random(7)
         for _ in range(400):
             raw = " ".join(rng.choice(self.PIECES) for _ in range(rng.randint(0, 10)))
-            heard = sort(raw, plain_text=plain_text)
+            heard = split(raw, plain_text=plain_text)
             assert NOTE not in heard.words                                           # the symbols are always removed
             assert heard.words == " ".join(heard.words.split())                      # tidy
             assert len(set(heard.room_tone)) == len(heard.room_tone)                     # each caption once

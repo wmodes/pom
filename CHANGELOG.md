@@ -45,6 +45,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (4): source is deck, sorter is splitter, a nothing-here mark is a blank**: on the listening side, what feeds the Eavesdropper is a *deck* (the parameter, the `ScriptedDeck` test stand-in, the messages, comments and test names), `TrackSplitter.sort()` is `split()` (and the `sorter`
+  parameter is `splitter`), and the marks whisper writes for nothing are *blanks*. The other uses of the word *source* (the library's holdings, a model file in a dev tool) are other things and stay for their own pass. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, words (3): listener is eavesdropper**: variables, parameters, messages, comments and test names (`HingeFinder(eavesdropper, ...)`). This commit also fixes two dev tools, `scripts/dev/listening/listen_to_room.py` and `scripts/dev/pipeline/listening_to_portent.py`,
   which still read the `[listening]` settings by their old names (`step`, `hold`, `rewind`) after the config rename; neither was caught by the suite because both need the servers running. A scan of every settings attribute used in the code, tests and tools found no other stale one. 2,580 tests pass.
 - **The Great Rename, words (2): ambient is room tone**: whisper's captions of sounds like "(dog barks)" are *room tone* (the `Take.room_tone` and `Tracks.room_tone` fields, `Eavesdropper.recent_room_tone`, the `ROOM_TONE` kind, now the string `"room_tone"`, and the

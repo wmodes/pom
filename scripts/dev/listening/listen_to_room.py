@@ -59,9 +59,9 @@ def main():
     client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
-    source = (WavDeck(args.wav, speed=args.speed) if args.wav
+    deck = (WavDeck(args.wav, speed=args.speed) if args.wav
               else MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds))
-    eavesdropper = Eavesdropper(source, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
+    eavesdropper = Eavesdropper(deck, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
                         heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
                         heard_settings.room_tone_memory)
 
@@ -96,7 +96,7 @@ def main():
         print()
     finally:
         finder.close()
-    for line in [*source.report.lines(), *finder.report_lines(), *scorer_client.report.lines()]:
+    for line in [*deck.report.lines(), *finder.report_lines(), *scorer_client.report.lines()]:
         print(line)
 
 

@@ -134,12 +134,12 @@ def main() -> None:
         sys.exit(f"the oracle model's llama-server is not answering at {config.oracle.url}; see the top of this file for how to start it")
 
     if args.wav:
-        source, where = WavDeck(args.wav, speed=args.speed), f"the recording {args.wav}"
+        deck, where = WavDeck(args.wav, speed=args.speed), f"the recording {args.wav}"
     elif args.mac_mic is not None:
-        source, where = MacMicDeck(args.mac_mic, buffer_seconds=heard_settings.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
+        deck, where = MacMicDeck(args.mac_mic, buffer_seconds=heard_settings.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
     else:
-        source, where = MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
-    eavesdropper = Eavesdropper(source, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
+        deck, where = MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
+    eavesdropper = Eavesdropper(deck, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
                         heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
                         heard_settings.room_tone_memory)
 
@@ -225,7 +225,7 @@ def main() -> None:
         finder.close()
         if site is not None:
             site.stop()
-    lines = [*source.report.lines(), *finder.report_lines(), *scorer_client.report.lines(),
+    lines = [*deck.report.lines(), *finder.report_lines(), *scorer_client.report.lines(),
              *(writer.report_lines() if writer is not None else [])]
     for line in lines:
         print(line)

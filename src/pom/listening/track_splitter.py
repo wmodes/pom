@@ -9,7 +9,7 @@ these three kinds differently, so this module sorts them before anything is scor
   * ROOM TONE: whisper's guess at a sound in the room. It describes the room and is not something said, so
     they are never scored (a hallucinated "(gunshot)" once scored 8.0). They are kept, once each, to give the oracle
     model as context later.
-  * NOTHING-HERE marks: "[BLANK_AUDIO]", "(silence)" and the like. They carry no information and are dropped.
+  * BLANKS: "[BLANK_AUDIO]", "(silence)" and the like. They carry no information and are dropped.
 
 `kind` says where the words came from: "speech", "lyrics" (all of them from between music symbols), or "" when there
 are no words.
@@ -54,10 +54,10 @@ class Tracks:
 
 
 class TrackSplitter:
-    """Sorts whisper's text into words, room tone and nothing-here marks. Has no state."""
+    """Splits whisper's text into words, room tone and blanks. Has no state."""
 
-    def sort(self, raw: str, plain_text: bool = True) -> Tracks:
-        """Sorts one reply from whisper.
+    def split(self, raw: str, plain_text: bool = True) -> Tracks:
+        """Splits one reply from whisper.
 
         Args:
             raw: Whisper's text for a stretch of sound. Anything that is not a string counts as an empty reply.

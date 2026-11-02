@@ -1,4 +1,4 @@
-"""Tests for pom.listening.eavesdropper, with a scripted audio source and a stand-in for whisper."""
+"""Tests for pom.listening.eavesdropper, with a scripted deck and a stand-in for whisper."""
 import logging
 
 import pytest
@@ -12,7 +12,7 @@ from pom.listening.whisper_model_client import Segment
 NOTE = "♪"
 
 
-class ScriptedSource:
+class ScriptedDeck:
     """Gives out `seconds` of silence in frames, then ends. Remembers whether it was closed."""
 
     def __init__(self, seconds):
@@ -60,8 +60,8 @@ def hear(eavesdropper):
 
 
 def make(seconds, *rounds, texts=(), failing=(), **options):
-    source, whisper = ScriptedSource(seconds), FakeWhisper(*rounds, texts=texts, failing=failing)
-    return Eavesdropper(source, whisper, **options), source, whisper
+    deck, whisper = ScriptedDeck(seconds), FakeWhisper(*rounds, texts=texts, failing=failing)
+    return Eavesdropper(deck, whisper, **options), deck, whisper
 
 
 class TestWhatIsHeard:
@@ -94,8 +94,8 @@ class TestWhatIsHeard:
         eavesdropper, _, _ = make(12, [seg(0.5, 3.0, "[BLANK_AUDIO]")])
         assert hear(eavesdropper) == []
 
-    def test_a_source_that_gives_no_sound_gives_nothing_and_asks_nothing(self):
-        eavesdropper, source, whisper = make(0)
+    def test_a_deck_that_gives_no_sound_gives_nothing_and_asks_nothing(self):
+        eavesdropper, deck, whisper = make(0)
         assert hear(eavesdropper) == [] and whisper.calls == []
 
 
@@ -234,31 +234,31 @@ class TestWhenWhisperIsDown:
 
 
 class TestStopping:
-    def test_the_source_is_closed_when_the_sound_ends(self):
-        eavesdropper, source, _ = make(6)
+    def test_the_deck_is_closed_when_the_sound_ends(self):
+        eavesdropper, deck, _ = make(6)
         hear(eavesdropper)
-        assert source.closed
+        assert deck.closed
 
     def test_closing_stops_the_listening_and_still_gives_the_last_round(self):
-        eavesdropper, source, _ = make(60, [seg(0.5, 3.0, "Heard before I stopped.")])
+        eavesdropper, deck, _ = make(60, [seg(0.5, 3.0, "Heard before I stopped.")])
         got = []
         for item in eavesdropper.hear():
             got.append(item)
             eavesdropper.close()
-        assert [h.words for h in got] == ["Heard before I stopped."] and source.closed
+        assert [h.words for h in got] == ["Heard before I stopped."] and deck.closed
 
-    def test_stopping_the_loop_early_still_closes_the_source(self):
-        eavesdropper, source, _ = make(60, [seg(0.5, 3.0, "One.")])
+    def test_stopping_the_loop_early_still_closes_the_deck(self):
+        eavesdropper, deck, _ = make(60, [seg(0.5, 3.0, "One.")])
         generator = eavesdropper.hear()
         assert next(generator).words == "One."
         generator.close()
-        assert source.closed
+        assert deck.closed
 
     def test_closing_twice_is_fine(self):
-        eavesdropper, source, _ = make(5)
+        eavesdropper, deck, _ = make(5)
         eavesdropper.close()
         eavesdropper.close()
-        assert source.closed
+        assert deck.closed
 
 
 class TestSettings:
@@ -303,7 +303,7 @@ class TestSettings:
     def test_a_cutter_can_be_given_instead_of_made(self):
         whisper = FakeWhisper()
         cutter = RollingCutter(whisper, cut_every_seconds=2.0)
-        eavesdropper = Eavesdropper(ScriptedSource(5.0), whisper, cutter=cutter)
+        eavesdropper = Eavesdropper(ScriptedDeck(5.0), whisper, cutter=cutter)
         hear(eavesdropper)
         assert len(whisper.calls) == 3          # the given cutter's step of 2 s: rounds at 2 s and 4 s, and the last;
         # the Eavesdropper's own cutter (step 5 s) would have made two

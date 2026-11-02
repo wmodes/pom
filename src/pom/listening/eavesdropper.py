@@ -80,38 +80,38 @@ def _is_number(value) -> bool:
 
 
 class Eavesdropper:
-    """Turns an audio source into the things that were said, sung or sounded in the room.
+    """Turns a deck into the things that were said, sung or sounded in the room.
 
     Attributes:
         report: Problems met (a bad setting, whisper not answering). Includes the cutter's.
     """
 
-    def __init__(self, source: AudioDeck, client, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
+    def __init__(self, deck: AudioDeck, client, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
                  rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS,
                  room_tone_pass_every: int = DEFAULT_ROOM_TONE_PASS_EVERY, room_tone_pass_seconds: float = DEFAULT_ROOM_TONE_PASS_SECONDS,
-                 room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, sorter: Optional[TrackSplitter] = None,
+                 room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, splitter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, strict: bool = False):
         """Args:
-            source: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
+            deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
             step, hold, rewind, max_cut_seconds: The RollingCutter's settings (see there).
             room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and captions.
                 A whole number of at least 0; 0 turns the room-tone pass off.
             room_tone_pass_seconds: How much recent audio the room-tone pass listens to, above 0.
             room_tone_memory: How many recent captions to remember, a whole number of at least 1.
-            sorter: The TrackSplitter to use. Default: a new one.
+            splitter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
             strict: Raise EavesdropperError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=EavesdropperError, logger=_log)
-        self._source, self._client = source, client
+        self._deck, self._client = deck, client
         self._sound_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
                                           lambda v: _is_whole(v, 0), "a whole number of at least 0")
         self._room_tone_pass_seconds = self._setting(room_tone_pass_seconds, "room_tone_pass_seconds", DEFAULT_ROOM_TONE_PASS_SECONDS,
                                             lambda v: _is_number(v) and v > 0, "a number above 0")
         memory = self._setting(room_tone_memory, "room_tone_memory", DEFAULT_ROOM_TONE_MEMORY,
                                lambda v: _is_whole(v, 1), "a whole number of at least 1")
-        self._sorter = sorter if sorter is not None else TrackSplitter()
+        self._splitter = splitter if splitter is not None else TrackSplitter()
         self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict)
         if cutter is None:
             self.report.extend(self._cutter.report)
@@ -140,24 +140,24 @@ class Eavesdropper:
         Whatever whisper had not yet finished when the sound ended is yielded last.
         """
         try:
-            for frame in self._source.frames():
+            for frame in self._deck.frames():
                 self._cutter.feed(frame)
                 if self._cutter.due():
                     yield from self._round(final=False)
             yield from self._round(final=True)
         finally:
-            self._source.close()
+            self._deck.close()
 
     def close(self) -> None:
-        """Stops listening: closes the source, so `hear` finishes. Safe to call more than once, from another thread."""
-        self._source.close()
+        """Stops listening: closes the deck, so `hear` finishes. Safe to call more than once, from another thread."""
+        self._deck.close()
 
     def _round(self, final: bool) -> Iterator[Take]:
         """One whisper round: yields what is new in the segments it finished, or tries the room-tone pass."""
         segments = self._cutter.cut(final=final)
         self._note_whisper()
         for segment in segments:
-            item = self._news(self._sorter.sort(segment.text), segment.end)
+            item = self._news(self._splitter.split(segment.text), segment.end)
             if item is not None:
                 yield item
         if segments:
@@ -166,7 +166,7 @@ class Eavesdropper:
             self._quiet_steps += 1
             if self._quiet_steps % self._sound_every == 0:
                 text = self._client.text(self._cutter.recent(self._room_tone_pass_seconds), vad=False)
-                item = self._news(self._sorter.sort(text, plain_text=False), self._cutter.total_seconds)
+                item = self._news(self._splitter.split(text, plain_text=False), self._cutter.total_seconds)
                 if item is not None:
                     yield item
 

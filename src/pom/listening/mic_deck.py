@@ -147,7 +147,7 @@ class MicDeck:
             self._thread_error = problem
 
     def frames(self) -> Iterator[bytes]:
-        """Yields frames as they are heard, until the microphone stops or the source is closed."""
+        """Yields frames as they are heard, until the microphone stops or the deck is closed."""
         if self._process is None:
             return
         while not self._finished:

@@ -69,7 +69,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                  # noqa: E402
 from rolling_cutter import RollingCutter                         # noqa: E402  (next to this file)
 from whisper_server_client import WhisperServerClient          # noqa: E402  (next to this file)
-from pom.scoring import Ruling, ScorerModelClient, ClipScorer, WordTagger, bar_keeper_from_settings   # noqa: E402
+from pom.qualifying import bar_keeper_from_settings, Ruling   # noqa: E402
+from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
 from pom.scoring.scorer_model_client import parse_written_score      # noqa: E402
 from pom.listening.take_cutter import TakeCutter, ClipLevel          # noqa: E402
 

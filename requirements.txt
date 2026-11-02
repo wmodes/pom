@@ -12,5 +12,5 @@ wordfreq>=3.1,<4
 # meaning of a fragment. Its data is fetched separately: scripts/setup/setup-nltk-data.sh
 nltk>=3.9,<4
 
-# The serial port to the typewriter (pom.output.TerminalPort). Pure Python, the standard choice.
+# The serial port to the typewriter (pom.printing.TerminalPort). Pure Python, the standard choice.
 pyserial>=3.5,<4

@@ -12,7 +12,7 @@ import pytest
 
 from pom.library import Passage
 from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TurnHistory
-from pom.voice import Portent
+from pom.writing import Portent
 
 PASSWORD = "open sesame"
 

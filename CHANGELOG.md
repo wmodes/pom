@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, folders (2): the other packages**: each lexicon section is its own package now. `pom.output` is `pom.printing`, `pom.voice` and `pom.prompt` are merged into `pom.writing` (the prompt builder, the oracle model client and the
+  portent writer), and `pom.scoring` is split: the bar, the BarKeeper, its factory, the three bar algorithms and the `Attempt` (cut out of `hinge_finder.py` into its own module) are in `pom.qualifying`, the `HingeFinder` is in `pom.conductor`,
+  the `TypedLineScorer` is in `pom.keyboard`, and `pom.scoring` keeps the clip scorer, the scorer model client, the word tagger and the fallback. The tests and the dev tools move the same way (`tests/printing/`, `tests/writing/`, `tests/qualifying/`, `tests/conductor/`,
+  `tests/keyboard/`, `scripts/dev/printing/`, `scripts/dev/writing/`), and the loggers follow the module names. Imports that went through `pom.scoring` now name the package that owns each name. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, folders (1): Library**: the corpus code and data take the library's names. The package `pom.corpus` is `pom.library` (the tests are in `tests/library/`), the data folder `corpus/` is `library/` with `chunks/` as `passages/`
   (the shelves inside keep their names), `weights.json` as `passages/circulation.json` and `sources.csv` as `holdings.csv`, the dev tools are in `scripts/dev/library/` (`corpus.py` is `library.py`), and `documentation/corpus-notes.md` is
   `library-notes.md`. Every path in the code, tests, scripts, experiments, `.gitignore` and docs follows; the gitignored `raw/` folder moved with the rest. The JSONL keys (`source`, `register`) and the words in comments are unchanged until the word pass.

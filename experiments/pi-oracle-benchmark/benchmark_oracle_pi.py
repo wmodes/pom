@@ -52,8 +52,8 @@ sys.path.insert(0, str(ROOT / "experiments" / "pi-benchmark"))
 from pom.config import Config                                      # noqa: E402
 from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
-from pom.prompt import PromptBuilder                               # noqa: E402
-from pom.voice import OracleModelClient                            # noqa: E402
+from pom.writing import PromptBuilder                               # noqa: E402
+from pom.writing import OracleModelClient                            # noqa: E402
 from run_oracle_bakeoff import (HINGES, corpus_fingerprint, draw_seed, git_state,   # noqa: E402
                                 read_hinges)
 from benchmark_pi_scorer import (describe_throttling, mem_available_mb, rss_mb,     # noqa: E402

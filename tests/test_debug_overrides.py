@@ -16,16 +16,16 @@ MODULES = ["pom/config.py", "pom/library/circulation.py", "pom/library/catalog.p
            "pom/library/bibliomancer.py", "pom/listening/take_cutter.py",
            "pom/scoring/word_tagger.py", "pom/scoring/scorer_model_client.py",
            "pom/scoring/clip_scorer.py", "pom/scoring/fallback_scorer.py",
-           "pom/scoring/bar_keeper.py", "pom/prompt/prompt_builder.py", "pom/voice/oracle_model_client.py",
+           "pom/qualifying/bar_keeper.py", "pom/writing/prompt_builder.py", "pom/writing/oracle_model_client.py",
            "pom/startup.py",
            "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py",
            "pom/listening/rolling_cutter.py",
-           "pom/listening/eavesdropper.py", "pom/voice/portent_writer.py", "pom/listening/mac_mic_deck.py",
-           "pom/scoring/hinge_finder.py", "pom/scoring/typed_line_scorer.py",
+           "pom/listening/eavesdropper.py", "pom/writing/portent_writer.py", "pom/listening/mac_mic_deck.py",
+           "pom/conductor/hinge_finder.py", "pom/keyboard/typed_line_scorer.py",
            "pom/monitor/turn_history.py", "pom/monitor/monitor_site.py",
-           "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py",
-           "pom/scoring/moving_average_bar.py",
-           "pom/monitor/score_trace.py", "pom/output/terminal_port.py"]
+           "pom/qualifying/decaying_quantile_bar.py", "pom/qualifying/percentile_bar.py",
+           "pom/qualifying/moving_average_bar.py",
+           "pom/monitor/score_trace.py", "pom/printing/terminal_port.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 
 

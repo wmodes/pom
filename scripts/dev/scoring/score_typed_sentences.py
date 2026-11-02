@@ -26,7 +26,8 @@ from pom.config import Config  # noqa: E402
 from pom.listening import TakeCutter  # noqa: E402
 from pom.listening.take_cutter import ClipLevel  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import Ruling, ClipScorer, ScorerModelClient, WordTagger, bar_keeper_from_settings  # noqa: E402
+from pom.qualifying import bar_keeper_from_settings, Ruling   # noqa: E402
+from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
 
 
 def build(config: Config, min_scores: int):

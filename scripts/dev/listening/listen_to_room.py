@@ -26,8 +26,9 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config  # noqa: E402
 from pom.listening import Eavesdropper, MicDeck, TakeCutter, WavDeck, WhisperModelClient  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.scoring import (HingeFinder, Ruling, ClipScorer, ScorerModelClient,  # noqa: E402
-                         WordTagger, bar_keeper_from_settings)
+from pom.conductor import HingeFinder
+from pom.qualifying import bar_keeper_from_settings, Ruling
+from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
 
 
 def stamp(seconds: float) -> str:

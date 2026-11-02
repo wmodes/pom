@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.library import Passage                                                  # noqa: E402
 from pom.monitor import MonitorSite, MonitorStatus, TurnHistory            # noqa: E402
-from pom.voice import Portent                                                 # noqa: E402
+from pom.writing import Portent                                                 # noqa: E402
 
 HINGES = [
     "The lighthouse keeper counts the ships that never arrive.",

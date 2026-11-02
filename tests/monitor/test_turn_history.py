@@ -7,7 +7,7 @@ import pytest
 from pom.library import Passage
 from pom.monitor import TurnHistory, TurnHistoryError, TurnRecord
 from pom.monitor.turn_history import DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS
-from pom.voice import Portent
+from pom.writing import Portent
 
 
 class Clock:

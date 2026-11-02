@@ -50,10 +50,11 @@ from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDec
                            WhisperModelClient)
 from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TurnHistory                      # noqa: E402
 from pom.log_setup import configure_logging                                                         # noqa: E402
-from pom.prompt import PromptBuilder                                                                # noqa: E402
-from pom.scoring import (HingeFinder, Ruling, ClipScorer, ScorerModelClient,  # noqa: E402
-                         WordTagger, bar_keeper_from_settings)
-from pom.voice import OracleModelClient, PortentWriter                                              # noqa: E402
+from pom.writing import PromptBuilder                                                                # noqa: E402
+from pom.conductor import HingeFinder
+from pom.qualifying import bar_keeper_from_settings, Ruling
+from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
+from pom.writing import OracleModelClient, PortentWriter                                              # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
 CHUNKS = ROOT / "library" / "passages"

@@ -7,6 +7,10 @@ import pytest
 from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_CLIP_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
                         DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
                         Config, ListeningSettings, OracleSettings, ScorerSettings, QualifyingSettings)
+import pom.qualifying.bar_keeper
+import pom.qualifying.percentile_bar
+import pom.qualifying.decaying_quantile_bar
+import pom.qualifying.moving_average_bar
 
 
 def write(tmp_path, text):
@@ -428,18 +432,18 @@ def test_the_trigger_defaults_when_nothing_is_set():
 
 
 def test_the_trigger_defaults_match_the_bars_defaults():
-    from pom.scoring import bar_keeper, decaying_quantile_bar, moving_average_bar, percentile_bar
+    from pom.qualifying import bar_keeper, decaying_quantile_bar, moving_average_bar, percentile_bar
     s = QualifyingSettings()
     assert (s.percentile, s.window_seconds, s.min_scores, s.starting_bar) == (
-        percentile_bar.DEFAULT_PERCENTILE, percentile_bar.DEFAULT_WINDOW_SECONDS, percentile_bar.DEFAULT_MIN_SCORES,
-        percentile_bar.DEFAULT_STARTING_BAR)
+        pom.qualifying.percentile_bar.DEFAULT_PERCENTILE, pom.qualifying.percentile_bar.DEFAULT_WINDOW_SECONDS, pom.qualifying.percentile_bar.DEFAULT_MIN_SCORES,
+        pom.qualifying.percentile_bar.DEFAULT_STARTING_BAR)
     assert (s.percentile, s.half_life_seconds, s.starting_bar) == (
-        decaying_quantile_bar.DEFAULT_PERCENTILE, decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
-        decaying_quantile_bar.DEFAULT_STARTING_BAR)
+        pom.qualifying.decaying_quantile_bar.DEFAULT_PERCENTILE, pom.qualifying.decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
+        pom.qualifying.decaying_quantile_bar.DEFAULT_STARTING_BAR)
     assert (s.average_fraction, s.average_half_life_scores, s.average_floor_fraction, s.starting_bar) == (
-        moving_average_bar.DEFAULT_FRACTION, moving_average_bar.DEFAULT_HALF_LIFE_SCORES, moving_average_bar.DEFAULT_FLOOR_FRACTION,
-        moving_average_bar.DEFAULT_STARTING_BAR)
-    assert s.cooldown_seconds == bar_keeper.DEFAULT_COOLDOWN_SECONDS
+        pom.qualifying.moving_average_bar.DEFAULT_FRACTION, pom.qualifying.moving_average_bar.DEFAULT_HALF_LIFE_SCORES, pom.qualifying.moving_average_bar.DEFAULT_FLOOR_FRACTION,
+        pom.qualifying.moving_average_bar.DEFAULT_STARTING_BAR)
+    assert s.cooldown_seconds == pom.qualifying.bar_keeper.DEFAULT_COOLDOWN_SECONDS
 
 
 def test_the_starting_trigger_values():
@@ -519,7 +523,7 @@ def test_the_trigger_section_merges_key_by_key_with_the_local_file(tmp_path):
 
 
 def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
-    from pom.scoring import Ruling, bar_keeper_from_settings
+    from pom.qualifying import bar_keeper_from_settings, Ruling
     text = "[qualifying]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
     settings = Config.load(write(tmp_path, text), environ={}).qualifying
     tracker = bar_keeper_from_settings(settings)
@@ -531,7 +535,7 @@ def test_the_trigger_settings_plug_straight_into_the_tracker(tmp_path):
 
 @pytest.mark.parametrize("algorithm", ["percentile", "decaying_quantile", "moving_average"])
 def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm):
-    from pom.scoring import ALGORITHMS, bar_keeper_from_settings
+    from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     settings = Config.load(write(tmp_path, f'[qualifying]\nalgorithm = "{algorithm}"\n'), environ={}).qualifying
     tracker = bar_keeper_from_settings(settings)
     assert isinstance(tracker._bar, ALGORITHMS[algorithm]) and tracker.report.ok and tracker._bar.report.ok
@@ -541,7 +545,7 @@ def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
     """The trigger values are tuned often, so they are not pinned: only that the shipped file reads without a warning
     and that each algorithm accepts the values."""
     import dataclasses
-    from pom.scoring import ALGORITHMS, bar_keeper_from_settings
+    from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
     assert shipped.report.ok
     for algorithm in ALGORITHMS:
@@ -551,7 +555,7 @@ def test_the_shipped_config_loads_cleanly_with_usable_trigger_values():
 
 def test_the_shipped_algorithm_is_one_the_factory_knows():
     """Which algorithm is shipped is a tuning choice, so it is not pinned."""
-    from pom.scoring import ALGORITHMS
+    from pom.qualifying import ALGORITHMS
     assert Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={}).qualifying.algorithm in ALGORITHMS
 
 
@@ -682,7 +686,7 @@ def test_the_local_file_overrides_the_prompt_and_keeps_the_exemplar_counts(tmp_p
 
 def test_the_oracle_defaults_match_the_oracle_clients_own():
     from pom.config import DEFAULT_ORACLE_MAX_TOKENS, DEFAULT_ORACLE_TEMPERATURE, DEFAULT_ORACLE_TIMEOUT
-    from pom.voice import oracle_model_client
+    from pom.writing import oracle_model_client
     assert DEFAULT_ORACLE_TIMEOUT == oracle_model_client.DEFAULT_TIMEOUT
     assert DEFAULT_ORACLE_MAX_TOKENS == oracle_model_client.DEFAULT_MAX_TOKENS
     assert DEFAULT_ORACLE_TEMPERATURE == oracle_model_client.DEFAULT_TEMPERATURE
@@ -733,7 +737,7 @@ def test_the_local_file_overrides_one_oracle_key_and_keeps_the_rest(tmp_path):
 
 def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accepts(tmp_path):
     from pathlib import Path
-    from pom.prompt import PromptBuilder
+    from pom.writing import PromptBuilder
     sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
     copy = tmp_path / "pom.toml"
     copy.write_text(sample.read_text(encoding="utf-8"), encoding="utf-8")
@@ -981,7 +985,7 @@ def test_every_standard_baud_rate_is_accepted(tmp_path, baud):
 
 def test_the_terminal_choices_and_defaults_are_the_ones_the_port_uses():
     from pom import config as settings
-    from pom.output import terminal_port as port
+    from pom.printing import terminal_port as port
     assert settings.TERMINAL_BAUD_RATES == port.BAUD_RATES and settings.TERMINAL_FLOW_CONTROLS == port.FLOW_CONTROLS
     assert settings.TERMINAL_END_OF_LINES == tuple(port.END_OF_LINES)
     assert (settings.DEFAULT_TERMINAL_BAUD, settings.DEFAULT_TERMINAL_FLOW_CONTROL, settings.DEFAULT_TERMINAL_END_OF_LINE) == (

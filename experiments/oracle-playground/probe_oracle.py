@@ -43,8 +43,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                      # noqa: E402
 from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
-from pom.prompt import PromptBuilder                               # noqa: E402
-from pom.voice import OracleModelClient                            # noqa: E402
+from pom.writing import PromptBuilder                               # noqa: E402
+from pom.writing import OracleModelClient                            # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
 CHUNKS = ROOT / "library" / "passages"

@@ -46,8 +46,8 @@ sys.path.insert(0, str(HERE))
 from pom.config import Config                                      # noqa: E402
 from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
 from pom.log_setup import configure_logging                        # noqa: E402
-from pom.prompt import PromptBuilder                               # noqa: E402
-from pom.voice import OracleModelClient                            # noqa: E402
+from pom.writing import PromptBuilder                               # noqa: E402
+from pom.writing import OracleModelClient                            # noqa: E402
 from probe_oracle import start_server                              # noqa: E402  (the playground's own server start)
 from bakeoff_checks import check_portent                           # noqa: E402
 

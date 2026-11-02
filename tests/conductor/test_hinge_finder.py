@@ -34,25 +34,25 @@ class FakeScorer:
 
     def __init__(self, scores=None, scored_by=ScoredBy.MODEL):
         self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], FaultRecorder()
-        self.fragments = []
+        self.clips = []
 
-    def score(self, fragment):
-        self.fragments.append(fragment)
-        self.asked.append((fragment.text, fragment.heard_at))
-        return ScoredClip(fragment, self.scores.get(fragment.text, 3.0), self.scored_by)
+    def score(self, clip):
+        self.clips.append(clip)
+        self.asked.append((clip.text, clip.heard_at))
+        return ScoredClip(clip, self.scores.get(clip.text, 3.0), self.scored_by)
 
     def score_text(self, text, heard_at=0.0):
         return self.score(Clip(text, ClipLevel.SENTENCE, heard_at))
 
 
-class FixedFragmenter:
-    """Cuts every text into the fragments it was given."""
+class FixedTakeCutter:
+    """Cuts every text into the clips it was given."""
 
-    def __init__(self, fragments):
-        self.fragments, self.report = fragments, FaultRecorder()
+    def __init__(self, clips):
+        self.clips, self.report = clips, FaultRecorder()
 
     def split(self, text, heard_at=0.0):
-        return list(self.fragments)
+        return list(self.clips)
 
 
 def segment(words="", ends_at=10.0, kind="speech", ambient=()):
@@ -64,9 +64,9 @@ def tracker(min_scores=3, cooldown=60.0):
     return BarKeeper(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
 
 
-def finder(segments, scores=None, score_room_tone=False, fragmenter=None, scored_by=ScoredBy.MODEL, **tracking):
+def finder(segments, scores=None, score_room_tone=False, take_cutter=None, scored_by=ScoredBy.MODEL, **tracking):
     listener, scorer = FakeListener(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(listener, fragmenter or TakeCutter(), scorer, tracker(**tracking), score_room_tone)
+    made = HingeFinder(listener, take_cutter or TakeCutter(), scorer, tracker(**tracking), score_room_tone)
     return made, listener, scorer
 
 
@@ -95,21 +95,21 @@ class TestWhatIsYielded:
         assert found(made) == [] and scorer.asked == []
 
     def test_only_whole_sentences_are_scored(self):
-        fragments = [Clip("whole sentence here", ClipLevel.SENTENCE), Clip("a clause", ClipLevel.CLAUSE),
+        clips = [Clip("whole sentence here", ClipLevel.SENTENCE), Clip("a clause", ClipLevel.CLAUSE),
                      Clip("a phrase", ClipLevel.PHRASE)]
-        made, _, scorer = finder([segment("whole sentence here, a clause")], fragmenter=FixedFragmenter(fragments))
+        made, _, scorer = finder([segment("whole sentence here, a clause")], take_cutter=FixedTakeCutter(clips))
         assert [s.text for s in found(made)] == ["whole sentence here"]
         assert [text for text, _ in scorer.asked] == ["whole sentence here"]
 
-    def test_the_scorer_is_given_the_fragment_the_fragmenter_cut(self):
-        fragment = Clip("whole sentence here", ClipLevel.SENTENCE, heard_at=5.0, sentence=2)
-        made, _, scorer = finder([segment("whole sentence here")], fragmenter=FixedFragmenter([fragment]))
+    def test_the_scorer_is_given_the_clip_the_take_cutter_cut(self):
+        clip = Clip("whole sentence here", ClipLevel.SENTENCE, heard_at=5.0, sentence=2)
+        made, _, scorer = finder([segment("whole sentence here")], take_cutter=FixedTakeCutter([clip]))
         found(made)
-        assert scorer.fragments == [fragment] and scorer.fragments[0] is fragment
+        assert scorer.clips == [clip] and scorer.clips[0] is clip
 
     def test_a_segment_with_no_words_is_not_cut_or_scored_at_all(self):
-        fragment = Clip("should not appear", ClipLevel.SENTENCE)
-        made, _, scorer = finder([segment("")], fragmenter=FixedFragmenter([fragment]))
+        clip = Clip("should not appear", ClipLevel.SENTENCE)
+        made, _, scorer = finder([segment("")], take_cutter=FixedTakeCutter([clip]))
         assert found(made) == [] and scorer.asked == []
 
     def test_what_made_the_score_is_passed_on(self):
@@ -245,13 +245,13 @@ class TestClosingAndReporting:
 
     def test_the_report_lines_gather_the_four_parts_problems(self):
         listener, scorer = FakeListener([]), FakeScorer()
-        fragmenter, the_tracker = TakeCutter(), tracker()
+        take_cutter, the_tracker = TakeCutter(), tracker()
         listener.report.warn("listener trouble")
         scorer.report.warn("scorer trouble")
-        fragmenter.report.warn("fragmenter trouble")
+        take_cutter.report.warn("take cutter trouble")
         the_tracker.report.warn("tracker trouble")
-        lines = HingeFinder(listener, fragmenter, scorer, the_tracker).report_lines()
-        for word in ("listener", "fragmenter", "scorer", "tracker"):
+        lines = HingeFinder(listener, take_cutter, scorer, the_tracker).report_lines()
+        for word in ("listener", "take cutter", "scorer", "tracker"):
             assert any(f"{word} trouble" in line for line in lines)
 
     def test_there_is_nothing_to_report_when_all_went_well(self):

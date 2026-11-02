@@ -1,7 +1,7 @@
-"""The ClipScorer: gives each overheard fragment an interest score, so the Trigger can pick a hinge.
+"""The ClipScorer: gives each overheard clip an interest score, so the Trigger can pick a hinge.
 
-A fragment goes in (normally a whole sentence, from the TakeCutter); a `ScoredClip` comes out,
-the fragment plus a score and where the score came from. Scores run from 0 (nothing to hold on to)
+A clip goes in (normally a whole sentence, from the TakeCutter); a `ScoredClip` comes out,
+the clip plus a score and where the score came from. Scores run from 0 (nothing to hold on to)
 to 9 (extremely interesting), as the probability-weighted value of the single digit the scorer model
 answers with, so they fall anywhere in between (6.35). They are relative, not absolute: ordinary talk
 scores 1 to 3 and even striking sentences often stop short of 9, so whatever uses them should work
@@ -9,7 +9,7 @@ from ranks and gaps, not a fixed high threshold.
 
 THREE KINDS OF RESULT, recorded in `ScoredClip.scored_by`:
   * MODEL:    the scorer model scored it (through the ScorerModelClient). The normal case.
-  * CLIP_FILTER: the fragment has no content words (it is all filler, stopwords or numbers, like
+  * CLIP_FILTER: the clip has no content words (it is all filler, stopwords or numbers, like
               "Yeah, okay."), so the model is not asked and it gets the clip_filter's score. This saves a
               model call on talk that cannot be interesting. The word tagger decides.
   * UNSCORED: the scorer model gave no score, so the score is None. Nothing downstream may treat
@@ -20,17 +20,17 @@ THREE KINDS OF RESULT, recorded in `ScoredClip.scored_by`:
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A model that is down, slow or answering
-    oddly means unscored fragments and a warning in `report`, never an exception. `strict=True`
+    oddly means unscored clips and a warning in `report`, never an exception. `strict=True`
     raises ClipScorerError instead, for tests and dev tools.
   * A circuit breaker keeps a dead server from slowing every sentence: after `failure_limit`
-    failures in a row the model is left alone for `retry_seconds`, every fragment goes unscored
-    meanwhile, then one fragment is allowed through to see whether the model is back. One success
+    failures in a row the model is left alone for `retry_seconds`, every clip goes unscored
+    meanwhile, then one clip is allowed through to see whether the model is back. One success
     closes the breaker. The clock is injected, so tests need no waiting.
   * The word tagger feeds the filter; the model is the judge. They are separate objects passed in,
     so tests use fakes.
-  * One fragment at a time, no context, so a fragment scores the same whatever came before it. Any
+  * One clip at a time, no context, so a clip scores the same whatever came before it. Any
     memory of what was heard recently (repeats, fading) belongs to the pool the Trigger keeps, not here.
-  * Fragment text is never logged or put in a report; logs hold scores, sources and counts.
+  * Clip text is never logged or put in a report; logs hold scores, sources and counts.
   * The settings (the clip_filter's score, how many content words are needed, breaker numbers) are passed in by the
     entry point from Config; this module never reads Config.
 """
@@ -58,7 +58,7 @@ class ClipScorerError(ValueError):
 
 
 class ScoredBy(Enum):
-    """What made a fragment's score (or left it without one)."""
+    """What made a clip's score (or left it without one)."""
     MODEL = "model"
     CLIP_FILTER = "clip_filter"
     UNSCORED = "unscored"
@@ -66,26 +66,26 @@ class ScoredBy(Enum):
 
 @dataclass(frozen=True, slots=True)
 class ScoredClip:
-    """A fragment with its interest score: a candidate hinge.
+    """A clip with its interest score: a candidate hinge.
 
     Attributes:
-        fragment: The fragment that was scored.
-        score: 0 (dull) to 9 (extremely interesting), or None if the fragment could not
+        clip: The clip that was scored.
+        score: 0 (dull) to 9 (extremely interesting), or None if the clip could not
             be scored (scored_by UNSCORED). Check for None before using it as a number.
         scored_by: Whether the scorer model made the score, the clip_filter did, or it is unscored.
     """
-    fragment: Clip
+    clip: Clip
     score: Optional[float]
     scored_by: ScoredBy
 
     @property
     def text(self) -> str:
-        """The fragment's words."""
-        return self.fragment.text
+        """The clip's words."""
+        return self.clip.text
 
 
 class ClipScorer:
-    """Scores fragments with the scorer model, with a filter in front of it.
+    """Scores clips with the scorer model, with a filter in front of it.
 
     Attributes:
         report: Problems met (settings corrected, model unavailable, breaker opened).
@@ -98,9 +98,9 @@ class ClipScorer:
                  clock: Callable[[], float] = time.monotonic, strict: bool = False):
         """Args:
             scorer_model_client: A ScorerModelClient (anything with score(text), warm_up() and available).
-            word_tagger: The WordTagger that tags each word of a fragment.
-            clip_filter_score: The score for a fragment the clip_filter keeps from the model.
-            min_content_words: Fragments with fewer content words skip the model (0 = never skip).
+            word_tagger: The WordTagger that tags each word of a clip.
+            clip_filter_score: The score for a clip the clip_filter keeps from the model.
+            min_content_words: Clips with fewer content words skip the model (0 = never skip).
             failure_limit: Model failures in a row that open the circuit breaker.
             retry_seconds: How long the breaker stays open before the model gets another try.
             clock: Returns seconds; injected so tests need not wait.
@@ -119,7 +119,7 @@ class ClipScorer:
         self._counts = {scored_by: 0 for scored_by in ScoredBy}
         if not scorer_model_client.available:
             self.report.warn("the scorer model is not available (see the client's report); every "
-                             "fragment that passes the filter will go unscored")
+                             "clip that passes the filter will go unscored")
 
     # --- Settings -------------------------------------------------------------------
 
@@ -139,18 +139,18 @@ class ClipScorer:
 
     # --- Scoring --------------------------------------------------------------------
 
-    def score(self, fragment: Clip) -> ScoredClip:
-        """Scores one fragment. Always returns a result; see `scored_by` for how it was made."""
-        content = [word for word in self._word_tagger.tag(fragment.text) if word.is_content]
-        if self._skips_model(fragment.text, content):
-            return self._result(fragment, self._clip_filter_score, ScoredBy.CLIP_FILTER)
+    def score(self, clip: Clip) -> ScoredClip:
+        """Scores one clip. Always returns a result; see `scored_by` for how it was made."""
+        content = [word for word in self._word_tagger.tag(clip.text) if word.is_content]
+        if self._skips_model(clip.text, content):
+            return self._result(clip, self._clip_filter_score, ScoredBy.CLIP_FILTER)
         if self._model_allowed():
-            value = self._scorer_model_client.score(fragment.text)
+            value = self._scorer_model_client.score(clip.text)
             if value is not None:
                 self._model_worked()
-                return self._result(fragment, value, ScoredBy.MODEL)
+                return self._result(clip, value, ScoredBy.MODEL)
             self._model_failed()
-        return self._result(fragment, None, ScoredBy.UNSCORED)
+        return self._result(clip, None, ScoredBy.UNSCORED)
 
     def is_clip_filtered(self, text: str) -> bool:
         """True if this text would skip the model (empty, or too few content words), without scoring it."""
@@ -161,16 +161,16 @@ class ClipScorer:
         return not text.strip() or len(content) < self._min_content
 
     def score_text(self, text: str, heard_at: float = 0.0) -> ScoredClip:
-        """Scores plain text as a one-sentence fragment (for playgrounds and tests)."""
+        """Scores plain text as a one-sentence clip (for playgrounds and tests)."""
         return self.score(Clip(text=text or "", level=ClipLevel.SENTENCE, heard_at=heard_at))
 
-    def score_many(self, fragments: Iterable[Clip]) -> list:
-        """Scores each fragment on its own, in the order given."""
-        return [self.score(fragment) for fragment in fragments]
+    def score_many(self, clips: Iterable[Clip]) -> list:
+        """Scores each clip on its own, in the order given."""
+        return [self.score(clip) for clip in clips]
 
-    def ranked(self, fragments: Iterable[Clip]) -> list:
-        """Scores the fragments and returns them best first (ties keep their order, unscored ones go last)."""
-        return sorted(self.score_many(fragments),
+    def ranked(self, clips: Iterable[Clip]) -> list:
+        """Scores the clips and returns them best first (ties keep their order, unscored ones go last)."""
+        return sorted(self.score_many(clips),
                       key=lambda scored: (scored.score is None, -(scored.score or 0.0)))
 
     def warm_up(self) -> bool:
@@ -185,14 +185,14 @@ class ClipScorer:
         return not self._model_allowed()
 
     def counts(self) -> dict:
-        """How many fragments each kind of result has had so far (counts only, never text)."""
+        """How many clips each kind of result has had so far (counts only, never text)."""
         return {scored_by.value: number for scored_by, number in self._counts.items()}
 
-    def _result(self, fragment, value, scored_by) -> ScoredClip:
+    def _result(self, clip, value, scored_by) -> ScoredClip:
         self._counts[scored_by] += 1
-        _log.debug("scored a fragment of %d words: %s (%s)", fragment.words,
+        _log.debug("scored a clip of %d words: %s (%s)", clip.words,
                    "no score" if value is None else f"{value:.2f}", scored_by.value)
-        return ScoredClip(fragment, None if value is None else float(value), scored_by)
+        return ScoredClip(clip, None if value is None else float(value), scored_by)
 
     # --- The circuit breaker --------------------------------------------------------
 
@@ -208,7 +208,7 @@ class ClipScorer:
         if self._failures >= self._failure_limit:
             self._reopen_at = self._clock() + self._retry_seconds
             self.report.warn(f"the scorer model failed {self._failures} times in a row; leaving "
-                             f"fragments unscored and trying the model again in {self._retry_seconds:g} s")
+                             f"clips unscored and trying the model again in {self._retry_seconds:g} s")
 
     def _model_worked(self) -> None:
         """A success closes the breaker and clears the failure count."""

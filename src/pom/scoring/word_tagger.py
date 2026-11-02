@@ -1,6 +1,6 @@
-"""The WordTagger: tags each word of a fragment with what it is.
+"""The WordTagger: tags each word of a clip with what it is.
 
-The Scorer rates a fragment by its words, not by the raw string, so it first needs each word's
+The Scorer rates a clip by its words, not by the raw string, so it first needs each word's
 base form ("went" is "go"), its part of speech, and whether it carries any interest at all. This
 module does that and nothing else: text in, a list of `Word` objects out.
 
@@ -70,7 +70,7 @@ class WordTaggerError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class TaggedWord:
-    """One word of a fragment, and what it is.
+    """One word of a clip, and what it is.
 
     Attributes:
         text: The word as spoken (case kept).

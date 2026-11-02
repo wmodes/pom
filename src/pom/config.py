@@ -167,9 +167,9 @@ class ScorerSettings:
         url: The llama-server chat-completions address.
         timeout: Seconds to wait for one score.
         prompt_scoring: What "interesting" means and what the numbers mean, from the config file.
-            Empty means none was set, and the Scorer then leaves every fragment unscored.
-        clip_filter_score: The score given to fragments the clip_filter keeps from the model.
-        min_content_words: Fragments with fewer content words skip the model (0 = never skip).
+            Empty means none was set, and the Scorer then leaves every clip unscored.
+        clip_filter_score: The score given to clips the clip_filter keeps from the model.
+        min_content_words: Clips with fewer content words skip the model (0 = never skip).
         failure_limit: Model failures in a row that make the Scorer leave the model alone.
         retry_seconds: How long it leaves the model alone before trying again.
         prompt_output: How the model is told to reply when it is scoring (a bare number).

@@ -12,11 +12,11 @@ All three levels are offered together, so "Honestly, my dog ate the couch yester
 whole sentence AND "Honestly" AND "my dog ate the couch yesterday". Which one becomes the hinge is
 for the scorer to decide, not for this module. A piece that would just repeat a higher level (a
 sentence with no commas has no separate phrases) is not repeated. A single word is a valid
-fragment.
+clip.
 
 Order is depth first and in speech order: a sentence, then its first clause, that clause's phrases,
-its next clause, and so on, then the next sentence. Each fragment carries the `heard_at` time it was
-given (the segment's timestamp, used later to fade old fragments) and the index of its sentence.
+its next clause, and so on, then the next sentence. Each clip carries the `heard_at` time it was
+given (the segment's timestamp, used later to fade old clips) and the index of its sentence.
 
 Design decisions, and why:
   * Pure text in, text out. No clock, no audio, no model, so it can be tested with nothing but
@@ -28,7 +28,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). Text that is not a string, or has no
     letters or digits, gives an empty list; a bad `max_words` falls back to the default with a
     warning. `strict=True` raises TakeCutterError instead, for tests and dev tools.
-  * A fragment longer than `max_words` (Whisper missed the punctuation) is cut into consecutive
+  * A clip longer than `max_words` (Whisper missed the punctuation) is cut into consecutive
     windows of that many words, so a hinge is always a bounded size.
 """
 import re
@@ -57,11 +57,11 @@ _QUOTES = "\"“”"
 
 
 class TakeCutterError(ValueError):
-    """Raised for any fragmenter problem, but only in strict mode (development and tests)."""
+    """Raised for any take cutter problem, but only in strict mode (development and tests)."""
 
 
 class ClipLevel(Enum):
-    """How a fragment was cut."""
+    """How a clip was cut."""
     SENTENCE = "sentence"
     CLAUSE = "clause"
     PHRASE = "phrase"
@@ -89,7 +89,7 @@ class Clip:
 
 
 class TakeCutter:
-    """Cuts transcript text into sentence, clause and phrase fragments.
+    """Cuts transcript text into sentence, clause and phrase clips.
 
     Attributes:
         report: Problems recovered from (a bad setting, input that was not text).
@@ -97,7 +97,7 @@ class TakeCutter:
 
     def __init__(self, max_words: int = DEFAULT_MAX_WORDS, strict: bool = False):
         """Args:
-            max_words: The most words a fragment may have; longer ones are cut into windows of
+            max_words: The most words a clip may have; longer ones are cut into windows of
                 this size. A whole number of at least 1.
             strict: Raise TakeCutterError on any problem instead of recording it.
         """
@@ -115,26 +115,26 @@ class TakeCutter:
         return self._max_words
 
     def split(self, text, heard_at: float = 0.0) -> list:
-        """Cuts text into fragments at every level.
+        """Cuts text into clips at every level.
 
         Args:
             text: Punctuated transcript text (one Whisper segment, or several).
-            heard_at: The timestamp to stamp on every fragment, in seconds.
+            heard_at: The timestamp to stamp on every clip, in seconds.
 
         Returns:
-            A list of Fragments, depth first and in speech order; empty if there is no text.
+            A list of Clips, depth first and in speech order; empty if there is no text.
         """
         if not isinstance(text, str):
             if text is not None:
-                self.report.warn(f"fragmenter expects text, got {type(text).__name__}; ignoring it")
+                self.report.warn(f"take cutter expects text, got {type(text).__name__}; ignoring it")
             return []
-        fragments: list = []
+        clips: list = []
         sentences = self._sentences(" ".join(text.split()))
         for index, sentence in enumerate(sentences):
-            fragments.extend(self._levels(sentence, index, heard_at))
-        _log.debug("split %d character(s) into %d sentence(s) and %d fragment(s)",
-                   len(text), len(sentences), len(fragments))
-        return fragments
+            clips.extend(self._levels(sentence, index, heard_at))
+        _log.debug("split %d character(s) into %d sentence(s) and %d clip(s)",
+                   len(text), len(sentences), len(clips))
+        return clips
 
     # --- Sentences ------------------------------------------------------------------
 

@@ -184,7 +184,7 @@ def planned_steps() -> list:
         PlannedStep("transcriber", "whisper's binary or server and model are present and answering",
                     critical=True),
         PlannedStep("scorer-server", "the Scorer's llama-server answers on the configured address "
-                    "(start it if config says to); without it every fragment goes unscored"),
+                    "(start it if config says to); without it every clip goes unscored"),
         PlannedStep("scorer-warm-up", "Scorer.warm_up(): the first request loads the model into memory "
                     "and takes 12 to 28 s on the Pi, so do it before the first real sentence"),
         PlannedStep("voice-model", "the voice model's server answers; without a voice nothing can be "

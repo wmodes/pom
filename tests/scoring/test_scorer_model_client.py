@@ -1,4 +1,4 @@
-"""Tests for pom.scoring.scorer_model_client: scoring one fragment through a fake llama-server."""
+"""Tests for pom.scoring.scorer_model_client: scoring one clip through a fake llama-server."""
 import logging
 import math
 
@@ -9,7 +9,7 @@ from pom.scoring.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, DEFAULT_TI
                                        Explanation, score_from_scorecard, parse_written_score)
 
 URL = "http://127.0.0.1:8098/v1/chat/completions"
-PROMPT = "You score how interesting a fragment is."
+PROMPT = "You score how interesting a clip is."
 
 
 def reply(*candidates):
@@ -80,7 +80,7 @@ class TestExpectedDigit:
 
 class TestScore:
     def test_returns_the_score_from_the_probabilities(self):
-        assert client(FakePost(reply(("4", 0.5), ("6", 0.5)))).score("a fragment") == pytest.approx(5.0)
+        assert client(FakePost(reply(("4", 0.5), ("6", 0.5)))).score("a clip") == pytest.approx(5.0)
 
     def test_request_is_built_as_the_experiment_built_it(self):
         post = FakePost()
@@ -88,8 +88,8 @@ class TestScore:
         url, body, timeout = post.calls[0]
         assert url == URL and timeout == 9.0
         assert body["messages"] == [{"role": "system", "content": PROMPT},
-                                    {"role": "user", "content": USER_TEMPLATE.format(fragment_text="The lamp hums.")}]
-        assert USER_TEMPLATE == "Rate this line: {fragment_text}"
+                                    {"role": "user", "content": USER_TEMPLATE.format(clip_text="The lamp hums.")}]
+        assert USER_TEMPLATE == "Rate this line: {clip_text}"
         assert body["max_tokens"] == 1 and body["temperature"] == 0
         assert body["logprobs"] is True and body["top_logprobs"] == 20
         assert body["chat_template_kwargs"] == {"enable_thinking": False}
@@ -97,8 +97,8 @@ class TestScore:
     def test_one_request_per_sentence_with_no_other_text(self):
         post = FakePost()
         c = client(post)
-        c.score("first fragment")
-        c.score("second fragment")
+        c.score("first clip")
+        c.score("second clip")
         sent = [call[1]["messages"][1]["content"] for call in post.calls]
         assert len(post.calls) == 2
         assert "second" not in sent[0] and "first" not in sent[1]
@@ -150,7 +150,7 @@ class TestRecovery:
             client(FakePost(reply(("Sorry", 1.0))), strict=True).score("hello")
 
     def test_nothing_said_in_the_room_reaches_a_report_or_log(self, caplog):
-        secret = "my secret fragment about the funeral"
+        secret = "my secret clip about the funeral"
         c = client(FakePost(OSError(f"failed on {secret}")))
         with caplog.at_level(logging.DEBUG):
             c.score(secret)
@@ -201,7 +201,7 @@ class TestWarmUp:
         post = FakePost()
         assert client(post).warm_up() is True
         assert len(post.calls) == 1
-        assert post.calls[0][1]["messages"][1]["content"] == USER_TEMPLATE.format(fragment_text=WARM_UP_CLIP)
+        assert post.calls[0][1]["messages"][1]["content"] == USER_TEMPLATE.format(clip_text=WARM_UP_CLIP)
 
     def test_warm_up_reports_failure_without_raising(self):
         assert client(FakePost(OSError("down"))).warm_up() is False
@@ -209,7 +209,7 @@ class TestWarmUp:
 
 # --- The debug view's request ----------------------------------------------------------
 
-EXPLAIN_PROMPT = "You score a fragment and say why."
+EXPLAIN_PROMPT = "You score a clip and say why."
 
 
 def written(text, first_token=None):
@@ -244,7 +244,7 @@ class TestExplain:
 
     def test_a_first_token_that_is_not_a_digit_gives_text_but_no_score(self):
         c, post = explainer()
-        post.result = written("The fragment is dull.", first_token=[("The", 0.9), ("This", 0.1)])
+        post.result = written("The clip is dull.", first_token=[("The", 0.9), ("This", 0.1)])
         assert c.explain("hello there").score is None
 
     def test_request_uses_the_explain_prompt_and_asks_for_words(self):
@@ -253,7 +253,7 @@ class TestExplain:
         url, body, timeout = post.calls[0]
         assert url == URL and timeout == 33.0
         assert body["messages"] == [{"role": "system", "content": EXPLAIN_PROMPT},
-                                    {"role": "user", "content": USER_TEMPLATE.format(fragment_text="The lamp hums.")}]
+                                    {"role": "user", "content": USER_TEMPLATE.format(clip_text="The lamp hums.")}]
         assert body["max_tokens"] == EXPLAIN_MAX_TOKENS and body["temperature"] == 0
         assert body["logprobs"] is True and body["top_logprobs"] == 20          # for the score from the same run
         assert body["chat_template_kwargs"] == {"enable_thinking": False}
@@ -312,7 +312,7 @@ class TestExplain:
             assert post.calls[0][2] == DEFAULT_EXPLAIN_TIMEOUT and len(c.report.warnings) == 1
 
     def test_what_was_said_never_reaches_a_report_or_a_log(self, caplog):
-        secret = "my secret fragment about the funeral"
+        secret = "my secret clip about the funeral"
         c = ScorerModelClient(URL, PROMPT, post=FakePost(OSError(f"failed on {secret}")), explain_prompt=EXPLAIN_PROMPT)
         with caplog.at_level(logging.DEBUG):
             c.explain(secret)

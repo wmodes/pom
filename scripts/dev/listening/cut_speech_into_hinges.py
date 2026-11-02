@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Play with the TakeCutter: see where a piece of speech gets cut into hinge candidates.
 
-Give it text as arguments, or pipe text in, and it prints every fragment with its level (sentence,
+Give it text as arguments, or pipe text in, and it prints every clip with its level (sentence,
 clause or phrase) and the sentence it belongs to. The cutting logic is src/pom/listening/take_cutter.py;
 this is only a window onto it.
 
@@ -23,16 +23,16 @@ from pom.log_setup import configure_logging  # noqa: E402
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("text", nargs="*", help="the text to cut (read from stdin if omitted)")
-    parser.add_argument("--max-words", type=int, default=40, help="longest fragment, in words (default 40)")
+    parser.add_argument("--max-words", type=int, default=40, help="longest clip, in words (default 40)")
     args = parser.parse_args()
 
     configure_logging("WARNING")
     text = " ".join(args.text) if args.text else sys.stdin.read()
-    fragments = TakeCutter(max_words=args.max_words).split(text)
-    if not fragments:
+    clips = TakeCutter(max_words=args.max_words).split(text)
+    if not clips:
         print("(nothing to cut: no words found)")
-    for fragment in fragments:
-        print(f"{fragment.sentence}  {fragment.level.value:<9} {fragment.text}")
+    for clip in clips:
+        print(f"{clip.sentence}  {clip.level.value:<9} {clip.text}")
 
 
 if __name__ == "__main__":

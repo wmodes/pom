@@ -5,7 +5,7 @@ it. To remove it for good, delete this file and `tests/scoring/test_fallback_sco
 depends on it.
 
 WHAT IT DOES
-Given a fragment's text and its tagged words (from the WordTagger), it guesses a score: a base,
+Given a clip's text and its tagged words (from the WordTagger), it guesses a score: a base,
 plus a little for each content word, name and number, plus a little for a question mark, capped at
 a ceiling. It never asks a model anything, so it works when the scorer model does not.
 
@@ -21,7 +21,7 @@ because:
     relative to the room's recent scores, by the BarKeeper), and its scores would feed that
     window and distort it.
   * The scorer model is local. If it is down, something larger is wrong, and answering from a
-    word count would only hide that. The Scorer now returns no score for a fragment it cannot
+    word count would only hide that. The Scorer now returns no score for a clip it cannot
     score, and the Printer stays quiet and keeps listening.
 
 WHEN IT MIGHT BE NEEDED AGAIN
@@ -34,7 +34,7 @@ Design decisions, and why:
   * It is a plain class with no state, no clock and no model, so it is trivial to test and to
     delete.
   * It never raises. Words it is given are only read.
-  * Fragment text is never logged; the debug line holds a number of words and a score.
+  * Clip text is never logged; the debug line holds a number of words and a score.
 """
 from typing import Sequence
 
@@ -57,11 +57,11 @@ CEILING = 5.0
 
 
 class FallbackScorer:
-    """Guesses a score from a fragment's words alone. Not in use; see the module docstring."""
+    """Guesses a score from a clip's words alone. Not in use; see the module docstring."""
 
     def __init__(self, base: float = DEFAULT_BASE):
         """Args:
-            base: The score a fragment gets before anything is added to it.
+            base: The score a clip gets before anything is added to it.
         """
         self._base = base
 
@@ -76,5 +76,5 @@ class FallbackScorer:
                  + PER_NUMBER * min(numbers, NUMBERS_COUNTED)
                  + (QUESTION_BONUS if "?" in text else 0.0))
         value = min(value, CEILING)
-        _log.debug("guessed a score for a fragment of %d words: %.2f", len(words), value)
+        _log.debug("guessed a score for a clip of %d words: %.2f", len(words), value)
         return value

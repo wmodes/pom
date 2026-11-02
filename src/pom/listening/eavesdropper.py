@@ -3,7 +3,7 @@
 It joins the parts of the listening side. Sound comes from an AudioDeck; the RollingCutter feeds it to whisper
 every few seconds and keeps the segments whisper finished; the TrackSplitter sorts each segment into words, ambient
 captions and nothing; and `hear()` yields one Take for each segment that holds something new. What happens next
-(fragmenting, scoring, the trigger) is for the modules after it.
+(cutting, scoring, the trigger) is for the modules after it.
 
 Two things beyond the cutter, both from the hearing-debug experiment:
   * REPEATS. Words identical to the last words are skipped, and captions identical to the last captions are not
@@ -60,7 +60,7 @@ class Take:
     """Something new that was heard.
 
     Attributes:
-        words: What was said or sung, ready to be fragmented and scored. "" if this segment held only captions.
+        words: What was said or sung, ready to be cut into clips and scored. "" if this segment held only captions.
         kind: "speech" or "lyrics" for the words; "" if there are none.
         ambient: Captions of sounds that are new since the last segment, such as "(dog barks)". Never scored.
         ends_at: Where in the audio stream the segment ended, in seconds from the start of listening.

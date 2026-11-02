@@ -60,32 +60,32 @@ def make(client=None, **options):
     return ClipScorer(client or FakeClient(), words(), **options)
 
 
-def fragment(text, heard_at=0.0):
+def clip(text, heard_at=0.0):
     return Clip(text=text, level=ClipLevel.SENTENCE, heard_at=heard_at)
 
 
 class TestModel:
     def test_a_sentence_with_content_goes_to_the_model(self):
         client = FakeClient(7.25)
-        result = make(client).score(fragment("The lamp hums."))
+        result = make(client).score(clip("The lamp hums."))
         assert (result.score, result.scored_by) == (7.25, ScoredBy.MODEL)
         assert client.calls == ["The lamp hums."]
 
-    def test_the_result_carries_the_fragment(self):
-        f = fragment("The lamp hums.", heard_at=12.5)
+    def test_the_result_carries_the_clip(self):
+        f = clip("The lamp hums.", heard_at=12.5)
         result = make().score(f)
-        assert isinstance(result, ScoredClip) and result.fragment is f
+        assert isinstance(result, ScoredClip) and result.clip is f
         assert result.text == "The lamp hums."
 
-    def test_score_text_makes_a_sentence_fragment(self):
+    def test_score_text_makes_a_sentence_clip(self):
         result = make().score_text("The lamp hums.", heard_at=3.0)
-        assert result.fragment.level is ClipLevel.SENTENCE and result.fragment.heard_at == 3.0
+        assert result.clip.level is ClipLevel.SENTENCE and result.clip.heard_at == 3.0
 
     def test_score_many_keeps_the_order_given(self):
         client = FakeClient()
         scorer = make(client)
         texts = ["The lamp hums.", "My dog met Karen.", "A door in the basement."]
-        results = scorer.score_many([fragment(t) for t in texts])
+        results = scorer.score_many([clip(t) for t in texts])
         assert [r.text for r in results] == texts and client.calls == texts
 
     def test_ranked_is_best_first_and_ties_keep_their_order(self):
@@ -95,12 +95,12 @@ class TestModel:
             def score(self, text):
                 return scores[text]
 
-        ranked = make(ByText()).ranked([fragment(t) for t in scores])
+        ranked = make(ByText()).ranked([clip(t) for t in scores])
         assert [r.text for r in ranked] == ["My dog met Karen.", "The lamp hums.", "A door in the basement."]
 
-    def test_the_model_is_asked_about_one_fragment_at_a_time(self):
+    def test_the_model_is_asked_about_one_clip_at_a_time(self):
         client = FakeClient()
-        make(client).score_many([fragment("The lamp hums."), fragment("A door in the basement.")])
+        make(client).score_many([clip("The lamp hums."), clip("A door in the basement.")])
         assert all(isinstance(call, str) for call in client.calls) and len(client.calls) == 2
 
     def test_counts_by_source(self):
@@ -181,31 +181,31 @@ class TestUnscored:
         result = self.scorer_without_model().score_text("The lamp hums.")
         assert result.scored_by is ScoredBy.UNSCORED and result.score is None
 
-    def test_the_unscored_result_still_carries_the_fragment(self):
-        f = fragment("The lamp hums.", heard_at=4.0)
+    def test_the_unscored_result_still_carries_the_clip(self):
+        f = clip("The lamp hums.", heard_at=4.0)
         result = self.scorer_without_model().score(f)
-        assert result.fragment is f and result.text == "The lamp hums."
+        assert result.clip is f and result.text == "The lamp hums."
 
     def test_the_filter_still_comes_first(self):
         result = self.scorer_without_model().score_text("Yeah, okay.")
         assert (result.score, result.scored_by) == (DEFAULT_CLIP_FILTER_SCORE, ScoredBy.CLIP_FILTER)
 
-    def test_ranked_puts_unscored_fragments_last(self):
+    def test_ranked_puts_unscored_clips_last(self):
         class Sometimes(FakeClient):
             def score(self, text):
                 return {"My dog met Karen.": 8.0, "The lamp hums.": None, "A door in the basement.": 4.0}[text]
 
         ranked = make(Sometimes(), failure_limit=100).ranked(
-            [fragment(t) for t in ("The lamp hums.", "A door in the basement.", "My dog met Karen.")])
+            [clip(t) for t in ("The lamp hums.", "A door in the basement.", "My dog met Karen.")])
         assert [r.text for r in ranked] == ["My dog met Karen.", "A door in the basement.", "The lamp hums."]
         assert ranked[-1].score is None
 
     def test_ranked_keeps_unscored_last_even_against_a_zero_score(self):
-        scorer = make(FakeClient(None), failure_limit=100, clip_filter_score=0.0)      # a filtered fragment scores 0.0
-        ranked = scorer.ranked([fragment("The lamp hums."), fragment("Yeah, okay.")])
+        scorer = make(FakeClient(None), failure_limit=100, clip_filter_score=0.0)      # a filtered clip scores 0.0
+        ranked = scorer.ranked([clip("The lamp hums."), clip("Yeah, okay.")])
         assert [r.text for r in ranked] == ["Yeah, okay.", "The lamp hums."]
 
-    def test_unscored_fragments_are_counted(self):
+    def test_unscored_clips_are_counted(self):
         scorer = self.scorer_without_model()
         scorer.score_text("The lamp hums.")
         assert scorer.counts() == {"model": 0, "clip_filter": 0, "unscored": 1}
@@ -313,7 +313,7 @@ class TestCircuitBreaker:
         clock.now += 5
         assert not scorer.degraded
 
-    def test_filtered_fragments_do_not_count_as_failures(self):
+    def test_filtered_clips_do_not_count_as_failures(self):
         scorer = make(FakeClient(None), failure_limit=1)
         for _ in range(5):
             scorer.score_text("Yeah, okay.")

@@ -17,7 +17,7 @@ parts every way shares:
     recording can be replayed faster than real time and give the same answers. If a time ever goes backwards (a clock stepping back) it
     is held at the latest time seen, so the bar cannot be asked about the past.
 
-A fragment that has no score (None), or one the bar ignores (a score under a floor), is NO_MARK and stays out of everything here.
+A clip that has no score (None), or one the bar ignores (a score under a floor), is NO_MARK and stays out of everything here.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad input to

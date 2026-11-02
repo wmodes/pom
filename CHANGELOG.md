@@ -45,6 +45,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (1): fragment is clip**: in the listening, scoring, qualifying and writing code, the tests, the dev tools and the config comments, a *fragment* is a *clip* and the *fragmenter* is the *take cutter* (variables, parameters, the `ScoredClip.clip` field, the `{clip_text}` placeholder
+  in the scorer's request template, messages, comments and test names). The scorer prompt text itself is unchanged. The library's own use of the word (a fragment of OCR text in `normalize.py` and the library docs) is a different thing and stays. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, folders (3): two file names**: the dev tool `scripts/dev/listening/sort_whisper_text.py` is `split_whisper_tracks.py` (it shows the TrackSplitter), and `tests/scripts/test_playgrounds.py` is `test_testbench.py`. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, folders (2): the other packages**: each lexicon section is its own package now. `pom.output` is `pom.printing`, `pom.voice` and `pom.prompt` are merged into `pom.writing` (the prompt builder, the oracle model client and the
   portent writer), and `pom.scoring` is split: the bar, the BarKeeper, its factory, the three bar algorithms and the `Attempt` (cut out of `hinge_finder.py` into its own module) are in `pom.qualifying`, the `HingeFinder` is in `pom.conductor`,

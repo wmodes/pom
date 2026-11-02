@@ -39,16 +39,16 @@ AMBIENT = "ambient"
 class HingeFinder:
     """Finds the sentences worth answering in what the room says."""
 
-    def __init__(self, listener, fragmenter, scorer, tracker, score_room_tone: bool = False):
+    def __init__(self, listener, take_cutter, scorer, tracker, score_room_tone: bool = False):
         """Args:
             listener: A Eavesdropper (anything with hear(), close() and report).
-            fragmenter: A TakeCutter that cuts words into sentences.
-            scorer: A Scorer that scores a fragment, or plain text with score_text().
+            take cutter: A TakeCutter that cuts words into sentences.
+            scorer: A Scorer that scores a clip, or plain text with score_text().
             tracker: A BarKeeper that says whether a score is a trigger.
             score_room_tone: True lets captions of sounds be scored and become hinges; False leaves them unscored.
         """
         self._listener = listener
-        self._fragmenter = fragmenter
+        self._take_cutter = take_cutter
         self._scorer = scorer
         self._tracker = tracker
         self._consider_ambient = score_room_tone
@@ -63,16 +63,16 @@ class HingeFinder:
                 yield self._sentence(caption, AMBIENT, heard.ends_at, score_it=self._consider_ambient)
             if not heard.words:
                 continue
-            for fragment in self._fragmenter.split(heard.words, heard_at=heard.ends_at):
-                if fragment.level is ClipLevel.SENTENCE:
-                    yield self._sentence(fragment.text, heard.kind, heard.ends_at, fragment=fragment)
+            for clip in self._take_cutter.split(heard.words, heard_at=heard.ends_at):
+                if clip.level is ClipLevel.SENTENCE:
+                    yield self._sentence(clip.text, heard.kind, heard.ends_at, clip=clip)
 
-    def _sentence(self, text: str, kind: str, now: float, fragment=None, score_it: bool = True) -> Attempt:
+    def _sentence(self, text: str, kind: str, now: float, clip=None, score_it: bool = True) -> Attempt:
         """Scores the text (unless it is a caption that is not to be considered) and asks the trigger about it."""
         bar, held = self._tracker.bar_at(now), self._tracker.window_size_at(now)
         if not score_it:
             return Attempt(text, kind, None, ScoredBy.UNSCORED, None, now, bar, held, self._tracker.counted)
-        result = self._scorer.score(fragment) if fragment is not None else self._scorer.score_text(text, now)
+        result = self._scorer.score(clip) if clip is not None else self._scorer.score_text(text, now)
         effect = self._tracker.rule(result.score, now)
         _log.debug("scored a %s of %d words: %s", kind, len(text.split()), effect.value)
         return Attempt(text, kind, result.score, result.scored_by, effect, now, bar, held, self._tracker.counted)
@@ -82,6 +82,6 @@ class HingeFinder:
         self._listener.close()
 
     def report_lines(self) -> list[str]:
-        """The problems met by the listener, the fragmenter, the scorer and the trigger, as lines to show."""
-        return [*self._listener.report.lines(), *self._fragmenter.report.lines(), *self._scorer.report.lines(),
+        """The problems met by the listener, the take cutter, the scorer and the trigger, as lines to show."""
+        return [*self._listener.report.lines(), *self._take_cutter.report.lines(), *self._scorer.report.lines(),
                 *self._tracker.report.lines()]

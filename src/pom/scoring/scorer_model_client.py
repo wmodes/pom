@@ -1,30 +1,30 @@
-"""The ScorerModelClient: asks the scorer model how interesting one fragment is.
+"""The ScorerModelClient: asks the scorer model how interesting one clip is.
 
-The Scorer decides which overheard fragments are worth responding to by asking a small language
+The Scorer decides which overheard clips are worth responding to by asking a small language
 model (the scorer model, served by llama.cpp's `llama-server`) to score each one. This module is
-only the conversation with that server: one fragment in, one number out, or None if no number could
-be had. It knows nothing about fragments or filtering; the Scorer does that.
+only the conversation with that server: one clip in, one number out, or None if no number could
+be had. It knows nothing about clips or filtering; the Scorer does that.
 
 HOW THE SCORE IS READ. The model is asked to reply with a single digit, 0 to 9, and only that first
 token is generated. But the model does not just pick a digit: for that one token it gives every digit a
 probability (say 75% for 6 and 25% for 7). The score is the average of the digits weighted by those
 probabilities (the expected value), here 6.25. A model that is certain gives a whole number. That makes
-the score continuous (no ties between fragments), repeatable (no sampling, temperature 0), and cheap
+the score continuous (no ties between clips), repeatable (no sampling, temperature 0), and cheap
 (one generated token). Probabilities of tokens that are not digits are left out and the digits rescaled
 to add up to 100%. Decimals written by a small model cluster on a few values, so the model is not asked
 for them. This is the method the interest-scorer experiment settled on
 (experiments/interest-scorer/README.md), and the request is built exactly as the experiment built it, so
 scores here match the saved results.
 
-ONE FRAGMENT PER REQUEST, NO CONTEXT. The model is never shown any other fragment. Batching several
-fragments, or showing earlier ones as context, made a fragment's score depend on its neighbors and
-their order. A fragment must score the same wherever it comes in the conversation.
+ONE CLIP PER REQUEST, NO CONTEXT. The model is never shown any other clip. Batching several
+clips, or showing earlier ones as context, made a clip's score depend on its neighbors and
+their order. A clip must score the same wherever it comes in the conversation.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or
     answering oddly gives None and a warning in `report`, never an exception. `strict=True` raises
     ScorerModelClientError instead, for tests and dev tools.
-  * Fragment text is never logged and never put in a FaultRecorder message: nothing that was said in the
+  * Clip text is never logged and never put in a FaultRecorder message: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config
     and has no built-in prompt, so the words that define "interesting" live in one place, the
@@ -32,7 +32,7 @@ Design decisions, and why:
   * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.
   * The transport is injected (`post`), so tests run with a fake and need no server. The default
     uses the standard library, so there is nothing to install.
-  * `explain` is the debug view's request: the same fragment and the same system message plus the
+  * `explain` is the debug view's request: the same clip and the same system message plus the
     debug output instructions, but this time the model writes a reply (its score and the content that
     earned it). It is ONE run: the score is read from the probabilities of the reply's first token, exactly
     as `score` reads it, and the written reasons are the rest of that same output, so the number and
@@ -58,7 +58,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 # The user message, word for word as in the experiment, so scores match its saved results.
-USER_TEMPLATE = "Rate this line: {fragment_text}"
+USER_TEMPLATE = "Rate this line: {clip_text}"
 WARM_UP_CLIP = "Hello there."
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_EXPLAIN_TIMEOUT = 90.0
@@ -105,7 +105,7 @@ class Explanation:
     """One debug run of the model: what it wrote, and the score its first token's probabilities give.
 
     Attributes:
-        text: The written reply (by default the score, the fragment and the content that earned the score).
+        text: The written reply (by default the score, the clip and the content that earned the score).
         score: The expected value of the first token's digit, as `ScorerModelClient.score` reads it, or None if
             the reply did not begin with a digit.
     """
@@ -124,10 +124,10 @@ def parse_written_score(reply) -> Optional[float]:
 
 
 class ScorerModelClient:
-    """Scores one fragment at a time with a language model served by llama-server.
+    """Scores one clip at a time with a language model served by llama-server.
 
     Attributes:
-        report: Problems met (server down, odd reply, bad address). Never holds fragment text.
+        report: Problems met (server down, odd reply, bad address). Never holds clip text.
         last_seconds: How long the most recent request took, or None before the first.
     """
 
@@ -179,17 +179,17 @@ class ScorerModelClient:
         """True if the model can be asked to explain a score (usable, and a debug prompt was given)."""
         return self._usable and bool(self._explain_prompt)
 
-    def score(self, fragment_text: str) -> Optional[float]:
-        """The model's interest score for one fragment (0 to 9), or None if it got none.
+    def score(self, clip_text: str) -> Optional[float]:
+        """The model's interest score for one clip (0 to 9), or None if it got none.
 
         None means no score could be had; the reason is in `report`. Never raises (except in
         strict mode).
         """
-        if not self._usable or not isinstance(fragment_text, str) or not fragment_text.strip():
+        if not self._usable or not isinstance(clip_text, str) or not clip_text.strip():
             return None
         body = {
             "messages": [{"role": "system", "content": self._prompt},
-                         {"role": "user", "content": USER_TEMPLATE.format(fragment_text=fragment_text.strip())}],
+                         {"role": "user", "content": USER_TEMPLATE.format(clip_text=clip_text.strip())}],
             "max_tokens": 1, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},      # Qwen3 thinks otherwise; others ignore it
         }
@@ -199,37 +199,37 @@ class ScorerModelClient:
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
             self.report.warn(f"the scorer model did not answer ({type(error).__name__}); "
-                             f"the fragment will go unscored")
+                             f"the clip will go unscored")
             return None
         self.last_seconds = time.perf_counter() - started
         value = score_from_scorecard(reply)
         if value is None:
-            self.report.warn("the scorer model's reply held no score; the fragment will go unscored")
+            self.report.warn("the scorer model's reply held no score; the clip will go unscored")
             return None
-        _log.debug("scored a fragment of %d characters: %.2f in %.0f ms",
-                   len(fragment_text), value, self.last_seconds * 1000)
+        _log.debug("scored a clip of %d characters: %.2f in %.0f ms",
+                   len(clip_text), value, self.last_seconds * 1000)
         return value
 
     def warm_up(self) -> bool:
-        """Asks for one throwaway score so the model is loaded before a real fragment needs it.
+        """Asks for one throwaway score so the model is loaded before a real clip needs it.
 
         Returns True if the model answered with a score. Call this once at startup; the first
         request after a server starts can take many seconds.
         """
         return self.score(WARM_UP_CLIP) is not None
 
-    def explain(self, fragment_text: str) -> Optional[Explanation]:
-        """One debug run for a fragment: the model's written reply and the score from the same run, or None.
+    def explain(self, clip_text: str) -> Optional[Explanation]:
+        """One debug run for a clip: the model's written reply and the score from the same run, or None.
 
         The reply is whatever the debug prompt asks for (by default the score and the content that
         earned it, as a comma-separated list). Slow: it writes words. Never raises (except in strict
         mode); with no debug prompt, or after a failure, it returns None.
         """
-        if not self.can_explain or not isinstance(fragment_text, str) or not fragment_text.strip():
+        if not self.can_explain or not isinstance(clip_text, str) or not clip_text.strip():
             return None
         body = {
             "messages": [{"role": "system", "content": self._explain_prompt},
-                         {"role": "user", "content": USER_TEMPLATE.format(fragment_text=fragment_text.strip())}],
+                         {"role": "user", "content": USER_TEMPLATE.format(clip_text=clip_text.strip())}],
             "max_tokens": EXPLAIN_MAX_TOKENS, "temperature": 0, "logprobs": True, "top_logprobs": 20,
             "chat_template_kwargs": {"enable_thinking": False},
         }
@@ -242,5 +242,5 @@ class ScorerModelClient:
             self.report.warn(f"the model did not give an explanation ({type(error).__name__})")
             return None
         self.last_seconds = time.perf_counter() - started
-        _log.debug("explained a fragment of %d characters in %.0f ms", len(fragment_text), self.last_seconds * 1000)
+        _log.debug("explained a clip of %d characters in %.0f ms", len(clip_text), self.last_seconds * 1000)
         return Explanation(text, score_from_scorecard(reply)) if text else None

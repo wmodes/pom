@@ -126,7 +126,7 @@ class TestWhatIsIgnored:
         t, _ = tracker()
         assert t.rule(0, 0) is Ruling.DID_NOT_QUALIFY
 
-    def test_unscored_fragments_between_scores_do_not_disturb_anything(self):
+    def test_unscored_clips_between_scores_do_not_disturb_anything(self):
         t, bar = tracker(level=5.0)
         for i, score in enumerate([1, None, 2, None, 9]):
             t.rule(score, float(i))

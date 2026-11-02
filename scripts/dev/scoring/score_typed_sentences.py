@@ -64,7 +64,7 @@ def main():
     configure_logging("WARNING")
     config = Config.load(args.config)
     scorer, tracker, client = build(config, args.min_scores)
-    fragmenter = TakeCutter()
+    take_cutter = TakeCutter()
     print(f"scorer at {config.scorer.url}; trigger ({config.qualifying.algorithm}): a score above {tracker.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")
@@ -73,14 +73,14 @@ def main():
 
     def handle(text: str) -> None:
         nonlocal now
-        for fragment in fragmenter.split(text, heard_at=now):
-            if fragment.level is not ClipLevel.SENTENCE:
+        for clip in take_cutter.split(text, heard_at=now):
+            if clip.level is not ClipLevel.SENTENCE:
                 continue
-            scored = scorer.score(fragment)
+            scored = scorer.score(clip)
             bar, held = tracker.bar_at(now), tracker.window_size_at(now)
             effect = tracker.rule(scored.score, now)
             shown = f"{scored.score:5.2f}" if scored.score is not None else "  -  "
-            print(f"  {shown}  {scored.scored_by.value:<16} {fragment.text}   "
+            print(f"  {shown}  {scored.scored_by.value:<16} {clip.text}   "
                   f"{standing(effect, bar, held)}")
             now += args.gap
 

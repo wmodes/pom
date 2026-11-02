@@ -6,7 +6,7 @@ every time:
 
   * `{exemplars}`: a handful of corpus chunks drawn by the Bibliomancer, to show the model the registers
     the oracle speaks in. They are drawn at random and never matched to the hinge.
-  * `{hinge}`: the fragment that triggered, word for word.
+  * `{hinge}`: the clip that triggered, word for word.
 
 `build(hinge)` draws the exemplars, fills in both places and returns the finished prompt together with the
 chunks it used, so a dev tool can show which exemplars went in. Each piece goes in labelled and fenced, so the

@@ -177,7 +177,7 @@ class TestWhenThereIsNoScore:
         class Unable(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
-                return ScoredClip(result.fragment, None, ScoredBy.UNSCORED)
+                return ScoredClip(result.clip, None, ScoredBy.UNSCORED)
         made = TypedLineScorer(Unable(), tracker(), Clock())
         sentence = made.score("hello")
         assert (sentence.score, sentence.effect, sentence.is_hinge) == (None, Ruling.NO_MARK, False)
@@ -186,7 +186,7 @@ class TestWhenThereIsNoScore:
         class Filtered(FakeScorer):
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
-                return ScoredClip(result.fragment, 1.0, ScoredBy.CLIP_FILTER)
+                return ScoredClip(result.clip, 1.0, ScoredBy.CLIP_FILTER)
         sentence = TypedLineScorer(Filtered(), tracker(), Clock()).score("hello")
         assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.CLIP_FILTER, False)
 

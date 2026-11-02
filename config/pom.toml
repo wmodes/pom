@@ -280,10 +280,10 @@ temperature = 0.8
 
 
 # ================================================
-# MONITOR: a web page of the last hour of triggers
+# MONITOR: a web page of the last hour of turns
 # ================================================
 
-# Open it from another machine on the same network, for example http://pom1.local:8080 . It shows the newest triggers
+# Open it from another machine on the same network, for example http://pom1.local:8080 . It shows the newest turns
 # first and, for each, the hinge, the exemplars the oracle was shown, the portent, the score and the bar. The hinge is
 # what someone said in the room, so the page keeps it in memory only, for the hour, and asks for a password.
 [monitor]
@@ -304,7 +304,7 @@ password = ""
 # true shows the hinge on the page; false shows numbers only (time, score, bar, window) and the exemplars and portent.
 show_hinges = true
 
-# How many seconds a trigger stays on the page. It is kept in memory only, so a restart empties it. Above 0.
+# How many seconds a turn stays on the page. It is kept in memory only, so a restart empties it. Above 0.
 history_seconds = 3600
 
 

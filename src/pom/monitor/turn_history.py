@@ -1,14 +1,14 @@
-"""The TurnHistory: the last hour of triggers, for the monitoring site.
+"""The TurnHistory: the last hour of turns, for the monitoring site.
 
-Each time the trigger fires, the Conductor records what happened: the hinge, its score, the bar it had to beat, the
+Each time a hinge qualifies, the Conductor records what happened: the hinge, its score, the bar it had to beat, the
 exemplars the oracle was shown and the portent it wrote. The monitoring site reads this list to show the newest
-triggers and, for each, its details. It is only a memory: the list is for looking at, not for the Printer to act on.
+turns and, for each, its details. It is only a memory: the list is for looking at, not for the Printer to act on.
 
 Design decisions, and why:
   * MEMORY ONLY. A hinge is something that was said in the room, and the project keeps nothing that was said in the
     room. So the records live in this object and nowhere else: never written to disk, never logged, never put in a
     report (those hold counts only). They are dropped after `max_age_seconds` (an hour) and when the Printer restarts.
-  * Bounded twice: by age, and by `max_records`, so a flood of triggers cannot grow the memory.
+  * Bounded twice: by age, and by `max_records`, so a flood of turns cannot grow the memory.
   * Thread-safe. The Conductor adds from its thread and the web server reads from its own, so every change and read
     takes one lock, and `recent()` returns a copy.
   * Nothing here may stop the oracle (see pom/__init__.py). A record that cannot be made (a blank hinge, a score that is
@@ -44,13 +44,13 @@ class TurnHistoryError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class TurnRecord:
-    """One trigger, and what came of it.
+    """One turn, and what came of it.
 
     Attributes:
         id: A number that only goes up, from 1, unique for as long as the history lives.
         at: When it was recorded, in seconds since the epoch.
         heard_at: Where in the audio stream the hinge ended, in seconds from the start of listening.
-        hinge: The sentence that triggered, word for word.
+        hinge: The sentence that qualified, word for word.
         score: The hinge's score, 0 to 9.
         bar: The score it had to be above, as it stood before it joined the window (None if there was none yet).
         window_size: How many scores the window held when it arrived.
@@ -71,7 +71,7 @@ def _is_number(value) -> bool:
 
 
 class TurnHistory:
-    """Keeps the recent triggers, newest first.
+    """Keeps the recent turns, newest first.
 
     Attributes:
         report: Problems met (a bad setting, a record that could not be made). Never holds a hinge or a portent.
@@ -109,12 +109,12 @@ class TurnHistory:
 
     def add(self, hinge: str, score: float, bar: Optional[float], window_size: int, heard_at: float,
             portent: Optional[Portent] = None) -> Optional[TurnRecord]:
-        """Records a trigger and returns its record, or None if it could not be made (see `report`)."""
+        """Records a turn and returns its record, or None if it could not be made (see `report`)."""
         if not (isinstance(hinge, str) and hinge.strip()):
-            self.report.warn("a trigger was given without a hinge, so it was not recorded")
+            self.report.warn("a turn was given without a hinge, so it was not recorded")
             return None
         if not _is_number(score):
-            self.report.warn("a trigger was given without a numeric score, so it was not recorded")
+            self.report.warn("a turn was given without a numeric score, so it was not recorded")
             return None
         with self._lock:
             record = TurnRecord(self._next_id, self._clock(), heard_at if _is_number(heard_at) else 0.0, hinge.strip(),
@@ -125,7 +125,7 @@ class TurnHistory:
             self.total_added += 1
             self._records.append(record)
             self._forget_old()
-        _log.debug("recorded trigger %d (%d kept)", record.id, len(self._records))
+        _log.debug("recorded turn %d (%d kept)", record.id, len(self._records))
         return record
 
     def recent(self) -> List[TurnRecord]:

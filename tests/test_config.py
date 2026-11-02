@@ -510,7 +510,7 @@ def test_a_bad_qualifying_value_means_the_default_with_a_warning(tmp_path, key, 
     assert len(config.report.warnings) == 1 and f"qualifying.{key}" in config.report.warnings[0]
 
 
-@pytest.mark.parametrize("key", ["floor_ignore_fraction", "trigger_fraction", "interest_half_life", "floor_fractoin", "fence_multiple"])
+@pytest.mark.parametrize("key", ["floor_ignore_fraction", "turn_fraction", "interest_half_life", "floor_fractoin", "fence_multiple"])
 def test_an_unknown_or_removed_qualifying_key_is_warned_about(tmp_path, key):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = 0.1\n"), environ={})
     assert any(f"qualifying.{key}" in w for w in config.report.warnings) and config.qualifying == QualifyingSettings()

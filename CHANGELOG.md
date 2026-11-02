@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (8): the monitor page says turns and qualifiers**: what the page lists is a *turn* ("Turns, newest first", "turns in the last 60 min", "last turn", "turns since start", "Turn N"
+  with "← all turns"), the orange marks on the chart are *qualifiers*, and "Trigger rule" is "Bar type". The addresses change with the words: `/trigger/N` is `/turn/N` and `/api/triggers` is `/api/turns`
+  (an old `/trigger/N` link is now a 404), and the JSON fields follow (`turns`, `turns_in_history`, `turns_per_hour`, `turns_since_start`, `last_turn_ago`, `bar_description`). In the code `TracePoint.triggered`
+  is `qualified`, and the `[monitor]` comments in `config/pom.toml` say turns. 2,580 tests pass.
 - **The Great Rename, words (7): playground is testbench, voice is oracle**: the dev tools in `scripts/dev/` are *testbenches* (in the comments, messages, docs and `tests/scripts/test_testbench.py`; the experiments folder `oracle-playground` keeps its name), and where *voice* meant the oracle it says
   *oracle*: startup's `voice-model` step is `oracle-model`, and the docs and docstrings that spoke of "a voice's replies" or "both voice tracks" say the oracle and its tracks. *Voice detector* and *voice detection* (whisper's) are a different thing and stay.
   Behavior is unchanged apart from that startup step's name; 2,580 tests pass.

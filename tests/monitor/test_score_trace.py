@@ -34,10 +34,10 @@ class TestAdding:
         assert t.add(6.5, 6.2, 12.5, True) is True
         assert t.recent() == [TracePoint(12.5, 6.5, 6.2, True)]
 
-    def test_a_point_is_not_a_trigger_unless_said_so(self):
+    def test_a_point_is_not_a_qualifier_unless_said_so(self):
         t = trace()
         t.add(3.0, 5.0, 1.0)
-        assert t.recent()[0].triggered is False
+        assert t.recent()[0].qualified is False
 
     def test_a_sentence_with_no_bar_yet_is_kept(self):
         t = trace()

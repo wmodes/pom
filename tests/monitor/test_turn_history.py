@@ -1,4 +1,4 @@
-"""Tests for pom.monitor.turn_history: the last hour of triggers, in memory only."""
+"""Tests for pom.monitor.turn_history: the last hour of turns, in memory only."""
 import logging
 import threading
 
@@ -52,7 +52,7 @@ class TestTheDefaults:
 
 
 class TestRecording:
-    def test_a_trigger_becomes_a_record_with_everything_given(self):
+    def test_a_turn_becomes_a_record_with_everything_given(self):
         clock = Clock(5000.0)
         h = history(clock)
         record = add(h, "Hello there.", score=8.25, bar=7.5, window_size=42, heard_at=61.5, portent=portent())
@@ -68,10 +68,10 @@ class TestRecording:
         h = history()
         assert [add(h).id for _ in range(3)] == [1, 2, 3]
 
-    def test_a_trigger_without_a_portent_is_still_recorded(self):
+    def test_a_turn_without_a_portent_is_still_recorded(self):
         assert add(history(), portent=None).portent is None
 
-    def test_a_trigger_with_no_bar_yet_is_recorded(self):
+    def test_a_turn_with_no_bar_yet_is_recorded(self):
         assert add(history(), bar=None).bar is None
 
     def test_the_total_counts_what_was_accepted(self):

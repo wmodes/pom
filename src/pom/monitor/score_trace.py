@@ -1,7 +1,7 @@
 """The ScoreTrace: every scored sentence's score and the bar it was judged against, for the chart on the monitoring site.
 
-The TurnHistory keeps the words of the sentences that triggered. This keeps something lighter for all the others: just numbers, one
-point per scored sentence (when it was heard, its score, the bar it had to beat, and whether it triggered), so the page can draw the
+The TurnHistory keeps the words of the sentences that qualified. This keeps something lighter for all the others: just numbers, one
+point per scored sentence (when it was heard, its score, the bar it had to beat, and whether it qualified), so the page can draw the
 room's scores and the bar riding above them. No words from the room are kept here, so it is safe to show even when hinges are hidden.
 
 Design decisions, and why:
@@ -45,12 +45,12 @@ class TracePoint:
         at: Where in the audio stream the sentence ended, in seconds from the start of listening.
         score: Its score, 0 to 9.
         bar: The score it had to be above, as the bar stood before it joined (None if there was none).
-        triggered: True if it triggered.
+        qualified: True if it qualified.
     """
     at: float
     score: float
     bar: Optional[float]
-    triggered: bool
+    qualified: bool
 
 
 def _is_number(value) -> bool:
@@ -81,12 +81,12 @@ class ScoreTrace:
         self._points: Deque[TracePoint] = deque(maxlen=max_points)
         self._lock = threading.Lock()
 
-    def add(self, score: float, bar: Optional[float], at: float, triggered: bool = False) -> bool:
+    def add(self, score: float, bar: Optional[float], at: float, qualified: bool = False) -> bool:
         """Adds a scored sentence. True if it was kept; False (see `report`) if the score or the time was not a number."""
         if not (_is_number(score) and _is_number(at)):
             self.report.warn("a point was given without a numeric score and time, so it was not kept")
             return False
-        point = TracePoint(float(at), float(score), float(bar) if _is_number(bar) else None, bool(triggered))
+        point = TracePoint(float(at), float(score), float(bar) if _is_number(bar) else None, bool(qualified))
         with self._lock:
             self._points.append(point)
             self._forget_old()

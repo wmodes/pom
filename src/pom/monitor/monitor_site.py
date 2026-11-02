@@ -1,8 +1,8 @@
-"""The MonitorSite: a web page of the last hour of triggers, for a person to open from another machine.
+"""The MonitorSite: a web page of the last hour of turns, for a person to open from another machine.
 
 Open it on the Printer's network (for example http://pom1.local:8080) and it shows how the Printer is doing and the newest
-triggers first. Click a trigger for its details: the hinge, the exemplars the oracle was shown, the portent it wrote, the
-score, the bar it had to beat and the window at that moment. The triggers come from a TurnHistory; the Conductor adds to
+turns first. Click a turn for its details: the hinge, the exemplars the oracle was shown, the portent it wrote, the
+score, the bar it had to beat and the window at that moment. The turns come from a TurnHistory; the Conductor adds to
 it and this module only reads.
 
 Design decisions, and why:
@@ -12,11 +12,11 @@ Design decisions, and why:
     cached (`Cache-Control: no-store`), so a browser does not keep them.
   * All text is escaped by the template engine (Flask turns on autoescape for these templates), because the hinge and the
     portent are untrusted words. The only script is a few lines inline, and a Content-Security-Policy allows nothing else.
-  * The page updates itself: a few lines of script ask `/api/triggers` every few seconds, update the numbers in place, and
-    reload the page when a newer trigger has arrived. There are no websockets. The same feed is a plain JSON document.
-  * THE CHART. With a ScoreTrace the page draws the last 30 minutes of scores and the bar above "Triggers, newest first" (see
+  * The page updates itself: a few lines of script ask `/api/turns` every few seconds, update the numbers in place, and
+    reload the page when a newer turn has arrived. There are no websockets. The same feed is a plain JSON document.
+  * THE CHART. With a ScoreTrace the page draws the last 30 minutes of scores and the bar above "Turns, newest first" (see
     score_chart), as inline SVG made on the server; the same script refreshes it from `/chart.svg` on each poll. It is numbers only,
-    so it is drawn whether or not hinges are hidden, and its trigger dots link to the trigger pages.
+    so it is drawn whether or not hinges are hidden, and its qualifier dots link to the turn pages.
   * Nothing here may stop the oracle (see pom/__init__.py). A missing password, a port that is taken, or a status function
     that fails is recorded in `report` (CRITICAL for the first two: the site is not running) and never raises.
     `strict=True` raises MonitorSiteError instead, for tests and dev tools.
@@ -67,13 +67,13 @@ class MonitorStatus:
     """How the Printer is doing right now, as the caller knows it.
 
     Attributes:
-        bar: The score a new score must be above to trigger now, or None until there is one.
+        bar: The score a new score must be above to qualify now, or None until there is one.
         window_size: How many scores the window holds now.
         sentences_heard: How many sentences have been heard since the Printer started.
         sentences_scored: How many of them were scored.
         services: Whether each thing the Printer depends on is answering, by name, for example {"whisper": True}.
-        algorithm: The name of the trigger algorithm in use, for example "decaying_quantile" ("" if not known).
-        trigger_description: One line saying how the trigger works and how it is set (numbers only), shown beside the algorithm.
+        algorithm: The name of the bar type in use, for example "decaying_quantile" ("" if not known).
+        bar_description: One line saying how the BarKeeper works and how it is set (numbers only), shown beside the algorithm.
     """
     bar: Optional[float] = None
     window_size: int = 0
@@ -81,7 +81,7 @@ class MonitorStatus:
     sentences_scored: int = 0
     services: Mapping[str, bool] = field(default_factory=dict)
     algorithm: str = ""
-    trigger_description: str = ""
+    bar_description: str = ""
 
 
 def _ago(seconds: float) -> str:
@@ -141,12 +141,12 @@ _SCRIPT = """
   }
   function poll() {
     drawChart();
-    fetch('/api/triggers', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (data) {
+    fetch('/api/turns', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (data) {
       var s = data.stats;
-      set('in_history', s.triggers_in_history); set('per_hour', s.triggers_per_hour); set('since_start', s.triggers_since_start);
-      set('last_ago', s.last_trigger_ago); set('bar', s.bar_text); set('window', s.window_size); set('heard', s.sentences_heard);
+      set('in_history', s.turns_in_history); set('per_hour', s.turns_per_hour); set('since_start', s.turns_since_start);
+      set('last_ago', s.last_turn_ago); set('bar', s.bar_text); set('window', s.window_size); set('heard', s.sentences_heard);
       set('scored', s.sentences_scored); set('uptime', s.uptime);
-      var latest = data.triggers.length ? data.triggers[0].id : null;
+      var latest = data.turns.length ? data.turns[0].id : null;
       if (latest !== newest) { location.reload(); }
       set('connection', '');
     }).catch(function () { set('connection', 'connection lost, retrying'); });
@@ -161,39 +161,39 @@ _INDEX = """<!doctype html>
 <body><main>
 <h1>Printer of Mysteries <span class="muted">· monitor</span> <span class="down" data-stat="connection"></span></h1>
 <div class="tiles">
-  <div class="tile"><b data-stat="in_history">{{ s.triggers_in_history }}</b><span>triggers in the last {{ s.history_minutes }} min</span></div>
-  <div class="tile"><b data-stat="per_hour">{{ s.triggers_per_hour }}</b><span>an hour at that pace</span></div>
-  <div class="tile"><b data-stat="last_ago">{{ s.last_trigger_ago }}</b><span>last trigger</span></div>
+  <div class="tile"><b data-stat="in_history">{{ s.turns_in_history }}</b><span>turns in the last {{ s.history_minutes }} min</span></div>
+  <div class="tile"><b data-stat="per_hour">{{ s.turns_per_hour }}</b><span>an hour at that pace</span></div>
+  <div class="tile"><b data-stat="last_ago">{{ s.last_turn_ago }}</b><span>last turn</span></div>
   <div class="tile"><b data-stat="bar">{{ s.bar_text }}</b><span>bar to beat now</span></div>
   <div class="tile"><b data-stat="window">{{ s.window_size }}</b><span>scores in the window</span></div>
   <div class="tile"><b><span data-stat="scored" style="font-size:inherit;color:inherit">{{ s.sentences_scored }}</span> / <span data-stat="heard" style="font-size:inherit;color:inherit">{{ s.sentences_heard }}</span></b><span>sentences scored / heard</span></div>
-  <div class="tile"><b data-stat="since_start">{{ s.triggers_since_start }}</b><span>triggers since start</span></div>
+  <div class="tile"><b data-stat="since_start">{{ s.turns_since_start }}</b><span>turns since start</span></div>
   <div class="tile"><b data-stat="uptime">{{ s.uptime }}</b><span>up</span></div>
 </div>
 {% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
-{% if s.algorithm or s.trigger_description %}<p class="rule"><span class="muted">Trigger rule:</span> <b>{{ s.algorithm }}</b>{% if s.trigger_description %} <span class="muted">&mdash; a score above {{ s.trigger_description }}</span>{% endif %}</p>{% endif %}
+{% if s.algorithm or s.bar_description %}<p class="rule"><span class="muted">Bar type:</span> <b>{{ s.algorithm }}</b>{% if s.bar_description %} <span class="muted">&mdash; a score above {{ s.bar_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
-<p class="muted small">Black dots: scored sentences. Red line: the bar each one had to beat. Orange: triggers (click one). The last 30 minutes.</p>{% endif %}
-<h2>Triggers, newest first</h2>
+<p class="muted small">Black dots: scored sentences. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last 30 minutes.</p>{% endif %}
+<h2>Turns, newest first</h2>
 {% if rows %}
 <table><thead><tr><th>Time</th><th class="num">Score</th><th class="num">Bar</th><th class="hide-narrow num">Window</th><th>Hinge</th></tr></thead><tbody>
 {% for r in rows %}<tr>
-  <td><a href="/trigger/{{ r.id }}">{{ r.time }}</a><br><span class="muted">{{ r.ago }}</span></td>
+  <td><a href="/turn/{{ r.id }}">{{ r.time }}</a><br><span class="muted">{{ r.ago }}</span></td>
   <td class="num">{{ r.score }}</td><td class="num">{{ r.bar }}</td><td class="hide-narrow num">{{ r.window_size }}</td>
   <td>{{ r.hinge }}</td></tr>{% endfor %}
 </tbody></table>
-{% else %}<p class="muted">No triggers in the last {{ s.history_minutes }} minutes.</p>{% endif %}
+{% else %}<p class="muted">No turns in the last {{ s.history_minutes }} minutes.</p>{% endif %}
 <script>{{ script|safe }}</script>
 </main></body></html>"""
 
 _DETAIL = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trigger {{ r.id }}</title><style>{{ style }}</style></head>
+<title>Turn {{ r.id }}</title><style>{{ style }}</style></head>
 <body><main>
-<p><a href="/">&larr; all triggers</a></p>
-<p class="nav">{% if newer %}<a href="/trigger/{{ newer }}" rel="prev">&larr; Newer</a>{% else %}<span class="muted">&larr; Newer</span>{% endif %}
- &nbsp;·&nbsp; {% if older %}<a href="/trigger/{{ older }}" rel="next">Older &rarr;</a>{% else %}<span class="muted">Older &rarr;</span>{% endif %}</p>
-<h1>Trigger {{ r.id }} <span class="muted">· {{ time }} ({{ ago }})</span></h1>
+<p><a href="/">&larr; all turns</a></p>
+<p class="nav">{% if newer %}<a href="/turn/{{ newer }}" rel="prev">&larr; Newer</a>{% else %}<span class="muted">&larr; Newer</span>{% endif %}
+ &nbsp;·&nbsp; {% if older %}<a href="/turn/{{ older }}" rel="next">Older &rarr;</a>{% else %}<span class="muted">Older &rarr;</span>{% endif %}</p>
+<h1>Turn {{ r.id }} <span class="muted">· {{ time }} ({{ ago }})</span></h1>
 <h2>Hinge</h2>
 <pre>{{ hinge }}</pre>
 <table class="facts"><tbody>
@@ -201,7 +201,7 @@ _DETAIL = """<!doctype html>
 <tr><td>Bar it had to beat</td><td>{{ bar }}</td></tr>
 <tr><td>Scores in the window</td><td>{{ r.window_size }}</td></tr>
 <tr><td>Heard at</td><td>{{ heard_at }} into the listening</td></tr>
-{% if rule %}<tr><td>Trigger rule</td><td>{{ rule }}</td></tr>{% endif %}
+{% if rule %}<tr><td>Bar type</td><td>{{ rule }}</td></tr>{% endif %}
 </tbody></table>
 <h2>Portent</h2>
 {% if portent %}
@@ -210,7 +210,7 @@ _DETAIL = """<!doctype html>
 <h2>Exemplars the oracle was shown</h2>
 {% for passage in portent.exemplars %}<p class="muted">{{ passage.id }} · {{ passage.shelf }}</p><pre>{{ passage.text }}</pre>
 {% else %}<p class="muted">None.</p>{% endfor %}
-{% else %}<p class="muted">No portent could be had for this trigger.</p>{% endif %}
+{% else %}<p class="muted">No portent could be had for this turn.</p>{% endif %}
 </main></body></html>"""
 
 
@@ -226,7 +226,7 @@ class MonitorSite:
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
                  clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None):
         """Args:
-            history: Where the triggers are read from.
+            history: Where the turns are read from.
             password: The site's password; the site does not run without one.
             show_hinges: False hides the hinge text everywhere, leaving numbers only.
             status_source: A function returning the MonitorStatus now; optional.
@@ -305,11 +305,11 @@ class MonitorSite:
         span = self._history.max_age_seconds
         uptime = _ago(now - self._started_at).replace(" ago", "")
         return {
-            "triggers_in_history": len(records),
-            "triggers_per_hour": f"{len(records) * 3600 / span:.1f}",
+            "turns_in_history": len(records),
+            "turns_per_hour": f"{len(records) * 3600 / span:.1f}",
             "history_minutes": f"{span / 60:g}",
-            "triggers_since_start": self._history.total_added,
-            "last_trigger_ago": _ago(now - records[0].at) if records else "none yet",
+            "turns_since_start": self._history.total_added,
+            "last_turn_ago": _ago(now - records[0].at) if records else "none yet",
             "bar": status.bar,
             "bar_text": f"{status.bar:.2f}" if isinstance(status.bar, (int, float)) else "none yet",
             "window_size": status.window_size,
@@ -318,7 +318,7 @@ class MonitorSite:
             "uptime": "just started" if uptime == "just now" else uptime,
             "services": {str(name): bool(up) for name, up in dict(status.services).items()},
             "algorithm": str(status.algorithm or ""),
-            "trigger_description": str(status.trigger_description or ""),
+            "bar_description": str(status.bar_description or ""),
         }
 
     def _hinge_text(self, record: TurnRecord, short: bool) -> str:
@@ -331,7 +331,7 @@ class MonitorSite:
         return f"{record.bar:.2f}" if record.bar is not None else "none yet"
 
     def _neighbours(self, record_id: int):
-        """The numbers of the next newer and the next older trigger still on the page (None where there is none)."""
+        """The numbers of the next newer and the next older turn still on the page (None where there is none)."""
         ids = [record.id for record in self._history.recent()]            # newest first
         if record_id not in ids:
             return None, None
@@ -339,7 +339,7 @@ class MonitorSite:
         return (ids[at - 1] if at > 0 else None), (ids[at + 1] if at + 1 < len(ids) else None)
 
     def _chart(self) -> str:
-        """The chart as SVG, or "" if there is no trace. Trigger dots link to the records still on the page."""
+        """The chart as SVG, or "" if there is no trace. Qualifier dots link to the records still on the page."""
         if self._trace is None:
             return ""
         links = {record.heard_at: record.id for record in self._history.recent()}
@@ -388,7 +388,7 @@ class MonitorSite:
                 abort(404)
             return Response(self._chart(), mimetype="image/svg+xml")
 
-        @app.get("/trigger/<int:record_id>")
+        @app.get("/turn/<int:record_id>")
         def detail(record_id: int):
             record = self._history.get(record_id)
             if record is None:
@@ -396,19 +396,19 @@ class MonitorSite:
             portent = record.portent
             newer, older = self._neighbours(record_id)
             status = self._status()
-            rule = " - ".join(part for part in (str(status.algorithm or ""), str(status.trigger_description or "")) if part)
+            rule = " - ".join(part for part in (str(status.algorithm or ""), str(status.bar_description or "")) if part)
             return render_template_string(
                 _DETAIL, style=_STYLE, r=record, newer=newer, older=older, rule=rule, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
                 hinge=self._hinge_text(record, short=False), score=f"{record.score:.2f}", bar=self._bar_text(record),
                 heard_at=f"{int(record.heard_at) // 60} min {int(record.heard_at) % 60:02d} s", portent=portent,
                 seconds=f"{portent.seconds:.1f}" if portent is not None else "")
 
-        @app.get("/api/triggers")
-        def api_triggers():
+        @app.get("/api/turns")
+        def api_turns():
             records = self._history.recent()
             stats = self._stats(records)
             now = self._clock()
-            triggers = []
+            turns = []
             for record in records:
                 item = {"id": record.id, "at": record.at, "ago": _ago(now - record.at), "heard_at": record.heard_at,
                         "score": record.score, "bar": record.bar, "window_size": record.window_size,
@@ -418,7 +418,7 @@ class MonitorSite:
                 if record.portent is not None:
                     item.update(portent=record.portent.text, words=record.portent.words, seconds=record.portent.seconds,
                                 cut_off=record.portent.cut_off, exemplars=[passage.id for passage in record.portent.exemplars])
-                triggers.append(item)
-            return jsonify({"stats": stats, "triggers": triggers})
+                turns.append(item)
+            return jsonify({"stats": stats, "turns": turns})
 
         return app

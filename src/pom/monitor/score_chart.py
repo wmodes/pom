@@ -1,13 +1,13 @@
 """The score chart: the room's scores and the bar riding above them, drawn as a small inline SVG for the monitoring site.
 
-`render_score_chart(points, trigger_ids)` takes the points of a ScoreTrace and returns one `<svg>` element, the width of the text:
+`render_score_chart(points, qualifier_ids)` takes the points of a ScoreTrace and returns one `<svg>` element, the width of the text:
 
   * every scored sentence is a small dot (black on the page), on a fixed 0 to 9 scale with gridlines at 0, 3, 6 and 9, and vertical
     gridlines every five minutes, so it reads like graph paper;
   * the bar each sentence was judged against is a line (red on the page) that steps from one sentence to the next, so it rises and
     falls with the room;
-  * each trigger is a larger orange dot, and where its record is known (`trigger_ids`, by the audio time it was heard) the dot is a link
-    to that trigger's page, with the score and the bar as its tooltip.
+  * each qualifier is a larger orange dot, and where its record is known (`qualifier_ids`, by the audio time it was heard) the dot is a link
+    to that qualifier's page, with the score and the bar as its tooltip.
   * the time axis runs back from the newest point ("now", "-10 min", ...), over the last `seconds` (30 minutes to begin with).
 
 Design decisions, and why:
@@ -43,18 +43,18 @@ def _y(score: float, plot_height: float) -> float:
     return TOP + plot_height * (1.0 - clamped / SCORE_MAX)
 
 
-def render_score_chart(points: Sequence[TracePoint], trigger_ids: Optional[Mapping[float, int]] = None,
+def render_score_chart(points: Sequence[TracePoint], qualifier_ids: Optional[Mapping[float, int]] = None,
                        seconds: float = DEFAULT_SECONDS, width: int = WIDTH, height: int = HEIGHT) -> str:
     """The chart for these points as an `<svg>` string.
 
     Args:
         points: The ScoreTrace's points, oldest first.
-        trigger_ids: The number of each trigger's record by the audio time it was heard, for linking its dot (a trigger not in
+        qualifier_ids: The number of each qualifier's record by the audio time it was heard, for linking its dot (a qualifier not in
             it is drawn without a link, for example one whose portent is still being written).
         seconds: How much audio time to show, back from the newest point.
         width, height: The size of the drawing's own coordinate space (it scales to the width of the page).
     """
-    trigger_ids = trigger_ids or {}
+    qualifier_ids = qualifier_ids or {}
     plot_width, plot_height = width - LEFT - RIGHT, height - TOP - BOTTOM
     head = f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" xmlns="http://www.w3.org/2000/svg">'
     if not points:
@@ -62,9 +62,9 @@ def render_score_chart(points: Sequence[TracePoint], trigger_ids: Optional[Mappi
                 f'text-anchor="middle">No scores yet.</text></svg>')
     t_end = points[-1].at
     shown = [point for point in points if point.at >= t_end - seconds]
-    triggers = [point for point in shown if point.triggered]
+    qualifiers = [point for point in shown if point.qualified]
     parts = [head, f"<title>Scores and the bar over the last {seconds / 60:g} minutes: {len(shown)} sentences, "
-                   f"{len(triggers)} triggers.</title>"]
+                   f"{len(qualifiers)} qualifiers.</title>"]
     for value in GRID_AT:
         y = _y(value, plot_height)
         parts.append(f'<line class="grid" x1="{LEFT}" x2="{width - RIGHT}" y1="{y:.1f}" y2="{y:.1f}"/>'
@@ -81,7 +81,7 @@ def render_score_chart(points: Sequence[TracePoint], trigger_ids: Optional[Mappi
         parts.append(f'<text class="key" x="{x:.1f}" y="{height - 4}" text-anchor="{"end" if tick == 0 else "middle"}">{label}</text>')
         tick += 1
     for point in shown:
-        if not point.triggered:
+        if not point.qualified:
             parts.append(f'<circle class="dot" cx="{_x(point.at, t_end, seconds, plot_width):.1f}" cy="{_y(point.score, plot_height):.1f}" r="1.8"/>')
     path, previous_bar = [], False
     for point in shown:
@@ -93,11 +93,11 @@ def render_score_chart(points: Sequence[TracePoint], trigger_ids: Optional[Mappi
         previous_bar = True
     if path:
         parts.append(f'<path class="bar" d="{" ".join(path)}"/>')
-    for point in triggers:
+    for point in qualifiers:
         circle = (f'<circle class="hit" cx="{_x(point.at, t_end, seconds, plot_width):.1f}" cy="{_y(point.score, plot_height):.1f}" r="4">'
                   f'<title>score {point.score:.2f}'
                   f'{"" if point.bar is None else f", bar {point.bar:.2f}"}</title></circle>')
-        record = trigger_ids.get(point.at)
-        parts.append(f'<a href="/trigger/{int(record)}">{circle}</a>' if record is not None else circle)
+        record = qualifier_ids.get(point.at)
+        parts.append(f'<a href="/turn/{int(record)}">{circle}</a>' if record is not None else circle)
     parts.append("</svg>")
     return "".join(parts)

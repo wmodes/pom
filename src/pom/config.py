@@ -30,9 +30,9 @@ of being threaded through by hand. Today there are five:
                `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and caption memory. The defaults are the
                combination that worked in the room; change one at a time. The entry point builds the
                WhisperModelClient, MicDeck and Eavesdropper from `config.listening`.
-    [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of triggers. Whether it
+    [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of turns. Whether it
                runs, the address and port it listens on, its password (set it in config/pom.local.toml, never in the
-               committed file), whether it shows the hinge text, and how long a trigger stays on the page.
+               committed file), whether it shows the hinge text, and how long a turn stays on the page.
     [printing]   A section (see PrintingSettings): how a portent is set on the page. The paper's width, the margins and the
                print wheel's characters per inch give the line width; `quote_indent` indents a quotation and
                `linefeeds_after_portent` is how far the paper moves on after a portent, and
@@ -305,7 +305,7 @@ class ListeningSettings:
 
 @dataclass(frozen=True)
 class MonitorSettings:
-    """The `[monitor]` section: the monitoring site, a web page of the last hour of triggers.
+    """The `[monitor]` section: the monitoring site, a web page of the last hour of turns.
 
     Attributes:
         enabled: True starts the site with the Printer.
@@ -314,7 +314,7 @@ class MonitorSettings:
         password: The site's password. The site does not start while it is empty; set it in config/pom.local.toml,
             which git ignores, never in pom.toml.
         show_hinges: True shows the hinge (what was said in the room) on the page; False shows numbers only.
-        history_seconds: How long a trigger stays on the page, above 0 (3600 is an hour). Kept in memory only.
+        history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only.
     """
     enabled: bool = DEFAULT_MONITOR_ENABLED
     host: str = DEFAULT_MONITOR_HOST

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Play with the monitoring site: serve invented triggers so you can open the page and click around.
+"""Play with the monitoring site: serve invented turns so you can open the page and click around.
 
-It is the real MonitorSite over a real TurnHistory; only the triggers are made up (invented lines, not anything said in a
+It is the real MonitorSite over a real TurnHistory; only the turns are made up (invented lines, not anything said in a
 room), together with an invented status (a bar, a window, which servers are up). Open the address it prints, with any user
 name and the password you gave (the default is `demo`).
 
 Usage:
     serve_fake_turns.py                    # serve on port 8080 with the password "demo"
-    serve_fake_turns.py --live 15          # add a new invented trigger every 15 seconds, to watch the page update itself
+    serve_fake_turns.py --live 15          # add a new invented turn every 15 seconds, to watch the page update itself
     serve_fake_turns.py --hide-hinges      # the page with the hinge text hidden (numbers only)
     serve_fake_turns.py --port 9000 --password hunter2
     serve_fake_turns.py --check            # serve on a free port, read the page's JSON feed once, and exit
@@ -51,8 +51,8 @@ PORTENTS = [
 ]
 
 
-def fake_trigger(history: TurnHistory, rng: random.Random, n: int) -> None:
-    """Adds one invented trigger; every fourth one has no portent, to see that page too."""
+def fake_turn(history: TurnHistory, rng: random.Random, n: int) -> None:
+    """Adds one invented turn; every fourth one has no portent, to see that page too."""
     exemplars = tuple(rng.sample(EXEMPLARS, 1))
     portent = None if n % 4 == 3 else Portent(rng.choice(PORTENTS), exemplars, rng.uniform(0.4, 38.0), n % 5 == 4)
     history.add(HINGES[n % len(HINGES)], round(rng.uniform(6.5, 9.0), 2), round(rng.uniform(6.0, 7.5), 2), rng.randint(60, 300),
@@ -64,7 +64,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8080, help="the port to serve on")
     parser.add_argument("--password", default="demo", help="the password for the page")
     parser.add_argument("--hide-hinges", action="store_true", help="hide the hinge text, as show_hinges = false does")
-    parser.add_argument("--live", type=float, default=0.0, metavar="SECONDS", help="add a new invented trigger this often")
+    parser.add_argument("--live", type=float, default=0.0, metavar="SECONDS", help="add a new invented turn this often")
     parser.add_argument("--check", action="store_true", help="serve on a free port, read the JSON feed once, and exit")
     args = parser.parse_args()
 
@@ -72,7 +72,7 @@ def main() -> None:
     history = TurnHistory()
     started = time.time()
     for n in range(5):
-        fake_trigger(history, rng, n)
+        fake_turn(history, rng, n)
     site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges,
                        status_source=lambda: MonitorStatus(bar=6.84, window_size=118, sentences_heard=1432, sentences_scored=1391,
                                                            services={"whisper": True, "scorer": True, "oracle": True, "typewriter": False}))
@@ -80,22 +80,22 @@ def main() -> None:
         sys.exit("the site did not start: " + "; ".join(site.report.lines()))
 
     if args.check:
-        request = urllib.request.Request(f"http://127.0.0.1:{site.port}/api/triggers", headers={
+        request = urllib.request.Request(f"http://127.0.0.1:{site.port}/api/turns", headers={
             "Authorization": "Basic " + base64.b64encode(f"x:{args.password}".encode()).decode()})
         with urllib.request.urlopen(request, timeout=10) as response:
             feed = json.load(response)
-        print(f"the site answered: {len(feed['triggers'])} triggers, bar {feed['stats']['bar_text']}")
+        print(f"the site answered: {len(feed['turns'])} turns, bar {feed['stats']['bar_text']}")
         site.stop()
         return
 
-    print(f"serving {len(history.recent())} invented triggers: open http://localhost:{site.port}  (any user name, password: {args.password})")
+    print(f"serving {len(history.recent())} invented turns: open http://localhost:{site.port}  (any user name, password: {args.password})")
     print("on the same network: http://<this machine's name or address>:" + str(site.port))
     print("ctrl-C quits.", flush=True)
     try:
         for n in itertools.count(5):
             if args.live > 0:
                 time.sleep(args.live)
-                fake_trigger(history, rng, n)
+                fake_turn(history, rng, n)
             else:
                 time.sleep(3600)
     except KeyboardInterrupt:

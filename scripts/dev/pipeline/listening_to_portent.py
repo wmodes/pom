@@ -27,10 +27,10 @@ Usage:
 
 The config is read again before every portent, so a change to the oracle prompt shows at once.
 
-With --monitor the real MonitorSite runs beside the pipeline and every trigger is added to it as it happens: open the address it prints,
+With --monitor the real MonitorSite runs beside the pipeline and every turn is added to it as it happens: open the address it prints,
 with any user name and the password from [monitor] in config/pom.local.toml (git ignores that file; the site will not start without a
-password). The page keeps the last `history_seconds` of triggers in memory only and shows the trigger algorithm, the bar and the services.
-A trigger appears once its portent has been written (or has failed). When a recording ends the site stays up until ctrl-C.
+password). The page keeps the last `history_seconds` of turns in memory only and shows the bar type, the bar and the services.
+A turn appears once its portent has been written (or has failed). When a recording ends the site stays up until ctrl-C.
 """
 import argparse
 import random
@@ -115,7 +115,7 @@ def main() -> None:
     parser.add_argument("--mac-mic", nargs="?", const="default", metavar="DEVICE",
                         help="listen to this Mac's microphone through ffmpeg: the system default input, or the named one")
     parser.add_argument("--max-portents", type=int, default=0, help="stop after this many portents (0 means keep going)")
-    parser.add_argument("--monitor", action="store_true", help="also serve the monitoring site, fed by every trigger")
+    parser.add_argument("--monitor", action="store_true", help="also serve the monitoring site, fed by every turn")
     args = parser.parse_args()
     if args.wav and args.mac_mic:
         sys.exit("give --wav or --mac-mic, not both")
@@ -166,7 +166,7 @@ def main() -> None:
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
         site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, status_source=lambda: MonitorStatus(
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
-            services=watch(), algorithm=qualifying.algorithm, trigger_description=bar_keeper.describe()))
+            services=watch(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe()))
         if not site.start(monitor.host, monitor.port):
             sys.exit("the monitoring site did not start: " + "; ".join(site.report.lines()))
 

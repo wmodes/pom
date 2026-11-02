@@ -68,9 +68,9 @@ def test_the_whole_pipeline_testbench_wants_one_sound_source_only():
     assert result.returncode != 0 and "not both" in (result.stdout + result.stderr)
 
 
-def test_the_fake_trigger_site_serves_its_feed_and_exits():
+def test_the_fake_turn_site_serves_its_feed_and_exits():
     result = run("scripts/dev/monitor/serve_fake_turns.py", "--check")
-    assert result.returncode == 0 and "the site answered: 5 triggers" in result.stdout, result.stderr
+    assert result.returncode == 0 and "the site answered: 5 turns" in result.stdout, result.stderr
 
 
 def test_the_whole_pipeline_testbench_wants_a_password_for_the_monitor(tmp_path):

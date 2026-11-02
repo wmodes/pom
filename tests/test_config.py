@@ -825,34 +825,34 @@ def test_the_shipped_monitor_section_is_off_and_has_no_password():
     assert monitor["enabled"] is False and monitor["password"] == ""
 
 
-# --- The [output] section ------------------------------------------------------------------
+# --- The [printing] section ------------------------------------------------------------------
 
 def test_the_output_defaults_are_a_65_character_line_for_letter_paper_at_10_pitch():
-    from pom.config import OutputSettings
+    from pom.config import PrintingSettings
     config = Config.load(environ={})
-    assert config.output == OutputSettings() and config.report.ok
-    assert (config.output.paper_width_inches, config.output.margin_inches, config.output.characters_per_inch) == (8.5, 1.0, 10.0)
-    assert (config.output.quote_indent, config.output.linefeeds_after_portent, config.output.line_width) == (4, 4, 65)
+    assert config.printing == PrintingSettings() and config.report.ok
+    assert (config.printing.paper_width_inches, config.printing.margin_inches, config.printing.characters_per_inch) == (8.5, 1.0, 10.0)
+    assert (config.printing.quote_indent, config.printing.linefeeds_after_portent, config.printing.line_width) == (4, 4, 65)
 
 
 def test_all_the_output_values_are_read_from_the_section(tmp_path):
-    from pom.config import OutputSettings
-    text = ("[output]\npaper_width_inches = 11\nmargin_inches = 0.5\ncharacters_per_inch = 12\n"
+    from pom.config import PrintingSettings
+    text = ("[printing]\npaper_width_inches = 11\nmargin_inches = 0.5\ncharacters_per_inch = 12\n"
             "quote_indent = 6\nlinefeeds_after_portent = 2\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.output == OutputSettings(11.0, 0.5, 12.0, 6, 2) and config.report.ok
-    assert config.output.line_width == 120
+    assert config.printing == PrintingSettings(11.0, 0.5, 12.0, 6, 2) and config.report.ok
+    assert config.printing.line_width == 120
 
 
 @pytest.mark.parametrize("cpi, width", [(10, 65), (12, 78), (15, 97)])
 def test_the_line_width_for_letter_paper_with_1_inch_margins_at_each_pitch(tmp_path, cpi, width):
-    config = Config.load(write(tmp_path, f"[output]\ncharacters_per_inch = {cpi}\n"), environ={})
-    assert config.output.line_width == width
+    config = Config.load(write(tmp_path, f"[printing]\ncharacters_per_inch = {cpi}\n"), environ={})
+    assert config.printing.line_width == width
 
 
 def test_zero_for_the_indent_and_the_line_feeds_is_allowed(tmp_path):
-    config = Config.load(write(tmp_path, "[output]\nquote_indent = 0\nlinefeeds_after_portent = 0\nmargin_inches = 0\n"), environ={})
-    assert (config.output.quote_indent, config.output.linefeeds_after_portent, config.output.margin_inches) == (0, 0, 0.0)
+    config = Config.load(write(tmp_path, "[printing]\nquote_indent = 0\nlinefeeds_after_portent = 0\nmargin_inches = 0\n"), environ={})
+    assert (config.printing.quote_indent, config.printing.linefeeds_after_portent, config.printing.margin_inches) == (0, 0, 0.0)
     assert config.report.ok
 
 
@@ -862,84 +862,84 @@ def test_zero_for_the_indent_and_the_line_feeds_is_allowed(tmp_path):
     ("linefeeds_after_portent", "-1"), ("linefeeds_after_portent", "true"),
 ])
 def test_a_bad_output_value_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import OutputSettings
-    config = Config.load(write(tmp_path, f"[output]\n{key} = {value}\n"), environ={})
-    assert config.output == OutputSettings()
-    assert len(config.report.warnings) == 1 and f"output.{key}" in config.report.warnings[0]
+    from pom.config import PrintingSettings
+    config = Config.load(write(tmp_path, f"[printing]\n{key} = {value}\n"), environ={})
+    assert config.printing == PrintingSettings()
+    assert len(config.report.warnings) == 1 and f"printing.{key}" in config.report.warnings[0]
 
 
 def test_margins_that_leave_too_short_a_line_mean_the_default_paper_and_pitch_with_a_warning(tmp_path):
-    from pom.config import OutputSettings
-    config = Config.load(write(tmp_path, "[output]\nmargin_inches = 4\nquote_indent = 6\nlinefeeds_after_portent = 1\n"), environ={})
-    assert config.output == OutputSettings(quote_indent=6, linefeeds_after_portent=1)
+    from pom.config import PrintingSettings
+    config = Config.load(write(tmp_path, "[printing]\nmargin_inches = 4\nquote_indent = 6\nlinefeeds_after_portent = 1\n"), environ={})
+    assert config.printing == PrintingSettings(quote_indent=6, linefeeds_after_portent=1)
     assert len(config.report.warnings) == 1 and "20" in config.report.warnings[0]
 
 
 def test_a_line_of_exactly_the_shortest_width_is_allowed(tmp_path):
-    config = Config.load(write(tmp_path, "[output]\npaper_width_inches = 4\nmargin_inches = 1\ncharacters_per_inch = 10\n"), environ={})
-    assert config.output.line_width == 20 and config.report.ok
+    config = Config.load(write(tmp_path, "[printing]\npaper_width_inches = 4\nmargin_inches = 1\ncharacters_per_inch = 10\n"), environ={})
+    assert config.printing.line_width == 20 and config.report.ok
 
 
 def test_the_committed_config_sets_every_output_key():
     import tomllib
     with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
-        section = tomllib.load(f)["output"]
+        section = tomllib.load(f)["printing"]
     assert set(section) == {"paper_width_inches", "margin_inches", "characters_per_inch", "quote_indent", "linefeeds_after_portent",
                               "keep_composed_characters", "ascii_printwheel"}
 
 
 def test_the_line_width_is_not_lost_to_floating_point_rounding(tmp_path):
     # (8 - 2 x 2.2) x 15 comes to 53.99999999999999 in floating point; the line is 54 characters
-    text = "[output]\npaper_width_inches = 8\nmargin_inches = 2.2\ncharacters_per_inch = 15\n"
-    assert Config.load(write(tmp_path, text), environ={}).output.line_width == 54
+    text = "[printing]\npaper_width_inches = 8\nmargin_inches = 2.2\ncharacters_per_inch = 15\n"
+    assert Config.load(write(tmp_path, text), environ={}).printing.line_width == 54
 
 
 def test_a_config_built_without_output_settings_has_the_defaults():
-    from pom.config import OutputSettings
-    assert Config().output == OutputSettings()
+    from pom.config import PrintingSettings
+    assert Config().printing == PrintingSettings()
 
 
-# --- The [output] composed characters ------------------------------------------------------
+# --- The [printing] composed characters ------------------------------------------------------
 
 def test_by_default_no_composed_character_is_kept_and_the_wheel_is_not_ascii():
-    output = Config.load(environ={}).output
-    assert (output.keep_composed_characters, output.ascii_printwheel, output.composed_characters_kept) == ("", False, "")
+    printing = Config.load(environ={}).printing
+    assert (printing.keep_composed_characters, printing.ascii_printwheel, printing.composed_characters_kept) == ("", False, "")
 
 
 def test_the_listed_composed_characters_are_read_and_are_the_ones_kept(tmp_path):
-    config = Config.load(write(tmp_path, '[output]\nkeep_composed_characters = "^|"\n'), environ={})
-    assert config.output.keep_composed_characters == "^|" and config.output.composed_characters_kept == "^|" and config.report.ok
+    config = Config.load(write(tmp_path, '[printing]\nkeep_composed_characters = "^|"\n'), environ={})
+    assert config.printing.keep_composed_characters == "^|" and config.printing.composed_characters_kept == "^|" and config.report.ok
 
 
 def test_an_ascii_printwheel_keeps_all_the_composed_characters_whatever_is_listed(tmp_path):
     from pom.config import COMPOSED_CHARACTERS
-    config = Config.load(write(tmp_path, '[output]\nascii_printwheel = true\nkeep_composed_characters = "^"\n'), environ={})
-    assert config.output.ascii_printwheel is True and config.output.composed_characters_kept == COMPOSED_CHARACTERS
+    config = Config.load(write(tmp_path, '[printing]\nascii_printwheel = true\nkeep_composed_characters = "^"\n'), environ={})
+    assert config.printing.ascii_printwheel is True and config.printing.composed_characters_kept == COMPOSED_CHARACTERS
     assert COMPOSED_CHARACTERS == "\\^`{|}~"
 
 
 def test_a_character_that_is_not_swappable_in_the_keep_list_is_left_out_with_a_warning(tmp_path):
-    config = Config.load(write(tmp_path, '[output]\nkeep_composed_characters = "<a^^|"\n'), environ={})
-    assert config.output.keep_composed_characters == "^|"
-    assert len(config.report.warnings) == 1 and "output.keep_composed_characters" in config.report.warnings[0]
+    config = Config.load(write(tmp_path, '[printing]\nkeep_composed_characters = "<a^^|"\n'), environ={})
+    assert config.printing.keep_composed_characters == "^|"
+    assert len(config.report.warnings) == 1 and "printing.keep_composed_characters" in config.report.warnings[0]
 
 
 def test_a_keep_list_that_is_not_text_means_the_default_with_a_warning(tmp_path):
-    config = Config.load(write(tmp_path, "[output]\nkeep_composed_characters = 5\n"), environ={})
-    assert config.output.keep_composed_characters == ""
-    assert len(config.report.warnings) == 1 and "output.keep_composed_characters" in config.report.warnings[0]
+    config = Config.load(write(tmp_path, "[printing]\nkeep_composed_characters = 5\n"), environ={})
+    assert config.printing.keep_composed_characters == ""
+    assert len(config.report.warnings) == 1 and "printing.keep_composed_characters" in config.report.warnings[0]
 
 
 def test_a_bad_ascii_printwheel_value_means_false_with_a_warning(tmp_path):
-    config = Config.load(write(tmp_path, '[output]\nascii_printwheel = "maybe"\n'), environ={})
-    assert config.output.ascii_printwheel is False
-    assert len(config.report.warnings) == 1 and "output.ascii_printwheel" in config.report.warnings[0]
+    config = Config.load(write(tmp_path, '[printing]\nascii_printwheel = "maybe"\n'), environ={})
+    assert config.printing.ascii_printwheel is False
+    assert len(config.report.warnings) == 1 and "printing.ascii_printwheel" in config.report.warnings[0]
 
 
 def test_the_fallback_for_a_too_short_line_keeps_the_composed_settings(tmp_path):
-    text = '[output]\nmargin_inches = 4\nkeep_composed_characters = "|"\nascii_printwheel = true\n'
-    output = Config.load(write(tmp_path, text), environ={}).output
-    assert output.keep_composed_characters == "|" and output.ascii_printwheel is True and output.line_width == 65
+    text = '[printing]\nmargin_inches = 4\nkeep_composed_characters = "|"\nascii_printwheel = true\n'
+    printing = Config.load(write(tmp_path, text), environ={}).printing
+    assert printing.keep_composed_characters == "|" and printing.ascii_printwheel is True and printing.line_width == 65
 
 
 # --- The [terminal] section ----------------------------------------------------------------
@@ -951,13 +951,13 @@ def test_the_terminal_defaults_are_the_cadetwriters_own():
     terminal = config.terminal
     assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("/dev/ttyACM0", 9600, "xon_xoff", "crlf")
     assert (terminal.characters_per_second, terminal.finish_wait_seconds) == (16.0, 2.0)
-    assert (terminal.echoplex, terminal.type_during_output) == (True, False)
+    assert (terminal.echoplex, terminal.type_during_printing) == (True, False)
 
 
 def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     from pom.config import TerminalSettings
     text = ('[terminal]\nport = "/dev/ttyUSB0"\nbaud = 115200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
-            "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_output = true\n")
+            "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_printing = true\n")
     config = Config.load(write(tmp_path, text), environ={})
     assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True) and config.report.ok
 
@@ -965,7 +965,7 @@ def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
 @pytest.mark.parametrize("key, value", [
     ("port", "5"), ("baud", "1234"), ("baud", '"9600"'), ("baud", "true"), ("baud", "9600.0"), ("flow_control", '"hardware"'),
     ("end_of_line", '"newline"'), ("characters_per_second", "0"), ("characters_per_second", '"fast"'),
-    ("finish_wait_seconds", "-1"), ("finish_wait_seconds", "true"), ("echoplex", '"maybe"'), ("type_during_output", "3"),
+    ("finish_wait_seconds", "-1"), ("finish_wait_seconds", "true"), ("echoplex", '"maybe"'), ("type_during_printing", "3"),
 ])
 def test_a_bad_terminal_value_means_the_default_with_a_warning(tmp_path, key, value):
     from pom.config import TerminalSettings
@@ -981,7 +981,7 @@ def test_every_standard_baud_rate_is_accepted(tmp_path, baud):
 
 def test_the_terminal_choices_and_defaults_are_the_ones_the_port_uses():
     from pom import config as settings
-    from pom.output import typewriter_port as port
+    from pom.output import terminal_port as port
     assert settings.TERMINAL_BAUD_RATES == port.BAUD_RATES and settings.TERMINAL_FLOW_CONTROLS == port.FLOW_CONTROLS
     assert settings.TERMINAL_END_OF_LINES == tuple(port.END_OF_LINES)
     assert (settings.DEFAULT_TERMINAL_BAUD, settings.DEFAULT_TERMINAL_FLOW_CONTROL, settings.DEFAULT_TERMINAL_END_OF_LINE) == (
@@ -995,7 +995,7 @@ def test_the_committed_config_sets_every_terminal_key():
     with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
         section = tomllib.load(f)["terminal"]
     assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
-                            "echoplex", "type_during_output"}
+                            "echoplex", "type_during_printing"}
 
 
 def test_a_config_built_without_terminal_settings_has_the_defaults():

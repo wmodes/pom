@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Play with the TypewriterPort: format text for the typewriter and type it, paced, on a stand-in or the real machine.
+"""Play with the TerminalPort: format text for the typewriter and type it, paced, on a stand-in or the real machine.
 
-By default it types on the terminal at the typewriter's pace (the ConsoleTypewriter, which is the real port code writing
+By default it types on the terminal at the typewriter's pace (the ConsoleTerminal, which is the real port code writing
 to the screen), so you can watch what the machine would do. With --port it types on a real serial port instead. The text
-goes through the TypewriterFormatter first, with [output] from config/pom.toml, and the pacing and serial settings are
-[terminal] there. The code is src/pom/output/typewriter_port.py; this is only a window onto it.
+goes through the PortentFormatter first, with [printing] from config/pom.toml, and the pacing and serial settings are
+[terminal] there. The code is src/pom/output/terminal_port.py; this is only a window onto it.
 
 Usage:
     type_text_on_typewriter.py "The lighthouse keeper counts the ships that never arrive."
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from pom.config import Config  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.output import ConsoleTypewriter, TypewriterFormatter, TypewriterPort  # noqa: E402
+from pom.output import ConsoleTerminal, PortentFormatter, TerminalPort  # noqa: E402
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")
 
@@ -37,21 +37,21 @@ def main():
 
     configure_logging("WARNING")
     config = Config.load(CONFIG_PATH)
-    output, terminal = config.output, config.terminal
+    printing, terminal = config.printing, config.terminal
     cps = 1e9 if args.fast else (args.cps or terminal.characters_per_second)
     finish_wait = 0.0 if args.fast else terminal.finish_wait_seconds
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    text = TypewriterFormatter(output.line_width, output.quote_indent, output.linefeeds_after_portent,
-                               output.composed_characters_kept).format(raw)
+    text = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
+                               printing.composed_characters_kept).format(raw)
     if args.port:
-        typewriter = TypewriterPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
-                                    terminal.echoplex, terminal.type_during_output)
+        typewriter = TerminalPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
+                                    terminal.echoplex, terminal.type_during_printing)
     else:
-        typewriter = ConsoleTypewriter(characters_per_second=cps, finish_wait_seconds=finish_wait,
-                                       type_during_output=terminal.type_during_output)
+        typewriter = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
+                                       type_during_printing=terminal.type_during_printing)
 
-    done = typewriter.type(text)
+    done = typewriter.transmit(text)
     print(f"--- {done.characters} characters in {done.seconds:.1f} s, {'all typed' if done.completed else 'NOT all typed'}")
     if args.reply:
         typed_back = typewriter.read_line(args.reply)

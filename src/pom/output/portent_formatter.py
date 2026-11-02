@@ -1,14 +1,14 @@
-"""The TypewriterFormatter: a portent goes in, text the typewriter can print comes out.
+"""The PortentFormatter: a portent goes in, text the typewriter can print comes out.
 
 The oracle model writes text for a screen; the Wheelwriter prints plain ASCII on a fixed line. `format(text)` makes the
 first fit the second: it takes out the code fences, turns what the typewriter cannot print into what it can (or drops
-it), and wraps the lines. It is the step between the PortentWriter and the TypewriterPort.
+it), and wraps the lines. It is the step between the PortentWriter and the TerminalPort.
 
 Design decisions, and why:
   * LINE FEEDS AFTER. The text ends with `linefeeds_after` line feeds (4 by default: the last line's own, then three
     blank lines), so the paper has moved on when the next portent is typed. Text that comes to nothing stays empty,
     with no line feeds, so nothing is typed.
-  * Pure text in, text out. No config is read here (the entry point passes `config.output`'s line width and quote
+  * Pure text in, text out. No config is read here (the entry point passes `config.printing`'s line width and quote
     indent), nothing is logged, and nothing can fail: whatever comes in, printable text comes out. Nothing that was
     said in the room is kept anywhere.
   * CODE FENCES. The prompt shows the model its exemplars and the hinge inside triple backticks, so a model may echo
@@ -56,16 +56,16 @@ _SUBSTITUTES = {
 _COMPOSED_STAND_INS = {"`": "'", "~": "-", "{": "(", "}": ")", "\\": "/", "|": "/", "^": ""}
 
 
-class TypewriterFormatter:
+class PortentFormatter:
     """Makes a portent printable: fences out, ASCII only, wrapped to the line.
 
     Args:
-        line_width: How many characters fit on a line (from `config.output.line_width`).
+        line_width: How many characters fit on a line (from `config.printing.line_width`).
         quote_indent: How many spaces a fenced quotation is indented. At least one character of the line is kept for the
             quote itself, so an indent as wide as the line is cut down to fit.
-        linefeeds_after: How many line feeds follow the portent, 0 or more (from `config.output.linefeeds_after_portent`).
+        linefeeds_after: How many line feeds follow the portent, 0 or more (from `config.printing.linefeeds_after_portent`).
         keep_composed: Which of the seven swappable composed characters (see above) to type as they are; every other one is
-            swapped for its stand-in (from `config.output.composed_characters_kept`).
+            swapped for its stand-in (from `config.printing.composed_characters_kept`).
     """
 
     def __init__(self, line_width: int = 65, quote_indent: int = 4, linefeeds_after: int = 4, keep_composed: str = ""):

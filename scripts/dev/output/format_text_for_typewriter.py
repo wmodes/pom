@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Play with the TypewriterFormatter: see how text is made printable and wrapped for the typewriter.
+"""Play with the PortentFormatter: see how text is made printable and wrapped for the typewriter.
 
 Give it text as arguments, or pipe text in, and it prints the text as the typewriter would type it, between a ruler and
-the line's right edge, with the line count. The line width and quote indent come from [output] in config/pom.toml
-(paper, margins and print wheel pitch) unless you give them. The formatting is src/pom/output/typewriter_formatter.py;
+the line's right edge, with the line count. The line width and quote indent come from [printing] in config/pom.toml
+(paper, margins and print wheel pitch) unless you give them. The formatting is src/pom/output/portent_formatter.py;
 this is only a window onto it.
 
 Usage:
@@ -18,9 +18,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
-from pom.config import COMPOSED_CHARACTERS, Config, OutputSettings  # noqa: E402
+from pom.config import COMPOSED_CHARACTERS, Config, PrintingSettings  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.output import TypewriterFormatter  # noqa: E402
+from pom.output import PortentFormatter  # noqa: E402
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")
 
@@ -33,7 +33,7 @@ def ruler(width: int) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("text", nargs="*", help="the text to format (read from stdin if omitted)")
-    parser.add_argument("--width", type=int, help="characters per line (default: worked out from [output] in the config)")
+    parser.add_argument("--width", type=int, help="characters per line (default: worked out from [printing] in the config)")
     parser.add_argument("--cpi", type=float, help="the wheel's characters per inch, instead of the config's")
     parser.add_argument("--indent", type=int, help="spaces to indent a quotation (default: from the config)")
     parser.add_argument("--feeds", type=int, help="line feeds after the portent (default: from the config)")
@@ -42,18 +42,18 @@ def main():
     args = parser.parse_args()
 
     configure_logging("WARNING")
-    output = Config.load(CONFIG_PATH).output
+    printing = Config.load(CONFIG_PATH).printing
     if args.cpi:
-        output = OutputSettings(output.paper_width_inches, output.margin_inches, args.cpi, output.quote_indent)
-    width = args.width or output.line_width
-    indent = output.quote_indent if args.indent is None else args.indent
+        printing = PrintingSettings(printing.paper_width_inches, printing.margin_inches, args.cpi, printing.quote_indent)
+    width = args.width or printing.line_width
+    indent = printing.quote_indent if args.indent is None else args.indent
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    feeds = output.linefeeds_after_portent if args.feeds is None else args.feeds
-    keep = output.composed_characters_kept if args.keep is None else args.keep
+    feeds = printing.linefeeds_after_portent if args.feeds is None else args.feeds
+    keep = printing.composed_characters_kept if args.keep is None else args.keep
     if args.ascii_wheel:
         keep = COMPOSED_CHARACTERS
-    typed = TypewriterFormatter(width, indent, feeds, keep).format(raw)
+    typed = PortentFormatter(width, indent, feeds, keep).format(raw)
     body = typed.rstrip("\n")
     lines = body.split("\n") if body else []
     print(ruler(width))

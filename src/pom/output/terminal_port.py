@@ -1,15 +1,15 @@
-"""The TypewriterPort: formatted text goes in, the typewriter types it; what a person types on it comes back.
+"""The TerminalPort: formatted text goes in, the typewriter types it; what a person types on it comes back.
 
 The Wheelwriter, converted with the CadetWriter board, acts as a serial terminal (hence the config section
 `[terminal]`). `type(text)` sends a formatted portent to it and returns when it has been typed. It is the last step
-after the TypewriterFormatter. The Conductor pauses listening, calls `type`, and resumes listening when it returns:
+after the PortentFormatter. The Conductor pauses listening, calls `transmit`, and resumes listening when it returns:
 this module knows nothing about listening. `read_line()` is the other direction: someone at the keyboard can type
 back, and each finished line (the C Rtn key) is returned.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A port that is missing, will not open or fails halfway gives
-    a TypingReport that says the text was not all typed, and a warning in `report`; never an exception. `strict=True`
-    raises TypewriterPortError instead, for tests and dev tools. The port is opened on the first call and reopened
+    a PrintResult that says the text was not all typed, and a warning in `report`; never an exception. `strict=True`
+    raises TerminalPortError instead, for tests and dev tools. The port is opened on the first call and reopened
     after a failure, so a typewriter that is switched on late is found.
   * The portent is never logged or put in a report: nothing that was said in the room is kept. Reports hold counts
     and timings.
@@ -32,13 +32,13 @@ Design decisions, and why:
     CadetWriter must be set to half duplex, where it echoes locally (set both or characters print twice, or not at all).
     A line ends at CR or LF (a CR+LF pair counts once). Control characters are ignored and not echoed.
   * NO KEYS DURING A PORTENT. `type` and the echo share one serial line and cannot interleave, so `type` holds a lock
-    for its whole run. Unless `type_during_output` is on (it is off by default) whatever was typed during it, and any half-typed
+    for its whole run. Unless `type_during_printing` is on (it is off by default) whatever was typed during it, and any half-typed
     line, is thrown away when it finishes, so nothing typed over a portent appears after it. Turned on, those keys
     are kept and handled by the next `read_line`.
   * What is typed in the room is room content: like the portent it is never logged or put in a report.
   * The settings are passed in (the entry point takes them from `config.terminal`); this module never reads Config.
   * The way to open the port, the clock and the sleep are injected, so tests run with a fake and need no machine, and
-    the ConsoleTypewriter (the stand-in for development) is this same code writing to the terminal.
+    the ConsoleTerminal (the stand-in for development) is this same code writing to the terminal.
 """
 import collections
 import os
@@ -68,12 +68,12 @@ MAX_TYPED_LINE = 500        # a typed line this long is ended there, so a stuck 
 _READ_SLICE_SECONDS = 0.1   # one look at the port; the lock is free between looks, so a portent can start
 
 
-class TypewriterPortError(ValueError):
+class TerminalPortError(ValueError):
     """Raised for any port problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
-class TypingReport:
+class PrintResult:
     """What happened to one piece of text.
 
     Attributes:
@@ -93,7 +93,7 @@ def _open_serial(port: str, baud: int, flow_control: str):
                          xonxoff=flow_control == "xon_xoff", rtscts=flow_control == "rts_cts")
 
 
-class TypewriterPort:
+class TerminalPort:
     """Sends formatted text to the typewriter over a serial port, paced.
 
     Attributes:
@@ -103,7 +103,7 @@ class TypewriterPort:
     def __init__(self, port: str, baud: int = DEFAULT_BAUD, flow_control: str = DEFAULT_FLOW_CONTROL,
                  end_of_line: str = DEFAULT_END_OF_LINE, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
                  finish_wait_seconds: float = DEFAULT_FINISH_WAIT_SECONDS,
-                 echoplex: bool = True, type_during_output: bool = False,
+                 echoplex: bool = True, type_during_printing: bool = False,
                  opener: Optional[Callable[[str, int, str], object]] = None, clock: Callable[[], float] = time.monotonic,
                  sleep: Callable[[float], None] = time.sleep, strict: bool = False):
         """Args:
@@ -114,14 +114,14 @@ class TypewriterPort:
             characters_per_second: The fastest the text is sent, above 0.
             finish_wait_seconds: How long to wait after the last byte for the machine to finish, 0 or more.
             echoplex: True to echo each key typed on the typewriter back to it (the CadetWriter must be in full duplex).
-            type_during_output: False to throw away keys typed while a portent is being typed; True keeps them for the next read.
+            type_during_printing: False to throw away keys typed while a portent is being typed; True keeps them for the next read.
             opener: A function (port, baud, flow_control) -> an object with write(bytes), flush(), close(), read(size)
                 and reset_input_buffer(). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
             sleep: Waits for that many seconds.
-            strict: Raise TypewriterPortError on any problem instead of recording it.
+            strict: Raise TerminalPortError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=TypewriterPortError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=TerminalPortError, logger=_log)
         self._port_name = port
         self._baud = self._valid(baud, "baud", DEFAULT_BAUD, lambda v: v in BAUD_RATES, "one of the standard baud rates")
         self._flow_control = self._valid(flow_control, "flow_control", DEFAULT_FLOW_CONTROL,
@@ -138,7 +138,7 @@ class TypewriterPort:
         self._clock = clock
         self._sleep = sleep
         self._echoplex = bool(echoplex)
-        self._type_during_output = bool(type_during_output)
+        self._type_during_printing = bool(type_during_printing)
         self._serial = None
         self._lock = threading.Lock()            # one use of the line at a time: a portent, or a look for keys
         self._received: collections.deque = collections.deque()   # bytes read but not yet handled
@@ -146,7 +146,7 @@ class TypewriterPort:
         self._after_cr = False                   # the last byte handled was a CR, so a following LF is its pair
         self._usable = isinstance(port, str) and bool(port.strip())
         if not self._usable:
-            self.report.warn(f"the typewriter port must be a device name, got {port!r}; nothing will be typed")
+            self.report.warn(f"the terminal port must be a device name, got {port!r}; nothing will be typed")
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -160,7 +160,7 @@ class TypewriterPort:
         """False if the port name was unusable, so nothing will ever be typed."""
         return self._usable
 
-    def type(self, text: str) -> TypingReport:
+    def transmit(self, text: str) -> PrintResult:
         """Types the text and returns when the typewriter has had time to finish. Never raises (except in strict mode).
 
         `completed` is False if any of it was not sent; the reason is in `report`. Text with nothing to type is
@@ -169,10 +169,10 @@ class TypewriterPort:
         started = self._clock()
         data = self._bytes(text) if isinstance(text, str) else ""
         if not data:
-            return TypingReport(0, 0.0, self._usable)
+            return PrintResult(0, 0.0, self._usable)
         with self._lock:
             if not self._usable or not self._connect():
-                return TypingReport(0, self._clock() - started, False)
+                return PrintResult(0, self._clock() - started, False)
             self._discard_input()
             sent = 0
             try:
@@ -184,23 +184,23 @@ class TypewriterPort:
                     sent += 1
                 self._serial.flush()
             except Exception as error:               # a dead port must never stop the oracle
-                self.report.warn(f"the typewriter port failed after {sent} of {len(data)} characters "
+                self.report.warn(f"the terminal port failed after {sent} of {len(data)} characters "
                                  f"({type(error).__name__}); the rest was not typed")
                 self.close()
-                return TypingReport(sent, self._clock() - started, False)
+                return PrintResult(sent, self._clock() - started, False)
             if self._finish_wait:
                 self._sleep(self._finish_wait)
             self._discard_input()
             seconds = self._clock() - started
             _log.debug("typed %d characters in %.1f s", sent, seconds)
-            return TypingReport(sent, seconds, True)
+            return PrintResult(sent, seconds, True)
 
     def read_line(self, timeout: Optional[float] = None) -> Optional[str]:
         """The next line typed on the typewriter's keyboard, or None if none was finished within `timeout` seconds.
 
         Waits until C Rtn is pressed (or `timeout` passes; None waits for ever). A line typed halfway when the time ran
         out is kept for the next call. An empty line, from C Rtn alone, is returned as ''. With `echoplex` each key is
-        echoed to the paper as it arrives. Keys pressed during a portent wait for it (see type_during_output). Never
+        echoed to the paper as it arrives. Keys pressed during a portent wait for it (see type_during_printing). Never
         raises (except in strict mode); None can also mean the port would not open, with the reason in `report`.
         """
         deadline = None if timeout is None else self._clock() + timeout
@@ -218,7 +218,7 @@ class TypewriterPort:
                 try:
                     data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
                 except Exception as error:           # a dead port must never stop the oracle
-                    self.report.warn(f"the typewriter port failed while listening for the keyboard "
+                    self.report.warn(f"the terminal port failed while listening for the keyboard "
                                      f"({type(error).__name__}); try again later")
                     self.close()
                     return None
@@ -267,12 +267,12 @@ class TypewriterPort:
             try:
                 self._serial.write(text.encode("ascii"))
             except Exception as error:               # a dead port must never stop the oracle
-                self.report.warn(f"the typewriter port failed while echoing the keyboard ({type(error).__name__})")
+                self.report.warn(f"the terminal port failed while echoing the keyboard ({type(error).__name__})")
                 self.close()
 
     def _discard_input(self) -> None:
         """If keys are not wanted during a portent: forget everything typed and still unread, and any half-typed line."""
-        if self._type_during_output:
+        if self._type_during_printing:
             return
         self._received.clear()
         self._line.clear()
@@ -289,7 +289,7 @@ class TypewriterPort:
         try:
             self._serial = self._opener(self._port_name, self._baud, self._flow_control)
         except Exception as error:
-            self.report.warn(f"the typewriter port {self._port_name!r} would not open ({type(error).__name__}); "
+            self.report.warn(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); "
                              f"nothing was typed")
             return False
         return True
@@ -306,7 +306,7 @@ class TypewriterPort:
 
 
 class _StreamSink:
-    """Looks like a serial port to the TypewriterPort but types on a text stream and reads keys from another, for the ConsoleTypewriter."""
+    """Looks like a serial port to the TerminalPort but types on a text stream and reads keys from another, for the ConsoleTerminal."""
 
     def __init__(self, stream, input_stream):
         self._stream = stream
@@ -346,28 +346,28 @@ class _StreamSink:
                 break
 
 
-class ConsoleTypewriter(TypewriterPort):
+class ConsoleTerminal(TerminalPort):
     """A stand-in for the typewriter that types on the terminal at the same pace, for development.
 
-    It is the TypewriterPort writing to a stream instead of a serial port, so the pacing, the safe-byte filter and
-    the report are exactly the real ones. Anything that takes a TypewriterPort takes this.
+    It is the TerminalPort writing to a stream instead of a serial port, so the pacing, the safe-byte filter and
+    the report are exactly the real ones. Anything that takes a TerminalPort takes this.
 
     Args:
-        stream: Where to type; default standard output.
+        stream: Where to transmit; default standard output.
         input_stream: Where the "keyboard" is: what is typed there is what `read_line` returns; default standard input.
         characters_per_second: The pace; 16 like the real one. A big number types at once.
         finish_wait_seconds: Wait after the last character; default none.
         echoplex: Echo the keys back; off by default because the terminal already shows what is typed.
-        type_during_output: False throws away keys typed while it types, like the real one.
+        type_during_printing: False throws away keys typed while it types, like the real one.
     """
 
     def __init__(self, stream=None, input_stream=None, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
-                 finish_wait_seconds: float = 0.0, echoplex: bool = False, type_during_output: bool = False,
+                 finish_wait_seconds: float = 0.0, echoplex: bool = False, type_during_printing: bool = False,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep,
                  strict: bool = False):
         sink = _StreamSink(stream if stream is not None else sys.stdout,
                            input_stream if input_stream is not None else sys.stdin)
         super().__init__("console", end_of_line="lf", characters_per_second=characters_per_second,
                          finish_wait_seconds=finish_wait_seconds, echoplex=echoplex,
-                         type_during_output=type_during_output, opener=lambda port, baud, flow: sink,
+                         type_during_printing=type_during_printing, opener=lambda port, baud, flow: sink,
                          clock=clock, sleep=sleep, strict=strict)

@@ -1,5 +1,5 @@
 """The output module: making a portent printable and sending it to the typewriter."""
-from pom.output.typewriter_formatter import TypewriterFormatter
-from pom.output.typewriter_port import ConsoleTypewriter, TypewriterPort, TypewriterPortError, TypingReport
+from pom.output.portent_formatter import PortentFormatter
+from pom.output.terminal_port import ConsoleTerminal, TerminalPort, TerminalPortError, PrintResult
 
-__all__ = ["ConsoleTypewriter", "TypewriterFormatter", "TypewriterPort", "TypewriterPortError", "TypingReport"]
+__all__ = ["ConsoleTerminal", "PortentFormatter", "TerminalPort", "TerminalPortError", "PrintResult"]

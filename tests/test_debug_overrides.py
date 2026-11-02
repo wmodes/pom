@@ -25,7 +25,7 @@ MODULES = ["pom/config.py", "pom/corpus/circulation.py", "pom/corpus/catalog.py"
            "pom/monitor/trigger_history.py", "pom/monitor/monitor_site.py",
            "pom/scoring/decaying_quantile_bar.py", "pom/scoring/percentile_bar.py",
            "pom/scoring/moving_average_bar.py",
-           "pom/monitor/score_trace.py", "pom/output/typewriter_port.py"]
+           "pom/monitor/score_trace.py", "pom/output/terminal_port.py"]
 DEBUG_LINE = re.compile(r"^DEBUG\s*=\s*(.*?)\s*(#.*)?$", re.MULTILINE)
 
 

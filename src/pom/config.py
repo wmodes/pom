@@ -33,15 +33,15 @@ of being threaded through by hand. Today there are five:
     [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of triggers. Whether it
                runs, the address and port it listens on, its password (set it in config/pom.local.toml, never in the
                committed file), whether it shows the hinge text, and how long a trigger stays on the page.
-    [output]   A section (see OutputSettings): how a portent is set on the page. The paper's width, the margins and the
+    [printing]   A section (see PrintingSettings): how a portent is set on the page. The paper's width, the margins and the
                print wheel's characters per inch give the line width; `quote_indent` indents a quotation and
                `linefeeds_after_portent` is how far the paper moves on after a portent, and
                `keep_composed_characters` and `ascii_printwheel` say which characters most wheels lack are typed as they are.
     [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
                baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
-               (`echoplex`, `type_during_output`). The entry point builds the
-               TypewriterPort from `config.terminal`. The entry point
-               builds the TypewriterFormatter from `config.output`.
+               (`echoplex`, `type_during_printing`). The entry point builds the
+               TerminalPort from `config.terminal`. The entry point
+               builds the PortentFormatter from `config.printing`.
 
 Where values come from, highest priority first:
     1. Environment variables: POM_STRICT, POM_DEBUG and POM_LOCAL_LOGS (1/true/yes/on or
@@ -87,11 +87,11 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "listening.buffer_seconds", "listening.step", "listening.hold", "listening.rewind", "listening.max_buffer",
          "listening.sound_every_steps", "listening.sound_seconds", "listening.ambient_memory",
          "listening.consider_ambient_sounds", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
-         "monitor.show_hinges", "monitor.history_seconds", "output.paper_width_inches", "output.margin_inches",
-         "output.characters_per_inch", "output.quote_indent", "output.linefeeds_after_portent",
-         "output.keep_composed_characters", "output.ascii_printwheel", "terminal.port", "terminal.baud",
+         "monitor.show_hinges", "monitor.history_seconds", "printing.paper_width_inches", "printing.margin_inches",
+         "printing.characters_per_inch", "printing.quote_indent", "printing.linefeeds_after_portent",
+         "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
-         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_output"}
+         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_printing"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -132,15 +132,15 @@ DEFAULT_MONITOR_HOST = "0.0.0.0"
 DEFAULT_MONITOR_PORT = 8080
 DEFAULT_MONITOR_SHOW_HINGES = True
 DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
-DEFAULT_OUTPUT_PAPER_WIDTH_INCHES = 8.5
-DEFAULT_OUTPUT_MARGIN_INCHES = 1.0
-DEFAULT_OUTPUT_CHARACTERS_PER_INCH = 10.0
-DEFAULT_OUTPUT_QUOTE_INDENT = 4
-DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT = 4
-DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS = ""
-DEFAULT_OUTPUT_ASCII_PRINTWHEEL = False
+DEFAULT_PRINTING_PAPER_WIDTH_INCHES = 8.5
+DEFAULT_PRINTING_MARGIN_INCHES = 1.0
+DEFAULT_PRINTING_CHARACTERS_PER_INCH = 10.0
+DEFAULT_PRINTING_QUOTE_INDENT = 4
+DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT = 4
+DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS = ""
+DEFAULT_PRINTING_ASCII_PRINTWHEEL = False
 # Seven of the nine ASCII characters most print wheels lack (< and > are the others, and are always typed as they are); the
-# CadetWriter builds them from periods ("period graphics"), and the TypewriterFormatter swaps each for a look-alike unless kept.
+# CadetWriter builds them from periods ("period graphics"), and the PortentFormatter swaps each for a look-alike unless kept.
 COMPOSED_CHARACTERS = "\\^`{|}~"
 DEFAULT_TERMINAL_PORT = "/dev/ttyACM0"
 DEFAULT_TERMINAL_BAUD = 9600
@@ -153,8 +153,8 @@ TERMINAL_END_OF_LINES = ("cr", "crlf", "lf", "lfcr")
 DEFAULT_TERMINAL_CHARACTERS_PER_SECOND = 16.0
 DEFAULT_TERMINAL_FINISH_WAIT_SECONDS = 2.0
 DEFAULT_TERMINAL_ECHOPLEX = True
-DEFAULT_TERMINAL_TYPE_DURING_OUTPUT = False
-MIN_OUTPUT_LINE_WIDTH = 20
+DEFAULT_TERMINAL_TYPE_DURING_PRINTING = False
+MIN_PRINTING_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
@@ -325,8 +325,8 @@ class MonitorSettings:
 
 
 @dataclass(frozen=True)
-class OutputSettings:
-    """The `[output]` section: how a portent is set on the page.
+class PrintingSettings:
+    """The `[printing]` section: how a portent is set on the page.
 
     Attributes:
         paper_width_inches: The paper's width, above 0 (8.5 for US letter).
@@ -340,13 +340,13 @@ class OutputSettings:
             too but are always typed as they are, so they are not listed.
         ascii_printwheel: True if the wheel is a rare ASCII one with all nine; then every one is typed as it is.
     """
-    paper_width_inches: float = DEFAULT_OUTPUT_PAPER_WIDTH_INCHES
-    margin_inches: float = DEFAULT_OUTPUT_MARGIN_INCHES
-    characters_per_inch: float = DEFAULT_OUTPUT_CHARACTERS_PER_INCH
-    quote_indent: int = DEFAULT_OUTPUT_QUOTE_INDENT
-    linefeeds_after_portent: int = DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT
-    keep_composed_characters: str = DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS
-    ascii_printwheel: bool = DEFAULT_OUTPUT_ASCII_PRINTWHEEL
+    paper_width_inches: float = DEFAULT_PRINTING_PAPER_WIDTH_INCHES
+    margin_inches: float = DEFAULT_PRINTING_MARGIN_INCHES
+    characters_per_inch: float = DEFAULT_PRINTING_CHARACTERS_PER_INCH
+    quote_indent: int = DEFAULT_PRINTING_QUOTE_INDENT
+    linefeeds_after_portent: int = DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT
+    keep_composed_characters: str = DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS
+    ascii_printwheel: bool = DEFAULT_PRINTING_ASCII_PRINTWHEEL
 
     @property
     def line_width(self) -> int:
@@ -374,7 +374,7 @@ class TerminalSettings:
         echoplex: True to echo each key typed on the typewriter back to it (the old terminal name for the host echoing what it
             receives). The CadetWriter must then be in full duplex (its default); with False it must be in half duplex, which
             echoes locally. A mismatch types every character twice, or none.
-        type_during_output: False (the default) throws away keys pressed while a portent is being typed, so nothing typed over
+        type_during_printing: False (the default) throws away keys pressed while a portent is being typed, so nothing typed over
             it appears after it; True keeps them for the next line read.
     """
     port: str = DEFAULT_TERMINAL_PORT
@@ -384,7 +384,7 @@ class TerminalSettings:
     characters_per_second: float = DEFAULT_TERMINAL_CHARACTERS_PER_SECOND
     finish_wait_seconds: float = DEFAULT_TERMINAL_FINISH_WAIT_SECONDS
     echoplex: bool = DEFAULT_TERMINAL_ECHOPLEX
-    type_during_output: bool = DEFAULT_TERMINAL_TYPE_DURING_OUTPUT
+    type_during_printing: bool = DEFAULT_TERMINAL_TYPE_DURING_PRINTING
 
 
 class Config:
@@ -401,7 +401,7 @@ class Config:
         trigger: The `[trigger]` section, as a TriggerSettings.
         listening: The `[listening]` section, as a ListeningSettings.
         monitor: The `[monitor]` section, as a MonitorSettings.
-        output: The `[output]` section, as an OutputSettings.
+        printing: The `[printing]` section, as a PrintingSettings.
         terminal: The `[terminal]` section, as a TerminalSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
@@ -411,14 +411,14 @@ class Config:
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  trigger: Optional[TriggerSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
-                 output: Optional[OutputSettings] = None, terminal: Optional[TerminalSettings] = None):
+                 printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
         self.trigger = trigger if trigger is not None else TriggerSettings()
         self.listening = listening if listening is not None else ListeningSettings()
         self.monitor = monitor if monitor is not None else MonitorSettings()
-        self.output = output if output is not None else OutputSettings()
+        self.printing = printing if printing is not None else PrintingSettings()
         self.terminal = terminal if terminal is not None else TerminalSettings()
         self.strict = strict
         self.debug = debug
@@ -566,27 +566,27 @@ class Config:
             _bool(values.get("monitor.show_hinges", DEFAULT_MONITOR_SHOW_HINGES), "monitor.show_hinges", report),
             _positive(values.get("monitor.history_seconds", DEFAULT_MONITOR_HISTORY_SECONDS), "monitor.history_seconds",
                       DEFAULT_MONITOR_HISTORY_SECONDS, report))
-        output = OutputSettings(
-            _positive(values.get("output.paper_width_inches", DEFAULT_OUTPUT_PAPER_WIDTH_INCHES),
-                      "output.paper_width_inches", DEFAULT_OUTPUT_PAPER_WIDTH_INCHES, report),
-            _number(values.get("output.margin_inches", DEFAULT_OUTPUT_MARGIN_INCHES), "output.margin_inches",
-                    DEFAULT_OUTPUT_MARGIN_INCHES, 0.0, report),
-            _positive(values.get("output.characters_per_inch", DEFAULT_OUTPUT_CHARACTERS_PER_INCH),
-                      "output.characters_per_inch", DEFAULT_OUTPUT_CHARACTERS_PER_INCH, report),
-            _whole(values.get("output.quote_indent", DEFAULT_OUTPUT_QUOTE_INDENT), "output.quote_indent",
-                   DEFAULT_OUTPUT_QUOTE_INDENT, 0, report),
-            _whole(values.get("output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT),
-                   "output.linefeeds_after_portent", DEFAULT_OUTPUT_LINEFEEDS_AFTER_PORTENT, 0, report),
-            _composed(values.get("output.keep_composed_characters", DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS),
-                      "output.keep_composed_characters", DEFAULT_OUTPUT_KEEP_COMPOSED_CHARACTERS, report),
-            _bool(values.get("output.ascii_printwheel", DEFAULT_OUTPUT_ASCII_PRINTWHEEL), "output.ascii_printwheel", report))
-        if output.line_width < MIN_OUTPUT_LINE_WIDTH:
-            report.warn(f"output: the paper, margins and pitch leave a line of {output.line_width} characters, under "
-                        f"{MIN_OUTPUT_LINE_WIDTH}; using the default paper, margins and pitch")
-            output = OutputSettings(quote_indent=output.quote_indent,
-                                    linefeeds_after_portent=output.linefeeds_after_portent,
-                                    keep_composed_characters=output.keep_composed_characters,
-                                    ascii_printwheel=output.ascii_printwheel)
+        printing = PrintingSettings(
+            _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
+                      "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),
+            _number(values.get("printing.margin_inches", DEFAULT_PRINTING_MARGIN_INCHES), "printing.margin_inches",
+                    DEFAULT_PRINTING_MARGIN_INCHES, 0.0, report),
+            _positive(values.get("printing.characters_per_inch", DEFAULT_PRINTING_CHARACTERS_PER_INCH),
+                      "printing.characters_per_inch", DEFAULT_PRINTING_CHARACTERS_PER_INCH, report),
+            _whole(values.get("printing.quote_indent", DEFAULT_PRINTING_QUOTE_INDENT), "printing.quote_indent",
+                   DEFAULT_PRINTING_QUOTE_INDENT, 0, report),
+            _whole(values.get("printing.linefeeds_after_portent", DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT),
+                   "printing.linefeeds_after_portent", DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT, 0, report),
+            _composed(values.get("printing.keep_composed_characters", DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS),
+                      "printing.keep_composed_characters", DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS, report),
+            _bool(values.get("printing.ascii_printwheel", DEFAULT_PRINTING_ASCII_PRINTWHEEL), "printing.ascii_printwheel", report))
+        if printing.line_width < MIN_PRINTING_LINE_WIDTH:
+            report.warn(f"printing: the paper, margins and pitch leave a line of {printing.line_width} characters, under "
+                        f"{MIN_PRINTING_LINE_WIDTH}; using the default paper, margins and pitch")
+            printing = PrintingSettings(quote_indent=printing.quote_indent,
+                                    linefeeds_after_portent=printing.linefeeds_after_portent,
+                                    keep_composed_characters=printing.keep_composed_characters,
+                                    ascii_printwheel=printing.ascii_printwheel)
         terminal = TerminalSettings(
             _text(values.get("terminal.port", DEFAULT_TERMINAL_PORT), "terminal.port", DEFAULT_TERMINAL_PORT, report),
             _baud(values.get("terminal.baud", DEFAULT_TERMINAL_BAUD), "terminal.baud", DEFAULT_TERMINAL_BAUD, report),
@@ -600,10 +600,10 @@ class Config:
                     "terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS, 0.0, report),
             _bool(values.get("terminal.echoplex", DEFAULT_TERMINAL_ECHOPLEX), "terminal.echoplex", report,
                   DEFAULT_TERMINAL_ECHOPLEX),
-            _bool(values.get("terminal.type_during_output", DEFAULT_TERMINAL_TYPE_DURING_OUTPUT),
-                  "terminal.type_during_output", report, DEFAULT_TERMINAL_TYPE_DURING_OUTPUT))
+            _bool(values.get("terminal.type_during_printing", DEFAULT_TERMINAL_TYPE_DURING_PRINTING),
+                  "terminal.type_during_printing", report, DEFAULT_TERMINAL_TYPE_DURING_PRINTING))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, trigger, oracle, listening, monitor,
-                   output, terminal)
+                   printing, terminal)
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:

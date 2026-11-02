@@ -309,13 +309,13 @@ history_seconds = 3600
 
 
 # ================================================
-# OUTPUT: how a portent is set on the page
+# PRINTING: how a portent is set on the page
 # ================================================
 
-# The TypewriterFormatter wraps each portent to a line of characters. The width is worked out from the paper and the
+# The PortentFormatter wraps each portent to a line of characters. The width is worked out from the paper and the
 # print wheel: (paper width - 2 x margin) x characters per inch, rounded down. 8.5 inch paper with 1 inch margins at 10
 # characters per inch is 65 characters; at 12 it is 78, and at 15 it is 97.
-[output]
+[printing]
 
 # The paper's width in inches, above 0.
 paper_width_inches = 8.5
@@ -384,4 +384,4 @@ echoplex = true
 
 # false throws away keys pressed while a portent is being typed (and any half-typed line), so nothing typed over a
 # portent appears after it. true keeps them and handles them once the portent is done.
-type_during_output = false
+type_during_printing = false

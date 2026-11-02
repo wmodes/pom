@@ -1,11 +1,11 @@
-"""Tests for the TypewriterFormatter: fences out, ASCII only, wrapped to the line, line feeds after."""
+"""Tests for the PortentFormatter: fences out, ASCII only, wrapped to the line, line feeds after."""
 import pytest
 
-from pom.output import TypewriterFormatter
+from pom.output import PortentFormatter
 
 
 def fmt(text, width=20, indent=4, feeds=0):
-    return TypewriterFormatter(width, indent, feeds).format(text)
+    return PortentFormatter(width, indent, feeds).format(text)
 
 
 # --- Wrapping ------------------------------------------------------------------------------
@@ -160,12 +160,12 @@ def test_line_feeds_after_are_counted_after_the_last_line_not_after_blank_lines_
 
 
 def test_the_defaults_are_a_65_character_line_a_4_space_indent_and_4_line_feeds():
-    formatter = TypewriterFormatter()
+    formatter = PortentFormatter()
     assert (formatter.line_width, formatter.quote_indent, formatter.linefeeds_after) == (65, 4, 4)
 
 
 def test_nonsense_numbers_are_made_sane_and_nothing_raises():
-    formatter = TypewriterFormatter(0, -3, -1)
+    formatter = PortentFormatter(0, -3, -1)
     assert (formatter.line_width, formatter.quote_indent, formatter.linefeeds_after) == (1, 0, 0)
     assert formatter.format("ab") == "a\nb"
 
@@ -189,7 +189,7 @@ def test_the_composed_characters_with_a_stand_in_are_swapped_by_default(text, ex
 
 def test_less_than_and_greater_than_are_always_typed_as_they_are():
     assert fmt("if x < 3 and y > 4", 40) == "if x < 3 and y > 4"
-    assert TypewriterFormatter(40, 4, 0, "").format("a<b>c") == "a<b>c"
+    assert PortentFormatter(40, 4, 0, "").format("a<b>c") == "a<b>c"
 
 
 @pytest.mark.parametrize("kept, text, expected", [
@@ -197,11 +197,11 @@ def test_less_than_and_greater_than_are_always_typed_as_they_are():
     ("\\^`{|}~", "`~{}\\|^", "`~{}\\|^"), ("", "`~{}\\|^", "'-()//"),
 ])
 def test_the_kept_composed_characters_are_typed_as_they_are_and_the_rest_swapped(kept, text, expected):
-    assert TypewriterFormatter(40, 4, 0, kept).format(text) == expected
+    assert PortentFormatter(40, 4, 0, kept).format(text) == expected
 
 
 def test_keeping_a_character_that_is_not_swapped_anyway_changes_nothing():
-    assert TypewriterFormatter(40, 4, 0, "<>x").format("a<b `c`") == "a<b 'c'"
+    assert PortentFormatter(40, 4, 0, "<>x").format("a<b `c`") == "a<b 'c'"
 
 
 def test_a_backtick_in_a_fence_is_the_fence_not_a_composed_character():
@@ -218,5 +218,5 @@ def test_a_stand_in_that_is_nothing_leaves_no_double_space():
 
 def test_the_stand_ins_cover_exactly_the_composed_characters_the_config_names():
     from pom.config import COMPOSED_CHARACTERS
-    from pom.output.typewriter_formatter import _COMPOSED_STAND_INS
+    from pom.output.portent_formatter import _COMPOSED_STAND_INS
     assert set(_COMPOSED_STAND_INS) == set(COMPOSED_CHARACTERS)

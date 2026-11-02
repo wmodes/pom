@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, Printing**: the output side takes the lexicon's names. `TypewriterFormatter` is `PortentFormatter`, `TypewriterPort` is `TerminalPort` (its `type()` is `transmit()`), `ConsoleTypewriter` is `ConsoleTerminal`,
+  `TypingReport` is `PrintResult`, and `OutputSettings` is `PrintingSettings`. The modules are `portent_formatter.py` and `terminal_port.py`, the tests follow. **Config:** the `[output]` section is `[printing]`
+  (`config.printing`), and `terminal.type_during_output` is `terminal.type_during_printing`; `config/pom.toml` is changed to match, and a copy of the old names in `config/pom.local.toml` would now be ignored with a warning (the shipped one has
+  none). The `pom.output` package keeps its name until the packages move together. Behavior is unchanged; 2,580 tests pass.
 - **The Great Rename, Library (the classes, modules and scripts)**: the corpus code takes the lexicon's names. `ChunkStore` is `Catalog`, `Chunk` is `Passage`, `DrawWeights` is `Circulation`, `ExemplarSelector` is `Bibliomancer`, and their
   errors follow (`CatalogError`, `CirculationError`, `BibliomancerError`). The modules are `catalog.py`, `circulation.py` and `bibliomancer.py` (so their loggers are `pom.corpus.catalog` and so on), the tests follow, and the dev
   scripts are `scripts/dev/corpus/cataloguer.py` (was `chunk.py`) and `circulation.py` (was `draw_weights.py`). Behavior is unchanged, and so are the data files on disk, the `corpus/` folder and the `pom.corpus` package: they move in later

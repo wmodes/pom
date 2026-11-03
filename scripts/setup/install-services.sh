@@ -41,6 +41,7 @@ done
 sudo mkdir -p /etc/systemd/journald.conf.d
 sudo ln -sfn "$DROPIN_SOURCE" "$DROPIN"
 sudo systemctl restart systemd-journald
+sudo journalctl --flush                    # a restart alone leaves the journal in memory (/run); the flush moves it to disk (/var/log/journal)
 
 sudo systemctl daemon-reload
 for unit in $UNITS; do

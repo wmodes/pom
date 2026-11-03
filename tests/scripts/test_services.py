@@ -180,6 +180,11 @@ class TestTheLogs:
         text = (SETUP / "journald" / "90-pom.conf").read_text(encoding="utf-8")
         assert "Storage=persistent" in text and re.search(r"^SystemMaxUse=\d+M", text, re.MULTILINE)
 
+    def test_the_install_script_flushes_the_journal_to_disk_after_restarting_journald(self):
+        # Found on the Pi: the setting was in effect but the running journal stayed in /run until it was flushed.
+        text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
+        assert text.index("restart systemd-journald") < text.index("journalctl --flush")
+
     def test_the_drop_in_sorts_after_the_one_raspberry_pi_os_ships_that_makes_it_volatile(self):
         assert "90-pom.conf" > "40-rpi-volatile-storage.conf"
         assert "90-pom.conf" in (SETUP / "install-services.sh").read_text(encoding="utf-8")

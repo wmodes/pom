@@ -45,6 +45,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The FloorKeeper** (`src/pom/conductor/floor_keeper.py`; third leaf of the Conductor): who may speak. Four states in order (listening, writing, printing, recovering), first come, first served between the room and the
+  keyboard (`take_floor(who)` returns a `Turn`, or None), a `Turn` used in a `with` block so the floor is always yielded, and a watchdog that takes the floor from a turn that runs past its limit. Built to fail toward
+  speaking: every end of a turn goes to recovering and then listening; every call first settles anything that has run out (no ticker has to survive); a monotonic clock (the Pi has no battery clock); a lock with a
+  timeout and a safe answer; a turn the watchdog cut off is stale and harmless if it wakes later. The limits cover the longest likely run, not the average (writing 300 s, printing 180 s, recovery 3 s), and the
+  consequences of too short (the Printer hears itself; only short portents) and too long (a quiet spell) are written in the code and the design doc. Logged at INFO: every change of state with who holds the floor and how
+  long the last state lasted, each refused request, each overrun (also a WARNING), each late call from a cut-off turn; labels and seconds only. 72 tests; 22 mutants checked (one redundant line removed, one test added).
+  Flagged, not changed: the oracle client's own timeout (120 s, the whole reply) is close to the time a long portent takes (about 0.5 s a token); the design doc has the open item. 2,698 tests pass.
 - **`Eavesdropper.pause()` and `skip_ahead()`** (second leaf of the Conductor): the tape-deck way to stay deaf during a turn. `pause()` (called when a turn takes the floor) makes the listening thread keep reading
   frames from the deck, so its buffer never overflows and logs no false warning, but throw them away and ask whisper nothing; a segment transcribed but not yet handed on is dropped, and the `HingeFinder`
   scores nothing more while `paused` (so the scorer model is not called either). `skip_ahead()` (when the floor is yielded) ends the pause with a clean slate: `RollingCutter.skip_ahead(seconds)` forgets its audio

@@ -80,9 +80,9 @@ microphone -> whisper-driven cutting -> whisper -> track split: words / room ton
 
 The machine does one thing at a time. While the oracle model writes (and while the typewriter prints), nothing is sent
 to whisper or the scorer model. They stay loaded in memory, idle, so there is no reload cost, and the Printer does not
-hear itself. Lockfiles are avoided (they can lock the system out). (open) The enforcement is a Conductor state
-(listening, generating, printing, recovering) with a watchdog timeout so a stuck state cannot deafen the Printer for
-good. The memory for all three models at once was measured on the Mac at about 10 GB (the 9B oracle model 6.7 GB,
+hear itself. Lockfiles are avoided (they can lock the system out). The enforcement is the FloorKeeper's four states
+(listening, writing, printing, recovering) with a watchdog so a stuck state cannot deafen the Printer for
+good (see "The floor and the watchdog" below). The memory for all three models at once was measured on the Mac at about 10 GB (the 9B oracle model 6.7 GB,
 the 4B scorer model 3.1 GB, whisper 0.33 GB). On the Pi, with all three loaded and idle, at least 6.7 GB of the 16 GB
 stayed available.
 
@@ -98,6 +98,39 @@ forward by the sound that went by unheard. Decided 2026-11-02: the turn's time c
 60-second cooldown and the bar's memory run through the turn (otherwise a 60-second turn would stretch the cooldown to two minutes).
 Both calls only set a flag and return at once, from any thread; the listening thread does the dropping, so no state is shared.
 A whisper request already in flight when the pause begins finishes first and its result is dropped.
+
+### The floor and the watchdog
+
+(*Built*: the `FloorKeeper`, `src/pom/conductor/floor_keeper.py`.) One object knows who may speak. The floor is in one of four states and a turn
+moves through them in order: listening, writing, printing, recovering, and back to listening. The first of the room and the keyboard to ask
+gets a `Turn` (first come, first served); the other is refused. A `Turn` is used in a `with` block, so the floor is yielded even when the
+work fails. The recovery is a few seconds with the ears still shut, so the terminal's last sounds die away before the Printer listens.
+
+*Design rule: the Printer fails toward speaking.* A bug here may cost one missed turn; it must never hold the floor for good. Every way
+a turn can end (it finished, it raised, it ran too long) goes to recovering and then listening; nothing waits on anything; the lock
+has a timeout; every call first settles anything that has run out ("lazy expiry"), so no ticker thread has to survive for the watchdog to
+work; the clock is monotonic, since the Pi has no battery clock and its wall clock jumps when the network sets it. A turn the watchdog
+has cut off is harmless when it wakes up later: its `Turn` is stale and its calls do nothing. The Conductor will check once a second that the
+ears follow the floor (if the floor is listening and the Eavesdropper is still paused, call `skip_ahead()`), so a missed event cannot
+leave the Printer deaf.
+
+*The limits must cover the longest likely run, not the average* (decided 2026-11-02). The consequences:
+- **Too short:** a healthy slow turn is cut off while it is still working. The floor goes back to listening and, after the recovery, the
+  ears open while the terminal is still typing, so the Printer can hear itself and react to its own printing. A limit near the average would
+  cut off exactly the long portents, and the Printer would say only short and medium ones.
+- **Too long:** a turn that is really stuck (a hung request, a dead serial port) keeps the Printer deaf until the limit runs out.
+
+The cost of too short is a wrong answer; the cost of too long is a quiet spell. So the limits err long: writing 300 s, printing 180 s, recovery
+3 s (all to be settings in `[conductor]`). The watchdog cannot stop a thread that is stuck, only take the floor back, so the TurnTaker must give
+every blocking call a timeout of its own; the watchdog is the last line of defense, not the first. Everything is logged (every change of state
+with who holds the floor and how long the last state lasted, each refused request, each overrun, each late call from a cut-off turn): labels and
+seconds, never words.
+
+- (open) *The writing limit must be longer than the oracle client's own timeout* (`[oracle] timeout`, 120 s). That timeout is for the whole
+  reply (the request is not streamed), and writing runs at about 0.5 s a token, so 120 s covers about 230 tokens. A 150-word portent
+  (about 200 tokens) plus the prompt is close to that, and the most the model may write (`max_tokens`, 300) needs about 155 s. If the
+  oracle's timeout is not raised, the longest portents are lost to it before the watchdog is ever involved. Proposed: raise it to 240 s, so the
+  oracle gives up first, the watchdog stays the backstop at 300 s, and printing (180 s) covers the longest portent at the terminal's pace.
 
 ## Listening: from sound to text
 

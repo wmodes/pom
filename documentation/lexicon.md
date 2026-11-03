@@ -302,9 +302,13 @@ time: that is half-duplex.
 - **keyboard watcher**: *(planned)* Does the same for typed lines while the Printer is listening. Example: `KeyboardWatcher`
   (was/still)
 - **the floor**: Who may speak: the room, or the Printer during a turn. One holds it at a time, first come, first served.
-- **FloorKeeper**: *(planned)* Keeps the floor: the state (listening, writing, printing, recovering), the one-turn-at-a-time rule, and
-  the watchdog that yields the floor back to listening if a state runs too long. Example: `FloorKeeper` (was: half-duplex gate,
+- **FloorKeeper**: Keeps the floor: the state (listening, writing, printing, recovering), the one-turn-at-a-time rule (first come, first
+  served), and the watchdog that takes the floor back from a turn that runs too long (it goes to recovering, then listening). The limits
+  are generous on purpose: they must cover the longest likely run, not the average. Example: `FloorKeeper` (was: half-duplex gate,
   `HalfDuplexGate`)
+- **turn** (the handle): What `take_floor()` hands back: a `Turn` with `start_printing()` and `finish()`, used in a `with` block so the
+  floor is always yielded. Once it is over, or the watchdog has taken the floor from it, its calls do nothing. Example: `Turn`
+  (was: none)
 - **turn taker**: *(planned)* Takes one hinge through a turn: has the portent written, formatted and printed, and reports what
   happened. Example: `TurnTaker` (was: portent deliverer, `PortentDeliverer`)
 - **pause**: When the floor is taken, the eavesdropper stops listening: it keeps reading frames from the deck so its buffer never

@@ -178,7 +178,7 @@ library material).
 - `ready/` files are marked reviewed provisionally; Wes (and River, via the public repo) still have to
   review them.
 - Known gaps: the CadetWriter guide (needs a rights decision), Jung's 1916 book (candidate), leads with
-  no source yet (telegrams, memos, modern classifieds and obituaries, US federal text such as IRS and
+  no holding yet (telegrams, memos, modern classifieds and obituaries, US federal text such as IRS and
   NASA), Doyle's *History of Spiritualism*, I Ching hexagrams 32 to 64, the rest of Psalms and Isaiah.
 - Sampling note: passages are not remembered across pulls. A simulation showed repeats are negligible
   over an evening (0.1%) and only matter over months (the Bibliomancer docstring has the numbers); a
@@ -240,7 +240,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   auto-gain off (a yell at gain 26 peaked near -3 dB). It resets on reboot, so startup must set it (a config setting, to be
   built).
 - **The Printer reacts to what it hears, not only conversation** (Wes, 2026-10-23): the Transcriber strips the music
-  symbol and keeps lyric words, which are scored. **Whisper's bracketed captions** such as "(dog barks)" are never
+  symbol and keeps lyric words, which are scored. **Whisper's bracketed room tone** such as "(dog barks)" are never
   scored (a hallucinated "(gunshot)" scored 8.0); they are kept as a short list of recent sounds to give the oracle model
   as context. Nothing-here markers ("[BLANK_AUDIO]") are dropped.
 - **Absolute scoring is the enemy of emergence** (Wes, 2026-10-23): thresholds and scales come from what is happening in

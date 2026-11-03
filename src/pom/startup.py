@@ -77,7 +77,7 @@ class StepResult:
 class Step:
     """One startup duty. Subclass it, set `name` and `critical`, and write `run`.
 
-    `run` returns an Outcome. It may also raise: the runner treats that as a failure.
+    `run` returns a StepOutcome. It may also raise: the runner treats that as a failure.
     """
     name = "unnamed"
     critical = False

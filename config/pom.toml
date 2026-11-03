@@ -215,17 +215,17 @@ rewind_seconds = 0
 max_cut_seconds = 30
 
 # The voice detector treats singing and most sounds as not speech. After this many runs in a row with no speech, whisper
-# is asked once, without it, about the last `room_tone_pass_seconds` of sound, and only lyrics and captions like "(dog barks)"
+# is asked once, without it, about the last `room_tone_pass_seconds` of sound, and only lyrics and room tone like "(dog barks)"
 # are kept. 0 turns it off. (It can only hear what is still held, which after a quiet stretch is about two seconds.)
 room_tone_pass_every = 3
 room_tone_pass_seconds = 10
 
-# How many of the latest captions of sounds in the room to remember, to tell the oracle model what the room sounds like.
+# How many of the latest bits of room tone to remember, to tell the oracle model what the room sounds like.
 room_tone_memory = 6
 
-# Whether captions of sounds in the room, like "(dog barks)", may be scored and become hinges the way speech does. The
-# Printer reacts to what is happening around it, and a dog barking may be all that is happening. Off by default: how a
-# caption scores has not been tried, and whisper sometimes invents them. Speech and lyrics are scored either way.
+# Whether room tone, like "(dog barks)", may be scored and become hinges the way speech does. The
+# Printer reacts to what is happening around it, and a dog barking may be all that is happening. Off by default: how
+# room tone scores has not been tried, and whisper sometimes invents it. Speech and lyrics are scored either way.
 score_room_tone = false
 
 

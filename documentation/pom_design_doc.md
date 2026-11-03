@@ -57,7 +57,7 @@ Where this file and the code disagree, trust the code and fix this file. Day-to-
 ## The pipeline, end to end
 
 ```
-microphone -> whisper-driven cutting -> whisper -> sort: words / captions / nothing
+microphone -> whisper-driven cutting -> whisper -> track split: words / room tone / blanks
   -> TakeCutter -> Scorer -> Qualifying -> hinge -> PromptBuilder -> oracle model -> Printing -> typewriter
 ```
 

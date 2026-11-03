@@ -1,4 +1,4 @@
-"""Tests for pom.scoring.scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
+"""Tests for pom.scoring.clip_scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
 import logging
 
 import pytest

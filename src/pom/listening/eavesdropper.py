@@ -1,18 +1,18 @@
 """The Eavesdropper: sound in, what was heard out.
 
 It joins the parts of the listening side. Sound comes from an AudioDeck; the RollingCutter feeds it to whisper
-every few seconds and keeps the segments whisper finished; the TrackSplitter sorts each segment into words, room tone
-captions and nothing; and `hear()` yields one Take for each segment that holds something new. What happens next
+every few seconds and keeps the segments whisper finished; the TrackSplitter splits each segment into words, room tone
+and blanks; and `hear()` yields one Take for each segment that holds something new. What happens next
 (cutting, scoring, qualifying) is for the modules after it.
 
 Two things beyond the cutter, both from the hearing-debug experiment:
-  * REPEATS. Words identical to the last words are skipped, and captions identical to the last captions are not
+  * REPEATS. Words identical to the last words are skipped, and room tone identical to the last room tone is not
     reported again, because whisper sometimes says the same thing twice across a boundary or keeps hearing the same
-    sound. The captions are also remembered (the last `room_tone_memory` of them, `recent_room_tone`), to give the oracle
+    sound. The room tone is also remembered (the last `room_tone_memory` of them, `recent_room_tone`), to give the oracle
     model as context later.
   * THE ROOM-TONE PASS. The voice detector treats singing and most sounds as not speech. The Printer reacts to what it hears,
     so after `room_tone_pass_every` rounds in a row that found no speech, whisper is asked about the last `room_tone_pass_seconds` of
-    audio WITHOUT the voice detector, and only lyrics and captions are kept (plain text from that pass is where whisper
+    audio WITHOUT the voice detector, and only lyrics and room tone are kept (plain text from that pass is where whisper
     makes things up, so it is thrown away). `room_tone_pass_every` 0 turns the pass off.
     KNOWN LIMIT, inherited from the experiment: the pass can only hear what the cutter still holds, and a stretch with no
     speech is trimmed to its last two seconds before the pass runs, so in practice it listens to about two seconds, not
@@ -60,9 +60,9 @@ class Take:
     """Something new that was heard.
 
     Attributes:
-        words: What was said or sung, ready to be cut into clips and scored. "" if this segment held only captions.
+        words: What was said or sung, ready to be cut into clips and scored. "" if this segment held only room tone.
         kind: "speech" or "lyrics" for the words; "" if there are none.
-        room_tone: Captions of sounds that are new since the last segment, such as "(dog barks)". Never scored.
+        room_tone: Room tone that is new since the last segment, such as "(dog barks)". Never scored.
         ends_at: Where in the audio stream the segment ended, in seconds from the start of listening.
     """
     words: str
@@ -94,11 +94,11 @@ class Eavesdropper:
         """Args:
             deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
-            step, hold, rewind, max_cut_seconds: The RollingCutter's settings (see there).
-            room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and captions.
+            cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds: The RollingCutter's settings (see there).
+            room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and room tone.
                 A whole number of at least 0; 0 turns the room-tone pass off.
             room_tone_pass_seconds: How much recent audio the room-tone pass listens to, above 0.
-            room_tone_memory: How many recent captions to remember, a whole number of at least 1.
+            room_tone_memory: How many recent bits of room tone to remember, a whole number of at least 1.
             splitter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
             strict: Raise EavesdropperError on any problem instead of recording it.
@@ -130,7 +130,7 @@ class Eavesdropper:
 
     @property
     def recent_room_tone(self) -> Tuple[str, ...]:
-        """The last few captions of sounds in the room, oldest first, for the oracle model's context."""
+        """The last few bits of room tone, oldest first, for the oracle model's context."""
         return tuple(self._recent_room_tone)
 
     def hear(self) -> Iterator[Take]:

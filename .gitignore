@@ -13,7 +13,7 @@ samples/
 *.m4a
 *.mp3
 
-# Raw corpus downloads are reproducible from library/SOURCES.md; processed text is committed
+# Raw library downloads are reproducible from library/holdings.csv; processed text is committed
 library/raw/
 
 # Python

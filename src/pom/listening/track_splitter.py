@@ -1,8 +1,8 @@
-"""The TrackSplitter: sorts what whisper wrote about a stretch of sound into the kinds the Printer treats differently.
+"""The TrackSplitter: splits what whisper wrote about a stretch of sound into the kinds the Printer treats differently.
 
-Whisper does not only write down words. It also writes captions of sounds, like "(dog barks)" or "[Music]", marks
+Whisper does not only write down words. It also writes room tone, like "(dog barks)" or "[Music]", marks
 for "there is nothing here", like "[BLANK_AUDIO]", and, for song, words between music symbols. The Printer treats
-these three kinds differently, so this module sorts them before anything is scored:
+these three kinds differently, so this module splits them before anything is scored:
 
   * WORDS: speech, and sung lyrics with the music symbols taken out. These are what the Scorer is given. The Printer
     reacts to what it hears, not only to conversation, so lyrics are words and compete on score like any sentence.
@@ -15,7 +15,7 @@ these three kinds differently, so this module sorts them before anything is scor
 are no words.
 
 `plain_text=False` is for text from a pass without the voice detector. There, plain text is more likely invented than
-heard (it is where whisper makes up words for noise), so only lyrics count as words; the captions are still kept.
+heard (it is where whisper makes up words for noise), so only lyrics count as words; the room tone is still kept.
 
 Design decisions, and why:
   * Pure text in, text out. No clock, no audio, no model, so it runs anywhere and tests with nothing but strings.
@@ -45,7 +45,7 @@ class Tracks:
 
     Attributes:
         words: Speech and song lyrics, with the music symbols removed. This is what the Scorer is given.
-        room_tone: Whisper's captions of sounds, once each in the order they came, brackets included.
+        room_tone: Whisper's room tone, once each in the order they came, brackets included.
         kind: "speech", "lyrics" (the words came only from between music symbols), or "" if there are no words.
     """
     words: str

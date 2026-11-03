@@ -45,6 +45,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (12): the table's stragglers**: every old name in the rename table was checked against the whole repository (not a list from memory). It found *caption* (the old word for
+  room tone) still in the Eavesdropper, TrackSplitter, HingeFinder, `Attempt` and `config` docs, `[listening]` comments in `config/pom.toml`, the docs and the testbench README (including a
+  half-converted "words, room tone / captions and nothing" in the Eavesdropper's docstring), and *sorts* where the TrackSplitter *splits*; a `.gitignore` comment still pointing at `library/SOURCES.md`
+  (now `holdings.csv`); `requirements.txt` saying "triggers"; a test docstring naming `pom.scoring.scorer`; `startup.py` saying `Outcome` for `StepOutcome`; the Eavesdropper's `step, hold, rewind`
+  argument note; and "source" for a holding in three lead rows of `library/holdings.csv` and in `project-state.md`. Words only; 2,580 tests pass.
 - **The Great Rename, words (11): the stragglers**: a sweep of the code, tests, dev tools and docs against the lexicon's "was" names found a few left over. The typed line's *multiplier* is the *handicap*
   (`TypedLineScorer(handicap=...)`, `DEFAULT_HANDICAP`, the warning text, the tests, and `score_typed_lines.py --handicap`, which was `--multiplier`); a *scored sentence* is an *attempt* (the monitor
   chart's legend says "Black dots: attempts.", and the `ScoreTrace`, chart and test names follow); the Eavesdropper's private `_sound_every` is `_room_tone_every`; the dev tools' `heard_settings` is

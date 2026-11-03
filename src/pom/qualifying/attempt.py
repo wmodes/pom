@@ -15,9 +15,9 @@ class Attempt:
     """One thing heard, with what the Scorer and the BarKeeper made of it.
 
     Attributes:
-        text: The sentence (or the caption of a sound), word for word.
-        kind: "speech" or "lyrics" for words, "room_tone" for the caption of a sound.
-        score: 0 (dull) to 9 (extremely interesting), or None if it was not scored (a caption while room tone is
+        text: The sentence (or the room tone), word for word.
+        kind: "speech" or "lyrics" for words, "room_tone" for room tone.
+        score: 0 (dull) to 9 (extremely interesting), or None if it was not scored (room tone while it is
             not scored, or the Scorer could not).
         scored_by: What made the score (the model, the clip filter) or left it without one.
         ruling: What the BarKeeper ruled, or None if it never saw the score.

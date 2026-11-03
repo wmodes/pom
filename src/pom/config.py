@@ -27,7 +27,7 @@ of being threaded through by hand. Today there are five:
                `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `cut_every_seconds`, `hold_back_seconds`,
-               `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and caption memory. The defaults are the
+               `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and room-tone memory. The defaults are the
                combination that worked in the room; change one at a time. The entry point builds the
                WhisperModelClient, MicDeck and Eavesdropper from `config.listening`.
     [monitor]  A section (see MonitorSettings): the monitoring site, a web page of the last hour of turns. Whether it
@@ -282,11 +282,11 @@ class ListeningSettings:
         hold_back_seconds: A segment is kept once it ends this many seconds before the end of the buffer, 0 or more.
         rewind_seconds: Seconds before the last kept segment's end that the next run starts, 0 or more (0 is off).
         max_cut_seconds: Seconds without a finished segment before one is forced out, above 0.
-        room_tone_pass_every: After this many runs in a row with no speech, listen once for lyrics and captions;
+        room_tone_pass_every: After this many runs in a row with no speech, listen once for lyrics and room tone;
             a whole number of at least 0, 0 for never.
         room_tone_pass_seconds: How much recent audio that pass listens to, above 0.
-        room_tone_memory: How many recent captions of sounds to remember, a whole number of at least 1.
-        score_room_tone: True lets captions of sounds like "(dog barks)" be scored and become hinges, as
+        room_tone_memory: How many recent bits of room tone to remember, a whole number of at least 1.
+        score_room_tone: True lets room tone like "(dog barks)" be scored and become hinges, as
             speech does. False (the default) leaves them unscored.
     """
     whisper_url: str = DEFAULT_LISTENING_WHISPER_URL

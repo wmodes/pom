@@ -11,10 +11,10 @@ Design decisions, and why:
     Attempt, which is why the ones that did not qualify are yielded too.
   * Time is the Eavesdropper's: counted in audio received, so a recording replayed at any speed qualifies exactly as a live run.
   * Only whole sentences are scored; clauses and phrases are not (the same rule the hearing-debug experiment used).
-  * ROOM TONE. A caption like "(dog barks)" is yielded either way, so a testbench can show it. With
+  * ROOM TONE. Room tone like "(dog barks)" is yielded either way, so a testbench can show it. With
     `score_room_tone` off (the default) it is not scored and the BarKeeper never sees it: `score` is None and
-    `ruling` is None. With it on, the caption is scored like a sentence and counted by the BarKeeper, so a sound can be the
-    hinge. How a caption scores is untried; whisper sometimes invents captions.
+    `ruling` is None. With it on, the room tone is scored like a sentence and counted by the BarKeeper, so a sound can be the
+    hinge. How room tone scores is untried; whisper sometimes invents it.
   * Nothing here may stop the oracle (see pom/__init__.py). A Scorer that cannot score gives an unscored sentence, which the
     BarKeeper ignores; nothing is raised.
   * What was heard is never logged or put in a report: the sentences live only in the objects this yields.
@@ -45,7 +45,7 @@ class HingeFinder:
             take cutter: A TakeCutter that cuts words into sentences.
             scorer: A Scorer that scores a clip, or plain text with score_text().
             bar_keeper: A BarKeeper that says whether a score is a qualifier.
-            score_room_tone: True lets captions of sounds be scored and become hinges; False leaves them unscored.
+            score_room_tone: True lets room tone be scored and become hinges; False leaves it unscored.
         """
         self._eavesdropper = eavesdropper
         self._take_cutter = take_cutter
@@ -59,8 +59,8 @@ class HingeFinder:
         Ends when the Eavesdropper's sound ends or the finder is closed.
         """
         for heard in self._eavesdropper.hear():
-            for caption in heard.room_tone:
-                yield self._sentence(caption, ROOM_TONE, heard.ends_at, score_it=self._score_room_tone)
+            for tone in heard.room_tone:
+                yield self._sentence(tone, ROOM_TONE, heard.ends_at, score_it=self._score_room_tone)
             if not heard.words:
                 continue
             for clip in self._take_cutter.split(heard.words, heard_at=heard.ends_at):
@@ -68,7 +68,7 @@ class HingeFinder:
                     yield self._sentence(clip.text, heard.kind, heard.ends_at, clip=clip)
 
     def _sentence(self, text: str, kind: str, now: float, clip=None, score_it: bool = True) -> Attempt:
-        """Scores the text (unless it is a caption that is not to be considered) and asks the BarKeeper about it."""
+        """Scores the text (unless it is room tone that is not to be considered) and asks the BarKeeper about it."""
         bar, held = self._bar_keeper.bar_at(now), self._bar_keeper.window_size_at(now)
         if not score_it:
             return Attempt(text, kind, None, ScoredBy.UNSCORED, None, now, bar, held, self._bar_keeper.counted)

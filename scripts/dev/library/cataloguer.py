@@ -51,6 +51,8 @@ import os
 import re
 import sys
 
+import regex
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 from pom.library import Circulation, ends_unfinished  # noqa: E402
@@ -62,12 +64,19 @@ LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "
 READY = os.path.join(LIBRARY, "ready")
 OUT = os.path.join(LIBRARY, "passages")
 
-# Sentence ends: terminal punctuation (optionally closed by a quote or bracket), then a
-# capital, quote or digit. Abbreviations are rejoined afterwards.
-SENTENCE_BREAK = re.compile(
-    r"""(?:(?<=[.!?])|(?<=[.!?]["')\]])|(?<=[.!?]["')\]]["')\]])|(?<=[.!?]--)|(?<=[.!?]["')\]]--)|(?<=[.!?]--["')\]]))\s+(?=["'(\[]?[A-Z0-9])""")
-ABBREVIATION = re.compile(
-    r"\b(?:Mr|Mrs|Ms|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|vs|etc|viz|cf|[A-Z])\.$")
+# Where one sentence ends and the next begins: the white space between them (Wes's pattern; `regex`, not `re`, because it lets a lookbehind
+# have variable width, and nltk already brings it in).
+#   1. not after a known abbreviation ("Mr.", "St.", "etc.")
+#   2. not after a single initial ("J. K. Rowling", the "g." of "e.g.")
+#   3. after a stop (. ! ?), then any closing quotes or brackets, then the dash some old books print after it, then any closers again
+#      (the same shape as `ends_sentence`, so a cut here always leaves a piece that ends a sentence)
+#   4. and the next sentence starts with a capital or an opening quote
+SENTENCE_BREAK = regex.compile(
+    r"""(?<!\b(?:Mr|Mrs|Ms|Messrs|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|Sr|Jr|Phd|vs|ca|eg|ie|etc|viz|cf)\.)"""
+    r"""(?<!\b[A-Za-z]\.)"""
+    r"""(?<=[.!?]['")\]\u201d\u2019]*(?:--+|\u2014)?['")\]\u201d\u2019]*)"""
+    r"""\s+"""
+    r"""(?=[A-Z\u201c\u2018"'])""")
 
 
 def words(text):
@@ -76,15 +85,8 @@ def words(text):
 
 
 def split_sentences(text):
-    """Splits prose into sentences, rejoining pieces cut after an abbreviation or initial."""
-    pieces = SENTENCE_BREAK.split(text)
-    sentences = []
-    for piece in pieces:
-        if sentences and ABBREVIATION.search(sentences[-1]):
-            sentences[-1] += " " + piece
-        else:
-            sentences.append(piece)
-    return sentences
+    """Splits prose into sentences at SENTENCE_BREAK."""
+    return [s for s in SENTENCE_BREAK.split(text) if s.strip()]
 
 
 def cut_evenly(units, limit, joiner):

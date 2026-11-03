@@ -30,20 +30,41 @@ def sentence(words_in_sentence, ending="end."):
 
 
 class TestSplittingProseIntoSentences:
+    """Wes's pattern: split at the space after a stop, closing quotes and brackets and an optional dash, before a capital or an opening quote;
+    not after an abbreviation or a single initial."""
+
     @pytest.mark.parametrize("text", [
         'It was late. He left.', 'Was it late? He left.', 'It was late! He left.', 'He said, "go." He left.', "He said, 'go.' He left.",
         'He said, "go!" He left.', 'He said, "go?" He left.', 'He said (go.) He left.', 'She said, "he said \'no.\'" He left.',
-        "It was late.-- He left.", 'It was late."-- He left.',
+        "It was late.-- He left.", 'It was late."-- He left.', "It was late.\u201d He left.", "It was late.\u2019 He left.", "It was late?! He left.",
     ])
     def test_a_sentence_end_in_any_of_these_forms_is_a_break(self, text):
         parts = cataloguer.split_sentences(text)
         assert len(parts) == 2 and parts[1] == "He left.", parts
 
-    def test_an_abbreviation_is_not_a_sentence_end(self):
-        assert cataloguer.split_sentences("Mr. Smith left. Dr. Jones stayed.") == ["Mr. Smith left.", "Dr. Jones stayed."]
+    @pytest.mark.parametrize("text,count", [
+        ("Mr. Smith left. Dr. Jones stayed.", 2), ("Mrs. Smith and Ms. Jones met St. Paul.", 1), ("Rev. Mr. Smith met Capt. Jones. He left.", 2),
+        ("It was by J. K. Rowling. Then it ended.", 2), ("It was e.g. a thing. Then it ended.", 2), ("He sold apples, pears, etc. Then he left.", 1),
+        ("Compare Smith vs. Jones. Then he left.", 2), ("It was cited at c. 27. Then it began.", 2),
+    ])
+    def test_an_abbreviation_or_an_initial_is_not_a_sentence_end(self, text, count):
+        assert len(cataloguer.split_sentences(text)) == count, cataloguer.split_sentences(text)
 
-    def test_no_break_before_a_lowercase_word(self):
-        assert len(cataloguer.split_sentences("It was e.g. a thing. Then it ended.")) == 2
+    def test_no_break_before_a_lowercase_word_or_a_digit_or_a_bracket(self):
+        assert len(cataloguer.split_sentences("It ended. then it began.")) == 1
+        assert len(cataloguer.split_sentences("Physic. pt. ii. c. 27. Then it began.")) == 2          # not after "c."
+        assert len(cataloguer.split_sentences("It ended. (Edition of 1665, No. 1.) Then it began.")) == 2   # not before the "("
+
+    def test_an_opening_quote_starts_the_next_sentence(self):
+        assert cataloguer.split_sentences('It ended. "Then," he said.') == ["It ended.", '"Then," he said.']
+
+    @pytest.mark.parametrize("text", ["", "   ", "\n"])
+    def test_no_text_is_no_sentences(self, text):
+        assert cataloguer.split_sentences(text) == []
+
+    def test_the_pieces_rejoin_into_the_text_with_one_space_each(self):
+        text = 'One. Two? "Three!" Four.-- Five.'
+        assert " ".join(cataloguer.split_sentences(text)) == text
 
 
 class TestCuttingBetweenUnits:

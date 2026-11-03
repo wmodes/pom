@@ -29,6 +29,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   - **Oracle model:** Qwen3.5-9B, with Gemma 2 9B as the named alternate. On the Pi a typical portent takes 35 to 40 s
     (first word after 20 s, up to about 100 s for a long one); Wes judged that acceptable.
   - **Half-duplex:** nothing is sent to whisper or the scorer model while the oracle model writes or the typewriter prints.
+  - **All the models stay loaded (Wes's decision, restated 2026-11-03):** whisper, the scorer and the oracle are resident in memory at the same time, always (the 16 GB Pi is why). Half-duplex is about CPU, not memory. Never propose loading on demand or shrinking contexts for memory. Servers run as separate systemd services (agreed 2026-11-03, units not written yet); see the design doc, "All the models stay loaded, always".
 - **Experiments** (`experiments/`, not part of the Printer until rebuilt in `src/pom/`): `hearing-debug` (the working
   listening prototype), `interest-scorer`, `pi-benchmark`, `oracle-playground`, `oracle-bakeoff` (seven models, 160 rated
   portents each), `pi-oracle-benchmark` (the 9B on the Pi, run 2026-10-27).
@@ -38,7 +39,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 - **Testbenches** (`scripts/dev/`, small tools that use the real modules): `listening/split_whisper_tracks.py`, `listening/listen_to_room.py` (the
   microphone or a recording through the Eavesdropper, Scorer and BarKeeper), `scoring/score_typed_sentences.py` (type sentences, see scores and
   the BarKeeper's ruling), `scoring/score_typed_lines.py` (the typed-line path: score, handicap, answer or silence), `writing/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
-  live from the microphone, `--mac-mic` on a Mac).
+  live from the microphone, `--mac-mic` on a Mac). `pipeline/run_printer_with_servers.py` starts the three servers, runs `python -m pom` with your options, and stops what it started.
 - **The Conductor and the entry point are built** (2026-11-02): `python -m pom` runs the whole Printer (see the design doc, "The Conductor"),
   burn-tested on the Mac with real servers; only the real typewriter and the Pi's services are not yet tried together.
 - **Not built yet:** the monitoring site's printer status line and per-turn outcome (they need a preview and Wes's say), the systemd units on the Pi,

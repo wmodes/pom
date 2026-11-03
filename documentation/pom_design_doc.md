@@ -86,6 +86,30 @@ good (see "The floor and the watchdog" below). The memory for all three models a
 the 4B scorer model 3.1 GB, whisper 0.33 GB). On the Pi, with all three loaded and idle, at least 6.7 GB of the 16 GB
 stayed available.
 
+### All the models stay loaded, always
+
+**Decision (Wes's; restated 2026-11-03 because it was forgotten): whisper, the scorer model and the oracle model are all
+resident in memory at the same time, for as long as the Printer runs.** That is why the Pi is the 16 GB one. Half-duplex (above) is
+about *compute*: nothing is sent to whisper or the scorer while the oracle writes, so they never compete for the CPU. It is not about
+memory, and nothing is ever unloaded to make room. Consequences, so they are not reopened by accident:
+
+- No model is loaded on demand, swapped, or started only for its turn. A reload costs 12 to 28 s for the scorer and more for the oracle,
+  and the first word after a hinge must not wait for it.
+- The context sizes, model sizes and quantisations are chosen to fit together in 16 GB with room to spare (measured: all three idle, at
+  least 6.7 GB of the 16 GB stayed available on the Pi). They are not traded against memory pressure; if the sum ever stops fitting, that
+  is a design question for Wes, not a setting to quietly lower.
+- The servers outlive the Printer: restarting `python -m pom` leaves the models warm.
+
+### The servers are services
+
+(*Agreed 2026-11-03; the units are not written yet.*) On the Pi, systemd runs each server as its own unit: `pom-whisper.service`,
+`pom-scorer.service` and `pom-oracle.service`, each `Restart=always`, each logging to journald (which rotates the logs). `pom.service`
+runs after them with `After=` and `Wants=`, never `Requires=`: a server that crashes or restarts must not take the Printer down, and the
+Printer already copes with a missing server (it says so on the Monitor page, keeps going, and recovers when the server answers). The
+ports and model paths are in the unit files and the ports are also in `config/pom.toml`; the unit files live in the repo
+(`scripts/setup/`) and reach the Pi through git like everything else. On the Mac, `scripts/dev/pipeline/run_printer_with_servers.py` is the
+test bench that starts the same three servers, runs the Printer on them, and stops what it started.
+
 ### Pausing the ears, like a tape deck
 
 (*Built*, in the Eavesdropper.) The Conductor calls `Eavesdropper.pause()` the moment a turn takes

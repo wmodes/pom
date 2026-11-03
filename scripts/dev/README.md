@@ -16,6 +16,8 @@ into one built part of the Printer and see what it does, using the real modules 
 - `pipeline/`: `listening_to_portent.py` (`--monitor` also serves the monitoring site, fed by every turn) runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
   the Pi's by default) or a recording goes through the Eavesdropper, the scorer and the BarKeeper, and when a sentence qualifies the
   hinge is sent to the oracle and the portent is printed where the typewriter would. It needs whisper and both llama-servers running.
+  `run_printer_with_servers.py` is the test bench for the real thing: it starts whisper and both llama-servers (using any already running), runs `python -m pom` with whatever options you give it
+  (`--mac-mic --terminal console`, or `--wav FILE --speed 6 --terminal none`), and stops the servers it started when the Printer ends.
 - `monitor/`: `serve_fake_turns.py` serves the monitoring site with invented turns (`--live 15` adds one every 15 seconds,
   `--hide-hinges` shows the numbers-only page) so you can open it, click a turn and watch it update. Password: `demo`.
 - `printing/`: `format_text_for_typewriter.py` shows how the PortentFormatter sets text for the typewriter: type or pipe text in (quote the

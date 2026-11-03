@@ -9,6 +9,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Added
 
+- **The test bench `scripts/dev/pipeline/run_printer_with_servers.py`**: starts whisper-server and the scorer's and oracle's llama-servers (ports read from the config; a server already answering is used and left running), waits until each answers, runs `python -m pom` with every option it was given (`--mac-mic --terminal console`, `--wav FILE --speed 6`, ...), and stops the servers it started when the Printer ends or gets SIGTERM. Server logs go to a temporary folder, kept only if a server failed to start. Tried on the Mac with a recording: started, ran a turn, stopped everything on SIGTERM; reused a whisper-server started by hand.
+- **Documented, so it is not forgotten: all the models stay loaded** (design doc, "All the models stay loaded, always", and project-state): whisper, the scorer and the oracle are resident in memory at once on the 16 GB Pi; half-duplex is about CPU, not memory. Also recorded the agreed plan for the servers: one systemd unit each, `pom.service` after them with `Wants=` (units not written yet). The config's two stale comments ("the entry point starts llama-server") now say the servers run as services.
+
 - **The TypedLineScorer** (`src/pom/scoring/typed_line_scorer.py`): a line typed at the terminal's keyboard goes in, a `ScoredSentence` (kind `typed`) comes out, so the Conductor and the monitoring
   site take it like any hinge. It has its own way in and never touches the Listener. The Scorer scores the line (one sentence, no context), the score is multiplied by `typed_score_multiplier` (1.5;
   not capped at 9, so a typed 7 beats any spoken 9) and the same bar judges it. A line that does not clear the bar is ignored: nothing is printed. A typed line has no cooldown and a typed

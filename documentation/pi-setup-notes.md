@@ -139,7 +139,7 @@ Third-party, not bespoke: built on the Pi from a pinned upstream tag, not copied
 - **Leaning `base.en` as the default** (about 3x faster, 0.3 GB), with `small.en` kept on disk. One short phone clip is thin evidence; redo with the real mic.
 - Whisper was accurate enough that any "mangling" for the oracle effect would probably have to be done deliberately downstream.
 
-**Design decision (2026-10-18): half-duplex.** The machine listens, and only types when a TBD threshold is met. It does not need to process overheard audio *while* the typewriter is typing. So whisper and the LLM never run at the same time:
+**Design decision (2026-10-18): half-duplex.** The machine listens, and only types when a TBD threshold is met. It does not need to process overheard audio *while* the typewriter is typing. So whisper and the LLM never *compute* at the same time (all the models stay loaded in memory throughout; the Pi is the 16 GB one for that reason, see the design doc, "All the models stay loaded, always"):
 - No CPU contention between them, so either model is affordable. The casual-speech test favored `base.en` as default (see above); confirm with real mic audio.
 - Typing noise is not a design problem. Only the typewriter's idle noise and the fan matter for the mic test.
 - Open: should the pause also cover LLM generation (lean: yes), and does keyboard-typed input follow the same listen / respond / listen cycle?

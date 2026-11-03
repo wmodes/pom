@@ -35,7 +35,7 @@ local_logs = false
 
 # The Scorer: how it reaches the local language model (a llama-server) and what it asks it.
 [scorer]
-# Where the model answers. The entry point starts llama-server on this port.
+# Where the model answers: a llama-server on this port, running as a service (on the Mac, started by scripts/dev/pipeline/run_printer_with_servers.py).
 url = "http://127.0.0.1:8098/v1/chat/completions"
 
 # Seconds to wait for one score before giving up on that sentence (it is left unscored).
@@ -264,8 +264,7 @@ In the style of the example, create a single passage inspired by this theme with
 {hinge}
 """
 
-# How the oracle model is reached. The entry point starts a second llama-server on this port, apart from
-# the scorer's.
+# How the oracle model is reached: a second llama-server on this port, apart from the scorer's, run the same way.
 url = "http://127.0.0.1:8099/v1/chat/completions"
 
 # Seconds to wait for one portent before giving up. Writing is slow on the Pi (about half a second a token), and the whole reply

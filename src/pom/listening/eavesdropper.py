@@ -17,6 +17,14 @@ Two things beyond the cutter, both from the hearing-debug experiment:
     KNOWN LIMIT, inherited from the experiment: the pass can only hear what the cutter still holds, and a stretch with no
     speech is trimmed to its last two seconds before the pass runs, so in practice it listens to about two seconds, not
     `room_tone_pass_seconds`. Hearing the whole stretch would need the Eavesdropper to keep its own recent audio.
+  * PAUSE AND SKIP AHEAD, like a tape deck. While the Printer takes a turn (writing and printing) it must not call whisper and must
+    not later hear its own printing. `pause()` stops the listening: the thread in `hear()` keeps reading frames from the deck,
+    so the deck's buffer never overflows, but throws them away and asks whisper nothing; whatever whisper had already
+    transcribed and not yet handed on is dropped too, because it was said before the turn. `skip_ahead()` ends the pause with a
+    clean slate: the cutter forgets its audio and any half-finished segment, the repeat memory is cleared, and the cutter's clock moves
+    forward by the sound that went by unheard, so audio time keeps matching real time and the BarKeeper's cooldown and the bar's
+    memory count the turn. Both calls only set a flag and return at once, from any thread; the thread in `hear()` does the dropping
+    itself, so no state is touched by two threads. (A whisper request already in flight finishes first, and its result is dropped.)
 
 Design decisions, and why:
   * `hear()` is a plain generator, so this module needs no threads and no event loop. It blocks while it waits for sound
@@ -34,11 +42,13 @@ Design decisions, and why:
 """
 import collections
 import math
+import threading
 from dataclasses import dataclass
 from typing import Iterator, Optional, Tuple
 
 from pom.fault_recorder import FaultRecorder
 from pom.listening.audio_deck import AudioDeck
+from pom.listening.audio_format import FRAME_SECONDS
 from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter)
 from pom.listening.track_splitter import TrackSplitter
 from pom.log_setup import get_logger
@@ -120,6 +130,9 @@ class Eavesdropper:
         self._last_room_tone: Tuple[str, ...] = ()
         self._quiet_steps = 0
         self._whisper_down = False
+        self._paused = threading.Event()          # set by pause(), cleared by skip_ahead(); read by the thread in hear()
+        self._skip_wanted = threading.Event()     # set by skip_ahead(); cleared by the thread in hear() when it has done the skipping
+        self._unheard_frames = 0                  # frames thrown away while paused (only the thread in hear() touches this)
 
     def _setting(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -133,20 +146,51 @@ class Eavesdropper:
         """The last few bits of room tone, oldest first, for the oracle model's context."""
         return tuple(self._recent_room_tone)
 
+    @property
+    def paused(self) -> bool:
+        """True from `pause()` until `skip_ahead()`: nothing is being sent to whisper, and the sound is being thrown away."""
+        return self._paused.is_set()
+
+    def pause(self) -> None:
+        """Stops listening (for a turn): see PAUSE AND SKIP AHEAD above. Returns at once; safe from any thread and safe to repeat."""
+        self._paused.set()
+
+    def skip_ahead(self) -> None:
+        """Ends a pause with a clean slate, forgetting the sound that went by (see above). Returns at once; safe from any thread.
+
+        Without a `pause()` before it, it forgets what is buffered and carries on.
+        """
+        self._skip_wanted.set()       # first, so a thread that sees the pause cleared also sees the request
+        self._paused.clear()
+
     def hear(self) -> Iterator[Take]:
         """Listens until the sound ends (a recording runs out, the microphone stops, or `close` is called).
 
         Yields each Take as whisper finishes it, a few seconds after it was said. It blocks while waiting.
-        Whatever whisper had not yet finished when the sound ended is yielded last.
+        Whatever whisper had not yet finished when the sound ended is yielded last (unless paused).
         """
         try:
             for frame in self._deck.frames():
+                if self._paused.is_set():
+                    self._unheard_frames += 1         # the room goes on while the Printer is busy
+                    continue
+                if self._skip_wanted.is_set():
+                    self._skip_wanted.clear()         # before skipping, so a request made meanwhile is not lost
+                    self._forget_what_went_by()
                 self._cutter.feed(frame)
                 if self._cutter.due():
                     yield from self._round(final=False)
-            yield from self._round(final=True)
+            if not self._paused.is_set():
+                yield from self._round(final=True)
         finally:
             self._deck.close()
+
+    def _forget_what_went_by(self) -> None:
+        """Does a skip_ahead: the cutter forgets its audio and moves its clock on by the unheard sound; the repeat memory is cleared."""
+        self._cutter.skip_ahead(self._unheard_frames * FRAME_SECONDS)
+        self._unheard_frames = 0
+        self._last_words, self._last_room_tone = "", ()
+        self._quiet_steps = 0
 
     def close(self) -> None:
         """Stops listening: closes the deck, so `hear` finishes. Safe to call more than once, from another thread."""
@@ -157,12 +201,14 @@ class Eavesdropper:
         segments = self._cutter.cut(final=final)
         self._note_whisper()
         for segment in segments:
+            if self._paused.is_set() or self._skip_wanted.is_set():
+                break                    # a turn began: what was transcribed but not yet handed on was said before it
             item = self._news(self._splitter.split(segment.text), segment.end)
             if item is not None:
                 yield item
         if segments:
             self._quiet_steps = 0
-        elif self._room_tone_every and not self._whisper_down:
+        elif self._room_tone_every and not self._whisper_down and not self._paused.is_set():
             self._quiet_steps += 1
             if self._quiet_steps % self._room_tone_every == 0:
                 text = self._client.text(self._cutter.recent(self._room_tone_pass_seconds), vad=False)

@@ -307,8 +307,12 @@ time: that is half-duplex.
   `HalfDuplexGate`)
 - **turn taker**: *(planned)* Takes one hinge through a turn: has the portent written, formatted and printed, and reports what
   happened. Example: `TurnTaker` (was: portent deliverer, `PortentDeliverer`)
-- **skip ahead**: *(planned)* When the floor is yielded, the eavesdropper drops the sound that piled up during the turn, so the Printer
-  does not hear its own printing. Example: `Eavesdropper.skip_ahead()` (was: `Listener.skip_ahead()`)
+- **pause**: When the floor is taken, the eavesdropper stops listening: it keeps reading frames from the deck so its buffer never
+  overflows, but throws them away and asks whisper nothing; what was transcribed and not yet handed on is dropped too. Like pausing a
+  tape. Example: `Eavesdropper.pause()`, `paused` (was: none)
+- **skip ahead**: When the floor is yielded, the eavesdropper ends the pause with a clean slate, so the Printer does not hear its own
+  printing: the cutter forgets its audio, the repeat memory is cleared, and the cutter's clock moves on by the sound that went by unheard,
+  so the cooldown and the bar count the turn's time. Example: `Eavesdropper.skip_ahead()` (was: `Listener.skip_ahead()`)
 - **entry point**: *(planned)* Builds the one `Config`, builds the parts from it, and starts the Conductor; on the Pi it runs as a
   service. It takes the testbench's choices as options: a microphone or a recording, the real terminal or the console terminal, the
   monitoring site. Example: none (was/still)

@@ -140,6 +140,22 @@ class RollingCutter:
         with self._lock:
             self._pcm.extend(pcm)
 
+    def skip_ahead(self, seconds: float = 0.0) -> None:
+        """Forgets all the audio held and any half-finished segment, as if the sound up to now had not been wanted.
+
+        `seconds` is sound that went by unheard (while the Printer was busy with a turn). The stream clock moves forward
+        by that much, so stream time keeps matching real time and the cooldown and the bar's memory count the turn too.
+        The next whisper run is due `cut_every_seconds` after the new start. A `seconds` that is not a number, or negative,
+        counts as 0.
+        """
+        gap = float(seconds) if _is_number(seconds) and seconds > 0 else 0.0
+        with self._lock:
+            now = self._base + len(self._pcm) / BYTES_PER_SECOND + gap
+            self._pcm.clear()
+            self._base = now
+        self._start = now
+        self._next = now + self._cut_every_seconds
+
     def due(self) -> bool:
         """True when enough audio has arrived for the next whisper run."""
         return self.total_seconds >= self._next

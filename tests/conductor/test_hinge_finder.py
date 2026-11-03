@@ -17,13 +17,17 @@ LOUD = 9.0
 
 
 class FakeEavesdropper:
-    """Hears the segments it was given, then ends."""
+    """Hears the segments it was given, then ends. A test sets `paused` (or an `on_each` hook does) to play a turn beginning."""
 
-    def __init__(self, segments):
+    def __init__(self, segments, on_each=None):
         self.segments, self.closed, self.report = list(segments), 0, FaultRecorder()
+        self.paused, self.on_each = False, on_each
 
     def hear(self):
-        yield from self.segments
+        for number, heard in enumerate(self.segments):
+            if self.on_each:
+                self.on_each(self, number)         # a hook that plays what the Conductor does between takes
+            yield heard
 
     def close(self):
         self.closed += 1
@@ -268,3 +272,40 @@ class TestNothingSaidInTheRoomIsKept:
         found(made)
         text = caplog.text + "\n".join(made.report_lines())
         assert "secret" not in text and "neighbor" not in text and "gunshot" not in text
+
+
+class TestWhilePaused:
+    """While the Eavesdropper is paused (a turn), nothing is scored: the rest of the take and any take that arrives are dropped."""
+
+    def test_the_rest_of_a_take_is_not_scored(self):
+        made, eavesdropper, scorer = finder([segment("One. Two. Three.")])
+        sentences = made.find()
+        assert next(sentences).text == "One."
+        eavesdropper.paused = True
+        assert list(sentences) == []
+        assert [text for text, _ in scorer.asked] == ["One."]
+
+    def test_the_rest_of_the_room_tone_is_not_yielded(self):
+        made, eavesdropper, scorer = finder([segment(room_tone=("(a)", "(b)"))], score_room_tone=True)
+        sounds = made.find()
+        assert next(sounds).text == "(a)"
+        eavesdropper.paused = True
+        assert list(sounds) == []
+        assert [text for text, _ in scorer.asked] == ["(a)"]
+
+    def test_a_take_that_arrives_while_paused_is_not_scored(self):
+        made, eavesdropper, scorer = finder([segment("One."), segment("Two.")])
+        eavesdropper.paused = True
+        assert found(made) == [] and scorer.asked == []
+
+    def test_scoring_goes_on_once_the_pause_ends(self):
+        def unpause_for_the_second_take(eavesdropper, number):
+            eavesdropper.paused = number == 0
+        made, eavesdropper, scorer = finder([segment("One."), segment("Two.")])
+        eavesdropper.on_each = unpause_for_the_second_take
+        # take 0 is heard while paused and dropped; take 1 arrives after the pause ended
+        assert [a.text for a in found(made)] == ["Two."]
+
+    def test_nothing_is_dropped_when_it_was_never_paused(self):
+        made, _, scorer = finder([segment("One. Two. Three.")])
+        assert [a.text for a in found(made)] == ["One.", "Two.", "Three."]

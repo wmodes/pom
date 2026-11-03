@@ -1,5 +1,6 @@
 """Tests for pom.listening.eavesdropper, with a scripted deck and a stand-in for whisper."""
 import logging
+import threading
 
 import pytest
 
@@ -346,3 +347,147 @@ class TestWithARealCutterAndSorter:
             ("First thing said.", "speech", ()), ("Second thing, still going.", "speech", ()),
             ("", "", ("(dog barks)",)), ("la la", "lyrics", ())]
         assert [h.ends_at for h in got] == sorted(h.ends_at for h in got)
+
+
+class HookedDeck(ScriptedDeck):
+    """A ScriptedDeck that runs a hook just before it gives out frame number n (counted from 0): a turn beginning or ending."""
+
+    def __init__(self, seconds, hooks=None):
+        super().__init__(seconds)
+        self.hooks = dict(hooks or {})
+
+    def frames(self):
+        for number in range(self.count):
+            if self.closed:
+                return
+            if number in self.hooks:
+                self.hooks[number]()
+            yield bytes(FRAME_BYTES)
+
+
+def frame_at(seconds):
+    return round(seconds / FRAME_SECONDS)
+
+
+def make_hooked(seconds, *rounds, texts=(), **options):
+    """An Eavesdropper over a HookedDeck; fill `deck.hooks` afterwards with calls on `eavesdropper`."""
+    deck, whisper = HookedDeck(seconds), FakeWhisper(*rounds, texts=texts)
+    return Eavesdropper(deck, whisper, **options), deck, whisper
+
+
+class TestPauseAndSkipAhead:
+    def test_nothing_is_sent_to_whisper_while_paused_and_it_starts_fresh_after(self):
+        eavesdropper, deck, whisper = make_hooked(14)
+        deck.hooks = {frame_at(1): eavesdropper.pause, frame_at(11): eavesdropper.skip_ahead}
+        hear(eavesdropper)
+        # the 5 s and 10 s rounds were missed in the pause; only the last 3 s are heard, after the clock moved on to about 11
+        assert len(whisper.calls) == 1
+        offset, length = whisper.calls[0]
+        assert offset == pytest.approx(11.0, abs=0.1) and length == pytest.approx(3.0, abs=0.1)
+
+    def test_the_clock_matches_real_time_after_the_skip(self):
+        eavesdropper, deck, _ = make_hooked(14)
+        deck.hooks = {frame_at(1): eavesdropper.pause, frame_at(11): eavesdropper.skip_ahead}
+        hear(eavesdropper)
+        assert eavesdropper._cutter.total_seconds == pytest.approx(14.0, abs=0.1)
+
+    def test_a_take_still_to_be_handed_on_when_the_pause_begins_is_dropped(self):
+        eavesdropper, _, _ = make_hooked(12, [seg(0.2, 1.0, "First."), seg(1.2, 2.5, "Second.")])
+        sounds = eavesdropper.hear()
+        assert next(sounds).words == "First."
+        eavesdropper.pause()
+        assert list(sounds) == []
+
+    def test_a_take_still_to_be_handed_on_when_the_pause_ends_is_dropped_too(self):
+        eavesdropper, _, _ = make_hooked(12, [seg(0.2, 1.0, "First."), seg(1.2, 2.5, "Second.")])
+        sounds = eavesdropper.hear()
+        assert next(sounds).words == "First."
+        eavesdropper.pause()
+        eavesdropper.skip_ahead()
+        assert [h.words for h in sounds] == []
+
+    def test_the_same_words_after_the_skip_are_heard_again(self):
+        eavesdropper, deck, whisper = make_hooked(20, [seg(0.5, 2.5, "Hello.")], [seg(10.0, 12.0, "Hello.")])
+        deck.hooks = {frame_at(6): eavesdropper.pause, frame_at(9): eavesdropper.skip_ahead}
+        assert [h.words for h in hear(eavesdropper)] == ["Hello.", "Hello."]
+
+    def test_without_the_skip_the_same_words_are_still_heard_once(self):
+        eavesdropper, _, _ = make_hooked(20, [seg(0.5, 2.5, "Hello.")], [seg(5.5, 7.0, "Hello.")])
+        assert [h.words for h in hear(eavesdropper)] == ["Hello."]
+
+    def test_the_room_tone_memory_survives_the_skip(self):
+        eavesdropper, deck, _ = make_hooked(14, [seg(0.5, 2.5, "(dog barks)")])
+        deck.hooks = {frame_at(6): eavesdropper.pause, frame_at(9): eavesdropper.skip_ahead}
+        hear(eavesdropper)
+        assert eavesdropper.recent_room_tone == ("(dog barks)",)
+
+    def test_no_last_round_is_asked_of_whisper_if_the_sound_ends_during_a_pause(self):
+        eavesdropper, deck, whisper = make_hooked(12, [seg(0.5, 2.5, "Before.")])
+        deck.hooks = {frame_at(6): eavesdropper.pause}
+        assert [h.words for h in hear(eavesdropper)] == ["Before."]
+        assert len(whisper.calls) == 1               # the round at 5 s, and not the last one at the end
+
+    def test_a_skip_with_no_pause_forgets_the_buffer_and_carries_on(self):
+        eavesdropper, deck, whisper = make_hooked(14)
+        deck.hooks = {frame_at(3): eavesdropper.skip_ahead}
+        hear(eavesdropper)
+        offset, length = whisper.calls[0]
+        assert offset == pytest.approx(3.0, abs=0.1) and length == pytest.approx(5.0, abs=0.1)
+        assert eavesdropper._cutter.total_seconds == pytest.approx(14.0, abs=0.1)
+
+    def test_a_result_that_comes_back_after_a_pause_began_is_dropped(self):
+        eavesdropper, _, whisper = make_hooked(12, [seg(0.5, 2.5, "Too late.")])
+        original = whisper.segments
+
+        def segments_then_a_turn_begins(pcm, offset_s=0.0, vad=True):
+            found = original(pcm, offset_s, vad)
+            eavesdropper.pause()
+            return found
+        whisper.segments = segments_then_a_turn_begins
+        assert hear(eavesdropper) == []
+
+    def test_the_room_tone_pass_is_not_tried_while_paused(self):
+        eavesdropper, _, whisper = make_hooked(12, room_tone_pass_every=1, texts=["(dog barks)"])
+        original = whisper.segments
+
+        def nothing_found_and_a_turn_begins(pcm, offset_s=0.0, vad=True):
+            original(pcm, offset_s, vad)
+            eavesdropper.pause()
+            return []
+        whisper.segments = nothing_found_and_a_turn_begins
+        hear(eavesdropper)
+        assert whisper.text_calls == []
+
+    def test_paused_says_whether_a_pause_is_on(self):
+        eavesdropper, _, _ = make_hooked(1)
+        assert not eavesdropper.paused
+        eavesdropper.pause()
+        assert eavesdropper.paused
+        eavesdropper.skip_ahead()
+        assert not eavesdropper.paused
+
+    def test_both_calls_return_at_once_and_may_be_repeated_when_nothing_is_listening(self):
+        eavesdropper, _, _ = make_hooked(1)
+        done = threading.Thread(target=lambda: [eavesdropper.pause(), eavesdropper.pause(), eavesdropper.skip_ahead(),
+                                                eavesdropper.skip_ahead()])
+        done.start()
+        done.join(timeout=2)
+        assert not done.is_alive() and not eavesdropper.paused
+
+    def test_a_skip_asked_for_from_another_thread_while_listening_is_done(self):
+        eavesdropper, deck, whisper = make_hooked(14)
+
+        def from_another_thread():
+            worker = threading.Thread(target=lambda: (eavesdropper.pause(), eavesdropper.skip_ahead()))
+            worker.start()
+            worker.join(timeout=2)
+        deck.hooks = {frame_at(3): from_another_thread}
+        hear(eavesdropper)
+        assert whisper.calls[0][0] == pytest.approx(3.0, abs=0.1)
+
+    def test_two_turns_in_a_row_each_count_only_their_own_unheard_time(self):
+        eavesdropper, deck, _ = make_hooked(30)
+        deck.hooks = {frame_at(1): eavesdropper.pause, frame_at(6): eavesdropper.skip_ahead,
+                      frame_at(10): eavesdropper.pause, frame_at(20): eavesdropper.skip_ahead}
+        hear(eavesdropper)
+        assert eavesdropper._cutter.total_seconds == pytest.approx(30.0, abs=0.1)

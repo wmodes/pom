@@ -493,3 +493,59 @@ class TestSettings:
         cutter.feed(audio(5.0))
         with pytest.raises(RollingCutterError, match="RuntimeError"):
             cutter.cut()
+
+
+class TestSkippingAhead:
+    """skip_ahead: forget everything held, and move the stream clock on by the sound that went by unheard."""
+
+    def test_the_clock_moves_on_by_the_unheard_seconds(self):
+        cutter = RollingCutter(FakeWhisper())
+        cutter.feed(audio(2.0))
+        cutter.skip_ahead(10.0)
+        assert cutter.total_seconds == pytest.approx(12.0)
+
+    def test_all_the_audio_held_is_forgotten(self):
+        cutter = RollingCutter(FakeWhisper())
+        cutter.feed(audio(3.0))
+        cutter.skip_ahead(4.0)
+        assert cutter.recent(10.0) == b""
+
+    def test_the_next_round_is_a_step_after_the_new_start(self):
+        cutter = RollingCutter(FakeWhisper())
+        cutter.feed(audio(3.0))
+        cutter.skip_ahead(7.0)
+        cutter.feed(audio(4.99))
+        assert not cutter.due()
+        cutter.feed(audio(0.01))
+        assert cutter.due()
+
+    def test_whisper_is_given_only_audio_from_after_the_skip_and_told_where_it_starts(self):
+        whisper = FakeWhisper()
+        cutter = RollingCutter(whisper)
+        cutter.feed(audio(3.0))
+        cutter.skip_ahead(7.0)
+        cutter.feed(audio(5.0))
+        cutter.cut()
+        assert whisper.calls == [(pytest.approx(10.0), pytest.approx(5.0), True)]
+
+    def test_with_no_unheard_time_it_still_forgets_the_audio(self):
+        cutter = RollingCutter(FakeWhisper())
+        cutter.feed(audio(3.0))
+        cutter.skip_ahead()
+        assert cutter.total_seconds == pytest.approx(3.0) and cutter.recent(5.0) == b""
+
+    @pytest.mark.parametrize("bad", [-5.0, float("nan"), float("inf"), "x", None, True])
+    def test_a_seconds_that_is_not_a_good_number_counts_as_nothing(self, bad):
+        cutter = RollingCutter(FakeWhisper())
+        cutter.feed(audio(3.0))
+        cutter.skip_ahead(bad)
+        assert cutter.total_seconds == pytest.approx(3.0)
+
+    def test_what_whisper_finds_before_the_skip_is_not_kept_again_after_it(self):
+        whisper = FakeWhisper([seg(0.5, 3.0, "Before.")], [seg(10.5, 12.0, "After.")])
+        cutter = RollingCutter(whisper)
+        cutter.feed(audio(5.0))
+        assert [s.text for s in cutter.cut()] == ["Before."]
+        cutter.skip_ahead(5.0)
+        cutter.feed(audio(5.0))
+        assert [s.text for s in cutter.cut(final=True)] == ["After."]

@@ -19,8 +19,9 @@ Design decisions, and why:
     BarKeeper ignores; nothing is raised.
   * What was heard is never logged or put in a report: the sentences live only in the objects this yields.
   * Every part is passed in, already built (the entry point takes their settings from Config); this module never reads Config.
-  * Pausing while the oracle writes and the typewriter prints is the Conductor's job: it simply does not take the next
-    sentence from `find()` until it is ready to listen again.
+  * Pausing while the oracle writes and the typewriter prints is the Conductor's job: it calls the Eavesdropper's `pause()`
+    when a turn begins and `skip_ahead()` when it ends. The consumer keeps taking from `find()` the whole time, and while the
+    Eavesdropper is paused the rest of the take being cut is dropped unscored, so nothing is sent to the Scorer during a turn.
 """
 from typing import Iterator, Optional
 
@@ -41,7 +42,7 @@ class HingeFinder:
 
     def __init__(self, eavesdropper, take_cutter, scorer, bar_keeper, score_room_tone: bool = False):
         """Args:
-            eavesdropper: An Eavesdropper (anything with hear(), close() and report).
+            eavesdropper: An Eavesdropper (anything with hear(), paused, close() and report).
             take cutter: A TakeCutter that cuts words into sentences.
             scorer: A Scorer that scores a clip, or plain text with score_text().
             bar_keeper: A BarKeeper that says whether a score is a qualifier.
@@ -60,10 +61,14 @@ class HingeFinder:
         """
         for heard in self._eavesdropper.hear():
             for tone in heard.room_tone:
+                if self._eavesdropper.paused:
+                    break
                 yield self._sentence(tone, ROOM_TONE, heard.ends_at, score_it=self._score_room_tone)
             if not heard.words:
                 continue
             for clip in self._take_cutter.split(heard.words, heard_at=heard.ends_at):
+                if self._eavesdropper.paused:
+                    break                  # a turn began: the rest of this take was said before it
                 if clip.level is ClipLevel.SENTENCE:
                     yield self._sentence(clip.text, heard.kind, heard.ends_at, clip=clip)
 

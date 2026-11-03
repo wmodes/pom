@@ -72,7 +72,7 @@ microphone -> whisper-driven cutting -> whisper -> track split: words / room ton
 | Input: typed line scoring (`TypedLineScorer`) | Built |
 | Printing: formatter (`PortentFormatter`) | Built |
 | Printing: serial port (`TerminalPort`) and the keyboard coming back | Built |
-| Printing: pausing listening while it types | Planned (the Conductor) |
+| Printing: pausing listening while it types | `Eavesdropper.pause()` and `skip_ahead()` built; the Conductor that calls them is planned |
 | Input (keyboard) | Planned |
 | Conductor | Planned |
 
@@ -85,6 +85,19 @@ hear itself. Lockfiles are avoided (they can lock the system out). (open) The en
 good. The memory for all three models at once was measured on the Mac at about 10 GB (the 9B oracle model 6.7 GB,
 the 4B scorer model 3.1 GB, whisper 0.33 GB). On the Pi, with all three loaded and idle, at least 6.7 GB of the 16 GB
 stayed available.
+
+### Pausing the ears, like a tape deck
+
+(*Built*, in the Eavesdropper.) The Conductor calls `Eavesdropper.pause()` the moment a turn takes
+the floor and `skip_ahead()` when it yields it. While paused, the listening thread keeps reading frames from the deck but throws them
+away and asks whisper nothing, so the microphone's buffer never overflows (no false "dropping sound" warning each turn); a segment
+whisper had transcribed but not yet handed on is dropped as well, and the HingeFinder stops scoring the rest of the take being cut, so
+nothing reaches the scorer model either. `skip_ahead()` ends the pause with a clean slate: the cutter forgets its audio and any
+half-finished segment, the repeat memory is cleared (so the same words said after the turn are heard), and the cutter's clock moves
+forward by the sound that went by unheard. Decided 2026-11-02: the turn's time counts, so audio time keeps matching real time and the
+60-second cooldown and the bar's memory run through the turn (otherwise a 60-second turn would stretch the cooldown to two minutes).
+Both calls only set a flag and return at once, from any thread; the listening thread does the dropping, so no state is shared.
+A whisper request already in flight when the pause begins finishes first and its result is dropped.
 
 ## Listening: from sound to text
 

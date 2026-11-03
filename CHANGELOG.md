@@ -45,6 +45,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **`Eavesdropper.pause()` and `skip_ahead()`** (second leaf of the Conductor): the tape-deck way to stay deaf during a turn. `pause()` (called when a turn takes the floor) makes the listening thread keep reading
+  frames from the deck, so its buffer never overflows and logs no false warning, but throw them away and ask whisper nothing; a segment transcribed but not yet handed on is dropped, and the `HingeFinder`
+  scores nothing more while `paused` (so the scorer model is not called either). `skip_ahead()` (when the floor is yielded) ends the pause with a clean slate: `RollingCutter.skip_ahead(seconds)` forgets its audio
+  and any half-finished segment and moves its clock forward by the sound that went by unheard, so audio time keeps matching real time and the cooldown and the bar's memory count the turn's time (decided
+  2026-11-02); the repeat memory is cleared, the room-tone memory is kept. Both calls only set a flag and return at once from any thread; the listening thread does the dropping. The new names `pause` and
+  `paused` are in the lexicon, and the design doc's Half-duplex section has a new subsection. 32 new tests; 21 mutants checked (three survivors showed two redundant lines, now removed, and one weak test, now
+  stronger). 2,622 tests pass.
 - **The BarKeeper has a lock of its own** (first leaf of the Conductor): the room's thread (the HingeFinder) and the keyboard's thread (the TypedLineScorer) both call it, so `bar_at`, `window_size_at`,
   `rule` and `rule_typed` each hold one `threading.Lock` for the whole call and a ruling never sees the bar or the window half-updated by the other thread. The lock is per call, not per sequence: an
   attempt's recorded bar (asked just before the ruling) can differ slightly from the bar the ruling used if the other thread's score lands between the two; the ruling itself is always consistent. Two

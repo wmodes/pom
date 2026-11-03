@@ -1,7 +1,7 @@
 """The BarKeeper: whether a score stands out from how the room has been scoring lately.
 
 The BarKeeper does not use a fixed score. It asks what this room's recent scores look like and responds when a new one stands well above
-them. In a dull room a 5 can stand out; in a lively one it may take an 8. Each score goes in through `record`, with the time it was
+them. In a dull room a 5 can stand out; in a lively one it may take an 8. Each score goes in through `rule`, with the time it was
 heard, and the BarKeeper answers what it did with it.
 
 WHERE the bar sits is not decided here. It is worked out by a Bar, and there are several (a percentile of a window of recent
@@ -21,12 +21,17 @@ A clip that has no score (None), or one the bar ignores (a score under a floor),
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad input to
-    `record` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
+    `rule` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
   * The bar is passed in, already built (`bar_keeper_from_settings` builds the one the config chose), so a new way of deciding is a new
     Bar and nothing here changes.
   * This module never reads Config, and it never sees any words, only numbers.
+  * Two threads share one BarKeeper: the room's (the HingeFinder) and the keyboard's (the TypedLineScorer). Each public call takes the
+    BarKeeper's own lock for its whole length, so a ruling never sees the bar or the window half-updated by the other thread. The lock
+    is per call, not per sequence: a caller that asks `bar_at` and then `rule` may find the other thread's score came between the two,
+    so the bar it reports can differ slightly from the one the ruling used. The ruling itself is always consistent.
 """
 import math
+import threading
 from enum import Enum
 from typing import Optional
 
@@ -76,6 +81,7 @@ class BarKeeper:
             self.report.warn(f"bar must be a Bar, got {type(bar).__name__}; using the default PercentileBar")
             bar = PercentileBar()
         self._bar = bar
+        self._lock = threading.Lock()      # held for the whole of each public call that reads or changes the bar or the clock
         self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
         self._last_time: Optional[float] = None
         self._last_qualifier: Optional[float] = None
@@ -101,11 +107,13 @@ class BarKeeper:
 
     def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to qualify at time `now`, or None if `now` is not a number or the bar has none."""
-        return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
+        with self._lock:
+            return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
 
     def window_size_at(self, now: float) -> int:
         """How many scores the bar is built from at time `now` (what that means depends on the bar; it is for display)."""
-        return self._bar.window_size_at(self._steady(now) if self._is_number(now) else (self._last_time or 0.0))
+        with self._lock:
+            return self._bar.window_size_at(self._steady(now) if self._is_number(now) else (self._last_time or 0.0))
 
     def _steady(self, now: float) -> float:
         """`now`, held at the latest time seen so a clock stepping back cannot reorder things."""
@@ -121,21 +129,22 @@ class BarKeeper:
         was above the bar and at least `cooldown_seconds` have passed since the last qualifier; HELD if it was above the bar but
         that qualifier was too recent; DID_NOT_QUALIFY otherwise.
         """
-        if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
-            return Ruling.NO_MARK
-        now = self._steady(now)
-        level = self._bar.level_at(now)
-        above = level is not None and score > level
-        cooling = above and self._last_qualifier is not None and now - self._last_qualifier < self._cooldown_seconds
-        qualified = above and not cooling
-        if qualified:
-            self._last_qualifier = now
-        self._bar.add(float(score), now, qualified)
-        self._last_time = now
-        self.counted += 1
-        ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
-        _log.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
-        return ruling
+        with self._lock:
+            if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+                return Ruling.NO_MARK
+            now = self._steady(now)
+            level = self._bar.level_at(now)
+            above = level is not None and score > level
+            cooling = above and self._last_qualifier is not None and now - self._last_qualifier < self._cooldown_seconds
+            qualified = above and not cooling
+            if qualified:
+                self._last_qualifier = now
+            self._bar.add(float(score), now, qualified)
+            self._last_time = now
+            self.counted += 1
+            ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
+            _log.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
+            return ruling
 
     def rule_typed(self, score: Optional[float], now: float, affects_bar: bool = False) -> Ruling:
         """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
@@ -147,15 +156,16 @@ class BarKeeper:
         A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar. If not, it is
         DID_NOT_QUALIFY when it affected the bar and TYPED_DNQ when it did not.
         """
-        if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
-            return Ruling.NO_MARK
-        now = self._steady(now)
-        level = self._bar.level_at(now)
-        qualified = level is not None and score > level
-        if affects_bar:
-            self._bar.add(float(score), now, qualified)
-            self._last_time = now
-            self.counted += 1
-        ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ
-        _log.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
-        return ruling
+        with self._lock:
+            if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+                return Ruling.NO_MARK
+            now = self._steady(now)
+            level = self._bar.level_at(now)
+            qualified = level is not None and score > level
+            if affects_bar:
+                self._bar.add(float(score), now, qualified)
+                self._last_time = now
+                self.counted += 1
+            ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ
+            _log.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
+            return ruling

@@ -4,6 +4,8 @@ Most tests use a fake bar the test controls, so only the BarKeeper is under test
 """
 import logging
 import random
+import threading
+import time
 
 import pytest
 
@@ -367,7 +369,7 @@ class TestLogging:
         assert "bar none" in caplog.text
 
 
-class TestRecordDirect:
+class TestRuleTyped:
     """A score handed to the Printer directly (a typed line): held to the bar, with no cooldown, and kept out of the bar by default."""
 
     def test_the_typed_dnq_ruling_is_named_typed_dnq(self):
@@ -449,3 +451,56 @@ class TestRecordDirect:
         bar.asked.clear()
         t.bar_at(2.0)
         assert bar.asked == [2.0]
+
+
+class LurchingBar(FakeBar):
+    """A bar that notices when two threads are inside it at once, and stays inside long enough for the other one to arrive."""
+
+    def __init__(self):
+        super().__init__(level=5.0)
+        self.inside, self.overlaps = 0, 0
+
+    def _visit(self):
+        self.inside += 1
+        if self.inside > 1:
+            self.overlaps += 1
+        time.sleep(0.001)
+        self.inside -= 1
+
+    def level_at(self, now):
+        self._visit()
+        return super().level_at(now)
+
+    def window_size_at(self, now):
+        self._visit()
+        return super().window_size_at(now)
+
+    def add(self, score, now, qualified):
+        self._visit()
+        super().add(score, now, qualified)
+
+
+class TestTwoThreads:
+    """The room's thread and the keyboard's thread share one BarKeeper: its calls must not overlap."""
+
+    def test_the_calls_of_three_threads_never_overlap_inside_the_bar(self):
+        bar = LurchingBar()
+        t = BarKeeper(bar, cooldown_seconds=0)
+        calls = [lambda i: t.rule(7.0, float(i)), lambda i: t.rule_typed(7.0, float(i), affects_bar=True),
+                 lambda i: (t.bar_at(float(i)), t.window_size_at(float(i)))]
+        threads = [threading.Thread(target=lambda call=call: [call(i) for i in range(20)]) for call in calls]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+        assert bar.overlaps == 0
+
+    def test_every_score_from_both_threads_is_counted(self):
+        t = BarKeeper(LurchingBar(), cooldown_seconds=0)
+        room = threading.Thread(target=lambda: [t.rule(7.0, float(i)) for i in range(20)])
+        keys = threading.Thread(target=lambda: [t.rule_typed(7.0, float(i), affects_bar=True) for i in range(20)])
+        room.start()
+        keys.start()
+        room.join(timeout=10)
+        keys.join(timeout=10)
+        assert t.counted == 40

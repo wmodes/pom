@@ -518,7 +518,7 @@ The qualifying replays used four recorded team meetings (public by design, kept 
   models; a human spot-check of the bake-off ratings. (Decided: Qwen3.5-9B, with Gemma 2 9B as the alternate.)
 - How qualifying behaves in a real, quiet room; the paper guards.
 - How the Conductor enforces half-duplex without lockfiles.
-- How the Conductor serializes the typed path and the listening thread (the BarKeeper has no lock).
+- How the Conductor serializes the typed path and the listening thread (the BarKeeper now has a lock of its own, so only the floor is left to decide).
 - Mic placement and cable routing.
 - What "failing loudly" means.
 - Whether Track B and the hinge pairs are worth building.

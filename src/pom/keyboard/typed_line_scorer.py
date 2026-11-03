@@ -19,8 +19,8 @@ Design decisions, and why:
     sentence the BarKeeper ignores; a bad handicap is replaced by its default with a warning (`strict` raises instead).
   * What was typed is never logged or put in a report: the text lives only in the sentence this returns.
   * The Scorer, the BarKeeper and the clock are passed in, already built (the entry point takes the handicap and `affects_bar` from
-    `config.qualifying`); this module never reads Config. It adds no lock: the BarKeeper is shared with the HingeFinder's thread, and
-    keeping the two from calling it at once is the Conductor's job.
+    `config.qualifying`); this module never reads Config. It adds no lock: the BarKeeper is shared with the HingeFinder's thread and
+    has a lock of its own, so the two may call it at once. Which of them gets the floor is the Conductor's job.
 """
 import math
 from typing import Callable

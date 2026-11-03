@@ -45,6 +45,11 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The BarKeeper has a lock of its own** (first leaf of the Conductor): the room's thread (the HingeFinder) and the keyboard's thread (the TypedLineScorer) both call it, so `bar_at`, `window_size_at`,
+  `rule` and `rule_typed` each hold one `threading.Lock` for the whole call and a ruling never sees the bar or the window half-updated by the other thread. The lock is per call, not per sequence: an
+  attempt's recorded bar (asked just before the ruling) can differ slightly from the bar the ruling used if the other thread's score lands between the two; the ruling itself is always consistent. Two
+  threaded tests (a bar that notices two threads inside it, three threads calling at once, and a count of every score); five mutants checked (no lock, and each of the four calls unlocked). Also two stale
+  names in the BarKeeper's docstring (`record` for `rule`) and the test class `TestRecordDirect` (now `TestRuleTyped`). 2,582 tests pass.
 - **The Great Rename, words (12): the table's stragglers**: every old name in the rename table was checked against the whole repository (not a list from memory). It found *caption* (the old word for
   room tone) still in the Eavesdropper, TrackSplitter, HingeFinder, `Attempt` and `config` docs, `[listening]` comments in `config/pom.toml`, the docs and the testbench README (including a
   half-converted "words, room tone / captions and nothing" in the Eavesdropper's docstring), and *sorts* where the TrackSplitter *splits*; a `.gitignore` comment still pointing at `library/SOURCES.md`

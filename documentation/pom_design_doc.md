@@ -48,8 +48,8 @@ Where this file and the code disagree, trust the code and fix this file. Day-to-
   audio HAT.
 - It must sit on its own surface, not the typewriter stand, because a boundary mic hears the surface it is mounted on.
 - Capture gain: **24 of 30** with the hardware auto-gain off (tested 2026-10-23: normal speech averaged -33 to -27 dB,
-  a yell peaked near -3 dB at gain 26, so 24 leaves about 5.7 dB of headroom). The gain resets on every reboot, so
-  startup must set it from config (a planned startup step). Level normalization per utterance, before whisper, is the
+  a yell peaked near -3 dB at gain 26, so 24 leaves about 5.7 dB of headroom). Observed 2026-11-03: the gain was still 24 after a
+  clean reboot (ALSA saves and restores the mixer state), auto gain off; startup should still check it and set it from config if it differs (a planned step). Level normalization per utterance, before whisper, is the
   part that adapts to the room.
 - (open) Placement and cable routing, pending the idle-noise test with the Wheelwriter. Wireless if the cable becomes a
   problem.

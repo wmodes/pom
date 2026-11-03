@@ -43,7 +43,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 - **The Conductor and the entry point are built** (2026-11-02): `python -m pom` runs the whole Printer (see the design doc, "The Conductor"),
   burn-tested on the Mac with real servers; only the real typewriter and the Pi's services are not yet tried together.
 - **The Printer runs as services on the Pi** (2026-11-03): `scripts/setup/systemd/` linked into place by `install-services.sh`, persistent journal, models loaded with mmap
-  (7.7 GB available), crash recovery tried. Next: a reboot test, the typewriter, the start-up duties (mic gain 24 of 30 on every boot).
+  (7.7 GB available), crash recovery tried. A reboot test passed (all four up by themselves, mic gain still 24). Next: the typewriter, the start-up duties (check the mic gain), a real-voice test.
 - **Not built yet:** the monitoring site's printer status line and per-turn outcome (they need a preview and Wes's say), the paper guards, "failing loudly", and a full startup check (`startup.py`'s steps are still placeholders). Track B (the fine-tuned oracle)
   and the curated hinge pairs have not been started.
 

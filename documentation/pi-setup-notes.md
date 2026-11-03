@@ -212,7 +212,11 @@ about 7.7 GB of the 16 GB available (the oracle holds 9.2 GB resident, 5.0 anony
 to the OOM-killer. The oracle alone: 10.6 GB available with `mmap`, 10.1 GB with `mlock`, 6.1 GB with `mmap+mlock`.
 
 **Tried and working:** killing the oracle with SIGKILL, systemd restarted it and it was answering again in about 32 s; the Printer never stopped and the monitor's
-service lights stayed green. The microphone is open (`arecord -D plughw:0,0`). Not yet tried: a reboot (do all four come up by themselves?), and the typewriter.
+service lights stayed green. The microphone is open (`arecord -D plughw:0,0`). **Reboot (2026-11-03): passed.** All four services came up by themselves, with no restarts and no warnings. From the moment SSH answered (about 27 s after the
+command) all three servers were answering within about 90 s (a cold load from the SD card), the Printer had started first and logged "scorer NOT answering, oracle
+NOT answering" and then saw them come up, the monitor's lights were green, 7.1 GB was available, and the journal had kept the previous boot (`journalctl --list-boots`).
+The microphone gain was still 24 of 30 with auto gain off: ALSA saves the mixer state at shutdown and restores it at boot, so it does not reset on a clean reboot
+(the start-up step stays as a check that sets it if it differs). Not yet tried: the typewriter, and a real voice.
 
 ## Fan check
 

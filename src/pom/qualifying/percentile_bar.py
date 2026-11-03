@@ -110,7 +110,7 @@ class PercentileBar(Bar):
         return len(window) if window is not None else len(self._recent)
 
     def add(self, score: float, now: float, qualified: bool) -> None:
-        """Takes in a judged score. A qualifying score is left out when `exclude_qualifiers` is on."""
+        """Takes in a judged score. A score that stood above the bar (a qualifier, or one held by the cooldown) is left out when `exclude_qualifiers` is on."""
         if not (_is_number(score) and _is_number(now)):
             return
         if qualified and self._exclude_qualifiers:

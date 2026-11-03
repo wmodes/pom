@@ -36,7 +36,7 @@ class Bar(ABC):
 
     @abstractmethod
     def add(self, score: float, now: float, qualified: bool) -> None:
-        """Takes in a judged score at `now`; `qualified` says whether it fired."""
+        """Takes in a judged score at `now`; `qualified` says whether it stood above the bar: it fired, or was held back by the cooldown."""
 
     @abstractmethod
     def describe(self) -> str:

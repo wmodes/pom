@@ -171,7 +171,7 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
 - **attempt**: One score trying to qualify, with what came of it: the clip (or typed line), its score, the bar as it stood, and the ruling. Example:
   `Attempt` (was: scored sentence, `ScoredSentence`)
 - **ruling**: What the BarKeeper made of an attempt: *qualified*; *did not qualify* (it joins the window); *held* (it qualified inside
-  the cooldown, and joins the window); *no mark* (no usable score); or *typed DNQ* (did not qualify, for a typed line: under the
+  the cooldown; it is treated as a qualifier for the window, so `exclude_qualifiers` leaves it out too); *no mark* (no usable score); or *typed DNQ* (did not qualify, for a typed line: under the
   bar, and kept out of the window). Example: `Ruling`, `rule()`, `rule_typed()` (was: score effect, `ScoreEffect`, `record()`, `record_direct()`)
 - **qualifies**: An attempt qualifies when its score is above the bar, once the window holds `min_scores` and the cooldown is over. The
   score meets the bar as it stood before that score joined. Example: `QUALIFIED`, `exclude_qualifiers`, `[qualifying]` (was: trigger,

@@ -315,7 +315,7 @@ The rule is a percentile of the room's recent scores. It makes no assumption abo
   above it; at 90 it is the top tenth.
 - **Qualifying**: a score qualifies when it is strictly above the bar as it stood before that score joined, the window
   holds at least `min_scores` scores, and at least `cooldown_seconds` (60) have passed since the last qualifier. A score
-  above the bar inside the cooldown is held back (it still joins the window and does not restart the cooldown).
+  above the bar inside the cooldown is held back (it does not restart the cooldown; it is handed to the bar as a qualifier, so with `exclude_qualifiers` on it stays out of the window like one, and with it off it joins).
 - **Time is passed in**: `record(score, now)`. Live it is a clock reading; in a replay it is the place in the
   recording, so a recording gives the same answers faster than real time. Unscored clips are ignored.
 

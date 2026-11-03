@@ -9,7 +9,7 @@ scores, a decaying quantile, a moving average), each its own class, so the way o
 parts every way shares:
 
   * Qualifying: a score qualifies when it is ABOVE the bar, as the bar stood BEFORE that score was added, so a sentence is judged
-    against the room as it was before it was said. A qualifying score is then handed to the bar like any other (the bar may leave it out).
+    against the room as it was before it was said. A score that stood above the bar, whether it qualified or was held by the cooldown, is then handed to the bar flagged as a qualifier, so the bar leaves it out when `exclude_qualifiers` is on; any other score joins the bar.
   * The cooldown: after a qualifier, a score above the bar is not marked until `cooldown_seconds` have passed since that qualifier (60 to
     begin with; 0 turns it off). It is HELD: it still goes to the bar, and it does not restart the cooldown. A burst of strong
     sentences, such as a run of jokes, gives one qualifier and not six, and the next one comes from the room once the cooldown is over.
@@ -61,7 +61,7 @@ class Ruling(Enum):
     NO_MARK = "no mark"        # no score, not a number, no usable time, or a score the bar ignores
     DID_NOT_QUALIFY = "did not qualify"        # handed to the bar
     QUALIFIED = "qualified"    # stood above the bar (and was handed to the bar too)
-    HELD = "held"    # stood above the bar, but a qualifier was too recent (handed to the bar too)
+    HELD = "held"    # stood above the bar, but a qualifier was too recent (handed to the bar like a qualifier)
     TYPED_DNQ = "typed DNQ"          # a direct score (typed) that did not stand above the bar and was kept out of it
 
 
@@ -161,7 +161,7 @@ class BarKeeper:
             qualified = above and not cooling
             if qualified:
                 self._last_qualifier = now
-            self._bar.add(float(score), now, qualified)
+            self._bar.add(float(score), now, above)         # a held score stood above the bar too: it is treated as the qualifier it would have been
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY

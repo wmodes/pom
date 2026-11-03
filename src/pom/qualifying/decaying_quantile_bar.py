@@ -121,7 +121,7 @@ class DecayingQuantileBar(Bar):
         return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
 
     def add(self, score: float, now: float, qualified: bool) -> None:
-        """Takes in a judged score. A qualifying score is left out when `exclude_qualifiers` is on."""
+        """Takes in a judged score. A score that stood above the bar (a qualifier, or one held by the cooldown) is left out when `exclude_qualifiers` is on."""
         if not (_is_number(score) and _is_number(now)):
             return
         self._start(now)

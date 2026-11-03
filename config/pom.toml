@@ -135,7 +135,7 @@ starting_bar = 6.8
 cooldown_seconds = 60
 
 # A qualifying score is normally part of what the bar is built from, so the zinger that fired becomes the room's best and
-# holds the bar up for a while. true leaves it out: the bar then stays at the room's usual high tide, and a good score soon
+# holds the bar up for a while. A score held back by the cooldown is the same: it stood above the bar. true leaves both out: the bar then stays at the room's usual high tide, and a good score soon
 # after a great one can still fire. (percentile and decaying_quantile)
 exclude_qualifiers = true
 

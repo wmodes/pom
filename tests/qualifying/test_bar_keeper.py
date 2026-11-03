@@ -158,11 +158,17 @@ class TestTheCooldown:
         t.rule(9, 5)
         assert t.rule(2, 6) is Ruling.DID_NOT_QUALIFY
 
-    def test_a_score_that_cooled_down_is_still_handed_to_the_bar_and_counted(self):
+    def test_a_held_score_is_handed_to_the_bar_as_a_qualifier_and_counted(self):
         t, bar = bar_keeper(level=5.0, cooldown=60)
         t.rule(9, 5)
         t.rule(9, 6)
-        assert bar.added == [(9.0, 5.0, True), (9.0, 6.0, False)] and t.counted == 2
+        assert bar.added == [(9.0, 5.0, True), (9.0, 6.0, True)] and t.counted == 2
+
+    def test_a_score_below_the_bar_in_the_cooldown_is_handed_over_as_no_qualifier(self):
+        t, bar = bar_keeper(level=5.0, cooldown=60)
+        t.rule(9, 5)
+        t.rule(2, 6)
+        assert bar.added == [(9.0, 5.0, True), (2.0, 6.0, False)]
 
     def test_a_cooldown_of_zero_lets_every_strong_score_qualify(self):
         t, _ = bar_keeper(level=5.0, cooldown=0)
@@ -572,3 +578,23 @@ class TestAStuckLock:
             t.rule(9.0, 1.0)
         assert t._lock.acquire(timeout=0.5)       # not left held
         t._lock.release()
+
+
+class TestAHeldScoreAndExcludeQualifiers:
+    """A score held by the cooldown stood above the bar like a qualifier, so `exclude_qualifiers` must leave it out of the bar too."""
+
+    @staticmethod
+    def level_after_a_held_nine(exclude_qualifiers):
+        bar = PercentileBar(100, 600, 5, 6.0, exclude_qualifiers=exclude_qualifiers)
+        t = BarKeeper(bar, 60)
+        for i, score in enumerate([2.0, 3.0, 3.0, 4.0, 3.0]):
+            t.rule(score, float(i))
+        assert t.rule(7.0, 10.0) is Ruling.QUALIFIED       # fires: above the bar of the room's best, 4
+        assert t.rule(9.0, 20.0) is Ruling.HELD            # above the bar, inside the 60 s cooldown
+        return bar.level_at(30.0)
+
+    def test_with_exclude_qualifiers_on_a_held_score_does_not_raise_the_bar(self):
+        assert self.level_after_a_held_nine(True) == 4.0   # neither the 7 that fired nor the 9 that was held is in the window
+
+    def test_with_exclude_qualifiers_off_a_held_score_joins_the_bar(self):
+        assert self.level_after_a_held_nine(False) == 9.0

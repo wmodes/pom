@@ -53,7 +53,7 @@ done
 
 for unit in $changed; do
     sudo systemctl try-restart "$unit.service"          # only if it is running; a stopped service is left stopped
-    echo "restarted $unit (its unit file changed)"
+    echo "$unit: its unit file changed (restarted if it was running)"
 done
 
 if [ "${1:-}" = "--start" ]; then

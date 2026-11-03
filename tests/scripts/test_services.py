@@ -99,11 +99,12 @@ class TestTheServers:
         assert path.endswith("/" + model) and path.startswith("/home/pi/pom/data/")
 
     @pytest.mark.parametrize("name", ["pom-scorer", "pom-oracle"])
-    def test_the_language_models_are_pinned_in_memory_and_fully_resident_so_they_are_always_loaded(self, name):
+    def test_the_language_models_stay_loaded_and_are_not_pinned(self, name):
+        # Measured on the Pi: -lm mmap+mlock used the memory twice (the ARM build keeps a repacked copy of the weights) and left under 1 GB
+        # available with both models loaded; plain mmap leaves about 7 GB and the models stay resident in the page cache.
         found = flags(exec_tokens(name))
-        assert found["-lm"] == "mmap+mlock" and found["-lzm"] == "off"        # this llama.cpp build renamed --mlock to --load-mode
-        assert "--mlock" not in found
-        assert read_unit(name)["Service"]["LimitMEMLOCK"] == ["infinity"]
+        assert found["-lm"] == "mmap" and found["-lzm"] == "off"
+        assert "--mlock" not in found and "LimitMEMLOCK" not in read_unit(name)["Service"]
 
     def test_whisper_uses_its_own_voice_detection(self):
         found = flags(exec_tokens("pom-whisper"))

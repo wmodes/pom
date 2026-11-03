@@ -29,11 +29,16 @@ Design decisions, and why:
     BarKeeper's own lock for its whole length, so a ruling never sees the bar or the window half-updated by the other thread. The lock
     is per call, not per sequence: a caller that asks `bar_at` and then `rule` may find the other thread's score came between the two,
     so the bar it reports can differ slightly from the one the ruling used. The ruling itself is always consistent.
+  * The lock is in memory only, never a file, so a crash or a power cut cannot leave it stuck. And no call can wait on it forever: after
+    `LOCK_TIMEOUT_SECONDS` a call gives up, records a CRITICAL fault, and answers as if it had nothing (NO_MARK, no bar, a window of 0)
+    rather than freeze the thread that is listening. Nothing inside the lock waits on anything, so this should never happen; it is there
+    so that a bug somewhere cannot deafen the Printer.
 """
 import math
 import threading
+from contextlib import contextmanager
 from enum import Enum
-from typing import Optional
+from typing import Iterator, Optional
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
@@ -44,6 +49,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 DEFAULT_COOLDOWN_SECONDS = 60.0
+LOCK_TIMEOUT_SECONDS = 5.0   # the longest a call waits for the lock; the work inside it takes microseconds
 
 
 class BarKeeperError(ValueError):
@@ -99,6 +105,18 @@ class BarKeeper:
         """True for a real int or float (not a bool, and not NaN or infinity)."""
         return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
+    @contextmanager
+    def _held(self, call: str) -> Iterator[bool]:
+        """Takes the lock for the length of the `with`, yielding True; or yields False (and records a fault) if it waited too long."""
+        got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
+        if not got:
+            self.report.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if it had nothing")
+        try:
+            yield got
+        finally:
+            if got:
+                self._lock.release()
+
     # --- Questions ------------------------------------------------------------------
 
     def describe(self) -> str:
@@ -107,12 +125,16 @@ class BarKeeper:
 
     def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to qualify at time `now`, or None if `now` is not a number or the bar has none."""
-        with self._lock:
+        with self._held("bar_at") as got:
+            if not got:
+                return None
             return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
 
     def window_size_at(self, now: float) -> int:
         """How many scores the bar is built from at time `now` (what that means depends on the bar; it is for display)."""
-        with self._lock:
+        with self._held("window_size_at") as got:
+            if not got:
+                return 0
             return self._bar.window_size_at(self._steady(now) if self._is_number(now) else (self._last_time or 0.0))
 
     def _steady(self, now: float) -> float:
@@ -129,8 +151,8 @@ class BarKeeper:
         was above the bar and at least `cooldown_seconds` have passed since the last qualifier; HELD if it was above the bar but
         that qualifier was too recent; DID_NOT_QUALIFY otherwise.
         """
-        with self._lock:
-            if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+        with self._held("rule") as got:
+            if not got or not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
                 return Ruling.NO_MARK
             now = self._steady(now)
             level = self._bar.level_at(now)
@@ -156,8 +178,8 @@ class BarKeeper:
         A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar. If not, it is
         DID_NOT_QUALIFY when it affected the bar and TYPED_DNQ when it did not.
         """
-        with self._lock:
-            if not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+        with self._held("rule_typed") as got:
+            if not got or not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
                 return Ruling.NO_MARK
             now = self._steady(now)
             level = self._bar.level_at(now)

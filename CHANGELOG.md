@@ -50,6 +50,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
   attempt's recorded bar (asked just before the ruling) can differ slightly from the bar the ruling used if the other thread's score lands between the two; the ruling itself is always consistent. Two
   threaded tests (a bar that notices two threads inside it, three threads calling at once, and a count of every score); five mutants checked (no lock, and each of the four calls unlocked). Also two stale
   names in the BarKeeper's docstring (`record` for `rule`) and the test class `TestRecordDirect` (now `TestRuleTyped`). 2,582 tests pass.
+- **The BarKeeper's lock cannot deafen the Printer**: the lock is in memory only (no lockfile, so a crash or power cut cannot leave it stuck), and a call that cannot get it within
+  `LOCK_TIMEOUT_SECONDS` (5; the work inside takes microseconds) records a CRITICAL fault that names the call and answers as if it had nothing (`NO_MARK`, no bar, a window of 0) instead of waiting for
+  ever. Eight tests (a lock held by "another thread", the time limit, strict mode, recovery once it is freed, a lock released after an exception); eight mutants checked. 2,590 tests pass.
 - **The Great Rename, words (12): the table's stragglers**: every old name in the rename table was checked against the whole repository (not a list from memory). It found *caption* (the old word for
   room tone) still in the Eavesdropper, TrackSplitter, HingeFinder, `Attempt` and `config` docs, `[listening]` comments in `config/pom.toml`, the docs and the testbench README (including a
   half-converted "words, room tone / captions and nothing" in the Eavesdropper's docstring), and *sorts* where the TrackSplitter *splits*; a `.gitignore` comment still pointing at `library/SOURCES.md`

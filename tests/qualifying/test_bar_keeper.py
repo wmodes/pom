@@ -504,3 +504,71 @@ class TestTwoThreads:
         room.join(timeout=10)
         keys.join(timeout=10)
         assert t.counted == 40
+
+
+class TestAStuckLock:
+    """If something ever holds the lock and never lets go, a call gives up, says so, and answers as if it had nothing."""
+
+    @pytest.fixture
+    def stuck(self, monkeypatch):
+        monkeypatch.setattr("pom.qualifying.bar_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
+        t, bar = bar_keeper(level=5.0)
+        t._lock.acquire()          # held by "another thread" that never finishes
+        yield t, bar
+        t._lock.release()
+
+    def test_rule_gives_no_mark_and_leaves_the_bar_alone(self, stuck):
+        t, bar = stuck
+        assert t.rule(9.0, 1.0) is Ruling.NO_MARK
+        assert bar.added == [] and t.counted == 0
+
+    def test_it_waits_no_longer_than_the_timeout(self, stuck):
+        t, _ = stuck
+        started = time.monotonic()
+        t.rule(9.0, 1.0)
+        assert time.monotonic() - started < 1.0
+
+    def test_rule_typed_gives_no_mark_and_leaves_the_bar_alone(self, stuck):
+        t, bar = stuck
+        assert t.rule_typed(9.0, 1.0, affects_bar=True) is Ruling.NO_MARK
+        assert bar.added == [] and t.counted == 0
+
+    def test_the_questions_answer_with_nothing(self, stuck):
+        t, bar = stuck
+        assert t.bar_at(1.0) is None and t.window_size_at(1.0) == 0
+        assert bar.asked == [] and bar.sizes == []
+
+    def test_each_give_up_is_a_critical_fault_that_names_the_call(self, stuck):
+        t, _ = stuck
+        t.rule(9.0, 1.0)
+        t.bar_at(1.0)
+        assert len(t.report.criticals) == 2
+        assert "rule" in t.report.criticals[0] and "bar_at" in t.report.criticals[1]
+
+    def test_in_strict_mode_it_raises(self, monkeypatch):
+        monkeypatch.setattr("pom.qualifying.bar_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
+        t, _ = bar_keeper(strict=True)
+        t._lock.acquire()
+        try:
+            with pytest.raises(BarKeeperError):
+                t.rule(9.0, 1.0)
+        finally:
+            t._lock.release()
+
+    def test_after_it_is_freed_the_next_call_works_normally(self, monkeypatch):
+        monkeypatch.setattr("pom.qualifying.bar_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
+        t, _ = bar_keeper(level=5.0)
+        t._lock.acquire()
+        assert t.rule(9.0, 1.0) is Ruling.NO_MARK
+        t._lock.release()
+        assert t.rule(9.0, 2.0) is Ruling.QUALIFIED
+
+    def test_an_exception_inside_a_call_still_lets_go_of_the_lock(self):
+        class Exploding(FakeBar):
+            def level_at(self, now):
+                raise RuntimeError("boom")
+        t = BarKeeper(Exploding(), cooldown_seconds=0)
+        with pytest.raises(RuntimeError):
+            t.rule(9.0, 1.0)
+        assert t._lock.acquire(timeout=0.5)       # not left held
+        t._lock.release()

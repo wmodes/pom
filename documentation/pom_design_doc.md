@@ -540,8 +540,9 @@ Whether to start them depends on how far the prompted oracle model gets.
   across 55 holdings, verified to be only those), and the cataloguer cuts a long utterance ONLY AFTER A SENTENCE END (Wes's rule: a full stop,
   question mark or exclamation mark, then any closing quotes or brackets and the dash some old books print after it; `ends_sentence`), so a passage
   ends at a sentence end, at the end of its paragraph, or at the end of its record. Clause and word cuts are gone. A stretch with no sentence end is
-  never cut, and a piece over the 150-word ceiling is dropped (230 pieces, 0.3% of the library, mostly Shakespeare's verse speeches whose lines rarely
-  end on a full stop, and a few very long 19th-century sentences); `--oversize 1.5` would keep those up to 225 words whole (186 of them). That leaves about 70,900 passages and none unfinished (the cataloguer
+  never cut, and a piece over the 150-word ceiling is dropped (56 pieces, 0.08% of the library: 22 are very long 19th-century sentences in Forsyth, the rest
+  scattered); `--oversize 1.5` would keep those up to 225 words whole. Sentence ends are found anywhere in the text, mid-line too, because Shakespeare's end
+  part-way along lines: cutting only after lines that ended a sentence (the first version) lost 70 whole speeches and 3.3% of his words, now 0.2%. That leaves 71,196 passages and none unfinished (the cataloguer
   still drops any piece that ends unfinished as a backstop, and reports 0). The redraw stays as the safety net for any new holding. Verse and comma or semicolon endings are left alone.
 - (open) Equal shelf shares make small shelves repeat. A simulation showed repeats are negligible over an evening
   (0.1%) and matter over months; a recency decay was prototyped and deliberately left out.

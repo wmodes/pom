@@ -11,8 +11,8 @@ consumer needs: where it came from, its shelf, and its chance of being drawn.
 Rules, in order:
   1. Split. A utterance over --max-words (150) is cut into near-equal pieces ONLY AFTER A SENTENCE END:
      a full stop, question mark or exclamation mark, then any closing quotes or brackets (and the
-     dash some old books print after it; `ends_sentence` in pom.library.endings). Prose is cut
-     between sentences, verse and wrapped text between lines that end a sentence. So a passage ends
+     dash some old books print after it; `ends_sentence` in pom.library.endings). Sentences are
+     found anywhere in the text, mid-line too, and a piece keeps the line breaks inside it. So a passage ends
      at a sentence end, at the end of its paragraph (a blank line, where ready/ already divides
      utterances), or at the end of its record, and never mid-thought. A stretch with no sentence end
      in it is never cut, so a piece can come out over the limit; one over --oversize times the limit
@@ -84,9 +84,22 @@ def words(text):
     return len(text.split())
 
 
+def sentence_units(text):
+    """The sentences of a text, found anywhere in it (mid-line too), each with the white space that follows it.
+
+    Joining the units gives back the text exactly, line breaks included, so a piece made of several units keeps its own lines.
+    """
+    units, start = [], 0
+    for match in SENTENCE_BREAK.finditer(text):
+        units.append(text[start:match.end()])
+        start = match.end()
+    units.append(text[start:])
+    return [unit for unit in units if unit.strip()]
+
+
 def split_sentences(text):
-    """Splits prose into sentences at SENTENCE_BREAK."""
-    return [s for s in SENTENCE_BREAK.split(text) if s.strip()]
+    """Splits a text into sentences at SENTENCE_BREAK, without the white space between them."""
+    return [unit.strip() for unit in sentence_units(text)]
 
 
 def cut_evenly(units, limit, joiner):
@@ -135,14 +148,13 @@ def cut_evenly(units, limit, joiner):
 def split_utterance(text, limit):
     """Cuts an utterance over `limit` words into near-equal pieces, only after a sentence end.
 
-    Units are lines when the text has line breaks (verse, wrapped text), otherwise sentences. Returns (pieces, piece_count), where
-    piece_count is None if no split was needed. A piece with no sentence end to cut at inside it comes out whole, over the limit.
+    Verse and prose alike: the sentences are found anywhere in the text, even in the middle of a line, and a piece keeps whatever line
+    breaks fall inside it (so a piece of verse may begin or end part-way along a line). Returns (pieces, piece_count), where piece_count
+    is None if no split was needed. A piece with no sentence end to cut at inside it comes out whole, over the limit.
     """
     if words(text) <= limit:
         return [text], None
-    by_lines = "\n" in text.strip()
-    units = [u for u in (text.split("\n") if by_lines else split_sentences(text)) if u.strip()]
-    pieces = [p for p in cut_evenly(units, limit, "\n" if by_lines else " ") if p.strip()]
+    pieces = [p.strip() for p in cut_evenly(sentence_units(text), limit, "")]
     return pieces, len(pieces)
 
 

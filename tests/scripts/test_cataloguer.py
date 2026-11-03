@@ -20,8 +20,8 @@ _spec.loader.exec_module(cataloguer)
 
 
 def line(words_in_line, ending):
-    """A line of that many words ending in `ending`."""
-    return " ".join(["word"] * (words_in_line - 1) + [ending])
+    """A line of that many words ending in `ending`; it starts with a capital, as a line of verse does."""
+    return " ".join(["Word"] + ["word"] * (words_in_line - 2) + [ending])
 
 
 def sentence(words_in_sentence, ending="end."):
@@ -147,6 +147,16 @@ class TestSplittingAnUtterance:
         pieces, count = cataloguer.split_utterance("\n".join(lines), 150)
         assert count == len(pieces) >= 2 and all(ends_sentence(p) for p in pieces)
         assert "\n".join(pieces).split("\n") == lines                              # the line breaks are kept
+
+    def test_a_sentence_end_in_the_middle_of_a_line_is_a_place_to_cut_and_the_line_breaks_stay(self):
+        # Shakespeare's sentences end part-way along lines: "Alas, poor Yorick number 1. I knew him well and long, my friend," is one line.
+        speech = "\n".join(f"Alas, poor Yorick number {i}. I knew him well and long, my friend," for i in range(1, 16))
+        pieces, count = cataloguer.split_utterance(speech, 40)
+        assert count == len(pieces) >= 4 and all(ends_sentence(p) for p in pieces[:-1])      # the last piece ends where the record ends
+        assert pieces[0].endswith("Yorick number 3.")                                    # cut mid-line, after a full stop
+        assert pieces[1].startswith("I knew him well and long, my friend,\nAlas")         # and the next piece starts mid-line
+        assert all("\n" in p for p in pieces[:-1])                                        # each piece keeps the line breaks inside it
+        assert " ".join(" ".join(pieces).split()) == " ".join(speech.split())             # every word kept, in order
 
     def test_verse_with_no_line_ending_a_sentence_comes_out_whole(self):
         lines = [line(30, f"line{i},") for i in range(10)]

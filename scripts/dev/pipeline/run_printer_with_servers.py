@@ -159,7 +159,7 @@ def main() -> int:
 
     for program in ("whisper-server", "llama-server"):
         if shutil.which(program) is None:
-            print(f"[bench] {program} is not on the PATH (on the Mac: brew install whisper-cpp llama.cpp)", file=sys.stderr)
+            print(f"[bench] {program} is not on the PATH (on the Mac: brew install whisper.cpp llama.cpp)", file=sys.stderr)
             return 2
     for model in (WHISPER_MODEL, WHISPER_VAD_MODEL):
         if not model.exists():

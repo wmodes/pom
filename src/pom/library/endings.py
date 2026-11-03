@@ -5,9 +5,11 @@ an exemplar that stops at "...is the", or that is a lead-in ending on a colon ("
 used:") with its list gone, makes a portent that stops there too. The Bibliomancer will not draw such a passage as an
 exemplar, and the library pipeline will not keep one. Both ask this module, so they cannot disagree.
 
-A passage ends UNFINISHED when its last character is not a closing mark and either
-  * it is a colon (a lead-in whose content is somewhere else), or
-  * its last word cannot end a thought: an article, preposition, conjunction or possessive such as "the", "of", "and".
+A passage ends UNFINISHED when it is
+  * a lead-in whose content is somewhere else: it ends on a colon, even one followed by the dash and quotes old books print
+    (`asks thee:--`, `as follows:"`), or on an abbreviation that needs something after it (`viz.`, `chap.`, `fol.`, `e.g.`), or
+  * not closed by a mark and its last word cannot end a thought: an article, preposition, conjunction or possessive such as
+    "the", "of", "and".
 
 Verse and other open endings (a comma or semicolon, a line with no mark) are NOT unfinished by this test: a stanza may
 end that way on purpose. "The" is the test of an ending, not of style.
@@ -33,6 +35,14 @@ _CLOSERS = "'\")\\]\u201d\u2019"
 SENTENCE_END = re.compile(rf"[.!?]+[{_CLOSERS}]*(?:--+|\u2014)?[{_CLOSERS}]*\s*$")
 
 
+# A colon, then any dashes and closing quotes or brackets, ends a lead-in: "He therefore asks thee:--", 'as follows:"'.
+_COLON_LEAD_IN = re.compile(rf":[\s\-\u2014]*[{_CLOSERS}]*\s*$")
+
+# An abbreviation that is always followed by what it points to ("viz. the following", "chap. IV", "fol. 12"), so a passage ending on one
+# stopped before its point. Not "etc.", "&c.", "Mr.", "No." or a lone letter: those end real sentences ("say No.", "press C.").
+_ABBREVIATION_LEAD_IN = re.compile(rf"(?<![A-Za-z'])(?:viz|chaps?|fols?|vols?|pts?|sect|cf|pp|i\.e|e\.g)\.[{_CLOSERS}]*\s*$", re.IGNORECASE)
+
+
 def ends_unfinished(text: str) -> bool:
     """True if the text stops before its thought is done (see the module docstring).
 
@@ -45,10 +55,12 @@ def ends_unfinished(text: str) -> bool:
     if not isinstance(text, str):
         return False
     stripped = text.rstrip()
-    if not stripped or stripped[-1] in CLOSING_MARKS:
+    if not stripped:
         return False
-    if stripped[-1] == ":":
+    if _COLON_LEAD_IN.search(stripped) or _ABBREVIATION_LEAD_IN.search(stripped):
         return True
+    if stripped[-1] in CLOSING_MARKS:
+        return False
     words = _TRAILING_NON_WORD.sub("", stripped).split()       # "and then the --" and "and then the," both end on "the"
     return bool(words) and words[-1].lower() in DANGLING_WORDS
 

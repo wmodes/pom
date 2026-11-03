@@ -64,6 +64,35 @@ class TestAnUnfinishedPassage:
         assert ends_unfinished("The chief of these, and one that has been in silence for many\ndecades, is the") is True
 
 
+class TestALeadInIsUnfinished:
+    """A colon, even one followed by the dash and quotes old books print, and an abbreviation that always has something after it."""
+
+    @pytest.mark.parametrize("text", [
+        "He therefore asks thee:--", "My dear Houdini:--", 'as follows:"', "as follows: --", "He said:", 'asks:--"', "asks:-- ", "asks:\u2014",
+        "asks:--'", "asks:--)", "asks: \u201d",
+    ])
+    def test_a_colon_with_or_without_a_dash_or_closing_quotes(self, text):
+        assert ends_unfinished(text) is True, text
+
+    @pytest.mark.parametrize("text", [
+        "in the following manner, viz.", "of chap.", "(To Madame De Sable, Ms., Fol.", "see e.g.", "that is, i.e.", "Vol. II., pp.", "Compare Sect.",
+        "VIZ.", "Compare cf.", "in chaps.", "in fols.", "in vols.", "in pts.", 'viz.")',
+    ])
+    def test_an_abbreviation_that_points_at_something_not_yet_said(self, text):
+        assert ends_unfinished(text) is True, text
+
+    @pytest.mark.parametrize("text", [
+        "He left.", "say No.", "press C.", "and so on, etc.", "and the rest, &c.", 'Addressed "Mr."', 'He said: "go."', "The poet:--he left.",
+        "I am glad.--", "Thou art.", "It was the 1st.", "Her name was Ann.", "to the end, chap.ter", "He said that:  Yes.", "see No. 5.",
+    ])
+    def test_these_are_finished(self, text):
+        assert ends_unfinished(text) is False, text
+
+    def test_the_abbreviation_must_be_a_whole_word(self):
+        assert ends_unfinished("the Cavalry.") is False and ends_unfinished("an Ovation.") is False and ends_unfinished("my sect.") is True
+        assert ends_unfinished("the Aviz.") is False and ends_unfinished("his Dvol.") is False and ends_unfinished("St. John's pt.") is True
+
+
 class TestWhatIsNotJudged:
     @pytest.mark.parametrize("value", ["", "   ", "\n", None, 5, b"the", ["the"]])
     def test_no_ending_is_not_unfinished(self, value):

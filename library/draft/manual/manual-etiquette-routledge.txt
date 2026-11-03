@@ -128,17 +128,11 @@ A peer or baron may occasionally, as in an address, be styled "My Lord," but a l
 
 Notes of invitation and acceptance are written in the third person and the simplest style. The old-fashioned preliminary of "presenting compliments" is discontinued by the most elegant letter writers.
 
-All notes of invitation are now issued in the name of the mistress of the house only, as follows:--
-
 "Mrs. Norman requests the honour of Sir George and Lady
 Thurlow's company at an evening party, on Monday, 14th of
 June."
 
-Others prefer the subjoined form, which is purchaseable ready printed upon either cards or note paper, with blanks for names or dates:--
-
 An "At home" is, however, considered somewhat less stately than an evening party, and partakes more of the character of a conversazione.
-
-The reply to a note of invitation should be couched as follows:--
 
 "Mr. Berkeley has much pleasure in accepting Mrs. Norman's polite invitation for Monday evening, June the 14th instant."
 
@@ -269,8 +263,6 @@ Young ladies may decline to play at cards without being deemed guilty of impolit
 No very young lady should appear at an evening party without an escort.
 
 In retiring from a crowded party it is unnecessary that you should seek out the hostess for the purpose of bidding her a formal good-night. By doing this you would, perhaps, remind others that it was getting late, and cause the party to break up. If you meet the lady of the house on your way to the drawing-room door, take your leave of her as unobtrusively as possible, and slip away without attracting the attention of her other guests.
-
-To be acquainted with every detail of the etiquette pertaining to this subject is of the highest importance to every gentlewoman. Ease, savoir faire, and good breeding are nowhere more indispensable than at the dinner-table, and the absence of them is nowhere more apparent. How to eat soup and what to do with a cherry-stone are weighty considerations when taken as the index of social status; and it is not too much to say, that a young woman who elected to take claret with her fish, or ate peas with her knife, would justly risk the punishment of being banished from good society. As this subject is one of the most important of which we have to treat, we may be pardoned for introducing an appropriate anecdote related by the French poet Delille:--
 
 Delille and Marmontel were dining together in the month of April, 1786, and the conversation happened to turn upon dinner-table customs. Marmontel observed how many little things a well-bred man was obliged to know, if he would avoid being ridiculous at the tables of his friends.
 
@@ -447,8 +439,6 @@ Good music is as necessary to the prosperity of a ball as good wine to the excel
 Invitations to a ball should be issued in the name of the lady of the house, and written on small note paper of the best quality. Elegant printed forms, some of them printed in gold or silver, are to be had at every stationer's by those who prefer them. The paper may be gilt-edged, but not coloured. The sealing-wax used should be of some delicate hue.
 
 An invitation to a ball should be sent out at least ten days before the evening appointed. A fortnight, three weeks, and even a month may be allowed in the way of notice.
-
-Not more than two or three days should be permitted to elapse before you reply to an invitation of this kind. The reply should always be addressed to the lady of the house, and should be couched in the same person as the invitation. The following are the forms generally in use:--
 
 Mrs. Molyneux requests the honour of Captain Hamilton's company at an evening party, on Monday, March the 11th instant. Dancing will begin at Nine o'clock. Thursday, March
 1st.
@@ -697,11 +687,7 @@ All notes of invitation are now issued in the name of the mistress of the house 
 
 "Mrs. Norman requests the honour of Sir George and Lady Thurlow's company at an evening party, on Monday, 14th of June."
 
-Others prefer the subjoined form, which is purchaseable ready printed upon either cards or note-paper, with blanks for names or dates:--
-
 An "At home" is, however, considered somewhat less stately than an evening party, and partakes more of the character of a conversazione.
-
-The reply to a note of invitation should be couched as follows:--
 
 "Mr. Berkeley has much pleasure in accepting Mrs. Norman's polite invitation for Monday evening, June the 14th inst."
 
@@ -874,8 +860,6 @@ If you are yourself the performer, bear in mind that in music, as in speech, "br
 In retiring from a crowded party it is unnecessary that you should seek out the hostess for the purpose of bidding her a formal good night. By doing this you would, perhaps, remind others that it was getting late, and cause the party to break up.
 
 If you meet the lady of the house on your way to the drawing-room door, take your leave of her as unobtrusively as possible, and slip away without attracting the attention of her other guests.
-
-To be acquainted with every detail of the etiquette pertaining to this subject is of the highest importance to every gentleman. Ease, savoir faire, and good breeding are nowhere more indispensable than at the dinner-table, and the absence of them are nowhere more apparent. How to eat soup and what to do with a cherry-stone are weighty considerations when taken as the index of social status; and it is not too much to say, that a man who elected to take claret with his fish, or ate peas with his knife, would justly risk the punishment of being banished from good society. As this subject is one of the most important of which we have to treat, we may be pardoned for introducing an appropriate anecdote related by the French poet Delille:--
 
 Delille and Marmontel were dining together in the month of April, 1786, and the conversation happened to turn upon dinner-table customs. Marmontel observed how many little things a well-bred man was obliged to know, if he would avoid being ridiculous at the tables of his friends.
 
@@ -1160,8 +1144,6 @@ Good music is as necessary to the prosperity of a ball as good wine to the excel
 Invitations to a ball should be issued in the name of the lady of the house, and written on small note paper of the best quality. Elegant printed forms, some of them printed in gold or silver, are to be had at every stationer's by those who prefer them. The paper may be gilt-edged, but not coloured. The sealing-wax used should be of some delicate hue.
 
 An invitation to a ball should be sent out at least ten days before the evening appointed. A fortnight, three weeks, and even a month may be allowed in the way of notice.
-
-Not more than two or three days should be permitted to elapse before you reply to an invitation of this kind. The reply should always be addressed to the lady of the house, and should be couched in the same person as the invitation. The following are the forms generally in use:--
 
 Mrs. Molyneux requests the honour of Captain Hamilton's company at an evening party, on Monday, March the 11th instant.
 
@@ -1469,8 +1451,6 @@ Having completed four steps, first with the left foot, and then with the right, 
 
 This is a round dance for two, which, like the Polka Mazourka, is a combination of the steps of one or two other dances. Since the introduction of the Polka and the Cellarius, several dances have been invented which partake largely of the character of both. La Varsovienne is very graceful, and was popular in England a few years ago. It is not often danced now.
 
-Take your partner as for the Valse. Count three in each bar. Time much the same as in Polka Mazourka. The music is generally divided into parts of sixteen bars each. The steps for the gentleman is as follows in the first part:--
-
 Slide left foot to the left; slightly spring forward with right foot, twice, leaving the left foot raised behind, in readiness for next step, (1st bar.) Repeat the same. (2nd bar.) One polka step, during which turn. (3rd bar.) Bring your right foot to the second position, and wait a whole bar. (4th bar.) Resume first step with right foot, and repeat throughout, reversing order of feet. Lady, as usual, begins with her right foot, doing the same step.
 
 Second step in second part. 1st bar.--Gentleman, beginning with his left foot, does one polka step to the left, turning partner.
@@ -1494,8 +1474,6 @@ This is a Polish round dance for two, which was brought over to London from Pari
 4th bar.--Again spring on right foot, raising left in front. Fall on left foot, passing it behind right. Glissade to right, with your right foot; end with same foot in front. Then repeat from beginning during the next four bars, but the second time be careful to end with the left foot in front. During the last two bars you turn round, but do not move forward.
 
 The step for the lady is the same, with the order of the feet, as usual, reversed; except, however, in the last two bars of this figure, which both begin with the same foot.
-
-The Gorlitza, like the preceding dance, is divided into parts. The first part occupies eight bars of the music; the second, sixteen bars. The step for the second part is as follows:--
 
 1st four bars.--Commence with Polka Mazurka step, with left foot to the left, and turn half round. Then do the step of the Cellarius to the right, beginning with the right foot; fall on left foot, keeping it behind right foot; glissade with right foot, and end with same in front.
 
@@ -1557,8 +1535,6 @@ We shall describe the Cotillon as we have seen it in the palaces of Italy, where
 
 It is customary for gentlemen to select their partners for the Cotillon early in the evening, while the other dances are in progress; for, as it lasts so long a time, it is necessary to know beforehand how many ladies feel inclined to remain during its continuance.
 
-A circle of chairs is arranged round the room, the centre being left clear; the spectators stand behind the chairs, so as not to interfere with the dancers. Each gentleman leads his partner to a seat, taking another beside her. To these same seats they return after every figure, it being the etiquette of the dance that no couple should appropriate any chairs but their own, taken at the commencement. When the dancers are arranged round the room, the orchestra strikes up the spirited music of the Cotillon, which consists of a long series of valse movements at the usual tempo of the Deux Temps. There are generally several leaders of the Cotillon, who decide upon the succession of the figures. If there are many couples dancing, one leader attends upon a group of six or eight couples, to ensure that all shall take part. We are aware of no fixed rule for the succession of the figures, which depends upon the caprice of the leaders. A good leader will invent new combinations, or diversify old figures; thus securing an almost endless variety. One of the most popular is the following:--
-
 Several gentlemen assume the names of flowers or plants, such as the honeysuckle, woodbine, ivy, &c. A lady is then requested to name her favourite flower; and the fortunate swain who bears its name springs forward and valses off with her in triumph. It is usual to make one, or at most two, turns round the room, and then restore the lady to her own partner, who in the meantime has perhaps been the chosen one of another lady. All having regained their places, each gentleman valses with his own partner once round the room, or remains sitting by her side, as she may feel inclined.
 
 Baskets filled with small bouquets are brought in. Each gentleman provides himself with a bouquet, and presents it to the lady with whom he wishes to valse.
@@ -1588,8 +1564,6 @@ All four, joining hands, advance to centre, and retreat. Ladies pass to the left
 It is obvious that there must be an equal number of couples; and that they must be arranged in sets of four, eight, sixteen, twenty, twenty-four, and so on.
 
 La Tempete was brought over to this country from Paris some years ago. It speedily became a favourite, and for several seasons was much danced in London and the provinces. It unites the cheerfulness of the quadrille with the sociability of the country dance; and when its lively figures are correctly performed, it is both amusing and animated.
-
-It is divided into parties of four couples, like the quadrille; but their arrangement is different. Two couples stand side by side, facing their respective vis-a-vis; there are not any side couples. As many sets of four couples can be thus arranged as the room will accommodate. Each new set turns its back upon the second line of the preceding set. Thus the dance can be the whole length of the room, but is only the breadth of two couples. The figure is as follows:--
 
 Place two couples side by side, the lady standing at the right hand of the gentleman. Place two other couples as their vis-a-vis. Next place two couples with their backs turned to the first set; two couples opposite them for their vis-a-vis; and continue arranging more sets of four couples according to the number of the dancers and the size of the room.
 
@@ -1729,8 +1703,6 @@ We are to suppose that favourable opportunities for meeting have occurred, until
 
 The admirer of the fair one is, indeed, so much enamoured as to be unable longer to retain his secret within his own breast; and, not being without hope that his attachment is reciprocated, resolves on seeking an introduction to the lady's family preparatory to his making a formal declaration of love.
 
-It is possible, however, that the lover's endeavours to procure the desired introduction may fail of success, although, where no material difference of social position exists, this difficulty will be found to occur less frequently than might at first be supposed. He must then discreetly adopt measures to bring himself in some degree under the fair one's notice: such, for instance, as attending the place of worship which she frequents, meeting her, so often as to be manifestly for the purpose, in the course of her promenades, &c. He will thus soon be able to judge--even without speaking to the lady--whether his further attentions will be distasteful to her. The signs of this on the lady's part, though of the most trifling nature, and in no way compromising her, will be unmistakeable; for, as the poet tells us in speaking of the sex:--
-
 "He gave them but one tongue to say us 'Nay,'
 And two fond eyes to grant!"
 
@@ -1856,16 +1828,12 @@ Marriage by Licence.
 
 An ordinary marriage licence is to be obtained at the Faculty Registry, or Vicar-General's Office, or Diocesan Registry Office of the Archbishops or Bishops, either in the country, or at Doctors' Commons, or by applying to a proctor. A licence from Doctors' Commons, unlike others, however, is available throughout the whole of England.
 
-The gentleman or lady (for either may attend), before applying for an ordinary marriage licence, should ascertain in what parish or district they are both residing--the church of such parish or district being the church in which the marriage should be celebrated; and either the gentleman or lady must have had his or her usual abode therein fifteen days before application is made for the licence, as the following form, to be made on oath, sets forth:--
-
 APPEARED PERSONALLY, A B, of the parish or district of ----, in the county of ----, a bachelor, of the age of 21 years and upwards, and prayed a
 Licence for the solemnisation of matrimony in the parish or district church of ----, between him and C D, of the district of ----, in the county of ----, a spinster, of the age of 21 years or upwards, and made oath, that he believeth that there is no impediment of kindred or alliance, or of any other lawful cause, nor any suit commenced in any Ecclesiastical Court, to bar or hinder the proceeding of the said matrimony, according to the tenor of such Licence. And he further made oath, that he, the said A B or C D, hath had his [or her] usual place of abode within the said parish or district of
 ----, for the space of fifteen days last past.
 
 SWORN before me,
 [Here the document must be signed by the Vicar-General, or a Surrogate appointed by him.]
-
-This affidavit having been completed, the licence is then made out. It runs thus:--
 
 ARCHIBALD CAMPBELL, by Divine Providence Archbishop of
 Canterbury, Primate of all England, and Metropolitan, To our well beloved in Christ, A B, of, and C D, of, Grace and Health.--WHEREAS ye are, as it is alleged, resolved to proceed to the solemnisation of true and lawful matrimony, and that you greatly desire that the same may be solemnised in the face of the Church: We, being willing that these your honest desires may the more speedily obtain a due effect, and to the end therefore that this marriage may be publicly and lawfully solemnised in the church of, by the Rector,
@@ -1874,8 +1842,6 @@ Vicar, or Curate thereof, without the publication or proclamation of the banns o
 
 Given under the seal of our VICAR-GENERAL, this day of
 , in the Year of Our Lord one thousand eight hundred and, and in the year of our translation.
-
-The licence remains in force for three months only; and the copy received by the person applying for it is left in the hands of the clergyman who marries the parties, it being his authority for so doing. In case either party is a minor, the age must be stated, and the consent of the parents or guardians authorised to give such consent must be sworn to by the gentleman or lady applying for the licence. The following are the persons having legal authority to give their consent in case of minority:--1st, the father; if dead--2nd, the guardians, if any appointed by his will; if none--3rd, the mother, if unmarried; if dead or married--4th, the guardians appointed by Chancery. If none of the foregoing persons exist, then the marriage may be legally solemnised without any consent whatever. The following are the official forms for this purpose:--
 
 Consent of Father.
 
@@ -1955,8 +1921,6 @@ On the evening of this day the wedding breakfast should be ornamented and spread
 
 The bridesmaids on this evening also prepare the wedding favours, which should be put up in a box ready to be conveyed to the church on the morning of the marriage. A picturesque custom is observed in many country weddings, where the bride's friends strew her path to the church door with flowers.
 
-The parties being assembled on the wedding morning in the drawing-room of the residence of the bride's father (unless, as sometimes happens, the breakfast is spread in that room), the happy cortege should proceed to the church in the following order:--
-
 In the first carriage, the bride's mother and the parents of the bridegroom.
 
 In the second and third carriages, bridesmaids.
@@ -1986,8 +1950,6 @@ Order of Procession to the Altar.
 The father of the bride generally advances with her from the church door to the altar, followed immediately by the bridesmaids. The father of the bridegroom, if present, gives his arm to the bride's mother if she be present, as is now usual at fashionable weddings, and goes next to the bridesmaids. The friends who have come with the wedding party proceed next in succession.
 
 The bridegroom with his groomsmen must be in readiness to meet the bride at the altar, the bridegroom standing at the left hand of the clergyman, in the centre before the altar rails.
-
-We have seen on some occasions the bridegroom offer the bride his left arm to lead her to the altar, but this should be avoided; for by so doing, the whole order of the procession to the altar becomes inverted, and must then be arranged as follows:--
 
 The father, or some male relative or friend, and the mother of the bride, or, if she be not present, the mother of the gentleman, or one of the oldest female relations or friends of the bride's family, are to lead the way towards the altar from the vestry.
 
@@ -2090,8 +2052,6 @@ A married woman should always be very careful how she receives personal complime
 Not the least useful piece of advice--homely though it be--that we can offer to newly-married ladies, is to remind them that husbands are men, and that men must eat. We can tell them, moreover, that men attach no small importance to this very essential operation, and that a very effectual way to keep them in good-humour, as well as good condition, is for wives to study their husband's peculiar likes and dislikes in this matter. Let the wife try, therefore, if she have not already done so, to get up a little knowledge of the art of ordering dinner, to say the least of it. This task, if she be disposed to learn it, will in time be easy enough; moreover, if in addition she should acquire some practical knowledge of cookery, she will find ample reward in the gratification it will be the means of affording her husband.
 
 Servants are difficult subjects for a young wife to handle: she generally either spoils them by indulgence, or ruins them by finding fault unfairly. At last they either get the better of her, or she is voted too bad for them. The art lies in steady command and management of yourself as well as them. The well-known Dr. Clark, who was always well served, used to say, "It is so extremely difficult to get good servants, that we should not lightly give them up when even tolerable. My advice is, bear a little with them, and do not be too sharp; pass by little things with gentle reprehension: now and then a little serious advice does far more good than sudden fault-finding when the offence justly occurs. If my wife had not acted in this way, we must have been continually changing, and nothing can be more disagreeable in a family, and, indeed, it is generally disgraceful."
-
-An observance of the few following rules will in all probability ensure a life of domestic harmony, peace, and comfort:--
 
 To hear as little as possible whatever is to the prejudice of others; to believe nothing of the kind until you are compelled to admit the truth of it; never to take part in the circulation of evil report and idle gossip; always to moderate, as far as possible, harsh and unkind expressions reflecting upon others; always to believe that if the other side were heard, a very different account might be given of the matter.
 

@@ -1,5 +1,3 @@
-The luminaries and planets are known to astronomers under the following names and symbols:--
-
 The Sun, Moon, Neptune, Uranus, Saturn, Jupiter, Mars, Venus, and Mercury.
 
 Neptune revolves around the Sun in its distant orbit once in about 165 years. Uranus completes its orbital revolution in 84 years, Jupiter in 12 years, Mars in about 15 months, Venus in 11 months, and Mercury in 18 weeks. If you imagine these bodies to be revolving in a plane around the Sun and yourself to be standing within the Sun, the motions of these bodies will appear almost uniform and always in one direction. Were the orbits of the planets circular and the Sun holding the centre of the circle, their motions would be constant, that is to say, always in the same direction and at the same rate. But the orbits are elliptical, and the Sun holds a position in one of the foci of each ellipse. Consequently the planets are at times further from the Sun than at others, and they are then said to be in their aphelion, the opposite point of the orbit where they are nearest to the Sun being called the perihelion. When at aphelion the planets move slower, and when at perihelion they move quicker than at the mean distance. Astronomers employ an imaginary circular orbit for the planets, in which they move at an uniform rate of velocity, which is called the mean motion. This is subject to an equation depending on the position of the planet in its orbit, and it determines the difference between the imaginary planet and the true planet. The equation itself depends on the eccentricity of the orbit, that is to say, its relation to a circle drawn around the same focal centre. The Earth follows the same laws as all other bodies of the same system.
@@ -28,8 +26,6 @@ The Moon gives gracefulness of manner and suavity of speech, softness and adapta
 
 The Sun renders its subjects magnanimous, noble, proud, despising all mean and sordid actions; loyal, truthful, and fearless. It produces honours and the favour of dignitaries, and renders the subject fortunate in the control of his affairs. In the body it controls the vital principle.
 
-The types of persons produced by the various planets are very distinct, the chief features of each being as follows:--
-
 Neptune--Thin, nervous-looking people, blue eyes, soft, silky hair, thin and usually long faces, frequently wearing a strained or startled look. Uranus--Tall, wiry, and energetic figures, alert, muscular, spasmodic, and with some touch of eccentricity. Saturn--Dark and lean people, small, deep-set eyes, heavy brows, long noses, thin lips, and sallow complexions. Jupiter--Full bodied, robust men, large and expressive blue or brown eyes, arched brows, high foreheads, oval faces, and rich brown hair. Mars--Strong, muscular, and athletic bodies, ruddy complexion, grey eyes, prominent brows, sloping forehead, and usually some mark or scar in the face. Sun--Fresh, clear complexion, blue or grey eyes, round head, broad shoulders, strong jaws, upright and dignified carriage. Venus--Elegant, well-groomed, and often dainty-looking people, with blue or soft brown eyes, brown hair, fine teeth and finger-nails, small feet and short fleshy hands. Mercury--Thin, tall, and active bodies, alert appearance, small and usually dark eyes; wide, thin lips, long arms and slender hands. Frequently great talkers and quick walkers. Moon--Rather short and fleshy people, with pale face, soft limpid eyes, sad brown or medium coloured hair, fine teeth, broad chest, and a tendency to a squat fulness of body. The forehead is usually high and broad.
 
 Look at the people as they pass you in the street. Bring them if possible under one or other of these types. Consider what has been said of the planets' natures, and you have a ready key to something of their character and destiny.
@@ -37,8 +33,6 @@ Look at the people as they pass you in the street. Bring them if possible under 
 The Zodiac is an imaginary belt of the Heavens through which the Sun and planets move in their apparent revolutions round the Earth. It extends from 23 degrees 27' above the plane of the Equator to the same distance below it, being bounded by the Tropic of Cancer on the North and by that of Capricorn on the South. The Ecliptic is a circle transecting this belt at an angle of 23 degrees 27' to the plane of the Equator. The points where it cuts the Equator are called the Equinoxes.
 
 The Ecliptic is divided into twelve equal sections, counting from the Vernal Equinox. These are called the Signs of the Zodiac. Each sign occupies 30 degrees of the circle.
-
-For Astrological purposes they are grouped according to the element and the constitution which they represent, thus:--
 
 Fire--Aries, Leo, Sagittarius.
 Earth--Taurus, Virgo, Capricornus.
@@ -52,8 +46,6 @@ Flexed--Gemini, Virgo, Sagittarius, Pisces.
 Every alternate sign, beginning with Aries, is male and the rest are female. Aries, male; Taurus, female; Gemini, male; Cancer, female, &c. The signs Aries, Leo, Capricornus are called barren, while Taurus, Cancer, Scorpio, and Pisces are fruitful. Aries governs the East, Cancer the North, Libra the West, and Capricornus the South.
 
 The Double-bodied signs are Gemini, Sagittarius, and Pisces. It is important that all these classifications should be learned, as they form an essential part of the doctrine of Astrology, and are frequently employed in the reading of a Horoscope.
-
-The types of people under the various signs should also be known as intimately as possible. A person is said to be "under" a sign--that is to say, under its influence, when that sign is rising in the East at the moment of birth. You will recognise these types among your friends and associates:--
 
 Aries produces a person of lean body, long neck, high cheek-bones, grey eyes, sandy or sad brown hair, which is either wiry and straight or crisp and curling. The front teeth are usually large and prominent.
 
@@ -84,8 +76,6 @@ The short signs are Taurus, Cancer, Capricornus, and Pisces. The tall signs are 
 The planets rising in each sign will always alter the type by impressing their own characteristics on the subject.
 
 Each sign has a Ruler, and the position of the ruler of the rising sign has much to do with the physical conformation, as if Taurus be rising and Venus, its ruler, be in Leo, the person will be taller and fairer than indicated by Taurus alone. Pure types are very uncommon.
-
-The rulership of the planets in the signs is as follows:--
 
 Saturn governs Aquarius and Capricornus. Jupiter governs Pisces and Sagittarius. Mars governs Aries and Scorpio. Venus governs Taurus and Libra. Mercury governs Gemini and Virgo. The Moon governs Cancer, and Leo is governed by the Sun.
 
@@ -122,10 +112,6 @@ The mean longitudinal progress of the several bodies is as follows: Sun, 2-1/2' 
 Take in hand, then, the Ephemeris for the year of your birth and read this chapter with it in view. After understanding its construction, extract the Sidereal Time at Noon for the day of your birth and refer to the next chapter.
 
 Take the Sidereal time at noon on the day of birth, and add to it the hours and minutes after noon at which you were born, or if before noon, subtract from it the interval between the birth and noon. This will give the approximate Right Ascension of the Midheaven at birth. Thus, suppose a person to be born on May 1, 1890, at 3h. 30m. p.m. in London--
-
-With this Right Ascension of the Midheaven you then refer to Tables of Houses for London, and against this quantity of Sidereal Time you will find, under the column marked 10, the sign and degree which corresponds to it, namely, the 2nd of Cancer. This is put at the head of the figure, and the rest of the signs are placed around the figure in their order as shown in the Table. Only six of the Houses are given in the Tables, because the opposite Houses will have the same degrees of the opposite signs on them. Thus we read against the Right Ascension 6h. 7m. 28s. the following:--
-
-This means that the 2nd degree of Cancer was on the cusp of the Tenth House (the Midheaven) at the moment of the birth, Leo 8th on the cusp of the Eleventh House, Virgo 8th on the cusp of the Twelfth, Libra 1.33 on the Ascendant or Eastern Horizon, and so of the rest. On the cusp of the Fourth House we place Capricornus 2, because the Fourth House is opposite the 10th and the sign Capricornus is opposite to Cancer. On the cusp of the Fifth House we place Aquarius 8, because the Fifth House is opposite to the Eleventh, and Aquarius is opposite to Leo. When completed we find the cusps of the Houses as follows, opposite to those in the Tables:--
 
 It is then only necessary to place the planets in the figure, as explained in the preceding chapter, and the figure of the Heavens is complete.
 
@@ -193,8 +179,6 @@ When, however, the Sun is afflicted by some planets and assisted by others, ther
 
 The predisposition of the body to affections of a constitutional nature is to be judged from the prevalence of evil aspects to the Sun, and the parts of the body liable to be affected are judged from the Signs which are occupied by the afflicting bodies.
 
-The various affections due to the several planets have already been cited (Sect. I., chap. i.). The Signs are grouped for purposes of pathological study as follows:--
-
 The Movable Signs--Aries, Cancer, Libra, and Capricornus--have relation to the head, stomach, skin, kidneys, liver, and spine.
 
 The Fixed Signs--Taurus, Leo, Scorpio, and Aquarius--are related to the throat, heart, blood, and excretory system.
@@ -210,8 +194,6 @@ Death in infancy occurs when the malefic planets are immediately rising or culmi
 The aspects of the moon are the chief consideration in the matter of sickness. If the Moon be found to be afflicted by the evil aspects of several planets, and no assistance be given by the good aspects of others, then the health will be precarious and frequent spells of illness will result. The Moon being well aspected and not in any way afflicted, shows that the health will be well established, and that there will be immunity from sickness of all sorts.
 
 The considerations necessary to be made in this matter are similar to those which have been cited in regard to the Sun and the constitution, except that we substitute the Moon for the Sun. For, whereas the Sun governs the vital power in man, the Moon governs the functional powers, and whereas the Sun denotes those affections which are congenital or hereditary, the Moon denotes such as are brought about by causes after birth. Similarly, the Sun denotes affections which are incidental to the body, while the Moon denotes such as are accidental thereto.
-
-These points being borne in mind, they may be memorised at sight:--
 
 Organic. Functional.
 Hereditary. Acquired.
@@ -238,8 +220,6 @@ Ptolemy says: "Mercury is the ruler of the rational soul, the Moon of the animal
 The position and aspects of the Moon and Mercury are therefore to be considered in making judgment of the mental endowments and disposition of the subject.
 
 Planets that are in conjunction or aspect to either the Moon or Mercury will impress their nature strongly on the character and disposition. The natures of the planets have already been recited (Sect. I., chap. i.), and it is therefore only necessary to consider further, in this connection, the nature of the aspect that is thrown to the Mental Significators by the other bodies. Thus the Sun being in trine to the Moon will give a proper degree of independence and dignity, while the square aspect or opposition of the Sun would indicate an excess of pride, harmful to the subject in his ordinary relationships. In the same manner, the good aspect of Jupiter would show benevolence and regulated philanthropy, while the opposition or other evil aspect of the same body would indicate extravagance and ostentatious display of charity.
-
-The good and bad aspects of the planets may be summed up in a few lines as follows:--
 
 Neptune--Genius, inspiration. Insanity, obsession.
 Uranus--Originality, invention. Obstinacy, eccentricity.
@@ -548,8 +528,6 @@ But Astrology is not exhausted in the study of individual horoscopes, for there 
 It would be superfluous to recite here the numerous and strikingly accurate forecasts which have been made by modern exponents of the science, but it is only right to say that they reflect considerable credit upon their authors, for the above-mentioned departments of astrological learning are by no means in the same efficient state as Genethliacal Astrology, to an outline of which this work is devoted. Anciently it was otherwise, and even in the East at this day they hold some secrets of traditional knowledge, concerning which they are unduly mysterious and of which we have only the evidence afforded by more exact prediction upon certain points.
 
 Prejudice and Ignorance are the twin giants which bar the path of the world's progress to-day, even as they have ever done. Step by step they have been beaten back, baffled by the light of Reason, harassed by the arrows of Truth. The world is redeeming its ancient heritage. All that is now required to establish the paramount truth of Astrology as a science is an impartial and thorough investigation, preferably at the hands of scientific men, of its methods and principles. Not that the truth is to be ratified at the hands of modern scientists, seeing that their own teaching constitutes a mere shifting orthodoxy, liable at any moment to undergo a fundamental change in theory by the discovery of a single new fact--but that to such men rightly belongs the duty of disproving the claims of Astrology to be considered as a science, for it is a fact to be regretted that certain members of their body have written against the subject in a spirit of prejudice and without adducing any data in support of their contention, which ill becomes any man of scientific pretensions and is above all things detrimental to the cause of Truth.
-
-In order to summarise and illustrate the principles which have been enunciated in the course of this work, I shall avail myself of the horoscope of Mr. Joseph Chamberlain, who was born on the 8th of July, 1836, at Highbury, the time of birth being stated to have been at about 2.30 in the morning. Calculations have since enabled us to fix the exact time of birth as at 2 h. 36 m. a.m. I subjoin the horoscopical figure for that time, the calculation of which is as follows:--
 
 Born under the sign Gemini, with Mercury rising in the sign Cancer, the Sun near the conjunction with Jupiter and in close sextile to the Moon, there is little doubt that the late Colonial Secretary is by nature gifted with an excellent constitution. The sextile of the luminaries is a powerful co-ordinator, and whenever sickness supervenes there will be a speedy recovery. The semisquare aspect of Mars, while disposing to gouty affections of the hands and feet, will contribute vital energy and power to throw off diseases, while at the same time predisposing to accidents and wounds to the right shoulder or clavicle.
 

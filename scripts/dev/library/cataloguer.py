@@ -72,7 +72,7 @@ OUT = os.path.join(LIBRARY, "passages")
 #      (the same shape as `ends_sentence`, so a cut here always leaves a piece that ends a sentence)
 #   4. and the next sentence starts with a capital or an opening quote
 SENTENCE_BREAK = regex.compile(
-    r"""(?<!\b(?:Mr|Mrs|Ms|Messrs|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|Sr|Jr|Phd|vs|ca|eg|ie|viz|cf)\.)"""
+    r"""(?<!\b(?:Mr|Mrs|Ms|Messrs|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|Sr|Jr|Phd|vs|ca|eg|ie|viz|cf|chaps?|fols?|vols?|pts?|sect|pp)\.)"""
     r"""(?<!\b[A-Za-z]\.)"""
     r"""(?<=[.!?]['")\]\u201d\u2019]*(?:--+|\u2014)?['")\]\u201d\u2019]*)"""
     r"""\s+"""

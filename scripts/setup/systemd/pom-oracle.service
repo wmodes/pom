@@ -1,0 +1,16 @@
+# The oracle's llama-server (Qwen3.5-9B): writes the portents. Linked into /etc/systemd/system by scripts/setup/install-services.sh.
+# --mlock pins the model in RAM so it is always loaded (see pom-scorer.service); loading it from the SD card takes about a minute at boot.
+# The port is [oracle] url; -np 1 and -t 4 are what the Pi was benchmarked with (one portent at a time).
+[Unit]
+Description=Printer of Mysteries: the oracle's llama-server (Qwen3.5-9B)
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/pom
+ExecStart=/home/pi/pom/data/tools/llama.cpp/build/bin/llama-server -m /home/pi/pom/data/models/Qwen3.5-9B-Q4_K_M.gguf --host 127.0.0.1 --port 8099 --ctx-size 4096 -np 1 --jinja -t 4 --mlock
+LimitMEMLOCK=infinity
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

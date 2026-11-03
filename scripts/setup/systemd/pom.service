@@ -1,0 +1,23 @@
+# The Printer itself: `python -m pom`. Linked into /etc/systemd/system by scripts/setup/install-services.sh.
+# After= and Wants= the three servers, never Requires=: a server that crashes or restarts must not take the Printer down. The Printer copes with a
+# server that is missing or still loading (it says so on the monitoring page and carries on once it answers), so it does not wait for them.
+# The log is journald's: `journalctl -u pom -f`. It holds counts, labels and seconds, never anything said.
+# SIGTERM is the clean stop; a portent being typed for longer than 5 s is cut off by it. PYTHONPATH because the project is not packaged yet.
+[Unit]
+Description=Printer of Mysteries
+After=pom-whisper.service pom-scorer.service pom-oracle.service
+Wants=pom-whisper.service pom-scorer.service pom-oracle.service
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/pom
+Environment=PYTHONPATH=/home/pi/pom/src
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/pi/envs/pom/bin/python -m pom
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

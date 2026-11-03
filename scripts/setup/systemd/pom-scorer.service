@@ -1,0 +1,16 @@
+# The Scorer's llama-server (Qwen3-4B): scores one sentence at a time. Linked into /etc/systemd/system by scripts/setup/install-services.sh.
+# --mlock pins the model in RAM so it is always loaded (the design: whisper, the scorer and the oracle are all resident at once on the 16 GB Pi);
+# LimitMEMLOCK lets the service do that. The port is [scorer] url; -np 2 and -t 4 are what the Pi was benchmarked with.
+[Unit]
+Description=Printer of Mysteries: the Scorer's llama-server (Qwen3-4B)
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/pom
+ExecStart=/home/pi/pom/data/tools/llama.cpp/build/bin/llama-server -m /home/pi/pom/data/models/Qwen3-4B-Q4_K_M.gguf --host 127.0.0.1 --port 8098 --ctx-size 4096 -np 2 --jinja -t 4 --mlock
+LimitMEMLOCK=infinity
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

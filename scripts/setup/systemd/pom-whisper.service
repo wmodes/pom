@@ -1,0 +1,15 @@
+# whisper-server: speech to text for the Printer. Linked into /etc/systemd/system by scripts/setup/install-services.sh, so this file IS the
+# service file: edit it here, `git pull` on the Pi, run the script again. The model stays loaded for as long as the service runs.
+# Flags are the ones the hearing pipeline was tuned with on the Pi (base.en, whisper's own voice detection); the port is [listening] whisper_url.
+[Unit]
+Description=Printer of Mysteries: whisper-server (speech to text)
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/pom
+ExecStart=/home/pi/pom/data/tools/whisper.cpp/build/bin/whisper-server -m /home/pi/pom/data/tools/whisper.cpp/models/ggml-base.en.bin --vad -vm /home/pi/pom/data/tools/whisper.cpp/models/ggml-silero-v6.2.0.bin -vt 0.5 --host 127.0.0.1 --port 8110 -t 4
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

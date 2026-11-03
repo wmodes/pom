@@ -83,7 +83,7 @@ def build_servers(config: Config) -> list:
                 "--ctx-size", "4096", "-np", "2", "--jinja"], "/health", needs_ok=True),
         Server("oracle", port_of(config.oracle.url),
                ["llama-server", "-hf", ORACLE_MODEL, "--host", "127.0.0.1", "--port", str(port_of(config.oracle.url)),
-                "--ctx-size", "4096", "-ngl", "99", "--jinja"], "/health", needs_ok=True),
+                "--ctx-size", "4096", "-np", "1", "-ngl", "99", "--jinja"], "/health", needs_ok=True),
     ]
 
 

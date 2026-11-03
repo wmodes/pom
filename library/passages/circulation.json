@@ -1,5 +1,5 @@
 {
-  "_about": "Circulation for the passages; the only place it lives. Each shelf has a 'share' (relative, normalized when read: how often the shelf comes up) and lists its 'holdings' with a weight each (how often a holding is drawn compared with the others on the same shelf; a holding missing from the list counts 1.0). The tree mirrors the folders in passages/. Nothing in the passage files depends on these numbers. See scripts/dev/library/circulation.py.",
+  "_about": "Draw weights for the passages (the circulation); the only place they live. Each shelf has a 'share' (relative, normalized when read: how often the shelf comes up) and lists its 'holdings' with a weight each (how often a holding is drawn compared with the others on the same shelf; a holding missing from the list counts 1.0). The tree mirrors the folders in passages/. Nothing in the passage files depends on these numbers. See scripts/dev/library/circulation.py.",
   "shelves": {
     "aphorism": {
       "share": 1.0,

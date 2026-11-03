@@ -4,7 +4,7 @@ How a new text gets from "I found a book" to "the oracle can draw from it". It w
 end by adding *Alice's Adventures in Wonderland* as a new shelf. The path:
 
 ```
-find it -> add -> process -> set markers/flags -> audit -> promote -> catalog -> circulation -> verify -> commit
+find it -> add -> process -> set markers/flags -> audit -> promote -> catalog -> draw weights -> verify -> commit
 ```
 
 The commands below use `python`, meaning the pom venv's Python (`/Users/wmodes/dev/envs/pom/bin/python`).

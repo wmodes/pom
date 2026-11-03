@@ -85,7 +85,7 @@ class Bibliomancer:
 
         Args:
             store: The passages to draw from.
-            circulation: Shelf shares and holding weights.
+            circulation: The draw weights (shelf shares and holding weights).
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
             strict: Raise BibliomancerError on any problem instead of recording it.

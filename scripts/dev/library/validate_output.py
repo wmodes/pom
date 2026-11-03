@@ -32,7 +32,7 @@ WHY IT IS A STUB (decided with Wes, October 2026)
 COST (not the reason for deferring, but recorded because it was asked)
     Scanning the whole library per reply would be m output words by c passages and far too slow.
     It does not have to be done that way. Build a lookup of the library once, at startup, like
-    the circulation: hash every 4-word window of the roughly 2.6 million library words (about
+    the draw weights: hash every 4-word window of the roughly 2.6 million library words (about
     20 MB as a sorted array of 64-bit hashes; an estimate, not measured). Checking a reply of
     m words is then about m lookups, independent of library size. A run of consecutive hits
     gives the length of a copied passage, which is confirmed against the passage text so a hash

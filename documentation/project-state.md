@@ -163,7 +163,7 @@ The reasoning and the numbers are in `pom_design_doc.md`. In short:
 
 `library/ready/` holds clean utterances, one paragraph each, no trace of their holding. `library/passages/`
 turns them into 15 to 150 word JSONL passages (short ones stay whole, exact duplicates are dropped).
-`library/passages/circulation.json` is the single hand-edited file for circulation: a tree of shelves,
+`library/passages/circulation.json` is the single hand-edited file for draw weights (the circulation): a tree of shelves,
 each with a `share` and its holdings' `weight`s; anything unlisted counts 1.0. Draw odds are computed
 at load time, never stored. Shelves are *what the oracle might say*, not where text came from, and
 by default share the draws equally. `library/samples/` holds Wes's 100 benchmark sentences for the Scorer (test inputs, not

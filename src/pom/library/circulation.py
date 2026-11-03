@@ -1,4 +1,4 @@
-"""circulation: how often each shelf and holding should come up.
+"""Circulation: the draw weights, how often each shelf and holding should come up.
 
 This module owns one file, library/passages/circulation.json, and nothing else. It parses the file,
 applies the defaults, normalizes shelf shares, and checks the file against what is actually
@@ -45,7 +45,7 @@ class CirculationError(ValueError):
 
 
 class Circulation:
-    """Shelf shares and per-holding weights, with defaults and validation.
+    """The draw weights (shelf shares and per-holding weights), with defaults and validation.
 
     Build one with `Circulation.from_file` or `Circulation.from_dict`, then ask it for shares and
     weights. `report` holds whatever was recovered from while reading; `check` compares the

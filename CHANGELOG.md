@@ -45,6 +45,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (10): the draw weights are the values, the circulation is the set**: following the lexicon's new entries, *circulation* names the whole set (the `Circulation` class and
+  `circulation.json`) and a *draw weight* is one value in it (a shelf's `share()`, a holding's `holding_weight()`). Where the earlier word pass had turned "draw weights" into "circulation" it says draw
+  weights again: the `Circulation` docstring, the file's `_about` note, the library README heading, `project-state.md`, `adding-material.md`, `validate_output.py` and `cataloguer.py`. Words only.
 - **The Great Rename, docs: the design doc and project-state use the lexicon's names**: `documentation/pom_design_doc.md` and `documentation/project-state.md` now say *library* (shelves, holdings,
   passages, `library/passages/circulation.json`, `holdings.csv`), *clip*, *room tone*, *track split*, *Eavesdropper*, *TakeCutter*, *BarKeeper* and *qualifying* (a score *qualifies*; the section "The Trigger" is
   "Qualifying" and "Triggers we tried" is "Bar rules we tried"), *Printing* and the new package folders (`library/`, `listening/`, `scoring/`, `qualifying/`, `conductor/`, `keyboard/`, `writing/`, `printing/`),

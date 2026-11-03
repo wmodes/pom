@@ -18,7 +18,7 @@ Rules, in order:
      copy records how many times it occurred.
 
 A passage holds only facts about itself (holding, shelf, text). How likely it is to be
-drawn depends on the whole library and on the circulation in passages/circulation.json, so that is
+drawn depends on the whole library and on the draw weights in passages/circulation.json, so that is
 computed at load time by the Bibliomancer (src/pom/library) and never stored here: adding one utterance, or
 changing a weight, touches no passage file.
 

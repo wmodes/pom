@@ -66,13 +66,13 @@ OUT = os.path.join(LIBRARY, "passages")
 
 # Where one sentence ends and the next begins: the white space between them (Wes's pattern; `regex`, not `re`, because it lets a lookbehind
 # have variable width, and nltk already brings it in).
-#   1. not after a known abbreviation ("Mr.", "St.", "etc.")
-#   2. not after a single initial ("J. K. Rowling", the "g." of "e.g.")
+#   1. not after a known abbreviation ("Mr.", "St.", "vs."). Not "etc.": it so often ends a sentence ("...a tent, etc. Pack heavy items...")
+#   2. not after a single initial ("J. K. Rowling"; this is also what keeps "e.g." and "i.e." whole)
 #   3. after a stop (. ! ?), then any closing quotes or brackets, then the dash some old books print after it, then any closers again
 #      (the same shape as `ends_sentence`, so a cut here always leaves a piece that ends a sentence)
 #   4. and the next sentence starts with a capital or an opening quote
 SENTENCE_BREAK = regex.compile(
-    r"""(?<!\b(?:Mr|Mrs|Ms|Messrs|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|Sr|Jr|Phd|vs|ca|eg|ie|etc|viz|cf)\.)"""
+    r"""(?<!\b(?:Mr|Mrs|Ms|Messrs|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|Sr|Jr|Phd|vs|ca|eg|ie|viz|cf)\.)"""
     r"""(?<!\b[A-Za-z]\.)"""
     r"""(?<=[.!?]['")\]\u201d\u2019]*(?:--+|\u2014)?['")\]\u201d\u2019]*)"""
     r"""\s+"""

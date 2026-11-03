@@ -44,11 +44,26 @@ class TestSplittingProseIntoSentences:
 
     @pytest.mark.parametrize("text,count", [
         ("Mr. Smith left. Dr. Jones stayed.", 2), ("Mrs. Smith and Ms. Jones met St. Paul.", 1), ("Rev. Mr. Smith met Capt. Jones. He left.", 2),
-        ("It was by J. K. Rowling. Then it ended.", 2), ("It was e.g. a thing. Then it ended.", 2), ("He sold apples, pears, etc. Then he left.", 1),
+        ("It was by J. K. Rowling. Then it ended.", 2), ("It was e.g. a thing. Then it ended.", 2), ("It was e.g. Smith who left. Then it ended.", 2),
         ("Compare Smith vs. Jones. Then he left.", 2), ("It was cited at c. 27. Then it began.", 2),
     ])
     def test_an_abbreviation_or_an_initial_is_not_a_sentence_end(self, text, count):
         assert len(cataloguer.split_sentences(text)) == count, cataloguer.split_sentences(text)
+
+    def test_etc_ends_a_sentence_when_a_capital_follows(self):
+        assert cataloguer.split_sentences("He sold apples, pears, etc. Then he left.") == ["He sold apples, pears, etc.", "Then he left."]
+        assert len(cataloguer.split_sentences("He sold apples, etc., and left.")) == 1
+
+    def test_wes_s_paragraph_of_i_e_e_g_and_etc(self):
+        text = ("You must bring standard gear, i.e., a pack, a tent, etc. "
+                "Pack heavy items, e.g., your stove or boots, near your back. "
+                "Do not use lazy shorthand, eg. skipping punctuation entirely. "
+                "Then you will be ready.")
+        assert cataloguer.split_sentences(text) == [
+            "You must bring standard gear, i.e., a pack, a tent, etc.",
+            "Pack heavy items, e.g., your stove or boots, near your back.",
+            "Do not use lazy shorthand, eg. skipping punctuation entirely.",
+            "Then you will be ready."]
 
     def test_no_break_before_a_lowercase_word_or_a_digit_or_a_bracket(self):
         assert len(cataloguer.split_sentences("It ended. then it began.")) == 1

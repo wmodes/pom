@@ -956,20 +956,24 @@ def test_the_terminal_defaults_are_the_cadetwriters_own():
     assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("/dev/ttyACM0", 9600, "xon_xoff", "crlf")
     assert (terminal.characters_per_second, terminal.finish_wait_seconds) == (16.0, 2.0)
     assert (terminal.echoplex, terminal.type_during_printing) == (True, False)
+    assert (terminal.stall_patience_seconds, terminal.reconnect_seconds) == (600.0, 2.0)
 
 
 def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     from pom.config import TerminalSettings
     text = ('[terminal]\nport = "/dev/ttyUSB0"\nbaud = 115200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
-            "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_printing = true\n")
+            "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_printing = true\n"
+            "stall_patience_seconds = 90\nreconnect_seconds = 0.5\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True) and config.report.ok
+    assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True, 90.0, 0.5) \
+        and config.report.ok
 
 
 @pytest.mark.parametrize("key, value", [
     ("port", "5"), ("baud", "1234"), ("baud", '"9600"'), ("baud", "true"), ("baud", "9600.0"), ("flow_control", '"hardware"'),
     ("end_of_line", '"newline"'), ("characters_per_second", "0"), ("characters_per_second", '"fast"'),
     ("finish_wait_seconds", "-1"), ("finish_wait_seconds", "true"), ("echoplex", '"maybe"'), ("type_during_printing", "3"),
+    ("stall_patience_seconds", "0"), ("stall_patience_seconds", '"long"'), ("reconnect_seconds", "-2"), ("reconnect_seconds", "true"),
 ])
 def test_a_bad_terminal_value_means_the_default_with_a_warning(tmp_path, key, value):
     from pom.config import TerminalSettings
@@ -992,6 +996,8 @@ def test_the_terminal_choices_and_defaults_are_the_ones_the_port_uses():
         port.DEFAULT_BAUD, port.DEFAULT_FLOW_CONTROL, port.DEFAULT_END_OF_LINE)
     assert (settings.DEFAULT_TERMINAL_CHARACTERS_PER_SECOND, settings.DEFAULT_TERMINAL_FINISH_WAIT_SECONDS) == (
         port.DEFAULT_CHARACTERS_PER_SECOND, port.DEFAULT_FINISH_WAIT_SECONDS)
+    assert (settings.DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, settings.DEFAULT_TERMINAL_RECONNECT_SECONDS) == (
+        port.DEFAULT_STALL_PATIENCE_SECONDS, port.DEFAULT_RECONNECT_SECONDS)
 
 
 def test_the_committed_config_sets_every_terminal_key():
@@ -999,7 +1005,7 @@ def test_the_committed_config_sets_every_terminal_key():
     with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
         section = tomllib.load(f)["terminal"]
     assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
-                            "echoplex", "type_during_printing"}
+                            "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds"}
 
 
 def test_a_config_built_without_terminal_settings_has_the_defaults():

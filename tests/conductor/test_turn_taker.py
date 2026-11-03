@@ -64,8 +64,9 @@ class FakeTerminal:
     def __init__(self, *replies, on_call=None, clock=None, takes=0.0):
         self.replies, self.texts, self.on_call, self.clock, self.takes = list(replies), [], on_call, clock, takes
 
-    def transmit(self, text):
+    def transmit(self, text, still_alive=None):
         self.texts.append(text)
+        self.beats = still_alive
         if self.on_call:
             self.on_call(len(self.texts))
         if self.clock is not None:
@@ -319,6 +320,32 @@ class TestWhenThePrinterCannotPrintYet:
         rig.terminal.replies.clear()
         rig.clock.advance(10)
         assert take(rig).outcome is TurnOutcome.PRINTED
+
+
+class TestTheTerminalIsHandedTheHeartbeat:
+    """Once typing has begun the terminal waits for a held or lost port itself; it sends the heartbeat so the watchdog does not act."""
+
+    def test_a_long_wait_inside_the_terminal_does_not_cost_the_floor(self):
+        rig = build(printing=50.0, freshness_seconds=900.0)
+
+        def a_long_wait_with_beats(number):
+            for _ in range(60):                     # 600 s inside the terminal, a beat every 10 s
+                rig.clock.advance(10)
+                assert rig.terminal.beats() is True
+        rig.terminal.on_call = a_long_wait_with_beats
+        result = take(rig)
+        assert result.outcome is TurnOutcome.PRINTED and rig.keeper.overruns == 0
+
+    def test_without_the_beats_the_same_wait_is_an_overrun(self):
+        rig = build(printing=50.0, freshness_seconds=900.0)
+        rig.terminal.on_call = lambda number: rig.clock.advance(600)
+        take(rig)
+        assert rig.keeper.overruns == 1
+
+    def test_the_heartbeat_given_is_the_turns_own(self):
+        rig = build()
+        take(rig)
+        assert rig.terminal.beats.__self__.holder == "room"
 
 
 class TestWhenThePrinterFailsHalfway:

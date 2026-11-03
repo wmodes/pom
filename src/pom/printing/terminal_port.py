@@ -35,12 +35,28 @@ Design decisions, and why:
     for its whole run. Unless `type_during_printing` is on (it is off by default) whatever was typed during it, and any half-typed
     line, is thrown away when it finishes, so nothing typed over a portent appears after it. Turned on, those keys
     are kept and handled by the next `read_line`.
+  * STAYING WITH THE PORTENT. A serial printer is fickle: it is switched off, unplugged and plugged back in, held, out of paper. Once a portent
+    is under way, a write that fails does not end it. A STALL (the machine stopped accepting characters: a hold, no paper, busy; pyserial
+    raises a write timeout when flow control holds the line) is waited out, and the same character is sent again, so nothing is
+    repeated. A LOST PORT (unplugged, an I/O error) is closed and opened again every `reconnect_seconds`, and typing goes on from the first
+    character not sent (a character or two in flight at the moment of the unplug may be lost or doubled; nothing can know). Either way the
+    wait lasts at most `stall_patience_seconds`, after which the text is given up (CRITICAL, with how far it got), and meanwhile the
+    caller's `still_alive` function is called every few seconds so the Conductor's watchdog knows this is a wait and not a hang. Pacing
+    restarts from now after a wait, so the rest is not flooded out at once. A port that will not open at the START is not waited for here:
+    `transmit` returns at once with nothing typed, and the caller (the TurnTaker) decides how long to keep trying. What software cannot see:
+    whether the CadetWriter signals a hold or out-of-paper through flow control (if it does not, nothing in the code can tell), and a
+    printer that is powered off behind a USB adapter that swallows the bytes.
+  * THE PORT NAME MAY BE A PATTERN (`/dev/ttyACM*`, `/dev/serial/by-id/usb-*`). It is looked up each time the port is opened, and the
+    first match (in sorted order) is used, so a printer that comes back under another name (ttyACM0, then ttyACM1) is found.
+  * A port that cannot be opened is one warning for the whole stretch it stays unavailable, not one per try, and a line in the log when it
+    opens again.
   * What is typed in the room is room content: like the portent it is never logged or put in a report.
   * The settings are passed in (the entry point takes them from `config.terminal`); this module never reads Config.
   * The way to open the port, the clock and the sleep are injected, so tests run with a fake and need no machine, and
     the ConsoleTerminal (the stand-in for development) is this same code writing to the terminal.
 """
 import collections
+import glob
 import os
 import select
 import sys
@@ -64,6 +80,10 @@ DEFAULT_FLOW_CONTROL = "xon_xoff"
 DEFAULT_END_OF_LINE = "crlf"
 DEFAULT_CHARACTERS_PER_SECOND = 16.0
 DEFAULT_FINISH_WAIT_SECONDS = 2.0
+DEFAULT_STALL_PATIENCE_SECONDS = 600.0   # how long a portent under way is waited for if the machine stops or goes away
+DEFAULT_RECONNECT_SECONDS = 2.0          # how often a lost port is tried again
+STALL_RETRY_SECONDS = 1.0                # the pause before sending a character the machine refused (the write itself waits too)
+REMINDER_SECONDS = 60.0                  # a long wait is mentioned in the log this often
 MAX_TYPED_LINE = 500        # a typed line this long is ended there, so a stuck key cannot grow it without limit
 _READ_SLICE_SECONDS = 0.1   # one look at the port; the lock is free between looks, so a portent can start
 
@@ -104,10 +124,11 @@ class TerminalPort:
                  end_of_line: str = DEFAULT_END_OF_LINE, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
                  finish_wait_seconds: float = DEFAULT_FINISH_WAIT_SECONDS,
                  echoplex: bool = True, type_during_printing: bool = False,
+                 stall_patience_seconds: float = DEFAULT_STALL_PATIENCE_SECONDS, reconnect_seconds: float = DEFAULT_RECONNECT_SECONDS,
                  opener: Optional[Callable[[str, int, str], object]] = None, clock: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep, strict: bool = False):
+                 sleep: Callable[[float], None] = time.sleep, lister: Callable[[str], list] = glob.glob, strict: bool = False):
         """Args:
-            port: The serial device, e.g. /dev/ttyACM0.
+            port: The serial device, e.g. /dev/ttyACM0, or a pattern such as /dev/ttyACM* (looked up each time it is opened).
             baud: The speed; only the RS-232 port uses it (USB ignores it). One of BAUD_RATES.
             flow_control: "xon_xoff", "rts_cts" or "none".
             end_of_line: What a newline is sent as: "cr", "crlf", "lf" or "lfcr". Must match the CadetWriter's setting.
@@ -115,6 +136,9 @@ class TerminalPort:
             finish_wait_seconds: How long to wait after the last byte for the machine to finish, 0 or more.
             echoplex: True to echo each key typed on the typewriter back to it (the CadetWriter must be in full duplex).
             type_during_printing: False to throw away keys typed while a portent is being typed; True keeps them for the next read.
+            stall_patience_seconds: How long to wait, once typing has begun, for a machine that stopped or went away, above 0.
+            reconnect_seconds: How often to try a lost port again, above 0.
+            lister: A function pattern -> list of matching device names. Default: glob.glob. Tests give a fake.
             opener: A function (port, baud, flow_control) -> an object with write(bytes), flush(), close(), read(size)
                 and reset_input_buffer(). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
@@ -134,6 +158,14 @@ class TerminalPort:
         self._finish_wait = self._valid(
             finish_wait_seconds, "finish_wait_seconds", DEFAULT_FINISH_WAIT_SECONDS,
             lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0, "a number of at least 0")
+        self._stall_patience = self._valid(
+            stall_patience_seconds, "stall_patience_seconds", DEFAULT_STALL_PATIENCE_SECONDS,
+            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
+        self._reconnect = self._valid(
+            reconnect_seconds, "reconnect_seconds", DEFAULT_RECONNECT_SECONDS,
+            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
+        self._lister = lister
+        self._connect_failing = False            # the port has been unavailable since a warning was given
         self._opener = opener if opener is not None else _open_serial
         self._clock = clock
         self._sleep = sleep
@@ -160,11 +192,13 @@ class TerminalPort:
         """False if the port name was unusable, so nothing will ever be typed."""
         return self._usable
 
-    def transmit(self, text: str) -> PrintResult:
+    def transmit(self, text: str, still_alive: Optional[Callable[[], object]] = None) -> PrintResult:
         """Types the text and returns when the typewriter has had time to finish. Never raises (except in strict mode).
 
         `completed` is False if any of it was not sent; the reason is in `report`. Text with nothing to type is
-        completed at once, without opening the port.
+        completed at once, without opening the port. A port that will not open returns at once with nothing typed. Once typing has
+        begun, a machine that stops or goes away is waited for (see STAYING WITH THE PORTENT), up to `stall_patience_seconds`;
+        `still_alive`, if given, is called every few seconds while waiting.
         """
         started = self._clock()
         data = self._bytes(text) if isinstance(text, str) else ""
@@ -175,17 +209,27 @@ class TerminalPort:
                 return PrintResult(0, self._clock() - started, False)
             self._discard_input()
             sent = 0
+            pace_from = started                      # when character 0 would be due; moves on after a wait
+            trouble = _Trouble()
+            while sent < len(data):
+                due = pace_from + sent * self._seconds_per_character
+                if due > self._clock():
+                    self._sleep(due - self._clock())
+                try:
+                    self._serial.write(data[sent].encode("ascii"))
+                except Exception as error:           # a dead or held port must never stop the oracle
+                    if not self._wait_to_go_on(error, trouble, sent, len(data), still_alive):
+                        return PrintResult(sent, self._clock() - started, False)
+                    pace_from = self._clock() - sent * self._seconds_per_character
+                    continue
+                sent += 1
+                if trouble.since is not None:
+                    trouble.over(self._clock())
             try:
-                for index, character in enumerate(data):
-                    due = started + index * self._seconds_per_character
-                    if due > self._clock():
-                        self._sleep(due - self._clock())
-                    self._serial.write(character.encode("ascii"))
-                    sent += 1
                 self._serial.flush()
             except Exception as error:               # a dead port must never stop the oracle
-                self.report.warn(f"the terminal port failed after {sent} of {len(data)} characters "
-                                 f"({type(error).__name__}); the rest was not typed")
+                self.report.warn(f"the terminal port failed at the end, after all {sent} characters were sent "
+                                 f"({type(error).__name__})")
                 self.close()
                 return PrintResult(sent, self._clock() - started, False)
             if self._finish_wait:
@@ -194,6 +238,49 @@ class TerminalPort:
             seconds = self._clock() - started
             _log.debug("typed %d characters in %.1f s", sent, seconds)
             return PrintResult(sent, seconds, True)
+
+    @staticmethod
+    def _is_stall(error: Exception) -> bool:
+        """True if the machine stopped accepting characters (a write timeout under flow control), as against the port being lost."""
+        return isinstance(error, TimeoutError) or type(error).__name__ == "SerialTimeoutException"
+
+    def _wait_to_go_on(self, error: Exception, trouble: "_Trouble", sent: int, total: int, still_alive) -> bool:
+        """A write failed part-way. Waits until typing can go on: True if it can, False if the patience ran out (CRITICAL).
+
+        A stall keeps the port and sends the same character again after a short pause; a lost port is closed and tried again every
+        `reconnect_seconds`. The first failure of a stretch is a warning and each minute after is a reminder in the log; the end of the
+        trouble is a line in the log. Only counts are ever mentioned, never the text.
+        """
+        stalled = self._is_stall(error)
+        now = self._clock()
+        if trouble.since is None:
+            trouble.begin(now)
+            self.report.warn(f"the terminal {'stopped taking characters (held, out of paper or busy)' if stalled else 'port was lost'} "
+                             f"after {sent} of {total} characters ({type(error).__name__}); waiting for it for up to "
+                             f"{self._stall_patience:g} s")
+        while True:
+            now = self._clock()
+            if now - trouble.since >= self._stall_patience:
+                self.report.critical(f"the terminal did not come back within {self._stall_patience:g} s, after {sent} of {total} characters; "
+                                     f"the rest was not typed")
+                self.close()
+                return False
+            if still_alive is not None:
+                try:
+                    still_alive()
+                except Exception:                    # a failing heartbeat must not end the wait
+                    pass
+            if now - trouble.reminded >= REMINDER_SECONDS:
+                trouble.reminded = now
+                _log.warning("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
+            if stalled:
+                self._sleep(STALL_RETRY_SECONDS)
+                return True                          # the port is open: send the same character again
+            # the port was lost: close it and open it again, every few seconds
+            self.close()
+            self._sleep(self._reconnect)
+            if self._connect(quiet=True):
+                return True
 
     def read_line(self, timeout: Optional[float] = None) -> Optional[str]:
         """The next line typed on the typewriter's keyboard, or None if none was finished within `timeout` seconds.
@@ -221,6 +308,7 @@ class TerminalPort:
                     self.report.warn(f"the terminal port failed while listening for the keyboard "
                                      f"({type(error).__name__}); try again later")
                     self.close()
+                    self._sleep(1.0 if deadline is None else max(0.0, min(1.0, deadline - self._clock())))   # no hot loop on a dead port
                     return None
             if data:
                 self._received.extend(data)
@@ -282,16 +370,34 @@ class TerminalPort:
         except Exception:                            # a dead port is found by the next write
             pass
 
-    def _connect(self) -> bool:
-        """Opens the port if it is not open. False (with a warning) if it will not open."""
+    def _resolve(self) -> Optional[str]:
+        """The device to open: the port name, or the first device matching it if it is a pattern. None if nothing matches."""
+        name = self._port_name
+        if not any(wildcard in name for wildcard in "*?["):
+            return name
+        try:
+            matches = sorted(self._lister(name))
+        except Exception:                            # a failing lookup is the same as no match
+            matches = []
+        return matches[0] if matches else None
+
+    def _connect(self, quiet: bool = False) -> bool:
+        """Opens the port if it is not open. False if it will not open: one warning for the whole stretch it stays unavailable."""
         if self._serial is not None:
             return True
+        name = self._resolve()
         try:
-            self._serial = self._opener(self._port_name, self._baud, self._flow_control)
+            if name is None:
+                raise FileNotFoundError("no device matches the port pattern")
+            self._serial = self._opener(name, self._baud, self._flow_control)
         except Exception as error:
-            self.report.warn(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); "
-                             f"nothing was typed")
+            if not self._connect_failing and not quiet:
+                self.report.warn(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); nothing was typed")
+            self._connect_failing = self._connect_failing or not quiet
             return False
+        if self._connect_failing:
+            _log.info("the terminal port %s is open again", name)
+        self._connect_failing = False
         return True
 
     def _bytes(self, text: str) -> list[str]:
@@ -303,6 +409,21 @@ class TerminalPort:
             elif " " <= character <= "~":
                 out.append(character)
         return out
+
+
+class _Trouble:
+    """A stretch in which the machine would not take characters: when it began and when it was last mentioned."""
+
+    def __init__(self):
+        self.since = None
+        self.reminded = 0.0
+
+    def begin(self, now: float) -> None:
+        self.since, self.reminded = now, now
+
+    def over(self, now: float) -> None:
+        _log.info("the terminal is typing again after %.0f s", now - self.since)
+        self.since = None
 
 
 class _StreamSink:

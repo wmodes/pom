@@ -359,6 +359,8 @@ ascii_printwheel = false
 [terminal]
 
 # The serial device. /dev/ttyACM0 is the CadetWriter's USB port on the Pi; check with `ls /dev/ttyACM*` after plugging it in.
+# It may be a pattern, such as "/dev/ttyACM*" or "/dev/serial/by-id/usb-*": it is looked up each time the port is opened, so a
+# printer that comes back under another name (ttyACM0, then ttyACM1) is found.
 port = "/dev/ttyACM0"
 
 # The speed. Only the CadetWriter's RS-232 port uses it (its default is 9600); the USB port ignores it.
@@ -387,3 +389,12 @@ echoplex = true
 # false throws away keys pressed while a portent is being typed (and any half-typed line), so nothing typed over a
 # portent appears after it. true keeps them and handles them once the portent is done.
 type_during_printing = false
+
+# Once a portent is being typed, how long (in seconds, above 0) to wait for a typewriter that stopped taking characters (held,
+# out of paper, busy) or went away (unplugged). When it comes back the portent goes on where it stopped, with nothing repeated.
+# Too short and a printer you are refilling with paper loses the rest of the portent; too long only means a dead printer holds
+# the Printer deaf for that long. A portent not yet started is waited for much less (the Conductor's freshness limit).
+stall_patience_seconds = 600
+
+# How often (in seconds, above 0) a lost port is tried again while waiting.
+reconnect_seconds = 2

@@ -156,7 +156,7 @@ the oracle's time and they come every 6 to 8 minutes, so there is no hurry back 
   cut off a wait. The moment the terminal works, the portent is typed. Whether the CadetWriter signals "held" or "out of paper" is for a test on
   the real machine; if it gives no signal, software cannot see it.
 - **The terminal fails halfway**: part of the portent is on the paper, so typing it again would repeat the start. Outcome `print failed`, a
-  CRITICAL fault, no retry. (The TerminalPort will learn to resume where it stopped.)
+  CRITICAL fault, no retry. (The TerminalPort waits out a held or lost port itself and goes on where it stopped; see Printing.)
 - **No printer by design** (`terminal` is `None`): write, record, done; the outcome is `not printed (no printer)`. The Printer can be
   watched listening and writing, with everything on the monitoring site, with nothing attached.
 
@@ -482,6 +482,15 @@ Whether to start them depends on how far the prompted oracle model gets.
   listening. The same port reads the keyboard: `read_line()` returns what someone types when they press C Rtn. In the CadetWriter's default
   full-duplex mode the Pi echoes each key (`echoplex`), a Backspace overstrikes but edits the line, and keys pressed during a portent are
   thrown away (unless `type_during_printing` is on). The `ConsoleTerminal` is the same code on the terminal, for development.
+- Built (2026-11-02): *the TerminalPort stays with the portent*. A serial printer is fickle (switched off, unplugged, held, out of paper), so
+  once typing has begun a failed write does not end the portent. A **stall** (the machine stopped taking characters; pyserial raises a write
+  timeout under flow control) is waited out and the same character is sent again; a **lost port** is closed and opened again every
+  `reconnect_seconds`, and typing goes on from the first character not sent. Either wait lasts at most `stall_patience_seconds` (600), sends the
+  caller's heartbeat every few seconds, logs one warning for the stretch and a reminder each minute, and ends with a log line when typing goes on;
+  the pacing restarts from that moment. The `port` may be a pattern (`/dev/ttyACM*`, `/dev/serial/by-id/usb-*`) looked up at each open, so a
+  printer replugged under another name is found. A port that will not open at the start returns at once; the TurnTaker waits for it (up to the
+  freshness limit). *Not visible to software:* whether the CadetWriter signals a hold or out-of-paper through flow control (to be tested on the
+  machine), and a printer powered off behind a USB adapter that swallows the bytes. A character or two in flight at an unplug may be lost or doubled.
 - The TypedLineScorer (`src/pom/keyboard/`) turns a typed line into a `Attempt` (kind `typed`), judged by `BarKeeper.rule_typed()`. Serializing its calls with the HingeFinder's thread, and handing a typed hinge to the oracle, are the Conductor's.
 - The output validation hook (`scripts/dev/library/validate_output.py`) is a deliberate stub. Checking for verbatim
   overlap with the library was judged the wrong measure: false positives on quotes that land, false negatives on

@@ -91,7 +91,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "printing.characters_per_inch", "printing.quote_indent", "printing.linefeeds_after_portent",
          "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
-         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_printing"}
+         "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_printing",
+         "terminal.stall_patience_seconds", "terminal.reconnect_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -154,6 +155,8 @@ DEFAULT_TERMINAL_CHARACTERS_PER_SECOND = 16.0
 DEFAULT_TERMINAL_FINISH_WAIT_SECONDS = 2.0
 DEFAULT_TERMINAL_ECHOPLEX = True
 DEFAULT_TERMINAL_TYPE_DURING_PRINTING = False
+DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS = 600.0
+DEFAULT_TERMINAL_RECONNECT_SECONDS = 2.0
 MIN_PRINTING_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -376,6 +379,9 @@ class TerminalSettings:
             echoes locally. A mismatch types every character twice, or none.
         type_during_printing: False (the default) throws away keys pressed while a portent is being typed, so nothing typed over
             it appears after it; True keeps them for the next line read.
+        stall_patience_seconds: Once a portent is being typed, how long to wait for a typewriter that stopped taking characters
+            (held, out of paper) or went away (unplugged), above 0. It goes on where it stopped when it comes back.
+        reconnect_seconds: How often a lost port is tried again, above 0.
     """
     port: str = DEFAULT_TERMINAL_PORT
     baud: int = DEFAULT_TERMINAL_BAUD
@@ -385,6 +391,8 @@ class TerminalSettings:
     finish_wait_seconds: float = DEFAULT_TERMINAL_FINISH_WAIT_SECONDS
     echoplex: bool = DEFAULT_TERMINAL_ECHOPLEX
     type_during_printing: bool = DEFAULT_TERMINAL_TYPE_DURING_PRINTING
+    stall_patience_seconds: float = DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS
+    reconnect_seconds: float = DEFAULT_TERMINAL_RECONNECT_SECONDS
 
 
 class Config:
@@ -601,7 +609,11 @@ class Config:
             _bool(values.get("terminal.echoplex", DEFAULT_TERMINAL_ECHOPLEX), "terminal.echoplex", report,
                   DEFAULT_TERMINAL_ECHOPLEX),
             _bool(values.get("terminal.type_during_printing", DEFAULT_TERMINAL_TYPE_DURING_PRINTING),
-                  "terminal.type_during_printing", report, DEFAULT_TERMINAL_TYPE_DURING_PRINTING))
+                  "terminal.type_during_printing", report, DEFAULT_TERMINAL_TYPE_DURING_PRINTING),
+            _positive(values.get("terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS),
+                      "terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, report),
+            _positive(values.get("terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS),
+                      "terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
                    printing, terminal)
 

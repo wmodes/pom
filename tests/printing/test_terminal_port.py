@@ -1,5 +1,6 @@
 """Tests for the TerminalPort and the ConsoleTerminal: typing paced to a serial port, and the keyboard coming back."""
 import io
+import logging
 import os
 import threading
 import time
@@ -205,16 +206,17 @@ def test_a_port_that_would_not_open_is_tried_again_on_the_next_call():
     assert port.transmit("a").completed is True and fake.written == b"a"
 
 
-def test_a_write_that_fails_halfway_reports_how_far_it_got_and_closes_the_port():
+def test_a_write_that_fails_halfway_is_waited_for_and_typing_goes_on_where_it_stopped():
     clock = FakeClock()
     first = FakeSerial(clock, fail_write_after=2)
     second = FakeSerial(clock)
     ports = [first, second]
     port = TerminalPort("/dev/x", opener=lambda *a: ports.pop(0), clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
     report = port.transmit("abcde")
-    assert report.characters == 2 and report.completed is False and first.closed is True
+    assert report.characters == 5 and report.completed is True and first.closed is True
+    assert first.written == b"ab" and second.written == b"cde"                # nothing repeated, nothing missed
     assert len(port.report.warnings) == 1 and "2 of 5" in port.report.warnings[0]
-    assert port.transmit("xy").completed is True and second.written == b"xy"      # reopened
+    assert port.transmit("xy").completed is True and second.written == b"cdexy"
 
 
 def test_neither_the_text_nor_the_keys_typed_are_ever_put_in_the_report():
@@ -621,3 +623,301 @@ def test_a_console_with_no_keyboard_reads_nothing():
     sink = terminal_port._StreamSink(io.StringIO(), None)
     assert sink.read(5) == b"" and sink.reset_input_buffer() is None
     sink.close()
+
+
+# --- Staying with the portent: stalls, a lost port, a port that comes back under another name --------------------
+
+class SerialTimeoutException(OSError):
+    """Named like pyserial's write timeout, which is how a held or out-of-paper machine looks under flow control."""
+
+
+class ScriptedSerial(FakeSerial):
+    """A FakeSerial whose write calls fail as scripted: `failures` maps the number of the write call (from 0) to the error raised."""
+
+    def __init__(self, clock=None, failures=None):
+        super().__init__(clock)
+        self.attempts = 0
+        self.failures = dict(failures or {})
+
+    def write(self, data):
+        number = self.attempts
+        self.attempts += 1
+        if number in self.failures:
+            raise self.failures[number]
+        super().write(data)
+
+
+def stalled_port(failures, **settings):
+    """A port over one ScriptedSerial that never needs reopening. Returns (port, serial, clock, opened, beats)."""
+    clock = FakeClock()
+    serial_port = ScriptedSerial(clock, failures)
+    opened = []
+    settings.setdefault("finish_wait_seconds", 0)
+    port = TerminalPort("/dev/ttyTEST", opener=lambda *a: opened.append(a) or serial_port, clock=clock, sleep=clock.sleep, **settings)
+    return port, serial_port, clock, opened
+
+
+class TestAHeldMachine:
+    """The machine stops taking characters (hold button, no paper, busy): wait, send the same character again, repeat nothing."""
+
+    def test_the_same_character_is_sent_again_and_nothing_is_repeated_or_lost(self):
+        port, serial_port, _, opened = stalled_port({3: SerialTimeoutException("held"), 4: SerialTimeoutException("held"),
+                                                     5: SerialTimeoutException("held")})
+        report = port.transmit("abcdef")
+        assert serial_port.written == b"abcdef" and report.completed is True and report.characters == 6
+        assert len(opened) == 1 and serial_port.closed is False             # the port was kept open
+
+    def test_a_python_timeout_is_a_stall_too(self):
+        port, serial_port, _, opened = stalled_port({1: TimeoutError("slow")})
+        assert port.transmit("abc").completed is True and serial_port.written == b"abc" and len(opened) == 1
+
+    def test_it_is_one_warning_for_the_whole_stall_and_a_line_in_the_log_when_typing_goes_on(self, caplog):
+        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 12)})
+        with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
+            port.transmit("abcdef")
+        assert len(port.report.warnings) == 1 and "stopped taking characters" in port.report.warnings[0] and "2 of 6" in port.report.warnings[0]
+        assert any("typing again after" in r.getMessage() for r in caplog.records)
+
+    def test_a_long_stall_is_mentioned_in_the_log_every_minute(self, caplog):
+        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 140)})
+        with caplog.at_level(logging.WARNING, logger="pom.printing.terminal_port"):
+            port.transmit("abcdef")
+        reminders = [r.getMessage() for r in caplog.records if "still not typing" in r.getMessage()]
+        assert len(reminders) == 2 and "2 of 6 characters" in reminders[0]
+
+    def test_the_heartbeat_is_called_while_waiting(self):
+        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(1, 8)})
+        beats = []
+        port.transmit("abcd", still_alive=lambda: beats.append(1))
+        assert len(beats) == 7
+
+    def test_a_heartbeat_that_fails_does_not_end_the_wait(self):
+        port, serial_port, _, _ = stalled_port({1: SerialTimeoutException("held")})
+
+        def broken():
+            raise RuntimeError("beat broke")
+        assert port.transmit("abc", still_alive=broken).completed is True and serial_port.written == b"abc"
+
+    def test_the_pacing_starts_again_from_the_moment_it_goes_on(self):
+        port, serial_port, clock, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 62)})
+        port.transmit("abcd")
+        gap = serial_port.write_times[2] - serial_port.write_times[1]
+        assert gap > 50                                                       # the long wait
+        assert serial_port.write_times[3] - serial_port.write_times[2] == pytest.approx(1 / 16)       # then the usual pace, not a flood
+
+    def test_a_machine_held_for_ever_is_given_up_after_the_patience_with_how_far_it_got(self):
+        port, serial_port, clock, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 100000)}, stall_patience_seconds=300)
+        report = port.transmit("abcdef")
+        assert report.characters == 2 and report.completed is False and serial_port.closed is True
+        assert 300 <= clock.now < 310
+        assert len(port.report.criticals) == 1 and "300 s" in port.report.criticals[0] and "2 of 6" in port.report.criticals[0]
+
+    def test_the_next_text_after_giving_up_opens_the_port_again(self):
+        clock = FakeClock()
+        ports = [ScriptedSerial(clock, {n: SerialTimeoutException("held") for n in range(0, 100000)}), ScriptedSerial(clock)]
+        port = TerminalPort("/dev/x", opener=lambda *a: ports.pop(0), clock=clock, sleep=clock.sleep, finish_wait_seconds=0,
+                            stall_patience_seconds=30)
+        assert port.transmit("abc").completed is False
+        assert port.transmit("xyz").completed is True
+
+    def test_neither_the_text_nor_the_state_of_the_wait_leaks_words(self, caplog):
+        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 200)}, stall_patience_seconds=100)
+        with caplog.at_level(logging.DEBUG):
+            port.transmit("zebra-secret portent")
+        assert "zebra" not in caplog.text and all("zebra" not in line for line in port.report.lines())
+
+
+class TestAPortThatIsLost:
+    """The cable is pulled, or the port fails: close it, open it again every few seconds, go on from the first character not sent."""
+
+    def test_it_waits_for_the_port_to_come_back_and_goes_on_where_it_stopped(self):
+        clock = FakeClock()
+        first = ScriptedSerial(clock, {3: OSError("unplugged")})
+        second = ScriptedSerial(clock)
+        attempts = []
+
+        def opener(name, baud, flow):
+            attempts.append(name)
+            if len(attempts) == 1:
+                return first
+            if len(attempts) <= 4:
+                raise OSError("not there yet")
+            return second
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0, reconnect_seconds=2.0)
+        report = port.transmit("abcdefg")
+        assert report.completed is True and first.written == b"abc" and second.written == b"defg"
+        assert len(attempts) == 5 and clock.sleeps.count(2.0) == 4          # a try every 2 s
+
+    def test_one_warning_for_the_stretch_not_one_per_try(self):
+        clock = FakeClock()
+        first, second = ScriptedSerial(clock, {1: OSError("unplugged")}), ScriptedSerial(clock)
+        tries = []
+
+        def opener(*a):
+            tries.append(1)
+            if len(tries) == 1:
+                return first
+            if len(tries) < 10:
+                raise OSError("gone")
+            return second
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        port.transmit("abc")
+        assert len(port.report.warnings) == 1 and "port was lost" in port.report.warnings[0]
+
+    def test_a_port_that_never_comes_back_is_given_up_after_the_patience(self):
+        clock = FakeClock()
+        first = ScriptedSerial(clock, {2: OSError("unplugged")})
+        opened = []
+
+        def opener(*a):
+            opened.append(1)
+            if len(opened) == 1:
+                return first
+            raise OSError("gone")
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0, stall_patience_seconds=120)
+        report = port.transmit("abcdef")
+        assert report.characters == 2 and report.completed is False
+        assert len(port.report.criticals) == 1 and "120 s" in port.report.criticals[0]
+        assert 120 <= clock.now < 126
+
+    def test_the_heartbeat_is_called_each_time_it_tries_again(self):
+        clock = FakeClock()
+        first, second = ScriptedSerial(clock, {1: OSError("unplugged")}), ScriptedSerial(clock)
+        tries = []
+
+        def opener(*a):
+            tries.append(1)
+            if len(tries) == 1:
+                return first
+            if len(tries) <= 5:
+                raise OSError("gone")
+            return second
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        beats = []
+        port.transmit("abc", still_alive=lambda: beats.append(1))
+        assert len(beats) == 5
+
+    def test_a_stall_that_turns_into_a_lost_port_is_handled(self):
+        clock = FakeClock()
+        first = ScriptedSerial(clock, {2: SerialTimeoutException("held"), 3: OSError("then unplugged")})
+        second = ScriptedSerial(clock)
+        ports = [first, second]
+        port = TerminalPort("/dev/x", opener=lambda *a: ports.pop(0), clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        report = port.transmit("abcde")
+        assert report.completed is True and first.written == b"ab" and second.written == b"cde"
+
+    def test_a_failure_at_the_last_flush_is_reported_with_every_character_counted(self):
+        clock = FakeClock()
+        serial_port = FakeSerial(clock)
+        serial_port.flush = lambda: (_ for _ in ()).throw(OSError("flush failed"))
+        port = TerminalPort("/dev/x", opener=lambda *a: serial_port, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        report = port.transmit("abc")
+        assert report.characters == 3 and report.completed is False and serial_port.closed is True
+
+    def test_in_strict_mode_the_first_failure_raises(self):
+        clock = FakeClock()
+        port = TerminalPort("/dev/x", opener=lambda *a: ScriptedSerial(clock, {1: OSError("x")}), clock=clock, sleep=clock.sleep,
+                            strict=True)
+        with pytest.raises(TerminalPortError):
+            port.transmit("abc")
+
+
+class TestThePortNameAsAPattern:
+    def test_the_first_match_in_sorted_order_is_opened(self):
+        clock = FakeClock()
+        seen = []
+        port = TerminalPort("/dev/ttyACM*", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock, sleep=clock.sleep,
+                            finish_wait_seconds=0, lister=lambda pattern: ["/dev/ttyACM1", "/dev/ttyACM0"])
+        port.transmit("a")
+        assert seen == ["/dev/ttyACM0"]
+
+    def test_with_several_matches_the_first_in_sorted_order_is_chosen_whatever_order_they_come_in(self):
+        clock = FakeClock()
+        seen = []
+        port = TerminalPort("/dev/ttyACM*", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock, sleep=clock.sleep,
+                            finish_wait_seconds=0, lister=lambda pattern: ["/dev/ttyACM2", "/dev/ttyACM0", "/dev/ttyACM1"])
+        port.transmit("a")
+        assert seen == ["/dev/ttyACM0"]
+
+    def test_a_printer_that_comes_back_under_another_name_is_found(self):
+        clock = FakeClock()
+        names = [["/dev/ttyACM0"]]
+        first, second = ScriptedSerial(clock, {1: OSError("unplugged")}), ScriptedSerial(clock)
+        seen = []
+
+        def opener(name, *a):
+            seen.append(name)
+            return first if len(seen) == 1 else second
+
+        def lister(pattern):
+            if len(seen) == 1:
+                names[0] = ["/dev/ttyACM1"]                # replugged: the device has a new number
+            return names[0]
+        port = TerminalPort("/dev/ttyACM*", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0, lister=lister)
+        report = port.transmit("abcd")
+        assert seen == ["/dev/ttyACM0", "/dev/ttyACM1"] and report.completed is True and second.written == b"bcd"
+
+    def test_a_pattern_with_no_match_means_the_port_will_not_open_with_one_warning(self):
+        clock = FakeClock()
+        port = TerminalPort("/dev/serial/by-id/usb-*", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep,
+                            lister=lambda pattern: [])
+        for _ in range(3):
+            assert port.transmit("a") == PrintResult(0, 0.0, False)
+        assert len(port.report.warnings) == 1 and "would not open" in port.report.warnings[0]
+
+    def test_a_lookup_that_fails_is_the_same_as_no_match(self):
+        clock = FakeClock()
+        port = TerminalPort("/dev/ttyACM*", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep,
+                            lister=lambda pattern: (_ for _ in ()).throw(OSError("glob broke")))
+        assert port.transmit("a").completed is False
+
+    def test_a_plain_name_is_opened_as_it_is_without_any_lookup(self):
+        clock = FakeClock()
+        seen = []
+        port = TerminalPort("/dev/ttyACM0", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock,
+                            sleep=clock.sleep, finish_wait_seconds=0, lister=lambda pattern: (_ for _ in ()).throw(AssertionError("no lookup")))
+        port.transmit("a")
+        assert seen == ["/dev/ttyACM0"]
+
+
+class TestAPortThatWillNotOpen:
+    def test_it_is_one_warning_however_many_tries_and_a_line_in_the_log_when_it_opens(self, caplog):
+        clock = FakeClock()
+        up = []
+
+        def opener(*a):
+            if not up:
+                raise OSError("not plugged in")
+            return FakeSerial(clock)
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        for _ in range(5):
+            assert port.transmit("a").completed is False
+        assert len(port.report.warnings) == 1
+        up.append(1)
+        with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
+            assert port.transmit("a").completed is True
+        assert any("is open again" in r.getMessage() for r in caplog.records)
+
+    def test_a_second_stretch_of_trouble_is_a_new_warning(self):
+        clock = FakeClock()
+        state = {"up": False}
+
+        def opener(*a):
+            if not state["up"]:
+                raise OSError("no")
+            return FakeSerial(clock)
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        port.transmit("a")
+        state["up"] = True
+        port.transmit("a")
+        port.close()
+        state["up"] = False
+        port.transmit("a")
+        assert len(port.report.warnings) == 2
+
+
+@pytest.mark.parametrize("setting", ["stall_patience_seconds", "reconnect_seconds"])
+@pytest.mark.parametrize("bad", [0, -1, "x", None, True, float("nan")])
+def test_a_bad_patience_or_reconnect_is_the_default_with_a_warning(setting, bad):
+    port, _, _, _ = make(**{setting: bad})
+    assert len(port.report.warnings) == 1 and setting in port.report.warnings[0]

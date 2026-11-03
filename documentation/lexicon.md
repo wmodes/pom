@@ -265,6 +265,9 @@ These words say *terminal*; a machine's name appears only where a fact belongs t
 - **host**: the Pi, as the terminal sees it.
 - **hard copy**: what ends up on paper, as against a screen.
 - **carriage**: what moves across the line; the carriage return in `end_of_line`.
+- **patience**: How long the terminal waits, once a portent is being typed, for a machine that stopped taking characters (held, out of paper,
+  busy) or went away (unplugged); when it returns the portent goes on where it stopped, nothing repeated. Example: `stall_patience_seconds`,
+  `reconnect_seconds` (was: none)
 
 ## Keyboard: what people type
 

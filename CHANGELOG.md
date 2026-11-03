@@ -45,6 +45,13 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The TerminalPort stays with the portent** (stage 2 of the printer's robustness): once typing has begun, a failed write no longer ends the portent. A *stall* (flow control holds the line: the hold button, no paper, busy; a
+  write timeout) is waited out and the same character is sent again; a *lost port* is closed and reopened every `reconnect_seconds` (2), and typing goes on from the first character not sent. Either wait lasts at most
+  `stall_patience_seconds` (600), calls the heartbeat the TurnTaker hands it (`transmit(text, still_alive=...)`) every few seconds, is one warning for the stretch with a reminder in the log each minute, and pacing restarts
+  from the moment typing goes on. `[terminal] port` may be a pattern (`/dev/ttyACM*`, `/dev/serial/by-id/usb-*`), looked up at each open, so a printer replugged under another name is found. A port that will not open is one warning
+  for the whole stretch and a log line when it opens. A failed keyboard read now pauses a second instead of spinning. New `[terminal]` settings `stall_patience_seconds` and `reconnect_seconds` (in `Config` and `config/pom.toml`). The
+  TurnTaker passes its heartbeat. New lexicon term: patience. The old test that expected a halfway failure to end the portent now expects it to resume. 44 new tests; 25 mutants checked (three survivors: one muddled helper field,
+  removed; two tests added). 2,861 tests pass.
 - **The TurnTaker** (`src/pom/conductor/turn_taker.py`; fourth leaf of the Conductor): takes one hinge through a turn. `take_turn(turn, attempt)` has the portent written (up to 3 attempts 10 s apart, only while a whole
   attempt still fits in the 270 s writing budget), records the turn in the TurnHistory at once, formats it and types it, and returns a `TurnResult` (an outcome plus numbers, never words). It owns `with turn:`, so the
   floor is always yielded, and it never raises. Printing has priority: a written portent is printed even if the watchdog took the floor meanwhile (a warning); a portent is worth printing for `freshness_seconds`

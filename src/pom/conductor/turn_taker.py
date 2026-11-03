@@ -29,9 +29,10 @@ Design decisions, and why:
   * THE TERMINAL CANNOT PRINT YET (unplugged, held, no paper, the port gone). If nothing was typed, the turn waits `print_pause_seconds`
     and tries again until the portent goes stale, sending a heartbeat (`turn.still_printing()`) every few seconds so the watchdog knows it
     is waiting and not hung, and showing "waiting for the printer" on its record. The ears stay shut meanwhile: with no printer there is
-    nothing to listen for. As soon as the terminal works the portent is typed. If part of the portent was typed and then the port failed,
-    the turn ends PRINT_FAILED with a CRITICAL fault and is not retried, since typing it again would repeat the start on the paper (the
-    TerminalPort will learn to resume where it stopped).
+    nothing to listen for. As soon as the terminal works the portent is typed. Once typing has begun, the TerminalPort itself waits
+    for a stalled or lost port and goes on where it stopped (it is handed the heartbeat to send meanwhile), so a portent is not typed
+    twice. If even its patience runs out with part of the portent on the paper, the turn ends PRINT_FAILED with a CRITICAL fault and is
+    not retried, since typing it again would repeat the start.
   * NO PRINTER BY DESIGN. With no terminal (`None`) a turn is write, record, done: the outcome is NOT_PRINTED. The monitoring site shows
     everything it normally does, so the Printer can be watched listening and writing with nothing attached.
   * A portent that finishes writing after the watchdog took the floor is still printed: printing has priority. It is logged as a warning.
@@ -254,7 +255,7 @@ class TurnTaker:
             if self._clock() >= deadline:
                 break
             tries += 1
-            result = self._terminal.transmit(text)       # an unexpected error is no reason to retry: it goes up to take_turn
+            result = self._terminal.transmit(text, still_alive=turn.still_printing)     # an unexpected error goes up to take_turn
             if result.completed:
                 return self._done(TurnOutcome.PRINTED, record_id, words=words, characters=result.characters, writing_seconds=writing_seconds,
                                   printing_seconds=self._clock() - printing_began, write_attempts=write_attempts, print_tries=tries)

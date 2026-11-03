@@ -34,7 +34,7 @@ from pom.log_setup import get_logger
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_TIMEOUT = 120.0
+DEFAULT_TIMEOUT = 240.0
 DEFAULT_MAX_TOKENS = 300
 DEFAULT_TEMPERATURE = 0.8
 

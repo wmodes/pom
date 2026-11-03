@@ -668,7 +668,7 @@ def test_oracle_defaults_when_nothing_is_set():
     config = Config.load(environ={})
     assert config.oracle == OracleSettings() and config.report.ok
     assert config.oracle.url == "http://127.0.0.1:8099/v1/chat/completions"
-    assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (120.0, 300, 0.8)
+    assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (240.0, 300, 0.8)
     assert config.oracle.prompt == ""
 
 

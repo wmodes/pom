@@ -59,7 +59,7 @@ class TestAskingForAPortent:
         client(post).consult(PROMPT)
         _, body, timeout = post.calls[0]
         assert (body["max_tokens"], body["temperature"], timeout) == (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT)
-        assert (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT) == (300, 0.8, 120.0)
+        assert (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT) == (300, 0.8, 240.0)
 
     def test_thinking_is_turned_off_for_models_that_would_think(self):
         post = FakePost()

@@ -268,8 +268,10 @@ In the style of the example, create a single passage inspired by this theme with
 # the scorer's.
 url = "http://127.0.0.1:8099/v1/chat/completions"
 
-# Seconds to wait for one portent before giving up. Writing is slow on the Pi.
-timeout = 120
+# Seconds to wait for one portent before giving up. Writing is slow on the Pi (about half a second a token), and the whole reply
+# is waited for at once, so this must cover the longest portent the model can write: max_tokens (below) at that speed, plus the
+# time to read the prompt. Too short and the longest portents are lost to it. The Conductor's watchdog for writing must be longer.
+timeout = 240
 
 # The most the model may write for one portent, counted in tokens (about 3/4 of a word each). A portent
 # is 15 to 150 words; this only stops a runaway.

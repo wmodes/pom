@@ -45,6 +45,9 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The oracle timeout is 240 s** (`[oracle] timeout` in `config/pom.toml`, and the built-in defaults of `OracleModelClient` and `Config`; was 120): the reply is waited for whole and the Pi writes about 0.5 s a token, so 120 s
+  covered only about 230 tokens and would have cut off the longest portents (`max_tokens` is 300, about 155 s, plus reading the prompt). The Conductor's writing watchdog (300 s) stays longer. The comment in the
+  config says why. 2,698 tests pass.
 - **The FloorKeeper** (`src/pom/conductor/floor_keeper.py`; third leaf of the Conductor): who may speak. Four states in order (listening, writing, printing, recovering), first come, first served between the room and the
   keyboard (`take_floor(who)` returns a `Turn`, or None), a `Turn` used in a `with` block so the floor is always yielded, and a watchdog that takes the floor from a turn that runs past its limit. Built to fail toward
   speaking: every end of a turn goes to recovering and then listening; every call first settles anything that has run out (no ticker has to survive); a monotonic clock (the Pi has no battery clock); a lock with a

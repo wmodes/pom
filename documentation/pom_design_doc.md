@@ -126,11 +126,10 @@ every blocking call a timeout of its own; the watchdog is the last line of defen
 with who holds the floor and how long the last state lasted, each refused request, each overrun, each late call from a cut-off turn): labels and
 seconds, never words.
 
-- (open) *The writing limit must be longer than the oracle client's own timeout* (`[oracle] timeout`, 120 s). That timeout is for the whole
-  reply (the request is not streamed), and writing runs at about 0.5 s a token, so 120 s covers about 230 tokens. A 150-word portent
-  (about 200 tokens) plus the prompt is close to that, and the most the model may write (`max_tokens`, 300) needs about 155 s. If the
-  oracle's timeout is not raised, the longest portents are lost to it before the watchdog is ever involved. Proposed: raise it to 240 s, so the
-  oracle gives up first, the watchdog stays the backstop at 300 s, and printing (180 s) covers the longest portent at the terminal's pace.
+- *The writing limit must be longer than the oracle client's own timeout* (`[oracle] timeout`). That timeout is for the whole reply (the request
+  is not streamed), and writing runs at about 0.5 s a token, so 120 s covered only about 230 tokens: a 150-word portent (about 200 tokens) plus
+  the prompt was close to it, and `max_tokens` (300) needs about 155 s. Decided 2026-11-02: the timeout is 240 s, so the oracle gives up first,
+  the watchdog stays the backstop at 300 s, and printing (180 s) covers the longest portent at the terminal's pace.
 
 ## Listening: from sound to text
 

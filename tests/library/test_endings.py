@@ -1,7 +1,7 @@
 """Tests for pom.library.endings: which passages stop before their thought is done."""
 import pytest
 
-from pom.library.endings import CLOSING_MARKS, DANGLING_WORDS, ends_unfinished
+from pom.library.endings import CLOSING_MARKS, DANGLING_WORDS, ends_sentence, ends_unfinished
 
 
 class TestAFinishedPassage:
@@ -86,3 +86,31 @@ class TestEdgesOfTheTest:
         assert DANGLING_WORDS == frozenset({
             "a", "an", "the", "of", "and", "or", "but", "to", "in", "on", "at", "by", "with", "for", "from", "into", "as",
             "is", "was", "that", "which", "its", "his", "her", "their", "our"})
+
+
+class TestASentenceEnd:
+    """Where the library's cataloguer may cut: a full stop, question mark or exclamation mark, then any closing quotes or brackets."""
+
+    @pytest.mark.parametrize("text", [
+        "He left.", "Is it?", "Stop!", "What?!", "Wait...", "ends here.   ", "End.\n",
+        'He said, "go."', "He said, 'go.'", 'He said, "go!"', 'He asked, "why?"', "She said, \"he said 'no.'\"", "She said, 'he said \"no.\"'",
+        "(and so on.)", "[see above.]", 'He said (and meant it.")', "by them.--", 'by them."--', "by them.'\"", "by them.\u201d", "by them.\u2019",
+        "by them.\u2014",
+    ])
+    def test_these_end_a_sentence(self, text):
+        assert ends_sentence(text) is True, text
+
+    @pytest.mark.parametrize("text", [
+        "He left", 'He said "go"', "'Some are born great'--", "although", "Dr. Smith, the", "as follows:", "and then,", "Yes;",
+        "a dash after no stop --", "ends on a comma,\n", "(and so on)", "He said 'go'",
+    ])
+    def test_these_do_not(self, text):
+        assert ends_sentence(text) is False, text
+
+    @pytest.mark.parametrize("value", ["", "   ", "\n", None, 5, b"end.", ["end."]])
+    def test_nothing_to_judge_is_not_a_sentence_end(self, value):
+        assert ends_sentence(value) is False
+
+    def test_a_full_stop_in_the_middle_is_not_the_end(self):
+        assert ends_sentence("It ended. Then it began") is False
+

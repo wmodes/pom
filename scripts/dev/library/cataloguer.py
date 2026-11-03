@@ -9,17 +9,20 @@ consumer needs: where it came from, its shelf, and its chance of being drawn.
     Track B trains on the same passages, using the same draw probabilities as sampling odds.
 
 Rules, in order:
-  1. Split. A utterance over --max-words (150) is cut at sentence breaks (prose) or line
-     breaks (verse and wrapped text) into near-equal pieces, never mid-sentence unless one
-     sentence alone is over the limit, then at clause breaks, then at word boundaries. A cut never
-     leaves a piece ending unfinished ("...of the", "...as follows:"); if no line or sentence
-     boundary can avoid that, the text is cut at words instead (every word kept, line breaks lost).
+  1. Split. A utterance over --max-words (150) is cut into near-equal pieces ONLY AFTER A SENTENCE END:
+     a full stop, question mark or exclamation mark, then any closing quotes or brackets (and the
+     dash some old books print after it; `ends_sentence` in pom.library.endings). Prose is cut
+     between sentences, verse and wrapped text between lines that end a sentence. So a passage ends
+     at a sentence end, at the end of its paragraph (a blank line, where ready/ already divides
+     utterances), or at the end of its record, and never mid-thought. A stretch with no sentence end
+     in it is never cut, so a piece can come out over the limit; one over --oversize times the limit
+     is dropped. The default is 1.0, so the 150-word ceiling holds and such a piece is dropped; raise
+     it (1.5 keeps up to 225 words) to keep the longer ones whole.
   2. Merge (off by default). With --min-words N, short utterances join the next one in
      the same holding until they reach N words, without crossing --max-words.
   3. Drop unfinished pieces. A piece that stops before its thought is done (it ends on a colon or
      on a word like "the": see pom.library.endings) is dropped, because the oracle copies its
-     exemplar's ending. Rule 1 avoids making them (it will not cut after an unfinished line,
-     sentence or clause, nor chunk words on "the"), so this is only the backstop; whole utterances
+     exemplar's ending. Rule 1 cannot make one, so this is only the backstop; whole utterances
      that end this way are already dropped by normalize.py before ready/.
   4. Deduplicate. An exact repeat of a passage anywhere in the library is dropped; the kept
      copy records how many times it occurred.
@@ -36,6 +39,7 @@ Usage:
     cataloguer.py                          write library/passages/ and print a report
     cataloguer.py --max-words 200          change the ceiling
     cataloguer.py --min-words 15           merge short utterances forward
+    cataloguer.py --oversize 1.5           keep uncuttable pieces up to 1.5 times the ceiling (default 1.0: drop them)
     cataloguer.py --check                  report only; write nothing
 """
 import argparse
@@ -49,9 +53,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
-from pom.library import Circulation, ends_unfinished  # noqa: E402  (scripts may import the package, never the reverse)
+from pom.library import Circulation, ends_unfinished  # noqa: E402
+from pom.library.endings import ends_sentence  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.log_setup import configure_logging  # noqa: E402
 
+DEFAULT_OVERSIZE = 1.0       # a piece with no sentence end to cut at may run to this times the limit before it is dropped (1.0: the ceiling holds)
 LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
 READY = os.path.join(LIBRARY, "ready")
 OUT = os.path.join(LIBRARY, "passages")
@@ -59,10 +65,9 @@ OUT = os.path.join(LIBRARY, "passages")
 # Sentence ends: terminal punctuation (optionally closed by a quote or bracket), then a
 # capital, quote or digit. Abbreviations are rejoined afterwards.
 SENTENCE_BREAK = re.compile(
-    r"""(?:(?<=[.!?])|(?<=[.!?]["')\]]))\s+(?=["'(\[]?[A-Z0-9])""")
+    r"""(?:(?<=[.!?])|(?<=[.!?]["')\]])|(?<=[.!?]["')\]]["')\]])|(?<=[.!?]--)|(?<=[.!?]["')\]]--)|(?<=[.!?]--["')\]]))\s+(?=["'(\[]?[A-Z0-9])""")
 ABBREVIATION = re.compile(
     r"\b(?:Mr|Mrs|Ms|Dr|St|Mt|No|Co|Rev|Hon|Gen|Col|Capt|Lieut|Sir|vs|etc|viz|cf|[A-Z])\.$")
-CLAUSE_BREAK = re.compile(r"(?<=[;:])\s+|(?<=,)\s+")
 
 
 def words(text):
@@ -82,53 +87,29 @@ def split_sentences(text):
     return sentences
 
 
-def explode(unit, limit):
-    """Breaks one over-long unit into smaller ones: at clauses, then at word boundaries."""
-    if words(unit) <= limit:
-        return [unit]
-    clauses = [c for c in CLAUSE_BREAK.split(unit) if c.strip()]
-    if len(clauses) > 1:
-        return [piece for clause in clauses for piece in explode(clause, limit)]
-    return chunk_words(unit.split(), limit)
-
-
-def chunk_words(tokens, limit):
-    """Cuts a run of words into chunks of at most `limit`, never ending a chunk on "the", "of", a colon...
-
-    The last resort for one long sentence with no clause break. A chunk that would end unfinished (see
-    pom.library.endings) is cut a word or more earlier; the words are all kept, in order. A chunk is never
-    made shorter than one word, so this always finishes.
-    """
-    chunks, start = [], 0
-    while start < len(tokens):
-        end = min(start + limit, len(tokens))
-        while end < len(tokens) and end - start > 1 and ends_unfinished(" ".join(tokens[start:end])):
-            end -= 1
-        chunks.append(" ".join(tokens[start:end]))
-        start = end
-    return chunks
-
-
 def cut_evenly(units, limit, joiner):
-    """Groups consecutive units into near-equal pieces, each within `limit` words.
+    """Groups consecutive units into near-equal pieces, each within `limit` words, cutting only after a sentence end.
 
-    Tries k = ceil(total / limit) pieces, cutting at the unit boundary nearest each even
-    share of the total, which avoids a tiny leftover tail. If any piece still comes out
-    over the limit (a few very uneven units), falls back to filling greedily.
+    A cut falls only after a unit that ends a sentence (`ends_sentence`: a full stop, question mark or exclamation mark, then any
+    closing quotes or brackets), so no piece stops mid-thought. Tries k = ceil(total / limit) pieces, cutting at the allowed boundary
+    nearest each even share of the total, which avoids a tiny leftover tail. If a piece still comes out over the limit (a few very
+    uneven units), falls back to filling greedily. A run with no sentence end inside it is never cut, so a piece may come out over
+    the limit; the caller decides what to do with those.
     """
     sizes = [words(u) for u in units]
     total = sum(sizes)
     k = math.ceil(total / limit)
-    cuts, running, boundary = [], 0, {}
+    boundary, running = {}, 0
     for index, size in enumerate(sizes[:-1], start=1):
         running += size
-        boundary[index] = running
-    # Never cut after a unit that stops before its thought is done ("...is the", "...as follows:"): the oracle copies the
-    # ending of what it is shown. If every boundary is like that, any will do, and `build` drops what is left.
-    allowed = {i: n for i, n in boundary.items() if not ends_unfinished(units[i - 1])} or boundary
+        if ends_sentence(units[index - 1]):
+            boundary[index] = running
+    if not boundary:
+        return [joiner.join(units)]
+    cuts = []
     for j in range(1, k):
         goal = j * total / k
-        cuts.append(min(allowed, key=lambda i: (abs(allowed[i] - goal), i)))
+        cuts.append(min(boundary, key=lambda i: (abs(boundary[i] - goal), i)))
     cuts = sorted(set(cuts))
     edges = [0] + cuts + [len(units)]
     groups = [units[a:b] for a, b in zip(edges, edges[1:]) if b > a]
@@ -137,11 +118,11 @@ def cut_evenly(units, limit, joiner):
     pieces, current, size = [], [], 0
     for unit, n in zip(units, sizes):
         if current and (size + n > limit or size >= total / k):
-            carried = []                                    # an unfinished tail goes on into the next piece, not at the end of this
-            while len(current) > 1 and ends_unfinished(current[-1]):
-                carried.insert(0, current.pop())
-            pieces.append(joiner.join(current))
-            current, size = carried, sum(words(u) for u in carried)
+            last = max((i for i, u in enumerate(current) if ends_sentence(u)), default=None)
+            if last is not None:                            # cut after the last sentence end so far; the rest goes on into the next piece
+                pieces.append(joiner.join(current[:last + 1]))
+                current = current[last + 1:]
+                size = sum(words(u) for u in current)
         current.append(unit)
         size += n
     if current:
@@ -150,32 +131,17 @@ def cut_evenly(units, limit, joiner):
 
 
 def split_utterance(text, limit):
-    """Cuts an utterance over `limit` words into near-equal pieces at natural breaks.
+    """Cuts an utterance over `limit` words into near-equal pieces, only after a sentence end.
 
-    Units are lines when the text has line breaks (verse, wrapped ads), otherwise
-    sentences; a single over-long unit is first broken at clauses, then at words.
-    Returns (pieces, piece_count), where piece_count is None if no split was needed.
+    Units are lines when the text has line breaks (verse, wrapped text), otherwise sentences. Returns (pieces, piece_count), where
+    piece_count is None if no split was needed. A piece with no sentence end to cut at inside it comes out whole, over the limit.
     """
     if words(text) <= limit:
         return [text], None
-    by_lines = "\n" in text
-    units = text.split("\n") if by_lines else split_sentences(text)
-    units = [u for unit in units if unit.strip() for u in explode(unit, limit)]
+    by_lines = "\n" in text.strip()
+    units = [u for u in (text.split("\n") if by_lines else split_sentences(text)) if u.strip()]
     pieces = [p for p in cut_evenly(units, limit, "\n" if by_lines else " ") if p.strip()]
-    if flaws(pieces, limit):
-        # No line or sentence boundary avoids a piece that ends unfinished or runs over the limit (a run of lines that all end
-        # on "and", "of the"...). Cut the flowed text into near-equal chunks at words instead: every word is kept, never a chunk
-        # ending on "the"; only the line breaks are lost.
-        tokens = text.split()
-        flowed = chunk_words(tokens, math.ceil(len(tokens) / math.ceil(len(tokens) / limit)))
-        if flaws(flowed, limit) < flaws(pieces, limit):
-            pieces = flowed
     return pieces, len(pieces)
-
-
-def flaws(pieces, limit):
-    """How many pieces end unfinished or hold more than `limit` words."""
-    return sum(ends_unfinished(p) or words(p) > limit for p in pieces)
 
 
 def merge_short(texts, minimum, limit):
@@ -200,17 +166,20 @@ def merge_short(texts, minimum, limit):
 def read_utterances(path):
     """The utterances (blank-line-separated paragraphs) of a ready/ file."""
     with open(path, encoding="utf-8") as handle:
-        return [p for p in re.split(r"\n\s*\n", handle.read()) if p.strip()]
+        return [p.strip("\n") for p in re.split(r"\n\s*\n", handle.read()) if p.strip()]     # not the file's last newline: it would make prose look like verse
 
 
-def build(limit, minimum):
-    """Passages every approved holding. Returns (records_by_holding, stats)."""
+def build(limit, minimum, oversize=DEFAULT_OVERSIZE):
+    """Passages every approved holding. Returns (records_by_holding, stats).
+
+    A piece with no sentence end to cut at inside it can come out over `limit`; one over `oversize` times `limit` is dropped.
+    """
     manifest = {}
     with open(os.path.join(LIBRARY, "holdings.csv"), newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             if row["status"] == "approved":
                 manifest[row["id"]] = row
-    seen, records, stats = {}, {}, {"split": 0, "pieces": 0, "duplicates": 0, "unsplittable": 0, "unfinished": 0}
+    seen, records, stats = {}, {}, {"split": 0, "pieces": 0, "duplicates": 0, "over_limit": 0, "oversize": 0, "unfinished": 0}
     for path in sorted(os.path.join(READY, d, f)
                        for d in sorted(os.listdir(READY)) if os.path.isdir(os.path.join(READY, d))
                        for f in sorted(os.listdir(os.path.join(READY, d))) if f.endswith(".txt")):
@@ -228,6 +197,9 @@ def build(limit, minimum):
         texts = merge_short(texts, minimum, limit)
         out = []
         for text in texts:
+            if words(text) > limit * oversize:
+                stats["oversize"] += 1
+                continue
             if ends_unfinished(text):
                 stats["unfinished"] += 1
                 continue
@@ -236,7 +208,7 @@ def build(limit, minimum):
                 stats["duplicates"] += 1
                 continue
             if words(text) > limit:
-                stats["unsplittable"] += 1
+                stats["over_limit"] += 1
             record = {
                 "id": f"{holding}#{len(out):05d}", "holding": holding, "shelf": row["shelf"],
                 "text": text, "words": words(text),
@@ -279,7 +251,7 @@ def write(records):
                 os.remove(path)
 
 
-def report(records, stats, shares, limit, minimum):
+def report(records, stats, shares, limit, minimum, oversize=DEFAULT_OVERSIZE):
     """Prints counts, the length distribution, and the expected share of draws."""
     passages = [r for rs in records.values() for r in rs]
     lengths = sorted(c["words"] for c in passages)
@@ -288,7 +260,7 @@ def report(records, stats, shares, limit, minimum):
     print(f"{n} passages from {len(records)} holdings  (max {limit} words, "
           f"min-merge {'off' if minimum <= 0 else minimum})")
     print(f"split {stats['split']} long utterances into {stats['pieces']} pieces; "
-          f"dropped {stats['unfinished']} unfinished pieces and {stats['duplicates']} exact duplicates; {stats['unsplittable']} still over the limit")
+          f"dropped {stats['oversize']} pieces over {limit * oversize:g} words, {stats['unfinished']} unfinished pieces and {stats['duplicates']} exact duplicates; {stats['over_limit']} kept whole over the limit")
     print("words per passage, percentiles:", {p: pct(p / 100) for p in (5, 25, 50, 75, 95, 99)},
           f"max {lengths[-1]}")
     near = sum(1 for w in lengths if limit * 0.9 <= w <= limit)
@@ -305,15 +277,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--max-words", type=int, default=150)
     parser.add_argument("--min-words", type=int, default=0)
+    parser.add_argument("--oversize", type=float, default=DEFAULT_OVERSIZE, help="drop a piece with no sentence end to cut at that is more than this times --max-words")
     parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
     configure_logging("WARNING")
-    records, stats = build(args.max_words, args.min_words)
+    records, stats = build(args.max_words, args.min_words, args.oversize)
     shares = target_shares(records, args.circulation)
     if not args.check:
         write(records)
-    report(records, stats, shares, args.max_words, args.min_words)
+    report(records, stats, shares, args.max_words, args.min_words, args.oversize)
 
 
 if __name__ == "__main__":

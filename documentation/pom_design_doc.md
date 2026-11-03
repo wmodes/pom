@@ -537,10 +537,12 @@ Whether to start them depends on how far the prompted oracle model gets.
   passages (1.47%) end unfinished (918 on a colon, 144 on a word like "the" or "of"; `pom.library.endings` is the one definition). Two
   fixes, both on purpose: the Bibliomancer draws again when a pick lands on one (`[oracle] exemplar_redraws`, 50 tries a pick, 0 is off; the odds among
   the finished passages are unchanged), and the library pipeline no longer keeps them: `normalize.py` drops the utterances (1,004 in `ready/`,
-  across 55 holdings, verified to be only those), and the cataloguer's splitter no longer cuts a long utterance into a piece that ends that way:
-  it will not cut after an unfinished line, sentence or clause or chunk words on "the", and when no line or sentence cut can avoid it, it cuts
-  at words and keeps every word. 60 pieces that used to be cut badly are cut elsewhere and their text is back. That leaves 71,230 passages and none
-  unfinished (the cataloguer still drops any piece that ends that way as a backstop, and reports 0). The redraw stays as the safety net for any new holding. Verse and comma or semicolon endings are left alone.
+  across 55 holdings, verified to be only those), and the cataloguer cuts a long utterance ONLY AFTER A SENTENCE END (Wes's rule: a full stop,
+  question mark or exclamation mark, then any closing quotes or brackets and the dash some old books print after it; `ends_sentence`), so a passage
+  ends at a sentence end, at the end of its paragraph, or at the end of its record. Clause and word cuts are gone. A stretch with no sentence end is
+  never cut, and a piece over the 150-word ceiling is dropped (230 pieces, 0.3% of the library, mostly Shakespeare's verse speeches whose lines rarely
+  end on a full stop, and a few very long 19th-century sentences); `--oversize 1.5` would keep those up to 225 words whole (186 of them). That leaves about 70,900 passages and none unfinished (the cataloguer
+  still drops any piece that ends unfinished as a backstop, and reports 0). The redraw stays as the safety net for any new holding. Verse and comma or semicolon endings are left alone.
 - (open) Equal shelf shares make small shelves repeat. A simulation showed repeats are negligible over an evening
   (0.1%) and matter over months; a recency decay was prototyped and deliberately left out.
 - Adding material: `adding-material.md`. How the standardizer works and what went wrong: `library-notes.md`.

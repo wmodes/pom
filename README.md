@@ -91,7 +91,7 @@ To change something for one machine only, put it in `config/pom.local.toml`. It 
 
 `library/` holds what the oracle may say: 81 holdings on 14 shelves (divination, wisdom, poetry, drama, humor, horoscope, manual, prophecy, epitaph, aphorism, rhyme, spiritualism, news, nonsense). A shelf is what the oracle might say, not where a text came from. Everything is built by scripts from one manifest, [`library/holdings.csv`](library/holdings.csv), so it can be rebuilt exactly. Most holdings are public domain; a few are not, and were cleared by the project owner (see [`library/README.md`](library/README.md)). How often each shelf and holding is drawn is set in one hand-edited file, `library/passages/circulation.json`.
 
-Passages that stop before their thought is done, such as a lead-in ending on a colon, are kept out: the oracle copies the ending of what it is shown, and so a cut-off exemplar made a cut-off portent.
+A passage never stops mid-thought: long texts are cut only after a full stop, question mark or exclamation mark, and a passage that would end on a colon or a dangling "the" is kept out. The oracle copies the ending of what it is shown, and a cut-off exemplar once made a cut-off portent.
 
 ## Repository map
 

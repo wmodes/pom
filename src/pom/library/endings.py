@@ -26,6 +26,12 @@ DANGLING_WORDS = frozenset({
 
 _TRAILING_NON_WORD = re.compile(r"\W+$")
 
+# A sentence ENDS at a full stop, question mark or exclamation mark, then any closing quotes or brackets, and the dash some old books print
+# after it: .   ?   !   ."   .'   ?"   !'"   .)   .")   .--   ."--   ?!   ...   Unlike CLOSING_MARKS this wants the stop: a quotation
+# that ends on a bare closing quote is not a sentence end.
+_CLOSERS = "'\")\\]\u201d\u2019"
+SENTENCE_END = re.compile(rf"[.!?]+[{_CLOSERS}]*(?:--+|\u2014)?[{_CLOSERS}]*\s*$")
+
 
 def ends_unfinished(text: str) -> bool:
     """True if the text stops before its thought is done (see the module docstring).
@@ -45,3 +51,12 @@ def ends_unfinished(text: str) -> bool:
         return True
     words = _TRAILING_NON_WORD.sub("", stripped).split()       # "and then the --" and "and then the," both end on "the"
     return bool(words) and words[-1].lower() in DANGLING_WORDS
+
+
+def ends_sentence(text: str) -> bool:
+    """True if the text ends at a sentence end: . ! or ? followed by any closing quotes or brackets and an optional dash.
+
+    This is the rule the library's cataloguer cuts by: a long passage is cut only after a sentence end, so no piece it makes can stop
+    mid-thought. Not a string, or empty, is False.
+    """
+    return isinstance(text, str) and SENTENCE_END.search(text) is not None

@@ -52,7 +52,8 @@ released yet, so everything is under Unreleased. Update this file in the same co
   passages, `library/passages/circulation.json`, `holdings.csv`), *clip*, *room tone*, *track split*, *Eavesdropper*, *TakeCutter*, *BarKeeper* and *qualifying* (a score *qualifies*; the section "The Trigger" is
   "Qualifying" and "Triggers we tried" is "Bar rules we tried"), *Printing* and the new package folders (`library/`, `listening/`, `scoring/`, `qualifying/`, `conductor/`, `keyboard/`, `writing/`, `printing/`),
   and their module-layout blocks match the real tree. The history of what was tried and why is kept; only the words changed (`trigger_fraction`, a retired setting, keeps its name, and *corpus* stays where it
-  means `wordfreq`'s). The lexicon's "Orig text" blocks, kept for cross-reference while the code was renamed, are deleted.
+  means `wordfreq`'s). The lexicon's "Orig text" blocks, kept for cross-reference while the code was renamed, are deleted. Every other file in `documentation/`, the READMEs and the file paths they name were
+  checked too; three stray words are fixed (`model-bakeoff.md`, `pi-setup-notes.md`, `bakeoff-rubric.md`).
 - **The Great Rename, words (9): form is shelf, weights are circulation**: the `form` column of `library/holdings.csv` is `shelf` (and `library.py add --form` is `--shelf`, `<form>` in the folder layout is `<shelf>`, the `mix`
   table says "by shelf"), and the `--weights` flags of `cataloguer.py`, `circulation.py` and `sample.py` are `--circulation`. The "weights file" in messages, docstrings and docs is the *circulation file*, and the
   tests' `weights` variables (always a `Circulation`) are `circulation`. A *holding weight* stays, as the lexicon says. One slip from the word pass is undone: `validate_output.py` says "not obvious source" again

@@ -158,7 +158,7 @@ llama.cpp is the *runtime*, not a model; it runs Llama, Qwen, Gemma, Phi and oth
 
 The Pi has a real clone of the (public) repo at `~/pom`, so the layout matches the Mac and code arrives with
 `git pull`; there is no deploy script. A clone is small: about 57 MB, with 16 MB of history, of which the
-corpus is nearly all (the heavy folders `data/` and `library/raw` are gitignored and not in a clone).
+library is nearly all (the heavy folders `data/` and `library/raw` are gitignored and not in a clone).
 
 ```bash
 git clone https://github.com/wmodes/pom.git ~/pom        # once

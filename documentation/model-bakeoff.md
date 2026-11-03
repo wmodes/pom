@@ -13,7 +13,7 @@ blind to the model, and have not yet been spot-checked by Wes (see "How far to t
 - On the Mac, one model at a time, through the real PromptBuilder and OracleModelClient, so what was seen is what
   the Printer will do. Q4_K_M for all, thinking mode off.
 - **Frozen:** Wes's oracle prompt (the "passage" prompt with the style example and the theme, in the config),
-  temperature 0.3, one exemplar per portent, at most 300 tokens, the corpus and its draw weights.
+  temperature 0.3, one exemplar per portent, at most 300 tokens, the library and its draw weights.
 - **The benchmark:** 16 hinges (8 typed by Wes, 8 drawn at random from the scorer's sample sentences), 10 draws of
   exemplars per hinge, each portent made once: 160 per model, 1,120 in all. A draw is a seed, so every model saw
   the same 160 hinge-and-exemplar pairs.

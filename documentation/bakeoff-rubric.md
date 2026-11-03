@@ -14,7 +14,7 @@ If a model gave no portent at all (it failed or timed out), that portent is a no
    may go somewhere else with it (a metaphor, a consequence, a warning, one detail dwelt on), but it could not
    have been written without seeing the hinge. *No* if it is about something else, or only the exemplar's subject.
 2. **Follows the style.** It has the exemplar's form and tone: verse stays verse, a one-line maxim stays a maxim,
-   a fortune stays a fortune, an old register stays old. *No* if it is plain modern prose when the exemplar is
+   a fortune stays a fortune, an old style stays old. *No* if it is plain modern prose when the exemplar is
    not, or it ignores the layout.
 3. **Doesn't repeat the hinge.** *Checked by program first:* *no* if the portent has an unbroken run of five of
    the hinge's words (or 60% of them, if the hinge is shorter). *Read afterwards:* also *no* if the portent

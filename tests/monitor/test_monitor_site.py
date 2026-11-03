@@ -661,22 +661,14 @@ class TestRunningForReal:
         finally:
             site.stop()
 
-    def test_the_pages_polling_leaves_no_line_in_the_log_or_on_the_console(self, caplog, capfd):
-        with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"), caplog.at_level(logging.DEBUG, logger="werkzeug"):
-            self.poll_once()                                                    # even with the loggers turned all the way up
-        seen = capfd.readouterr()
-        assert "/api/turns" not in seen.out + seen.err
-        assert not [r for r in caplog.records if "/api/turns" in r.getMessage()]
-
-    @pytest.mark.parametrize("flag", [None, False])
-    def test_only_an_explicit_true_shows_requests_not_even_the_project_debug_flag(self, flag, caplog, monkeypatch):
-        monkeypatch.setattr("pom.monitor.monitor_site.DEBUG", flag)
-        with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"):
+    def test_the_pages_polling_leaves_no_line_in_the_log_or_on_the_console_at_info(self, caplog, capfd):
+        with caplog.at_level(logging.INFO, logger="pom.monitor.monitor_site"):
             self.poll_once()
+        seen = capfd.readouterr()
+        assert "/api/turns" not in seen.out + seen.err                          # not werkzeug's own line on the console either
         assert not [r for r in caplog.records if "/api/turns" in r.getMessage()]
 
-    def test_with_the_modules_debug_flag_on_each_request_is_one_debug_line_from_this_module(self, caplog, capfd, monkeypatch):
-        monkeypatch.setattr("pom.monitor.monitor_site.DEBUG", True)
+    def test_at_debug_each_request_is_one_debug_line_from_this_module_and_nothing_else(self, caplog, capfd):
         with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"):
             self.poll_once()
         lines = [r for r in caplog.records if r.name == "pom.monitor.monitor_site" and "/api/turns" in r.getMessage()]

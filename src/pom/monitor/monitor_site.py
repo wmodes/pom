@@ -43,21 +43,21 @@ from pom.monitor.score_chart import DEFAULT_SECONDS as CHART_SECONDS, render_sco
 from pom.monitor.score_trace import ScoreTrace
 from pom.monitor.turn_history import TurnHistory, TurnRecord
 
-DEBUG = None   # None follows the project debug flag; True/False overrides it for this module (the page's per-request lines need True)
+DEBUG = None   # None follows the project debug flag; True/False overrides it for this module 
 _log = get_logger(__name__, DEBUG)
 
 
 class _PollingRequestHandler(WSGIRequestHandler):
-    """werkzeug's request handler, except that the line it prints for every request is shown only when this module's DEBUG is True.
+    """werkzeug's request handler, except that the line it prints for every request goes through this module's logger, at DEBUG.
 
-    The page asks `/api/turns` and `/chart.svg` every few seconds for as long as it is open, so a line for each request buries
-    everything else in the log, even with the project's debug flag on. With `DEBUG = True` above they come back, as DEBUG lines
-    from this module's logger (the path and the status; no text of any turn). Problems werkzeug reports itself are not touched.
+    The page asks `/api/turns` and `/chart.svg` every few seconds for as long as it is open. werkzeug prints a line for each straight
+    to the console, whatever the logging settings say, which buries everything else. As a DEBUG line from this module's logger it
+    follows the usual rules: hidden at INFO, shown when this module (or the whole project) is at DEBUG. The line holds the path and
+    the status, no text of any turn. Problems werkzeug reports itself are not touched.
     """
 
     def log_request(self, code="-", size="-"):
-        if DEBUG is True:
-            _log.debug('%s "%s" %s', self.address_string(), self.requestline, code)
+        _log.debug('%s "%s" %s', self.address_string(), self.requestline, code)
 
 REALM = "Printer of Mysteries"
 POLL_SECONDS = 5

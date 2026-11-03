@@ -45,6 +45,17 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Conductor, the entry point and `[conductor]`** (the Conductor is finished): `python -m pom` (`src/pom/printer.py`, `__main__.py`) builds every part from one `Config` and runs the `Conductor`
+  (`src/pom/conductor/conductor.py`) on four ordinary threads: the room (HingeFinder), the keyboard (KeyboardWatcher), the turn (TurnTaker, one at a time) and the watcher. First come, first served for the floor; the ears
+  shut the moment it is taken and open again because the watching thread looks at the floor every second (level-triggered, so a turn that ends any way, the watchdog's included, cannot leave the Printer deaf); a microphone
+  that is unplugged ends the room and a fresh one is built (the BarKeeper and scorer shared) after `restart_pause_seconds`; a recording ends the run; a thread that dies is started again. It starts whatever state the
+  world is in: a server that is not up yet, a monitoring site without a password or on a taken port, or an absent printer are lines in the log, not a stop; SIGTERM and ctrl-C stop it cleanly. New `[conductor]`
+  settings in `Config` and `config/pom.toml` (the watchdog's limits, the freshness of a portent, the oracle retries, the restart and check times), checked against the settings they depend on (a warning when a watchdog is
+  shorter than what it watches, or the printing limit shorter than the longest portent at the typewriter's pace), and `[terminal] mode` (`serial`, `console` or `none`). Options: `--wav`, `--speed`, `--mac-mic`,
+  `--terminal`, `--no-keyboard`, `--config`. Burn-tested on the Mac with the real servers (long runs, the oracle killed and restored, whisper down at the start, SIGTERM mid-turn) and with a pseudo-terminal opened by the
+  real pyserial as a stand-in typewriter (unplugged mid-portent and replugged under another name: resumed at the exact character; a printer absent at the start; a line typed on its keyboard); details in the design doc.
+  The burn tests found one bug the unit tests could not: `main` read the wrong options field (fixed with a test). A draft systemd unit is in `pi-setup-notes.md` (not installed). The mutation-test helper now treats a
+  hang as caught. 45 Conductor tests, 44 entry-point tests and about 30 config tests; about 50 mutants checked (the survivors showed a redundant guard, a budget rule that ignored the pause, and weak tests: all fixed). 3,029 tests pass.
 - **The KeyboardWatcher** (`src/pom/conductor/keyboard_watcher.py`; fifth leaf of the Conductor): the typed-line twin of the HingeFinder. `watch()` reads each finished line from the terminal, has the TypedLineScorer score it
   and the BarKeeper rule on it, and yields the `Attempt`. It has the Eavesdropper's `pause()` and `skip_ahead()` (a line finished during a turn is read and dropped unscored, counted in `dropped_lines`), skips empty
   lines, and survives a terminal or scorer that raises (a warning naming the error type, a short pause, on); only `close()` ends it. Nothing typed is logged. 36 tests; 12 mutants checked (three of them make `watch()` never

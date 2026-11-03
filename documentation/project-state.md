@@ -39,9 +39,11 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   microphone or a recording through the Eavesdropper, Scorer and BarKeeper), `scoring/score_typed_sentences.py` (type sentences, see scores and
   the BarKeeper's ruling), `scoring/score_typed_lines.py` (the typed-line path: score, handicap, answer or silence), `writing/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
   live from the microphone, `--mac-mic` on a Mac).
-- **Not built yet:** the Conductor (including the wiring of typed lines),
-  the entry point, the paper guards, "failing loudly", and the Printer running as a service on the Pi. Track B (the fine-tuned
-  oracle) and the curated hinge pairs have not been started.
+- **The Conductor and the entry point are built** (2026-11-02): `python -m pom` runs the whole Printer (see the design doc, "The Conductor"),
+  burn-tested on the Mac with real servers; only the real typewriter and the Pi's services are not yet tried together.
+- **Not built yet:** the monitoring site's printer status line and per-turn outcome (they need a preview and Wes's say), the systemd units on the Pi,
+  the paper guards, "failing loudly", and a full startup check (`startup.py`'s steps are still placeholders). Track B (the fine-tuned oracle)
+  and the curated hinge pairs have not been started.
 
 ## The rules we work by
 
@@ -270,12 +272,11 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    lyrics hears about two seconds, not ten (see the design doc).
 2. **The Printing side:** the "stop listening while printing" signal belongs to the Conductor. (The `TerminalPort` is built too: paced serial, flow control, CR+LF, keyboard lines back with echoplex; config `[terminal]`; tested on fakes only, not yet on the machine. The `PortentFormatter` is built:
    fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[printing]` line width, `linefeeds_after_portent` line feeds at the end.)
-3. **The Conductor,** with the half-duplex state and its watchdog; the hand-off of the qualifying sentence to the
-   PromptBuilder; the entry point; the startup duties in `startup.py` (mic gain, scorer warm-up, checks for whisper, the
-   oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script (Wes's idea: fast-forward
-   pull only, refuse on a dirty tree, install dependencies only if they changed, check the new config before touching the
-   running service, skip the restart for docs-only changes, then show the startup "ready" line); that needs an entry point,
-   a systemd unit and a Pi virtualenv.
+3. **The service on the Pi.** The Conductor and the entry point are built (`python -m pom`) and the Pi has its virtualenv
+   (`/home/pi/envs/pom`). What is left: the systemd units (a draft is in `pi-setup-notes.md`), the startup duties in `startup.py` (mic gain,
+   scorer warm-up, checks for whisper, the oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script
+   (Wes's idea: fast-forward pull only, refuse on a dirty tree, install dependencies only if they changed, check the new config before
+   touching the running service, skip the restart for docs-only changes, then show the startup "ready" line).
 4. **Paper guards** (nothing qualifies unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour
    and 60 a day; proposed values) and **"failing loudly"** (Wes, 2026-10-24): if the scorer model or the oracle model is
    down, the Printer can never respond, and a log line is not loud when someone is switching a printer on. Decide what loud

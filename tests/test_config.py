@@ -956,16 +956,16 @@ def test_the_terminal_defaults_are_the_cadetwriters_own():
     assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("/dev/ttyACM0", 9600, "xon_xoff", "crlf")
     assert (terminal.characters_per_second, terminal.finish_wait_seconds) == (16.0, 2.0)
     assert (terminal.echoplex, terminal.type_during_printing) == (True, False)
-    assert (terminal.stall_patience_seconds, terminal.reconnect_seconds) == (600.0, 2.0)
+    assert (terminal.stall_patience_seconds, terminal.reconnect_seconds, terminal.mode) == (600.0, 2.0, "serial")
 
 
 def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     from pom.config import TerminalSettings
     text = ('[terminal]\nport = "/dev/ttyUSB0"\nbaud = 115200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
             "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_printing = true\n"
-            "stall_patience_seconds = 90\nreconnect_seconds = 0.5\n")
+            "stall_patience_seconds = 90\nreconnect_seconds = 0.5\nmode = \"console\"\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True, 90.0, 0.5) \
+    assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True, 90.0, 0.5, "console") \
         and config.report.ok
 
 
@@ -974,6 +974,7 @@ def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     ("end_of_line", '"newline"'), ("characters_per_second", "0"), ("characters_per_second", '"fast"'),
     ("finish_wait_seconds", "-1"), ("finish_wait_seconds", "true"), ("echoplex", '"maybe"'), ("type_during_printing", "3"),
     ("stall_patience_seconds", "0"), ("stall_patience_seconds", '"long"'), ("reconnect_seconds", "-2"), ("reconnect_seconds", "true"),
+    ("mode", '"paper"'), ("mode", "3"),
 ])
 def test_a_bad_terminal_value_means_the_default_with_a_warning(tmp_path, key, value):
     from pom.config import TerminalSettings
@@ -1005,7 +1006,7 @@ def test_the_committed_config_sets_every_terminal_key():
     with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
         section = tomllib.load(f)["terminal"]
     assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
-                            "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds"}
+                            "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds", "mode"}
 
 
 def test_a_config_built_without_terminal_settings_has_the_defaults():
@@ -1018,3 +1019,115 @@ def test_a_bad_flag_falls_back_to_that_flags_own_default_with_the_right_word_in_
     assert config.terminal.echoplex is True and config.monitor.enabled is False
     assert any("terminal.echoplex" in w and "using true" in w for w in config.report.warnings)
     assert any("monitor.enabled" in w and "using false" in w for w in config.report.warnings)
+
+
+# --- The [conductor] section ---------------------------------------------------------------
+
+CONDUCTOR_KEYS = ("writing_seconds", "printing_seconds", "recovering_seconds", "freshness_seconds", "write_attempts", "write_pause_seconds",
+                  "write_budget_seconds", "print_pause_seconds", "restart_pause_seconds", "check_seconds")
+
+
+def test_the_conductor_defaults_err_long():
+    from pom.config import ConductorSettings
+    config = Config.load(write_nothing_in(), environ={})
+    assert config.conductor == ConductorSettings() and config.report.ok
+    c = config.conductor
+    assert (c.writing_seconds, c.printing_seconds, c.recovering_seconds, c.freshness_seconds) == (300.0, 180.0, 3.0, 360.0)
+    assert (c.write_attempts, c.write_pause_seconds, c.write_budget_seconds, c.print_pause_seconds) == (3, 10.0, 270.0, 10.0)
+    assert (c.restart_pause_seconds, c.check_seconds) == (5.0, 1.0)
+
+
+def write_nothing_in():
+    return Path("/nonexistent/pom.toml")
+
+
+def test_all_the_conductor_values_are_read_from_the_section(tmp_path):
+    from pom.config import ConductorSettings
+    text = ("[conductor]\nwriting_seconds = 500\nprinting_seconds = 400\nrecovering_seconds = 0\nfreshness_seconds = 120\n"
+            "write_attempts = 5\nwrite_pause_seconds = 0\nwrite_budget_seconds = 450\nprint_pause_seconds = 2\n"
+            "restart_pause_seconds = 0\ncheck_seconds = 0.25\n")
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.conductor == ConductorSettings(500.0, 400.0, 0.0, 120.0, 5, 0.0, 450.0, 2.0, 0.0, 0.25) and config.report.ok
+
+
+@pytest.mark.parametrize("key, value", [
+    ("writing_seconds", "0"), ("writing_seconds", '"long"'), ("printing_seconds", "-1"), ("recovering_seconds", "-1"),
+    ("recovering_seconds", "true"), ("freshness_seconds", "0"), ("write_attempts", "0"), ("write_attempts", "2.5"),
+    ("write_attempts", '"3"'), ("write_pause_seconds", "-1"), ("write_budget_seconds", "0"), ("print_pause_seconds", "0"),
+    ("restart_pause_seconds", "-1"), ("check_seconds", "0"), ("check_seconds", "true"),
+])
+def test_a_bad_conductor_value_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import ConductorSettings
+    config = Config.load(write(tmp_path, f"[conductor]\n{key} = {value}\n"), environ={})
+    assert config.conductor == ConductorSettings()
+    assert len(config.report.warnings) == 1 and f"conductor.{key}" in config.report.warnings[0]
+
+
+def test_the_committed_config_sets_every_conductor_key_and_fits_its_own_limits():
+    import tomllib
+    path = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
+    with open(path, "rb") as f:
+        section = tomllib.load(f)["conductor"]
+    assert set(section) == set(CONDUCTOR_KEYS)
+    assert Config.load(path, environ={}).report.ok                      # no warning: the shipped limits fit the shipped settings
+
+
+def test_the_conductor_defaults_in_the_code_are_the_ones_the_parts_use():
+    from pom import config as settings
+    from pom.conductor import floor_keeper, turn_taker
+    from pom.conductor import conductor
+    assert (settings.DEFAULT_CONDUCTOR_WRITING_SECONDS, settings.DEFAULT_CONDUCTOR_PRINTING_SECONDS,
+            settings.DEFAULT_CONDUCTOR_RECOVERING_SECONDS) == (floor_keeper.DEFAULT_WRITING_SECONDS, floor_keeper.DEFAULT_PRINTING_SECONDS,
+                                                               floor_keeper.DEFAULT_RECOVERING_SECONDS)
+    assert (settings.DEFAULT_CONDUCTOR_FRESHNESS_SECONDS, settings.DEFAULT_CONDUCTOR_WRITE_ATTEMPTS, settings.DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS,
+            settings.DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS, settings.DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS) == (
+        turn_taker.DEFAULT_FRESHNESS_SECONDS, turn_taker.DEFAULT_WRITE_ATTEMPTS, turn_taker.DEFAULT_WRITE_PAUSE_SECONDS,
+        turn_taker.DEFAULT_WRITE_BUDGET_SECONDS, turn_taker.DEFAULT_PRINT_PAUSE_SECONDS)
+    assert (settings.DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS, settings.DEFAULT_CONDUCTOR_CHECK_SECONDS) == (
+        conductor.DEFAULT_RESTART_PAUSE_SECONDS, conductor.DEFAULT_CHECK_SECONDS)
+
+
+class TestTheLimitsFitTheirSettings:
+    """A watchdog shorter than what it watches cuts off healthy turns, so the limits are checked against the settings they depend on."""
+
+    def warnings(self, tmp_path, text):
+        return Config.load(write(tmp_path, text), environ={}).report.warnings
+
+    def test_a_writing_limit_not_longer_than_the_oracle_timeout_is_warned_about(self, tmp_path):
+        warnings = self.warnings(tmp_path, "[oracle]\ntimeout = 300\n[conductor]\nwriting_seconds = 300\n")
+        assert any("conductor.writing_seconds (300) should be longer than oracle.timeout (300)" in w for w in warnings)
+
+    def test_a_writing_limit_longer_than_the_oracle_timeout_is_fine(self, tmp_path):
+        assert self.warnings(tmp_path, "[oracle]\ntimeout = 100\n[conductor]\nwriting_seconds = 300\n") == []
+
+    def test_a_budget_not_shorter_than_the_writing_limit_is_warned_about(self, tmp_path):
+        warnings = self.warnings(tmp_path, "[conductor]\nwriting_seconds = 300\nwrite_budget_seconds = 300\n")
+        assert any("write_budget_seconds (300) should be shorter than conductor.writing_seconds (300)" in w for w in warnings)
+
+    def test_a_budget_shorter_than_the_oracle_timeout_is_warned_about(self, tmp_path):
+        warnings = self.warnings(tmp_path, "[conductor]\nwrite_budget_seconds = 100\n")
+        assert any("so no second attempt to write can ever fit" in w for w in warnings)
+
+    def test_a_second_attempt_needs_the_pause_as_well_as_a_whole_attempt(self, tmp_path):
+        base = "[oracle]\ntimeout = 240\n[conductor]\nwrite_pause_seconds = 10\nwriting_seconds = 400\n"
+        assert any("can ever fit" in w for w in self.warnings(tmp_path, base + "write_budget_seconds = 249\n"))
+        assert not any("can ever fit" in w for w in self.warnings(tmp_path, base + "write_budget_seconds = 250\n"))
+
+    def test_a_printing_limit_shorter_than_the_longest_portent_is_warned_about(self, tmp_path):
+        warnings = self.warnings(tmp_path, "[conductor]\nprinting_seconds = 60\n")
+        assert any("printing_seconds (60) is shorter than the time to type the longest portent (94 s for 300 tokens" in w for w in warnings)
+
+    def test_a_slow_typewriter_makes_the_printing_limit_too_short(self, tmp_path):
+        warnings = self.warnings(tmp_path, "[terminal]\ncharacters_per_second = 4\n")
+        assert any("conductor.printing_seconds" in w for w in warnings)
+
+    def test_with_no_printer_the_printing_limit_does_not_matter(self, tmp_path):
+        assert self.warnings(tmp_path, '[terminal]\nmode = "none"\n[conductor]\nprinting_seconds = 1\n') == []
+
+    def test_the_values_are_kept_as_given(self, tmp_path):
+        config = Config.load(write(tmp_path, "[oracle]\ntimeout = 300\n[conductor]\nwriting_seconds = 100\n"), environ={})
+        assert config.conductor.writing_seconds == 100.0 and config.oracle.timeout == 300.0
+
+    def test_a_config_built_without_conductor_settings_has_the_defaults(self):
+        from pom.config import ConductorSettings
+        assert Config().conductor == ConductorSettings()

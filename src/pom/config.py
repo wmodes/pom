@@ -37,6 +37,9 @@ of being threaded through by hand. Today there are five:
                print wheel's characters per inch give the line width; `quote_indent` indents a quotation and
                `linefeeds_after_portent` is how far the paper moves on after a portent, and
                `keep_composed_characters` and `ascii_printwheel` say which characters most wheels lack are typed as they are.
+    [conductor] A section (see ConductorSettings): how a turn is run and how long each part may take (the watchdog's limits, how
+               long a portent stays worth printing, how often to ask the oracle again). Every limit errs long on purpose, and
+               the limits are checked against the settings they depend on (a warning, never a change).
     [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
                baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
                (`echoplex`, `type_during_printing`). The entry point builds the
@@ -92,7 +95,10 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
          "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_printing",
-         "terminal.stall_patience_seconds", "terminal.reconnect_seconds"}
+         "terminal.stall_patience_seconds", "terminal.reconnect_seconds", "terminal.mode",
+         "conductor.writing_seconds", "conductor.printing_seconds", "conductor.recovering_seconds", "conductor.freshness_seconds",
+         "conductor.write_attempts", "conductor.write_pause_seconds", "conductor.write_budget_seconds",
+         "conductor.print_pause_seconds", "conductor.restart_pause_seconds", "conductor.check_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 15.0
@@ -157,6 +163,18 @@ DEFAULT_TERMINAL_ECHOPLEX = True
 DEFAULT_TERMINAL_TYPE_DURING_PRINTING = False
 DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS = 600.0
 DEFAULT_TERMINAL_RECONNECT_SECONDS = 2.0
+DEFAULT_TERMINAL_MODE = "serial"
+TERMINAL_MODES = ("serial", "console", "none")
+DEFAULT_CONDUCTOR_WRITING_SECONDS = 300.0
+DEFAULT_CONDUCTOR_PRINTING_SECONDS = 180.0
+DEFAULT_CONDUCTOR_RECOVERING_SECONDS = 3.0
+DEFAULT_CONDUCTOR_FRESHNESS_SECONDS = 360.0
+DEFAULT_CONDUCTOR_WRITE_ATTEMPTS = 3
+DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS = 10.0
+DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS = 270.0
+DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS = 10.0
+DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS = 5.0
+DEFAULT_CONDUCTOR_CHECK_SECONDS = 1.0
 MIN_PRINTING_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -382,6 +400,8 @@ class TerminalSettings:
         stall_patience_seconds: Once a portent is being typed, how long to wait for a typewriter that stopped taking characters
             (held, out of paper) or went away (unplugged), above 0. It goes on where it stopped when it comes back.
         reconnect_seconds: How often a lost port is tried again, above 0.
+        mode: "serial" (the real typewriter, the default), "console" (types on the screen at the same pace, for development) or
+            "none" (no printer: a turn is write, record, done, so the Printer can be watched with nothing attached).
     """
     port: str = DEFAULT_TERMINAL_PORT
     baud: int = DEFAULT_TERMINAL_BAUD
@@ -393,6 +413,38 @@ class TerminalSettings:
     type_during_printing: bool = DEFAULT_TERMINAL_TYPE_DURING_PRINTING
     stall_patience_seconds: float = DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS
     reconnect_seconds: float = DEFAULT_TERMINAL_RECONNECT_SECONDS
+    mode: str = DEFAULT_TERMINAL_MODE
+
+
+@dataclass(frozen=True)
+class ConductorSettings:
+    """The `[conductor]` section: how a turn is run, and how long each part of it may take. Every limit errs long on purpose.
+
+    Attributes:
+        writing_seconds: The watchdog's limit for the oracle model to write one portent. Must be longer than `oracle.timeout`.
+        printing_seconds: The watchdog's limit for formatting and typing one portent, waiting for the printer included (the wait sends a
+            heartbeat, which restarts this clock). Must cover the longest portent at the terminal's pace.
+        recovering_seconds: How long the ears stay shut after a turn, for the terminal's last sounds to die away. 0 or more.
+        freshness_seconds: How long after a hinge its portent is still worth printing; a portent that waits longer for the printer is
+            dropped (the room has moved on).
+        write_attempts: The most times to ask the oracle for a portent in one turn, a whole number of at least 1.
+        write_pause_seconds: The wait between two attempts to write. 0 or more.
+        write_budget_seconds: The time all the writing in a turn may take; another attempt is made only if a whole one still fits.
+            Keep it under `writing_seconds`.
+        print_pause_seconds: The wait between two tries at a terminal that cannot print yet.
+        restart_pause_seconds: The wait before the room (a microphone that stopped) or the keyboard is started again. 0 or more.
+        check_seconds: How often the Conductor looks at the floor to open the ears again and at its threads.
+    """
+    writing_seconds: float = DEFAULT_CONDUCTOR_WRITING_SECONDS
+    printing_seconds: float = DEFAULT_CONDUCTOR_PRINTING_SECONDS
+    recovering_seconds: float = DEFAULT_CONDUCTOR_RECOVERING_SECONDS
+    freshness_seconds: float = DEFAULT_CONDUCTOR_FRESHNESS_SECONDS
+    write_attempts: int = DEFAULT_CONDUCTOR_WRITE_ATTEMPTS
+    write_pause_seconds: float = DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS
+    write_budget_seconds: float = DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS
+    print_pause_seconds: float = DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS
+    restart_pause_seconds: float = DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS
+    check_seconds: float = DEFAULT_CONDUCTOR_CHECK_SECONDS
 
 
 class Config:
@@ -411,6 +463,7 @@ class Config:
         monitor: The `[monitor]` section, as a MonitorSettings.
         printing: The `[printing]` section, as a PrintingSettings.
         terminal: The `[terminal]` section, as a TerminalSettings.
+        conductor: The `[conductor]` section, as a ConductorSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -419,7 +472,8 @@ class Config:
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  qualifying: Optional[QualifyingSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
-                 printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None):
+                 printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
+                 conductor: Optional[ConductorSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
@@ -428,6 +482,7 @@ class Config:
         self.monitor = monitor if monitor is not None else MonitorSettings()
         self.printing = printing if printing is not None else PrintingSettings()
         self.terminal = terminal if terminal is not None else TerminalSettings()
+        self.conductor = conductor if conductor is not None else ConductorSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -613,9 +668,58 @@ class Config:
             _positive(values.get("terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS),
                       "terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, report),
             _positive(values.get("terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS),
-                      "terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS, report))
+                      "terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS, report),
+            _choice(values.get("terminal.mode", DEFAULT_TERMINAL_MODE), "terminal.mode", DEFAULT_TERMINAL_MODE, TERMINAL_MODES, report))
+        conductor = ConductorSettings(
+            _positive(values.get("conductor.writing_seconds", DEFAULT_CONDUCTOR_WRITING_SECONDS), "conductor.writing_seconds",
+                      DEFAULT_CONDUCTOR_WRITING_SECONDS, report),
+            _positive(values.get("conductor.printing_seconds", DEFAULT_CONDUCTOR_PRINTING_SECONDS), "conductor.printing_seconds",
+                      DEFAULT_CONDUCTOR_PRINTING_SECONDS, report),
+            _number(values.get("conductor.recovering_seconds", DEFAULT_CONDUCTOR_RECOVERING_SECONDS), "conductor.recovering_seconds",
+                    DEFAULT_CONDUCTOR_RECOVERING_SECONDS, 0.0, report),
+            _positive(values.get("conductor.freshness_seconds", DEFAULT_CONDUCTOR_FRESHNESS_SECONDS), "conductor.freshness_seconds",
+                      DEFAULT_CONDUCTOR_FRESHNESS_SECONDS, report),
+            _whole(values.get("conductor.write_attempts", DEFAULT_CONDUCTOR_WRITE_ATTEMPTS), "conductor.write_attempts",
+                   DEFAULT_CONDUCTOR_WRITE_ATTEMPTS, 1, report),
+            _number(values.get("conductor.write_pause_seconds", DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS), "conductor.write_pause_seconds",
+                    DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS, 0.0, report),
+            _positive(values.get("conductor.write_budget_seconds", DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS),
+                      "conductor.write_budget_seconds", DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS, report),
+            _positive(values.get("conductor.print_pause_seconds", DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS), "conductor.print_pause_seconds",
+                      DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS, report),
+            _number(values.get("conductor.restart_pause_seconds", DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS),
+                    "conductor.restart_pause_seconds", DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS, 0.0, report),
+            _positive(values.get("conductor.check_seconds", DEFAULT_CONDUCTOR_CHECK_SECONDS), "conductor.check_seconds",
+                      DEFAULT_CONDUCTOR_CHECK_SECONDS, report))
+        _check_the_limits_fit(conductor, oracle, terminal, report)
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
-                   printing, terminal)
+                   printing, terminal, conductor)
+
+
+# A portent is at most this many characters per token (4 is typical English; 5 leaves room), for the printing time worked out below.
+_CHARACTERS_PER_TOKEN = 5
+
+
+def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSettings", terminal: "TerminalSettings", report: FaultRecorder) -> None:
+    """Warns when the Conductor's limits do not fit the settings they depend on. The values are kept: this only tells the person.
+
+    A watchdog shorter than the thing it watches cuts off healthy turns, which is worse than a limit that is too long, so each warning
+    names the limit that is too short.
+    """
+    if conductor.writing_seconds <= oracle.timeout:
+        report.warn(f"conductor.writing_seconds ({conductor.writing_seconds:g}) should be longer than oracle.timeout ({oracle.timeout:g}), "
+                    f"or the watchdog can cut off a turn the oracle is still allowed to finish")
+    if conductor.write_budget_seconds >= conductor.writing_seconds:
+        report.warn(f"conductor.write_budget_seconds ({conductor.write_budget_seconds:g}) should be shorter than "
+                    f"conductor.writing_seconds ({conductor.writing_seconds:g}), or a retry can run into the watchdog")
+    if conductor.write_budget_seconds < oracle.timeout + conductor.write_pause_seconds:
+        report.warn(f"conductor.write_budget_seconds ({conductor.write_budget_seconds:g}) is shorter than oracle.timeout "
+                    f"({oracle.timeout:g}) plus conductor.write_pause_seconds ({conductor.write_pause_seconds:g}), so no second attempt to "
+                    f"write can ever fit")
+    longest_print = oracle.max_tokens * _CHARACTERS_PER_TOKEN / terminal.characters_per_second
+    if terminal.mode != "none" and conductor.printing_seconds < longest_print:
+        report.warn(f"conductor.printing_seconds ({conductor.printing_seconds:g}) is shorter than the time to type the longest portent "
+                    f"({longest_print:.0f} s for {oracle.max_tokens} tokens at {terminal.characters_per_second:g} characters a second)")
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:

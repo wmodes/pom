@@ -398,3 +398,52 @@ stall_patience_seconds = 600
 
 # How often (in seconds, above 0) a lost port is tried again while waiting.
 reconnect_seconds = 2
+
+# What the Printer prints on. "serial" is the real typewriter (the port above). "console" types on the screen at the same
+# pace, for development. "none" means no printer at all: a turn is write the portent, show it on the monitoring site, done,
+# so the Printer can be watched listening and writing with nothing attached.
+mode = "serial"
+
+
+# ================================================
+# CONDUCTOR: running a turn, and how long each part of it may take
+# ================================================
+# The Printer prints what it writes, and listens only to find something to print. So every limit below errs LONG:
+# too short and a healthy, slow turn is cut off while it is still working (the ears reopen while the typewriter is still
+# typing, and the Printer hears itself; the longest portents are lost, and it says only short and medium ones). Too long
+# only means a turn that is really stuck keeps the Printer deaf for that long. All of these are seconds.
+[conductor]
+
+# The watchdog's limit for the oracle to write one portent. Must be LONGER than [oracle] timeout, which gives up first.
+writing_seconds = 300
+
+# The watchdog's limit for formatting and typing one portent. A wait for the printer sends a heartbeat that restarts this
+# clock, so it only has to cover the longest portent at the typewriter's pace (300 tokens is about 90 seconds at 16
+# characters a second).
+printing_seconds = 180
+
+# After a turn the ears stay shut this long (0 or more), so the typewriter's last sounds die away before listening resumes.
+recovering_seconds = 3
+
+# A portent answers one sentence; a few minutes later the room has moved on. How long after its hinge a portent is still
+# worth printing (above 0). If the printer cannot print by then (unplugged, held, out of paper), the portent is dropped.
+# A little under the usual gap between portents (6 to 8 minutes).
+freshness_seconds = 360
+
+# If the oracle writes nothing (its server is down or slow), how many times to ask in one turn (at least 1), how long to
+# wait between asks (0 or more), and the time all the writing may take. Another ask is made only if a whole one (the
+# oracle's timeout) still fits in the budget, so a quick failure is asked again and a timeout is not. Keep the budget
+# under writing_seconds.
+write_attempts = 3
+write_pause_seconds = 10
+write_budget_seconds = 270
+
+# While the typewriter cannot print yet, how long to wait between tries (above 0). It keeps trying until the portent
+# is no longer fresh.
+print_pause_seconds = 10
+
+# If the microphone stops (unplugged) or the keyboard watcher fails, how long to wait before starting it again (0 or more).
+restart_pause_seconds = 5
+
+# How often the Conductor looks at the floor to open the ears again and at its own threads (above 0).
+check_seconds = 1

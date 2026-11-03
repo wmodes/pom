@@ -179,6 +179,39 @@ The tools were first built in the home folder and moved here on 2026-10-23. A bu
 through an absolute path, so they were rebuilt in place, and the setup scripts now build with a relative library
 path (`$ORIGIN`) so the folder can be moved again without rebuilding. Keep the Pi's clone clean (no edits in tracked files), so `git pull` always works; `benchmark_pi_prepare.sh check` says if it is not.
 
+## Running the Printer as a service (draft, not installed)
+
+The Printer is `python -m pom` (see the design doc, "The Conductor and the entry point"). With nobody there to restart anything, systemd starts it
+at boot and again if it ever stops. It copes with the servers coming up after it, so it does not have to wait for them; but they are services
+too, and a unit for each (whisper-server, and a llama-server for the scorer and one for the oracle) would start them at boot. This draft is for
+the Printer's own unit; **nothing here is installed on pom1 yet.**
+
+```ini
+# /etc/systemd/system/pom.service
+[Unit]
+Description=Printer of Mysteries
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/pom
+Environment=PYTHONPATH=/home/pi/pom/src
+ExecStart=/home/pi/envs/pom/bin/python -m pom
+Restart=always
+RestartSec=5
+# SIGTERM is the clean stop; a portent being typed for longer than 5 s is cut off by it
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then `sudo systemctl daemon-reload && sudo systemctl enable --now pom`, and `journalctl -u pom -f` to watch it. The log holds counts, labels and
+seconds, never anything said. The monitoring site's password lives in `config/pom.local.toml` (gitignored) under `[monitor]`, with `enabled = true`.
+`PYTHONPATH` is there because the project is not packaged yet (the tests do the same with `pythonpath = src`).
+
 ## Fan check
 
 The Active Cooler is firmware-controlled over the Pi 5's fan header and stays **off at idle**, ramping from roughly 50 C. A still fan is not a fault.

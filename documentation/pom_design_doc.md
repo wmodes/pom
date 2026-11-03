@@ -72,9 +72,9 @@ microphone -> whisper-driven cutting -> whisper -> track split: words / room ton
 | Input: typed line scoring (`TypedLineScorer`) | Built |
 | Printing: formatter (`PortentFormatter`) | Built |
 | Printing: serial port (`TerminalPort`) and the keyboard coming back | Built |
-| Printing: pausing listening while it types | `Eavesdropper.pause()` and `skip_ahead()` built; the Conductor that calls them is planned |
+| Printing: pausing listening while it types | `Eavesdropper.pause()` and `skip_ahead()` built; called by the Conductor |
 | Input (keyboard) | Planned |
-| Conductor | Planned |
+| Conductor and entry point (`python -m pom`) | Built; burn-tested on the Mac with real servers |
 
 ### Half-duplex
 
@@ -168,6 +168,42 @@ the hinge, exactly as for the room. It has the Eavesdropper's two calls, `pause(
 line that finishes during a turn is still read (so the terminal's buffer stays empty) but is dropped unscored and counted, so nothing reaches the scorer
 model mid-turn. Empty lines are skipped. A terminal or a scorer that raises is one warning naming the error type and a short pause, never the end of the
 watching; only `close()` ends it. What was typed is never logged or put in a report.
+
+### The Conductor and the entry point
+
+(*Built*: `src/pom/conductor/conductor.py` and `src/pom/printer.py`; `python -m pom`.) The Conductor runs the Printer on four ordinary threads. The
+**room** thread runs the HingeFinder and offers each attempt; the **keyboard** thread runs the KeyboardWatcher (only with a real typewriter); the
+**turn** thread takes each hinge through a turn with the TurnTaker, one at a time; and the thread that called `run()` keeps watch every second.
+
+- *First come, first served.* An attempt that qualified asks the FloorKeeper for the floor. The first to ask gets a Turn and the other hinge is
+  dropped, with a line in the log. The turn goes to the turn thread, never run on the one that found it: the room thread must go on reading sound
+  (which the paused Eavesdropper throws away) or the microphone's buffer would overflow while the Printer is busy.
+- *The ears shut the moment the floor is taken* (the thread that took it pauses both ears at once), and *open again by looking, not by being
+  told*: every second the watching thread compares the floor with the ears, and if the floor is listening and the ears are shut it calls
+  `skip_ahead()`. So a turn that ends any way at all, including the watchdog cutting it off, cannot leave the Printer deaf.
+- *The room is built again each time it ends.* The entry point gives the Conductor a `room_factory` that makes a fresh deck, Eavesdropper and
+  HingeFinder (the BarKeeper and the scorer are shared, so the memory of the room's scores survives). A microphone that is unplugged ends the
+  HingeFinder; the Conductor builds a new room after `restart_pause_seconds`, again and again, so plugging the microphone back in is all it
+  needs. A recording that ends is the end of the run. A thread that dies unexpectedly is started again by the watching thread.
+- *It starts whatever state the world is in.* At boot the servers, the microphone and the printer come up in no particular order and nobody is
+  there to restart anything. A server that does not answer yet is a line in the log; each client recovers when its server arrives, a turn waits
+  for the printer, and a monitoring site that cannot start (no password, port taken) is a warning, not a stop.
+- *Settings.* `[conductor]` in `config/pom.toml` holds every limit (the watchdog's, how long a portent stays worth printing, the oracle retries);
+  `[terminal] mode` is `serial` (the typewriter), `console` (the screen) or `none` (no printer); options on the command line (`--wav`, `--mac-mic`,
+  `--terminal`, `--no-keyboard`, `--config`) choose for one run. `Config` checks the limits against the settings they depend on and warns when a
+  watchdog is shorter than what it watches (the values are kept; the person is told).
+- *Stopping.* SIGTERM (systemd) and ctrl-C stop it cleanly: the ears shut, the keyboard closes, each thread is waited for at most 5 seconds. A portent
+  being typed for longer than that is cut off when the process exits (seen in the burn test), so restart the service between portents if it matters.
+
+**Burn test (2026-11-02, the Mac, real servers).** whisper-server, the scorer (Qwen3-4B) and the oracle (Qwen3.5-9B) were run for real. A 5-minute
+recording and a 71-minute one at 6x speed gave turns back to back (memory steady at about 120 MB, 5 threads, no warnings). The oracle was killed
+mid-run: three attempts 10 s apart, the turn dropped, listening again, and when the server came back the next turn simply worked. whisper was
+killed before the start: the Printer ran, reported it, and heard again when it returned. A stand-in typewriter (a pseudo-terminal opened by the real
+pyserial) was unplugged mid-portent and replugged under another device name: it resumed at the exact character it stopped (`...so real an` then
+`d whole, And holds...`) with nothing repeated or lost; a printer absent at the start was waited for and used when it appeared; a line typed on the
+stand-in's keyboard scored 8.5 against a bar of 6.8, took the floor as the keyboard, and its portent was typed back. SIGTERM during a turn exited in
+about 7 seconds. What the burn test could not show: the real CadetWriter's flow-control behavior (hold, out of paper), a real microphone being
+unplugged, and the Pi's own speed.
 
 ## Listening: from sound to text
 
@@ -562,7 +598,8 @@ src/pom/
                the bars (percentile, decaying quantile,
                moving average)
   conductor/   hinge_finder (listening to hinge)                 built
-               the Conductor                                     planned; the only module that knows the whole pipeline
+               floor_keeper, turn_taker, keyboard_watcher, conductor   built; the Conductor is the only module that knows the whole pipeline
+  printer.py   the entry point (`python -m pom`): builds everything from one Config   built
   keyboard/    typed_line_scorer                                 built
   writing/     prompt_builder, oracle_model_client,              built
                portent_writer
@@ -598,7 +635,7 @@ The qualifying replays used four recorded team meetings (public by design, kept 
 2. (Decided 2026-10-27) The hinge is the sentence that qualified. The hand-off is the Conductor's.
 3. (Done) The listening side is rebuilt in `src/pom/listening/`, leaf-first, each part tested and mutation-checked. Next there: try it on the Pi with the real microphone (`scripts/dev/listening/listen_to_room.py`).
 4. Printing side: the formatter and the serial port are built; reply selection is next.
-5. The Conductor, with the half-duplex state and its watchdog, then the entry point and the startup duties.
+5. The startup duties (the readiness checks in `startup.py`), the systemd units on the Pi, then the paper guards.
 6. Paper guards; "failing loudly".
 7. Run it on the Pi; test in a real room (a quiet one too) and retune from that.
 8. Later: Input (typed text), hinge pairs, Track B if wanted.

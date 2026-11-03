@@ -21,7 +21,7 @@ MODULES = ["pom/config.py", "pom/library/circulation.py", "pom/library/catalog.p
            "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py",
            "pom/listening/rolling_cutter.py",
            "pom/listening/eavesdropper.py", "pom/writing/portent_writer.py", "pom/listening/mac_mic_deck.py",
-           "pom/conductor/hinge_finder.py", "pom/conductor/floor_keeper.py", "pom/conductor/turn_taker.py", "pom/conductor/keyboard_watcher.py", "pom/keyboard/typed_line_scorer.py",
+           "pom/conductor/hinge_finder.py", "pom/conductor/floor_keeper.py", "pom/conductor/turn_taker.py", "pom/conductor/keyboard_watcher.py", "pom/conductor/conductor.py", "pom/printer.py", "pom/keyboard/typed_line_scorer.py",
            "pom/monitor/turn_history.py", "pom/monitor/monitor_site.py",
            "pom/qualifying/decaying_quantile_bar.py", "pom/qualifying/percentile_bar.py",
            "pom/qualifying/moving_average_bar.py",
@@ -63,7 +63,7 @@ def test_a_module_follows_its_own_debug_line(path, flag, expected):
     patched = DEBUG_LINE.sub(f"DEBUG = {flag}", source, count=1)
     name = dotted(path)
     try:
-        exec(compile(patched, path, "exec"), {"__name__": name})
+        exec(compile(patched, path, "exec"), {"__name__": name, "__file__": str(SRC / path)})      # a real module has a __file__
         assert logging.getLogger(name).level == expected
     finally:
         logging.getLogger(name).setLevel(logging.NOTSET)

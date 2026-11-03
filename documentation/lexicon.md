@@ -47,7 +47,7 @@ room -> Listening -> Scoring -> Qualifying -> Writing -> Printing -> paper
 -   **Library** †: beside the line. It lends *exemplars* to Writing and takes nothing from the room.
 -   **Keyboard** †: beside the line. A person types a *typed line*, which enters at Scoring.
 -   **turn**: one hinge taken through to paper: the portent written, formatted and printed. The Printer does not listen during a turn (half-duplex).
--   **Conductor**: *(planned)* the one part that knows the whole pipeline. It runs the hinge finder and the keyboard watcher in threads of their own, takes each hinge through a turn (write, format, print) while the Printer does not listen, and feeds the monitoring site. The entry point starts it.
+-   **Conductor**: the one part that knows the whole pipeline. It runs the hinge finder and the keyboard watcher in threads of their own, hands each hinge that wins the floor to a turn thread (write, format, print) while the Printer does not listen, and keeps the ears in step with the floor. The entry point starts it. Example: `Conductor`
 
 ## Library: what the oracle model reads
 
@@ -329,9 +329,10 @@ time: that is half-duplex.
 - **skip ahead**: When the floor is yielded, the eavesdropper ends the pause with a clean slate, so the Printer does not hear its own
   printing: the cutter forgets its audio, the repeat memory is cleared, and the cutter's clock moves on by the sound that went by unheard,
   so the cooldown and the bar count the turn's time. Example: `Eavesdropper.skip_ahead()` (was: `Listener.skip_ahead()`)
-- **entry point**: *(planned)* Builds the one `Config`, builds the parts from it, and starts the Conductor; on the Pi it runs as a
-  service. It takes the testbench's choices as options: a microphone or a recording, the real terminal or the console terminal, the
-  monitoring site. Example: none (was/still)
+- **entry point**: Builds the one `Config`, builds the parts from it, and starts the Conductor; on the Pi it runs as a service. It takes the
+  testbench's choices as options: a microphone or a recording, the real terminal, the console terminal or none, the keyboard on or off. It
+  starts whatever state the servers, the microphone and the printer are in, and stops cleanly on SIGTERM or ctrl-C. Example: `python -m pom`,
+  `pom.printer` (`Options`, `build_printer`, `Printer`) (was: none)
 
 **Words in reserve.** Ready if the code ever needs a name for them:
 - **interruption**: something that wants the floor during a turn (today it is simply not heard).

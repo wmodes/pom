@@ -384,7 +384,7 @@ Your typewriter has primary and alternate keyboards. You have already been using
 
 The primary keyboard allows you to type in your own language. Your typewriter automatically sets your primary keyboard to match the keybuttons on your typewriter.
 
-Alternate keyboards, when used with the appropriate printwheels, allow you to type in other languages such as French and Spanish, or ASCII (PC) and Latin Supplemental
+Alternate keyboards, when used with the appropriate printwheels, allow you to type in other languages such as French and Spanish, or ASCII (PC) and Latin Supplemental ISO.
 
 Matching Printwheels and Keyboards Each printwheel for alternate keyboards contains characters other than those printed on your typewriter keybuttons. You can access characters of an alternate keyboard by typing a keyboard change called a keyboard identification (ID) number.
 

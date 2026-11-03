@@ -2236,8 +2236,6 @@ Place the top gear over the bias spring as shown. The vertical lug on the spring
 
 Rotate the top gear 1/2 turn clockwise and latch it in place. The spring should load the latching surfaces of the two gears against each other. Hold the gears in place until you have installed the ribbon feed motor in the machine. The spring will unwind if you do not hold the gears together.
 
-Note: After you have installed the motor, rotate the top gear 1/4 turn clockwise and let go. The gear should return to the initial position. Top Gear Bias Spring Latching surfaces "Smee Lug
-
 Move the carrier all the way to the right.
 
 Set the keyboard height to its lowest position.

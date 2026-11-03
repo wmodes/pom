@@ -41,6 +41,7 @@ Let's look at the temperature scale illustration and see how temperature affects
 120-140 some bacteria can grow
 98.6 body temperature
 70-80 room temperatures may fall in this range
+60-120 DANGER ZONE
 
 Enzymatic activity, while slowed down by freezing, is not stopped in many vegetables and these enzymes must be destroyed by blanching the vegetables before freezing to prevent enzymatic deterioration. Successful preservation by freezing must deactivate any enzymes that might be in the food as well as rapidly lower the food temperature to below freezing to stop microbial activity.
 

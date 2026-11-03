@@ -327,7 +327,14 @@ def split_prose_block(block, stats):
         stripped = line.strip()
         if not stripped:
             continue
-        starts_new = bool(LIST_START.match(stripped)) or looks_like_heading(stripped)
+        # An ALL-CAPS line is a heading, unless it is the tail of a sentence the line before left unfinished: running prose (six words or more,
+        # not itself a heading) that stops on a bare word, then one to four words in capitals ("...it seemeth to me nevertheless to be" /
+        # "IMPOSSIBLE."). That is an emphasised last word, and it belongs to the sentence; taken for a heading it was dropped and the
+        # sentence was left ending "to be". A line ending in punctuation, or a short title-like line, is not such a sentence.
+        previous = current[-1] if current else ""
+        emphasised_tail = (len(previous.split()) >= 6 and re.search(r"[A-Za-z]$", previous) is not None
+                           and not looks_like_heading(previous) and len(stripped.split()) <= 4)
+        starts_new = bool(LIST_START.match(stripped)) or (looks_like_heading(stripped) and not emphasised_tail)
         # Indented lines are verse, unless they hang under a list item ("3. Be calm;
         # reassure the" / "   mother."), where they just continue the item.
         indented = line.startswith("  ") and not LIST_START.match(current[0] if current else "")

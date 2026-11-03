@@ -3036,6 +3036,8 @@ The commander of the escort, previous to the funeral, gives the clergyman and pa
 
 Being in line at a halt: 1. Open ranks, 2. MARCH.
 
+At the command march the front rank executes right dress; the rear rank and the file closers march backward 4 steps, halt, and execute right dress; the lieutenants pass around their respective flanks and take post, facing to the front, 3 paces in front of the center of their respective platoons. The captain aligns the front rank, rear rank, and file closers, takes post 3 paces in front of the right guide, facing to the left, and commands: 1. FRONT, 2. PREPARE FOR INSPECTION.
+
 At the second command the lieutenants carry saber; the captain returns saber and inspects them, after which they face about, order saber, and stand at ease; upon the completion of the inspection they carry saber, face about, and order saber. The captain may direct the lieutenants to accompany or assist him, in which case they return saber and, at the close of the inspection, resume their posts in front of the company, draw and carry saber.
 
 Having inspected the lieutenants, the captain proceeds to the right of the company. Each man, as the captain approaches him, executes inspection arms.
@@ -3066,7 +3068,7 @@ At the first command, each man unslings his equipment and places it on the groun
 
 At the second command, pack carriers are unstrapped, packs removed and unrolled, the longer edge of the pack along the lower edge of the cartridge belt. Each man exposes shelter tent pins, removes meat can, knife, fork, and spoon from the meat-can pouch, and places them on the right of the haversack, knife, fork, and spoon in the open meat can; removes the canteen and cup from the cover and places them on the left side of the haversack; unstraps and spreads out haversack so as to expose its contents; folds up the carrier to uncover the cartridge pockets; opens same; unrolls toilet articles and places them on the outer flap of the haversack; places underwear carried in pack on the left half of the open pack, with round fold parallel with front edge of pack; opens first-aid pouch and exposes contents to view. Special articles carried by individual men, such as flag kit, field glasses, compass, steel tape, notebook, etc., will be arranged on the right half of the open pack. Each man then resumes the attention. Plate VI shows the relative position of all articles except underwear and special articles.
 
-The captain then passes along the ranks and file closers as before, inspects the equipment, returns to the right, and commands: CLOSE
+The captain then passes along the ranks and file closers as before, inspects the equipment, returns to the right, and commands: CLOSE PACKS.
 
 Each man rolls up his toilet articles and underwear, straps up his haversack and its contents, replaces the meat can, knife, fork, and spoon, and the canteen and cup; closes cartridge pockets and first-aid pouch; restores special articles to their proper receptacles; rolls up and replaces pack in carrier; and, leaving the equipment in its position on the ground, resumes the attention.
 
@@ -3114,7 +3116,7 @@ If the inspection will probably last a long time the rear companies may be permi
 
 The band plays during the inspection of the companies.
 
-When the inspector approaches the band the adjutant commands: PREPARE
+When the inspector approaches the band the adjutant commands: PREPARE FOR INSPECTION.
 
 As the inspector approaches him each man raises his instrument in front of the body, reverses it so as to show both sides, and then returns it.
 
@@ -3324,7 +3326,7 @@ On foot the scabbard is carried hooked up.
 
 When publishing orders, calling the roll, etc., the saber is held suspended from the right wrist by the saber knot; when the saber knot is used it is placed on the wrist before drawing saber and taken off after returning saber.
 
-Being at the order or carry: 1. Present, 2. SABER (or
+Being at the order or carry: 1. Present, 2. SABER (or ARMS).
 
 At the command present raise and carry the saber to the front, base of the hilt as high as the chin and 6 inches in front of the neck, edge to the left, point 6 inches farther to the front than the hilt, thumb extended on the left of the grip, all fingers grasping the grip.
 

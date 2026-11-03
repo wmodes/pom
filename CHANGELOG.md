@@ -45,6 +45,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The TurnTaker** (`src/pom/conductor/turn_taker.py`; fourth leaf of the Conductor): takes one hinge through a turn. `take_turn(turn, attempt)` has the portent written (up to 3 attempts 10 s apart, only while a whole
+  attempt still fits in the 270 s writing budget), records the turn in the TurnHistory at once, formats it and types it, and returns a `TurnResult` (an outcome plus numbers, never words). It owns `with turn:`, so the
+  floor is always yielded, and it never raises. Printing has priority: a written portent is printed even if the watchdog took the floor meanwhile (a warning); a portent is worth printing for `freshness_seconds`
+  (6 minutes from the start of the turn) and is dropped after (`too late to print`, CRITICAL); a terminal that has typed nothing is waited for and tried every 10 s, with a heartbeat so the watchdog sees a wait
+  and not a hang, and `waiting for the printer` on the record; a print that fails halfway is not repeated (`print failed`, CRITICAL); with no terminal (`None`) a turn is write, record, done (`not printed (no
+  printer)`). Outcomes: printed, not printed (no printer), no portent written, nothing to print, too late to print, print failed, error. Also: `Turn.still_printing()` (the FloorKeeper heartbeat; 8 tests), and
+  `TurnRecord.outcome` with `TurnHistory.set_outcome()` (9 tests; it also found that an expired record could be "set"). New lexicon terms: freshness, turn outcome. 94 TurnTaker tests; 32 mutants checked across the
+  three parts (two survivors, a timing detail and a weak heartbeat test, now fixed). 2,817 tests pass.
 - **The oracle timeout is 240 s** (`[oracle] timeout` in `config/pom.toml`, and the built-in defaults of `OracleModelClient` and `Config`; was 120): the reply is waited for whole and the Pi writes about 0.5 s a token, so 120 s
   covered only about 230 tokens and would have cut off the longest portents (`max_tokens` is 300, about 155 s, plus reading the prompt). The Conductor's writing watchdog (300 s) stays longer. The comment in the
   config says why. 2,698 tests pass.

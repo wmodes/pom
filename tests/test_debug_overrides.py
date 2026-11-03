@@ -21,7 +21,7 @@ MODULES = ["pom/config.py", "pom/library/circulation.py", "pom/library/catalog.p
            "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py",
            "pom/listening/rolling_cutter.py",
            "pom/listening/eavesdropper.py", "pom/writing/portent_writer.py", "pom/listening/mac_mic_deck.py",
-           "pom/conductor/hinge_finder.py", "pom/conductor/floor_keeper.py", "pom/keyboard/typed_line_scorer.py",
+           "pom/conductor/hinge_finder.py", "pom/conductor/floor_keeper.py", "pom/conductor/turn_taker.py", "pom/keyboard/typed_line_scorer.py",
            "pom/monitor/turn_history.py", "pom/monitor/monitor_site.py",
            "pom/qualifying/decaying_quantile_bar.py", "pom/qualifying/percentile_bar.py",
            "pom/qualifying/moving_average_bar.py",

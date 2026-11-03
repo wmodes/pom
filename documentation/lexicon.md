@@ -309,8 +309,16 @@ time: that is half-duplex.
 - **turn** (the handle): What `take_floor()` hands back: a `Turn` with `start_printing()` and `finish()`, used in a `with` block so the
   floor is always yielded. Once it is over, or the watchdog has taken the floor from it, its calls do nothing. Example: `Turn`
   (was: none)
-- **turn taker**: *(planned)* Takes one hinge through a turn: has the portent written, formatted and printed, and reports what
-  happened. Example: `TurnTaker` (was: portent deliverer, `PortentDeliverer`)
+- **turn taker**: Takes one hinge through a turn: has the portent written (trying again a few times if the oracle gives nothing), records it
+  in the turn history at once, formats it and has it printed, waiting patiently if the terminal cannot print yet, and says how the turn ended.
+  It closes the turn itself, so the floor is always yielded. Example: `TurnTaker`, `take_turn()`, `TurnResult` (was: portent deliverer,
+  `PortentDeliverer`)
+- **freshness**: How long after its hinge a portent is still worth printing (6 minutes to begin with, a little under the usual gap between
+  portents). It answers one sentence, and a few minutes later the room has moved on. Past it the portent is dropped. Example:
+  `freshness_seconds` (was: none)
+- **turn outcome**: How a turn ended, shown beside it on the monitoring site: *printed*, *not printed (no printer)*, *no portent written*,
+  *nothing to print*, *too late to print*, *print failed*, *error*; and *waiting for the printer* while it waits. Example: `TurnOutcome`
+  (was: none)
 - **pause**: When the floor is taken, the eavesdropper stops listening: it keeps reading frames from the deck so its buffer never
   overflows, but throws them away and asks whisper nothing; what was transcribed and not yet handed on is dropped too. Like pausing a
   tape. Example: `Eavesdropper.pause()`, `paused` (was: none)

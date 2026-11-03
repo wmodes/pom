@@ -131,6 +131,35 @@ seconds, never words.
   the prompt was close to it, and `max_tokens` (300) needs about 155 s. Decided 2026-11-02: the timeout is 240 s, so the oracle gives up first,
   the watchdog stays the backstop at 300 s, and printing (180 s) covers the longest portent at the terminal's pace.
 
+### A turn: the TurnTaker
+
+(*Built*: `src/pom/conductor/turn_taker.py`.) `take_turn(turn, attempt)` takes the Turn the FloorKeeper handed out and the attempt that
+qualified through four steps: write the portent, record the turn in the TurnHistory (at once, before any printing, so the monitoring site
+shows it even while the printer is being waited for), format it and type it, and say how the turn ended. It runs inside `with turn:`, so the
+floor is always yielded, and it never raises: an unexpected error ends the turn with the outcome `error`. Nothing said in the room, and
+nothing the oracle wrote, is logged or put in a report; only numbers and labels are.
+
+*Printing has priority over listening* (Wes, 2026-11-02). The Printer listens only to find something to print; a portent costs minutes of
+the oracle's time and they come every 6 to 8 minutes, so there is no hurry back to listening, and a portent that has been written is printed
+(even one that finished after the watchdog took the floor: that is logged as a warning).
+
+- **The oracle gives nothing** (server down, slow, answering oddly): the turn tries again, up to 3 attempts 10 s apart, but only while a
+  whole attempt (the oracle's 240 s timeout) still fits in the writing budget (270 s, under the watchdog's 300 s). A quick failure is retried;
+  a timeout is not. Still nothing: outcome `no portent written`, back to listening. Three turns in a row: a CRITICAL fault says the oracle looks broken.
+- **A portent grows stale.** It answers one sentence, and a few minutes later the room has moved on. A portent is worth printing for
+  `freshness_seconds` (6 minutes, counted from the start of the turn, a little under the usual gap between portents). Past that it is dropped,
+  its record says `too late to print`, and the Printer goes back to listening. The check is made before each try, never in the middle of
+  typing: a portent that has begun is finished.
+- **The terminal cannot print yet** (unplugged, held, no paper, port gone): nothing was typed, so the turn waits 10 s and tries again, until the
+  portent goes stale, showing `waiting for the printer` on its record. The ears stay shut: with no printer there is nothing to listen for.
+  A heartbeat (`Turn.still_printing()`, every 5 s) tells the FloorKeeper it is waiting and not hung, so the printing limit (180 s) does not
+  cut off a wait. The moment the terminal works, the portent is typed. Whether the CadetWriter signals "held" or "out of paper" is for a test on
+  the real machine; if it gives no signal, software cannot see it.
+- **The terminal fails halfway**: part of the portent is on the paper, so typing it again would repeat the start. Outcome `print failed`, a
+  CRITICAL fault, no retry. (The TerminalPort will learn to resume where it stopped.)
+- **No printer by design** (`terminal` is `None`): write, record, done; the outcome is `not printed (no printer)`. The Printer can be
+  watched listening and writing, with everything on the monitoring site, with nothing attached.
+
 ## Listening: from sound to text
 
 1. **Microphone** (*built*, `MicDeck`): listens all the time through `arecord` and hands audio on in 30 ms frames. It reads in a thread of its own into a 10-second buffer, so a slow whisper run cannot lose sound; if the buffer fills, the oldest frames are dropped and counted. A recording can be played instead (`WavDeck`), for tests and replays.

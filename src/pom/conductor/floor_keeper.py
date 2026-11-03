@@ -29,7 +29,9 @@ Design decisions, and why:
     LISTENING, and nothing here waits on anything.
   * THE WATCHDOG. Each of WRITING and PRINTING has a limit, and a turn that runs past it loses the floor: the keeper moves to
     RECOVERING, records a WARNING (a fault it recovered from) and counts an overrun. The watchdog cannot stop a thread that is stuck; it
-    only takes the floor back, so the Printer listens again. Whoever does the work (the TurnTaker) must give each blocking
+    only takes the floor back, so the Printer listens again. A turn that waits patiently for the printer (unplugged, held, out of paper)
+    is not hung, so it sends a heartbeat, `Turn.still_printing()`, which restarts the printing clock; the watchdog then fires only if
+    the beats stop. (Printing has priority over listening: there is no hurry to go back to listening while the portent cannot be printed.) Whoever does the work (the TurnTaker) must give each blocking
     call a timeout of its own, so that the watchdog is the last line of defense and not the first.
   * THE LIMITS MUST COVER THE LONGEST LIKELY RUN, NOT THE AVERAGE. Both limits are generous on purpose.
       - Too short and a healthy, slow turn is cut off while it is still working. The floor goes back to listening and, after the
@@ -109,6 +111,14 @@ class Turn:
     def start_printing(self) -> bool:
         """Writing is done and printing begins. True if that happened; False if this turn no longer holds the floor, or is not writing."""
         return self._keeper._start_printing(self)
+
+    def still_printing(self) -> bool:
+        """A heartbeat while waiting patiently for the printer: restarts the printing clock, so a wait is not mistaken for a hang.
+
+        True if this turn still holds the floor and is printing; False otherwise (nothing happens). Call it at least every few seconds
+        while waiting; the watchdog then fires only if the beats stop.
+        """
+        return self._keeper._still_printing(self)
 
     def finish(self) -> bool:
         """The turn is over: the floor goes to RECOVERING. True if that happened; False if it was already over. Safe to repeat."""
@@ -224,6 +234,16 @@ class FloorKeeper:
             if self._state is not FloorState.WRITING:
                 return False
             self._enter(FloorState.PRINTING)
+            return True
+
+    def _still_printing(self, turn: Turn) -> bool:
+        with self._held("still_printing") as got:
+            if not got:
+                return False
+            self._settle()
+            if self._current is not turn or self._state is not FloorState.PRINTING:
+                return False
+            self._since = self._clock()
             return True
 
     def _finish(self, turn: Turn) -> bool:

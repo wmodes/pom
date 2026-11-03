@@ -18,13 +18,15 @@ Design decisions, and why:
     clock when it is added, not with the audio's own time; `heard_at` keeps the place in the audio for reference.
   * Records get a number that only goes up, starting at 1 and never reused, so a page can link to one and a link to a
     record that has since expired simply finds nothing.
+  * A record is added as soon as the portent is written, before it is printed, so the monitoring site shows it even while the printer is
+    being waited for or has failed; `set_outcome` says how the turn ended afterwards.
   * This module never reads Config.
 """
 import math
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Deque, List, Optional
 
 from pom.fault_recorder import FaultRecorder
@@ -55,6 +57,7 @@ class TurnRecord:
         bar: The score it had to be above, as it stood before it joined the window (None if there was none yet).
         window_size: How many scores the window held when it arrived.
         portent: What the oracle wrote and was shown, or None if no portent could be had.
+        outcome: How the turn ended ("printed", "too late to print" and so on: a short label), or None while it is still going.
     """
     id: int
     at: float
@@ -64,6 +67,7 @@ class TurnRecord:
     bar: Optional[float]
     window_size: int
     portent: Optional[Portent]
+    outcome: Optional[str] = None
 
 
 def _is_number(value) -> bool:
@@ -127,6 +131,23 @@ class TurnHistory:
             self._forget_old()
         _log.debug("recorded turn %d (%d kept)", record.id, len(self._records))
         return record
+
+    def set_outcome(self, record_id: int, outcome: str) -> bool:
+        """Says how a turn ended: the record keeps everything else. True if the record was still there and `outcome` is a label.
+
+        A record is added when the portent is written, before it is printed, so the outcome comes later. A record that has already
+        expired, or an outcome that is not a non-blank string, changes nothing (the second is also recorded as a warning).
+        """
+        if not (isinstance(outcome, str) and outcome.strip()):
+            self.report.warn("a turn's outcome must be a short label, so it was not recorded")
+            return False
+        with self._lock:
+            self._forget_old()
+            for index, record in enumerate(self._records):
+                if record.id == record_id:
+                    self._records[index] = replace(record, outcome=outcome.strip())
+                    return True
+        return False
 
     def recent(self) -> List[TurnRecord]:
         """The records still within `max_age_seconds`, newest first. A copy, so it may be changed freely."""

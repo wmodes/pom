@@ -308,3 +308,73 @@ class TestNothingSaidInTheRoomIsKept:
         add(h, "A hinge.", score="not a number")
         text = caplog.text + "\n".join(h.report.lines())
         assert "secret" not in text and "neighbor" not in text and "hinge" not in text.replace("without a hinge", "")
+
+
+class TestTheOutcome:
+    """A record is added when the portent is written; how the turn ended is set afterwards."""
+
+    def test_a_new_record_has_no_outcome_yet(self):
+        assert add(history()).outcome is None
+
+    def test_setting_it_keeps_everything_else_in_the_record(self):
+        h = history()
+        record = add(h, portent=portent("The ghosts."))
+        assert h.set_outcome(record.id, "printed") is True
+        again = h.get(record.id)
+        assert again.outcome == "printed" and (again.id, again.at, again.hinge, again.score, again.bar, again.window_size, again.portent) == \
+            (record.id, record.at, record.hinge, record.score, record.bar, record.window_size, record.portent)
+
+    def test_it_is_set_on_the_right_record_and_the_order_is_unchanged(self):
+        h = history()
+        first, second, third = add(h), add(h), add(h)
+        h.set_outcome(second.id, "too late to print")
+        assert [r.outcome for r in h.recent()] == [None, "too late to print", None]
+        assert [r.id for r in h.recent()] == [third.id, second.id, first.id]
+
+    def test_the_outcome_can_be_changed(self):
+        h = history()
+        record = add(h)
+        h.set_outcome(record.id, "waiting for the printer")
+        h.set_outcome(record.id, "printed")
+        assert h.get(record.id).outcome == "printed"
+
+    def test_an_outcome_is_trimmed(self):
+        h = history()
+        record = add(h)
+        h.set_outcome(record.id, "  printed ")
+        assert h.get(record.id).outcome == "printed"
+
+    def test_a_record_that_has_expired_or_never_was_changes_nothing(self):
+        clock = Clock()
+        h = history(clock)
+        record = add(h)
+        clock.now += DEFAULT_MAX_AGE_SECONDS + 1
+        assert h.set_outcome(record.id, "printed") is False and h.set_outcome(999, "printed") is False
+        assert h.recent() == [] and h.report.ok
+
+    @pytest.mark.parametrize("bad", ["", "   ", None, 5, ["printed"]])
+    def test_an_outcome_that_is_not_a_label_is_refused_with_a_warning(self, bad):
+        h = history()
+        record = add(h)
+        assert h.set_outcome(record.id, bad) is False
+        assert h.get(record.id).outcome is None and len(h.report.warnings) == 1
+
+    def test_in_strict_mode_a_bad_outcome_raises(self):
+        h = history(strict=True)
+        record = add(h)
+        with pytest.raises(TurnHistoryError):
+            h.set_outcome(record.id, "")
+
+    def test_setting_outcomes_from_two_threads_loses_none(self):
+        h = history()
+        records = [add(h) for _ in range(40)]
+
+        def label(subset, name):
+            for record in subset:
+                h.set_outcome(record.id, name)
+        threads = [threading.Thread(target=label, args=(records[:20], "a")), threading.Thread(target=label, args=(records[20:], "b"))]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+        assert sorted(r.outcome for r in h.recent()) == ["a"] * 20 + ["b"] * 20

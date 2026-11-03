@@ -217,6 +217,82 @@ class TestTheWatchdog:
             k.state
 
 
+class TestTheHeartbeat:
+    """A turn waiting patiently for the printer sends still_printing() so the watchdog does not take the floor from it."""
+
+    def test_each_beat_restarts_the_printing_clock(self):
+        k, clock = keeper(printing=50)
+        turn = k.take_floor("room")
+        turn.start_printing()
+        for _ in range(10):                        # 400 s of waiting in all, far past the 50 s limit
+            clock.advance(40)
+            assert turn.still_printing() is True
+        assert k.state is PRINTING and k.overruns == 0 and k.report.ok
+
+    def test_without_beats_the_same_wait_is_an_overrun(self):
+        k, clock = keeper(printing=50)
+        k.take_floor("room").start_printing()
+        clock.advance(60)
+        assert k.state is RECOVERING and k.overruns == 1
+
+    def test_the_beats_stopping_lets_the_watchdog_act(self):
+        k, clock = keeper(printing=50)
+        turn = k.take_floor("room")
+        turn.start_printing()
+        clock.advance(40)
+        turn.still_printing()
+        clock.advance(51)                          # the beats stopped
+        assert k.state is RECOVERING and k.overruns == 1
+
+    def test_a_beat_while_writing_does_nothing(self):
+        k, clock = keeper(writing=100)
+        turn = k.take_floor("room")
+        clock.advance(90)
+        assert turn.still_printing() is False
+        clock.advance(11)
+        assert k.state is RECOVERING                # the writing clock was not restarted
+
+    def test_a_beat_from_a_turn_that_lost_the_floor_does_nothing(self):
+        k, clock = keeper(printing=50, recovering=0)
+        slow = k.take_floor("room")
+        slow.start_printing()
+        clock.advance(51)
+        k.state                                    # the watchdog acts and, with no recovery, the next look finds the floor free
+        assert k.state is LISTENING
+        fresh = k.take_floor("keyboard")
+        fresh.start_printing()
+        clock.advance(40)
+        assert slow.still_printing() is False
+        clock.advance(11)
+        assert k.state is RECOVERING                # the stale beat did not keep the new turn alive
+
+    def test_a_beat_after_the_turn_is_over_does_nothing(self):
+        k, _ = keeper()
+        turn = k.take_floor("room")
+        turn.start_printing()
+        turn.finish()
+        assert turn.still_printing() is False
+
+    def test_a_beat_does_not_move_the_state(self):
+        k, _ = keeper()
+        turn = k.take_floor("room")
+        turn.start_printing()
+        turn.still_printing()
+        assert k.state is PRINTING and k.holder == "room"
+
+    def test_a_stuck_lock_makes_a_beat_false_and_records_it(self, monkeypatch):
+        monkeypatch.setattr("pom.conductor.floor_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
+        k, _ = keeper()
+        turn = k.take_floor("room")
+        turn.start_printing()
+        k._lock.acquire()
+        try:
+            assert turn.still_printing() is False
+        finally:
+            k._lock.release()
+        assert "still_printing" in k.report.criticals[0]
+
+
 class TestAStaleTurn:
     """The watchdog takes the floor from a slow turn; when that turn wakes up later, it must not disturb the next one."""
 

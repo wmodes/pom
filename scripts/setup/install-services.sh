@@ -25,6 +25,9 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
+# Before anything changes: every flag in the server units must be one the installed server lists in its own --help.
+"$ROOT/scripts/setup/check-service-flags.sh"
+
 # Which units systemd already knows are out of date (their file changed since it last read them): note them before reloading.
 changed=""
 for unit in $UNITS; do

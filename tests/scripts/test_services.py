@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SETUP = ROOT / "scripts" / "setup"
 UNITS = ["pom-whisper", "pom-scorer", "pom-oracle", "pom"]
 SERVERS = ["pom-whisper", "pom-scorer", "pom-oracle"]
-BOOLEAN_FLAGS = {"--jinja", "--vad", "--mlock"}
+BOOLEAN_FLAGS = {"--jinja", "--vad"}
 
 
 def read_unit(name):
@@ -99,8 +99,10 @@ class TestTheServers:
         assert path.endswith("/" + model) and path.startswith("/home/pi/pom/data/")
 
     @pytest.mark.parametrize("name", ["pom-scorer", "pom-oracle"])
-    def test_the_language_models_are_pinned_in_memory_so_they_are_always_loaded(self, name):
-        assert flags(exec_tokens(name)).get("--mlock") is True
+    def test_the_language_models_are_pinned_in_memory_and_fully_resident_so_they_are_always_loaded(self, name):
+        found = flags(exec_tokens(name))
+        assert found["-lm"] == "mmap+mlock" and found["-lzm"] == "off"        # this llama.cpp build renamed --mlock to --load-mode
+        assert "--mlock" not in found
         assert read_unit(name)["Service"]["LimitMEMLOCK"] == ["infinity"]
 
     def test_whisper_uses_its_own_voice_detection(self):
@@ -165,6 +167,10 @@ class TestTheScripts:
         assert "systemctl link" in text and "daemon-reload" in text and "NeedDaemonReload" in text and "try-restart" in text
         assert re.search(r"^\s*(sudo )?cp ", text, re.MULTILINE) is None
 
+    def test_the_install_script_checks_the_flags_before_it_changes_anything(self):
+        text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
+        assert text.index('"$ROOT/scripts/setup/check-service-flags.sh"') < text.index('sudo systemctl link "')
+
     def test_it_refuses_to_run_as_root_or_from_another_checkout(self):
         text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
         assert 'ROOT" != /home/pi/pom' in text and "-eq 0" in text
@@ -188,3 +194,45 @@ class TestTheLogs:
     def test_the_drop_in_sorts_after_the_one_raspberry_pi_os_ships_that_makes_it_volatile(self):
         assert "90-pom.conf" > "40-rpi-volatile-storage.conf"
         assert "90-pom.conf" in (SETUP / "install-services.sh").read_text(encoding="utf-8")
+
+
+class TestTheFlagCheck:
+    """check-service-flags.sh against a stand-in server whose --help lists some flags."""
+    HELP = "usage: fakeserver\n  -m,  --model FILE   the model\n  -t,  --threads N    threads\n  -lm, --load-mode MODE   how to load\n      --jinja         templates\n"
+
+    @staticmethod
+    def fake_unit(tmp_path, flag_words, built=True):
+        binary = tmp_path / "fakeserver"
+        binary.write_text("#!/bin/sh\nprintf '%s' '" + TestTheFlagCheck.HELP.replace("'", "") + "'\n", encoding="utf-8")
+        binary.chmod(0o755 if built else 0o644)
+        unit = tmp_path / "pom-fake.service"
+        unit.write_text(f"[Service]\nExecStart={binary} {flag_words}\n", encoding="utf-8")
+        return unit
+
+    @staticmethod
+    def run(unit):
+        return subprocess.run(["sh", str(SETUP / "check-service-flags.sh"), str(unit)], capture_output=True, text=True)
+
+    def test_flags_the_server_lists_pass(self, tmp_path):
+        result = self.run(self.fake_unit(tmp_path, "-m /x/model.gguf -t 4 -lm mmap+mlock --jinja"))
+        assert result.returncode == 0 and "service flags ok" in result.stdout
+
+    def test_a_flag_the_server_does_not_list_fails_and_is_named(self, tmp_path):
+        result = self.run(self.fake_unit(tmp_path, "-m /x/model.gguf --mlock"))
+        assert result.returncode == 1 and "does not list the flag --mlock" in result.stderr
+
+    def test_a_flag_that_is_only_part_of_another_flag_is_not_listed(self, tmp_path):
+        result = self.run(self.fake_unit(tmp_path, "-m /x/m.gguf --load"))
+        assert result.returncode == 1 and "--load" in result.stderr
+
+    def test_a_server_that_is_not_built_fails_and_says_where_to_build_it(self, tmp_path):
+        result = self.run(self.fake_unit(tmp_path, "-t 4", built=False))
+        assert result.returncode == 1 and "is not built" in result.stderr
+
+    def test_values_that_are_not_flags_are_not_checked(self, tmp_path):
+        assert self.run(self.fake_unit(tmp_path, "-t 4 -m /x/-weird-name.gguf")).returncode == 0
+
+    def test_by_default_it_checks_the_three_servers_and_not_the_printer(self):
+        text = (SETUP / "check-service-flags.sh").read_text(encoding="utf-8")
+        assert all(f"systemd/pom-{name}.service" in text for name in ("whisper", "scorer", "oracle"))
+        assert "systemd/pom.service" not in text

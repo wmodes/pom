@@ -1,5 +1,6 @@
 """Tests for pom.config: shared settings from a TOML file and the environment, never raising."""
 import logging
+import re
 from pathlib import Path
 
 import pytest
@@ -1153,3 +1154,52 @@ def test_a_bad_exemplar_redraws_means_the_default_with_a_warning(tmp_path, value
     config = Config.load(write(tmp_path, f"[oracle]\nexemplar_redraws = {value}\n"), environ={})
     assert config.oracle.exemplar_redraws == 50
     assert len(config.report.warnings) == 1 and "oracle.exemplar_redraws" in config.report.warnings[0]
+
+
+# --- The shipped config and the local template -------------------------------------------
+
+def _keys(path):
+    """Every key in a TOML file as 'section.key' (or just 'key' above the first section), with its value."""
+    import tomllib
+    flat = {}
+    for name, value in tomllib.loads(Path(path).read_text(encoding="utf-8")).items():
+        if isinstance(value, dict):
+            flat.update({f"{name}.{key}": inner for key, inner in value.items()})
+        else:
+            flat[name] = value
+    return flat
+
+
+CONFIG_DIR = Path(__file__).resolve().parents[1] / "config"
+
+
+def test_every_key_the_local_template_sets_is_also_in_the_shipped_config():
+    """Someone installing reads config/pom.toml to learn what can be set, so a key a local file sets must be there too."""
+    shipped, template = _keys(CONFIG_DIR / "pom.toml"), _keys(CONFIG_DIR / "pom.local.toml.example")
+    assert template, "the template sets nothing"
+    assert not (set(template) - set(shipped)), f"in the template but not in pom.toml: {sorted(set(template) - set(shipped))}"
+
+
+def test_the_shipped_config_and_the_template_hold_no_secret():
+    """pom.toml is committed to a public repository. A key that looks like a secret must be empty in both files."""
+    for name in ("pom.toml", "pom.local.toml.example"):
+        for key, value in _keys(CONFIG_DIR / name).items():
+            if re.search(r"(^|[._])(password|passwd|secret|token|api_?key)$", key.lower()):      # not "max_tokens", which is a count
+                assert value == "", f"{name}: {key} must be empty, not a real value"
+
+
+def test_the_template_has_the_password_empty_so_the_page_stays_off_until_one_is_chosen():
+    template = _keys(CONFIG_DIR / "pom.local.toml.example")
+    assert template["monitor.password"] == "" and template["monitor.enabled"] is True
+
+
+def test_the_template_loads_cleanly_over_the_shipped_config(tmp_path):
+    config = Config.load(CONFIG_DIR / "pom.local.toml.example", environ={})
+    assert config.report.ok
+    assert config.monitor.enabled is True and config.monitor.password == ""
+
+
+def test_the_shipped_config_says_how_to_make_a_local_file():
+    text = (CONFIG_DIR / "pom.toml").read_text(encoding="utf-8")
+    assert "cp config/pom.local.toml.example config/pom.local.toml" in text and "public" in text
+    assert (CONFIG_DIR / "pom.local.toml.example").exists()

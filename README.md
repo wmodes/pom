@@ -75,7 +75,7 @@ python scripts/dev/pipeline/run_printer_with_servers.py --wav meeting.wav --spee
 
 Any other option goes straight to the Printer (`python -m pom --help` lists them): `--terminal serial|console|none`, `--no-keyboard`, `--config FILE`. A recording must be 16 kHz mono.
 
-To watch what it is doing, switch on the monitoring page: put `enabled = true` and a `password` under `[monitor]` in `config/pom.local.toml`, restart, and open `http://localhost:8080`. It shows the last hour of turns, with each hinge, the exemplars the oracle was shown, the portent, and a chart of scores against the bar. The hinge is what someone said in the room, so the page asks for the password and keeps nothing on disk.
+To watch what it is doing, switch on the monitoring page: copy `config/pom.local.toml.example` to `config/pom.local.toml`, set a `password` under `[monitor]` (it is empty, and the page will not start until it is set), restart, and open `http://localhost:8080`. It shows the last hour of turns, with each hinge, the exemplars the oracle was shown, the portent, and a chart of scores against the bar. The hinge is what someone said in the room, so the page asks for the password and keeps nothing on disk.
 
 ### On the Pi
 
@@ -85,7 +85,7 @@ The Printer is `python -m pom`, run by systemd, with each model server as its ow
 
 Every tunable lives in [`config/pom.toml`](config/pom.toml), with a comment on each: the prompts, the thresholds, the time limits, the paper and margins, the serial port. Nothing the installation might need adjusting is buried in code.
 
-To change something for one machine only, put it in `config/pom.local.toml`. It overrides the main file and is not committed, so it is also where passwords go.
+To change something for one machine only, put it in `config/pom.local.toml`. It overrides the main file and is not committed, so it is also where passwords go. Start it from the template: `cp config/pom.local.toml.example config/pom.local.toml`. Every key a local file sets also appears in `pom.toml` with a safe default, and the monitoring page will not start until you give it a password there.
 
 ## The library
 

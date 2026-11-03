@@ -3,6 +3,12 @@
 #   POM_STRICT=1   POM_DEBUG=1   POM_LOCAL_LOGS=1   POM_LOG_LEVEL=DEBUG
 #   POM_EXEMPLARS_MIN=3   POM_EXEMPLARS_MAX=5   POM_SCORER_URL=http://127.0.0.1:8098/v1/chat/completions
 #
+# PER-MACHINE SETTINGS AND SECRETS (the monitoring page's password, a different serial port, the Mac's log file) go in
+# config/pom.local.toml, which git ignores and which overrides this file key by key. To start one:
+#     cp config/pom.local.toml.example config/pom.local.toml
+# Every key a local file sets must also appear in THIS file, with a safe default and a comment, so that reading this file shows
+# everything that can be set. Never put a real password here: this file is committed, and the repository is public.
+#
 # The file is divided by the part of the Printer each setting affects, in the order of the work: GLOBAL
 # first, then hearing and scoring (SCORER), deciding when to respond (QUALIFYING), then building the portent's
 # prompt and asking the oracle model for it (ORACLE). (TOML needs the settings without a

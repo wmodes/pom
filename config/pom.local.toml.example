@@ -1,0 +1,21 @@
+# Settings for THIS machine only. To use: copy this file to config/pom.local.toml and edit the copy.
+#
+#     cp config/pom.local.toml.example config/pom.local.toml
+#
+# config/pom.local.toml is gitignored, so it is where anything private goes (passwords) and anything that differs between machines (the Mac
+# you build on, the Pi it runs on). It overrides config/pom.toml key by key. Every key set here also appears in config/pom.toml, with a safe
+# default and a comment saying what it does; this file only shows the ones you are likely to want. Nothing here is required: the Printer runs
+# without a local file, with the monitoring page off.
+
+# Also write the log to logs/pom.log (gitignored). Handy on the Mac, where there is no journald; leave it out on the Pi.
+local_logs = true
+
+# The level comes from config/pom.toml (INFO). To see everything at once, uncomment this; to debug a single module, set DEBUG = True at the top
+# of that module instead.
+# log_level = "DEBUG"
+
+# The monitoring page: the last hour of turns, with each hinge, the exemplars, the portent and a chart of scores against the bar.
+# It shows what was said in the room, so it asks for a password, and it will NOT start until one is set. Choose your own.
+[monitor]
+enabled = true
+password = ""

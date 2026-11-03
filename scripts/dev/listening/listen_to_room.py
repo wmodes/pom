@@ -55,15 +55,15 @@ def main():
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    heard_settings, qualifying = config.listening, config.qualifying
-    client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
+    listening, qualifying = config.listening, config.qualifying
+    client = WhisperModelClient(listening.whisper_url, listening.whisper_timeout)
     if not client.ping():
-        sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
+        sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
     deck = (WavDeck(args.wav, speed=args.speed) if args.wav
-              else MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds))
-    eavesdropper = Eavesdropper(deck, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
-                        heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
-                        heard_settings.room_tone_memory)
+              else MicDeck(listening.device, buffer_seconds=listening.buffer_seconds))
+    eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
+                        listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
+                        listening.room_tone_memory)
 
     nltk_dir = ROOT / "data" / "nltk"
     settings = config.scorer
@@ -72,14 +72,14 @@ def main():
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     bar_keeper = bar_keeper_from_settings(qualifying)
-    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, heard_settings.score_room_tone)
+    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, listening.score_room_tone)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
-    print(f"  whisper at {heard_settings.whisper_url}; scorer at {settings.url}")
-    print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + heard_settings.device}; "
-          f"a whisper run every {heard_settings.cut_every_seconds:g} s")
+    print(f"  whisper at {listening.whisper_url}; scorer at {settings.url}")
+    print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + listening.device}; "
+          f"a whisper run every {listening.cut_every_seconds:g} s")
     print(f"  qualifying ({qualifying.algorithm}): a score above {bar_keeper.describe()}")
-    print(f"  room tone {'is' if heard_settings.score_room_tone else 'is not'} scored")
+    print(f"  room tone {'is' if listening.score_room_tone else 'is not'} scored")
     print(f"  scorer model: {'ready' if scorer.warm_up() else 'NOT answering (sentences will go unscored)'}")
     print("  Listening. ctrl-C quits.", flush=True)
 

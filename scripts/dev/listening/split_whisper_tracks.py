@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Play with the TrackSplitter: see how whisper's text is sorted into words, room tone and nothing.
+"""Play with the TrackSplitter: see how whisper's text is split into words, room tone and nothing.
 
 Give it text as arguments, or pipe text in, and it prints the words (speech, and lyrics with the music symbols taken
 out), the kind of words they are, and the captions of sounds that were set aside. The sorting is

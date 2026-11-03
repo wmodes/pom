@@ -354,7 +354,7 @@ class TestTheChart:
     def test_there_is_a_caption_that_says_what_the_marks_are(self):
         trace, _, client = self.with_trace()
         page = get(client, "/").get_data(as_text=True)
-        assert "Black dots: scored sentences." in page and "Red line: the bar each one had to beat." in page
+        assert "Black dots: attempts." in page and "Red line: the bar each one had to beat." in page
         assert "Orange: qualifiers (click one)." in page and "The last 30 minutes." in page
 
     def test_without_a_trace_there_is_no_chart_and_no_route(self):

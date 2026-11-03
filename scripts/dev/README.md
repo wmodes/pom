@@ -11,7 +11,7 @@ into one built part of the Printer and see what it does, using the real modules 
   the TrackSplitter sorts whisper's text into words, captions and nothing; `listen_to_room.py` runs the whole listening side on the
   microphone or a recording, scoring what it hears and marking what would qualify (it needs whisper-server running).
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether it would qualify (it needs
-  the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its typed score multiplier (`typed_handicap`) and whether
+  the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its typed handicap (`typed_handicap`) and whether
   the Printer would answer or stay silent.
 - `pipeline/`: `listening_to_portent.py` (`--monitor` also serves the monitoring site, fed by every turn) runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
   the Pi's by default) or a recording goes through the Eavesdropper, the scorer and the BarKeeper, and when a sentence qualifies the

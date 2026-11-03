@@ -173,7 +173,7 @@ _INDEX = """<!doctype html>
 {% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
 {% if s.algorithm or s.bar_description %}<p class="rule"><span class="muted">Bar type:</span> <b>{{ s.algorithm }}</b>{% if s.bar_description %} <span class="muted">&mdash; a score above {{ s.bar_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
-<p class="muted small">Black dots: scored sentences. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last 30 minutes.</p>{% endif %}
+<p class="muted small">Black dots: attempts. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last 30 minutes.</p>{% endif %}
 <h2>Turns, newest first</h2>
 {% if rows %}
 <table><thead><tr><th>Time</th><th class="num">Score</th><th class="num">Bar</th><th class="hide-narrow num">Window</th><th>Hinge</th></tr></thead><tbody>

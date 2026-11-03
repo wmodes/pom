@@ -2,7 +2,7 @@
 
 `render_score_chart(points, qualifier_ids)` takes the points of a ScoreTrace and returns one `<svg>` element, the width of the text:
 
-  * every scored sentence is a small dot (black on the page), on a fixed 0 to 9 scale with gridlines at 0, 3, 6 and 9, and vertical
+  * every attempt is a small dot (black on the page), on a fixed 0 to 9 scale with gridlines at 0, 3, 6 and 9, and vertical
     gridlines every five minutes, so it reads like graph paper;
   * the bar each sentence was judged against is a line (red on the page) that steps from one sentence to the next, so it rises and
     falls with the room;

@@ -105,7 +105,7 @@ class Eavesdropper:
         """
         self.report = FaultRecorder(strict=strict, error=EavesdropperError, logger=_log)
         self._deck, self._client = deck, client
-        self._sound_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
+        self._room_tone_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
                                           lambda v: _is_whole(v, 0), "a whole number of at least 0")
         self._room_tone_pass_seconds = self._setting(room_tone_pass_seconds, "room_tone_pass_seconds", DEFAULT_ROOM_TONE_PASS_SECONDS,
                                             lambda v: _is_number(v) and v > 0, "a number above 0")
@@ -162,9 +162,9 @@ class Eavesdropper:
                 yield item
         if segments:
             self._quiet_steps = 0
-        elif self._sound_every and not self._whisper_down:
+        elif self._room_tone_every and not self._whisper_down:
             self._quiet_steps += 1
-            if self._quiet_steps % self._sound_every == 0:
+            if self._quiet_steps % self._room_tone_every == 0:
                 text = self._client.text(self._cutter.recent(self._room_tone_pass_seconds), vad=False)
                 item = self._news(self._splitter.split(text, plain_text=False), self._cutter.total_seconds)
                 if item is not None:

@@ -90,7 +90,7 @@ class TestWhatIsHeard:
         eavesdropper, _, _ = make(12)
         assert hear(eavesdropper) == []
 
-    def test_nothing_here_marks_give_nothing(self):
+    def test_blanks_give_nothing(self):
         eavesdropper, _, _ = make(12, [seg(0.5, 3.0, "[BLANK_AUDIO]")])
         assert hear(eavesdropper) == []
 

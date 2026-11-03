@@ -12,7 +12,7 @@ INTENTION
         examples.
       - Track B (base model, LoRA fine-tuned on about 70,000 utterances) may memorize and
         recite them, most likely from the small, heavily drawn shelves.
-    The design notes list "checking both voices for verbatim copying" as an open item. This
+    The design notes list "checking both oracle tracks for verbatim copying" as an open item. This
     file is where such a check would live.
 
 WHY IT IS A STUB (decided with Wes, October 2026)
@@ -53,7 +53,7 @@ def check_output(text, hinge=None):
 
     Args:
         text: The reply the oracle produced.
-        hinge: The room fragment (or typed input) the reply was written from, if known.
+        hinge: The room clip (or typed input) the reply was written from, if known.
 
     Returns:
         A list of short human-readable findings. This stub always returns [].

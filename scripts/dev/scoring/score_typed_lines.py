@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Play with the typed-line path: type lines, see each one's score, the typed score multiplier, and whether the Printer would answer.
+"""Play with the typed-line path: type lines, see each one's score, the handicap, and whether the Printer would answer.
 
 The ClipScorer is the real one, built from config/pom.toml (the scorer model's llama-server must be running, on the address in
 `scorer.url`), and so are the BarKeeper and the TypedLineScorer, with the `[qualifying]` settings
@@ -11,7 +11,7 @@ Usage:
     echo "The walls are listening." | score_typed_lines.py
     score_typed_lines.py                       # type lines at the prompt; an empty line quits
     score_typed_lines.py --bar 5 "..."         # start the bar at 5 instead of the config's starting_bar
-    score_typed_lines.py --multiplier 2 --affect-bar "..."    # try another multiplier, and let typed lines feed the bar
+    score_typed_lines.py --handicap 2 --affect-bar "..."    # try another handicap, and let typed lines feed the bar
 
 Nothing you type is kept: it is scored and forgotten.
 """
@@ -44,11 +44,11 @@ def build(config: Config, args):
     if args.bar is not None:
         qualifying = dataclasses.replace(qualifying, starting_bar=args.bar)
     bar_keeper = bar_keeper_from_settings(qualifying)
-    multiplier = qualifying.typed_handicap if args.multiplier is None else args.multiplier
+    handicap = qualifying.typed_handicap if args.handicap is None else args.handicap
     affects_bar = qualifying.typed_lines_affect_bar or args.affect_bar
     started = time.monotonic()
-    typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, multiplier, affects_bar)
-    return scorer, bar_keeper, typed, client, multiplier, affects_bar
+    typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, handicap, affects_bar)
+    return scorer, bar_keeper, typed, client, handicap, affects_bar
 
 
 def main():
@@ -56,15 +56,15 @@ def main():
     parser.add_argument("lines", nargs="*", help="what to score (read from stdin, or typed at a prompt, if omitted)")
     parser.add_argument("--config", default=str(ROOT / "config" / "pom.toml"), help="the config file to read")
     parser.add_argument("--bar", type=float, default=None, help="start the bar here (default: the config's starting_bar)")
-    parser.add_argument("--multiplier", type=float, default=None, help="the typed score multiplier (default: the config's typed_handicap)")
+    parser.add_argument("--handicap", type=float, default=None, help="the handicap (default: the config's typed_handicap)")
     parser.add_argument("--affect-bar", action="store_true", help="let typed lines feed the bar (default: the config's typed_lines_affect_bar)")
     args = parser.parse_args()
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    scorer, bar_keeper, typed, client, multiplier, affects_bar = build(config, args)
+    scorer, bar_keeper, typed, client, handicap, affects_bar = build(config, args)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
-    print(f"typed lines: score x {multiplier:g}, no cooldown, {'feed' if affects_bar else 'do not feed'} the bar")
+    print(f"typed lines: score x {handicap:g}, no cooldown, {'feed' if affects_bar else 'do not feed'} the bar")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: lines will come back unscored (start its llama-server)")
 
@@ -73,10 +73,10 @@ def main():
         if sentence.score is None:
             print("      -  no score       [silence]")
             return
-        raw = sentence.score / multiplier if multiplier else 0.0
+        raw = sentence.score / handicap if handicap else 0.0
         verdict = "<-- the Printer would answer" if sentence.is_hinge else "[silence]"
         bar = "none" if sentence.bar is None else f"{sentence.bar:.2f}"
-        print(f"  {raw:5.2f} x {multiplier:g} = {sentence.score:5.2f}  bar {bar:>4}  "
+        print(f"  {raw:5.2f} x {handicap:g} = {sentence.score:5.2f}  bar {bar:>4}  "
               f"{sentence.scored_by.value:<16} {verdict}")
 
     if args.lines:

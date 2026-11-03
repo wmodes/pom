@@ -1,7 +1,7 @@
-"""The ScoreTrace: every scored sentence's score and the bar it was judged against, for the chart on the monitoring site.
+"""The ScoreTrace: every attempt's score and the bar it was judged against, for the chart on the monitoring site.
 
 The TurnHistory keeps the words of the sentences that qualified. This keeps something lighter for all the others: just numbers, one
-point per scored sentence (when it was heard, its score, the bar it had to beat, and whether it qualified), so the page can draw the
+point per attempt (when it was heard, its score, the bar it had to beat, and whether it qualified), so the page can draw the
 room's scores and the bar riding above them. No words from the room are kept here, so it is safe to show even when hinges are hidden.
 
 Design decisions, and why:
@@ -39,7 +39,7 @@ class ScoreTraceError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class TracePoint:
-    """One scored sentence, as numbers.
+    """One attempt, as numbers.
 
     Attributes:
         at: Where in the audio stream the sentence ended, in seconds from the start of listening.
@@ -58,7 +58,7 @@ def _is_number(value) -> bool:
 
 
 class ScoreTrace:
-    """Keeps the recent scored sentences as numbers, oldest first.
+    """Keeps the recent attempts as numbers, oldest first.
 
     Attributes:
         report: Problems met (a bad setting, a point that could not be made). Never holds a value from the room.
@@ -82,7 +82,7 @@ class ScoreTrace:
         self._lock = threading.Lock()
 
     def add(self, score: float, bar: Optional[float], at: float, qualified: bool = False) -> bool:
-        """Adds a scored sentence. True if it was kept; False (see `report`) if the score or the time was not a number."""
+        """Adds an attempt. True if it was kept; False (see `report`) if the score or the time was not a number."""
         if not (_is_number(score) and _is_number(at)):
             self.report.warn("a point was given without a numeric score and time, so it was not kept")
             return False

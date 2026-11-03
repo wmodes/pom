@@ -1,4 +1,4 @@
-"""Tests for pom.monitor.score_trace: every scored sentence as numbers, in memory only."""
+"""Tests for pom.monitor.score_trace: every attempt as numbers, in memory only."""
 import logging
 import threading
 

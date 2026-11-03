@@ -122,12 +122,12 @@ def main() -> None:
 
     configure_logging("WARNING")
     config = Config.load(args.config)
-    heard_settings, qualifying, scoring = config.listening, config.qualifying, config.scorer
+    listening, qualifying, scoring = config.listening, config.qualifying, config.scorer
     if args.monitor and not config.monitor.password:
         sys.exit("--monitor needs a password: put  password = \"...\"  under [monitor] in config/pom.local.toml (git ignores that file)")
-    client = WhisperModelClient(heard_settings.whisper_url, heard_settings.whisper_timeout)
+    client = WhisperModelClient(listening.whisper_url, listening.whisper_timeout)
     if not client.ping():
-        sys.exit(f"the whisper-server is not answering at {heard_settings.whisper_url}; see the top of this file for how to start it")
+        sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
     if not answers(scoring.url):
         sys.exit(f"the scorer model's llama-server is not answering at {scoring.url}")
     if not answers(config.oracle.url):
@@ -136,12 +136,12 @@ def main() -> None:
     if args.wav:
         deck, where = WavDeck(args.wav, speed=args.speed), f"the recording {args.wav}"
     elif args.mac_mic is not None:
-        deck, where = MacMicDeck(args.mac_mic, buffer_seconds=heard_settings.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
+        deck, where = MacMicDeck(args.mac_mic, buffer_seconds=listening.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
     else:
-        deck, where = MicDeck(heard_settings.device, buffer_seconds=heard_settings.buffer_seconds), f"the microphone {heard_settings.device}"
-    eavesdropper = Eavesdropper(deck, client, heard_settings.cut_every_seconds, heard_settings.hold_back_seconds, heard_settings.rewind_seconds,
-                        heard_settings.max_cut_seconds, heard_settings.room_tone_pass_every, heard_settings.room_tone_pass_seconds,
-                        heard_settings.room_tone_memory)
+        deck, where = MicDeck(listening.device, buffer_seconds=listening.buffer_seconds), f"the microphone {listening.device}"
+    eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
+                        listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
+                        listening.room_tone_memory)
 
     nltk_dir = ROOT / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug)
@@ -149,7 +149,7 @@ def main() -> None:
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     bar_keeper = bar_keeper_from_settings(qualifying)
-    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, heard_settings.score_room_tone)
+    finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, listening.score_room_tone)
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(PASSAGES), Circulation.from_file(PASSAGES / "circulation.json"), rng,
@@ -160,7 +160,7 @@ def main() -> None:
     history, trace, site, snapshot = None, None, None, dict(bar=None, window=0, heard=0, scored=0)
     if args.monitor:
         monitor = config.monitor
-        watch = ServiceWatch({"whisper": lambda: reachable(heard_settings.whisper_url), "scorer": lambda: answers(scoring.url),
+        watch = ServiceWatch({"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: answers(scoring.url),
                               "oracle": lambda: answers(config.oracle.url)})
         history, trace = TurnHistory(monitor.history_seconds), ScoreTrace(monitor.history_seconds)
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
@@ -171,9 +171,9 @@ def main() -> None:
             sys.exit("the monitoring site did not start: " + "; ".join(site.report.lines()))
 
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
-    print(f"  listening to {where}; whisper at {heard_settings.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
+    print(f"  listening to {where}; whisper at {listening.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")
     print(f"  qualifying ({qualifying.algorithm}): a score above {bar_keeper.describe()}")
-    print(f"  room tone {'is' if heard_settings.score_room_tone else 'is not'} scored")
+    print(f"  room tone {'is' if listening.score_room_tone else 'is not'} scored")
     if site is not None:
         print(f"  monitoring site: http://{'<this machine>' if config.monitor.host == '0.0.0.0' else config.monitor.host}:{site.port}  "
               f"(any user name; the password is [monitor] password; hinges {'shown' if config.monitor.show_hinges else 'hidden'})")

@@ -353,8 +353,8 @@ def test_an_unknown_scorer_key_is_warned_about(tmp_path):
 
 
 def test_an_unknown_section_is_warned_about(tmp_path):
-    config = Config.load(write(tmp_path, "[voice]\nmodel = 5\n"), environ={})
-    assert any("voice.model" in w for w in config.report.warnings)
+    config = Config.load(write(tmp_path, "[bogus]\nmodel = 5\n"), environ={})
+    assert any("bogus.model" in w for w in config.report.warnings)
 
 
 def test_the_local_file_overrides_one_scorer_key_and_keeps_the_rest(tmp_path):
@@ -459,7 +459,7 @@ def test_all_the_qualifying_values_are_read_from_the_section(tmp_path):
     assert config.report.ok
 
 
-def test_the_typed_line_settings_start_as_a_multiplier_of_one_and_a_half_that_stays_out_of_the_bar():
+def test_the_typed_line_settings_start_as_a_handicap_of_one_and_a_half_that_stays_out_of_the_bar():
     s = QualifyingSettings()
     assert s.typed_handicap == 1.5 and s.typed_lines_affect_bar is False
 

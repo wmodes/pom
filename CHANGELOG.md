@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The Great Rename, words (11): the stragglers**: a sweep of the code, tests, dev tools and docs against the lexicon's "was" names found a few left over. The typed line's *multiplier* is the *handicap*
+  (`TypedLineScorer(handicap=...)`, `DEFAULT_HANDICAP`, the warning text, the tests, and `score_typed_lines.py --handicap`, which was `--multiplier`); a *scored sentence* is an *attempt* (the monitor
+  chart's legend says "Black dots: attempts.", and the `ScoreTrace`, chart and test names follow); the Eavesdropper's private `_sound_every` is `_room_tone_every`; the dev tools' `heard_settings` is
+  `listening`; and a handful of docstrings and test names (`output module`, `sorted into`, `room fragment`, `both voices`, `nothing_here_marks`, a `[voice]` section in a config test). Words only; 2,580 tests pass.
 - **The Great Rename, words (10): the draw weights are the values, the circulation is the set**: following the lexicon's new entries, *circulation* names the whole set (the `Circulation` class and
   `circulation.json`) and a *draw weight* is one value in it (a shelf's `share()`, a holding's `holding_weight()`). Where the earlier word pass had turned "draw weights" into "circulation" it says draw
   weights again: the `Circulation` docstring, the file's `_about` note, the library README heading, `project-state.md`, `adding-material.md`, `validate_output.py` and `cataloguer.py`. Words only.

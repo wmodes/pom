@@ -116,7 +116,7 @@ class TestWhatIsYielded:
         made, _, _ = finder([segment("Hello there.")], scored_by=ScoredBy.CLIP_FILTER)
         assert found(made)[0].scored_by is ScoredBy.CLIP_FILTER
 
-    def test_a_scored_sentence_cannot_be_changed(self):
+    def test_an_attempt_cannot_be_changed(self):
         made, _, _ = finder([segment("Hello there.")])
         sentence = found(made)[0]
         try:

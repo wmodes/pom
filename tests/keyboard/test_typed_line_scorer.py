@@ -11,7 +11,7 @@ from pom.fault_recorder import FaultRecorder
 from pom.keyboard import TypedLineScorer, TypedLineScorerError
 from pom.qualifying import Attempt, BarKeeper, PercentileBar, Ruling
 from pom.scoring import ScoredBy, ScoredClip
-from pom.keyboard.typed_line_scorer import DEFAULT_MULTIPLIER, TYPED
+from pom.keyboard.typed_line_scorer import DEFAULT_HANDICAP, TYPED
 
 
 class FakeScorer:
@@ -45,15 +45,15 @@ def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):
 
 
 class TestTheDefaults:
-    def test_the_multiplier_starts_at_one_and_a_half(self):
-        assert DEFAULT_MULTIPLIER == 1.5
+    def test_the_handicap_starts_at_one_and_a_half(self):
+        assert DEFAULT_HANDICAP == 1.5
 
     def test_the_kind_is_typed(self):
         assert TYPED == "typed"
 
 
 class TestTheSentence:
-    def test_it_is_a_scored_sentence_of_kind_typed_with_the_text_and_the_time(self):
+    def test_it_is_an_attempt_of_kind_typed_with_the_text_and_the_time(self):
         made, _, _, _ = typed({"Is anyone there?": 4.0}, now=42.5)
         sentence = made.score("Is anyone there?")
         assert isinstance(sentence, Attempt) and sentence.kind == "typed"
@@ -80,33 +80,33 @@ class TestTheSentence:
         assert made.score("a").counted == 1 and made.score("b").counted == 2
 
 
-class TestTheMultiplier:
+class TestTheHandicap:
     def test_the_score_is_multiplied_by_one_and_a_half_to_begin_with(self):
         made, _, _, _ = typed({"x": 4.0})
         assert made.score("x").score == 6.0
 
-    def test_the_multiplier_can_be_set(self):
-        made, _, _, _ = typed({"x": 4.0}, multiplier=2)
+    def test_the_handicap_can_be_set(self):
+        made, _, _, _ = typed({"x": 4.0}, handicap=2)
         assert made.score("x").score == 8.0
 
     def test_the_product_is_not_capped_at_nine(self):
         made, _, _, _ = typed({"x": 9.0})
         assert made.score("x").score == 13.5
 
-    def test_a_multiplier_of_one_is_no_bonus(self):
-        made, _, _, _ = typed({"x": 4.0}, multiplier=1)
+    def test_a_handicap_of_one_is_no_bonus(self):
+        made, _, _, _ = typed({"x": 4.0}, handicap=1)
         assert made.score("x").score == 4.0
 
-    def test_a_multiplier_of_zero_is_allowed(self):
-        made, _, _, _ = typed({"x": 9.0}, multiplier=0)
+    def test_a_handicap_of_zero_is_allowed(self):
+        made, _, _, _ = typed({"x": 9.0}, handicap=0)
         assert made.score("x").score == 0.0 and made.report.ok
 
-    def test_a_multiplier_can_carry_a_dull_line_over_the_bar(self):
+    def test_a_handicap_can_carry_a_dull_line_over_the_bar(self):
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0)
         assert made.score("x").is_hinge        # 4.5 * 1.5 = 6.75
 
-    def test_without_the_multiplier_the_same_line_does_not_qualify(self):
-        made, _, _, _ = typed({"x": 4.5}, bar_level=6.0, multiplier=1)
+    def test_without_the_handicap_the_same_line_does_not_qualify(self):
+        made, _, _, _ = typed({"x": 4.5}, bar_level=6.0, handicap=1)
         assert not made.score("x").is_hinge
 
 
@@ -191,18 +191,18 @@ class TestWhenThereIsNoScore:
         assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.CLIP_FILTER, False)
 
 
-class TestTheMultiplierIsChecked:
+class TestTheHandicapIsChecked:
     @pytest.mark.parametrize("bad", [-1, -0.1, "1.5", None, True, [1.5], float("nan"), float("inf")])
-    def test_a_bad_multiplier_is_the_default_with_a_warning(self, bad):
-        made, _, _, _ = typed({"x": 4.0}, multiplier=bad)
+    def test_a_bad_handicap_is_the_default_with_a_warning(self, bad):
+        made, _, _, _ = typed({"x": 4.0}, handicap=bad)
         assert made.score("x").score == 6.0 and len(made.report.warnings) == 1
 
     def test_strict_raises_instead(self):
         with pytest.raises(TypedLineScorerError):
-            typed(multiplier=-1, strict=True)
+            typed(handicap=-1, strict=True)
 
-    def test_a_good_multiplier_gives_no_warning(self):
-        assert typed(multiplier=2)[0].report.ok
+    def test_a_good_handicap_gives_no_warning(self):
+        assert typed(handicap=2)[0].report.ok
 
 
 class TestWhatIsKept:
@@ -213,6 +213,6 @@ class TestWhatIsKept:
         assert "secret" not in caplog.text
 
     def test_the_typed_text_is_never_in_the_report(self):
-        made, _, _, _ = typed(multiplier=-1)
+        made, _, _, _ = typed(handicap=-1)
         made.score("the secret words")
         assert "secret" not in " ".join(made.report.lines())

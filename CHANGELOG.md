@@ -45,6 +45,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The KeyboardWatcher** (`src/pom/conductor/keyboard_watcher.py`; fifth leaf of the Conductor): the typed-line twin of the HingeFinder. `watch()` reads each finished line from the terminal, has the TypedLineScorer score it
+  and the BarKeeper rule on it, and yields the `Attempt`. It has the Eavesdropper's `pause()` and `skip_ahead()` (a line finished during a turn is read and dropped unscored, counted in `dropped_lines`), skips empty
+  lines, and survives a terminal or scorer that raises (a warning naming the error type, a short pause, on); only `close()` ends it. Nothing typed is logged. 36 tests; 12 mutants checked (three of them make `watch()` never
+  end and are caught by a timeout). The mutation helper was also hardened: it restores the file from the text it read, never from a disk copy, after a stopped run left a mutant in the source. 2,901 tests pass.
 - **The TerminalPort stays with the portent** (stage 2 of the printer's robustness): once typing has begun, a failed write no longer ends the portent. A *stall* (flow control holds the line: the hold button, no paper, busy; a
   write timeout) is waited out and the same character is sent again; a *lost port* is closed and reopened every `reconnect_seconds` (2), and typing goes on from the first character not sent. Either wait lasts at most
   `stall_patience_seconds` (600), calls the heartbeat the TurnTaker hands it (`transmit(text, still_alive=...)`) every few seconds, is one warning for the stretch with a reminder in the log each minute, and pacing restarts

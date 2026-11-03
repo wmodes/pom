@@ -302,8 +302,9 @@ time: that is half-duplex.
 
 - **hinge finder**: Runs Listening, Scoring and Qualifying for the room, and yields every attempt; the one that qualified carries the
   hinge. Example: `HingeFinder` (was/still)
-- **keyboard watcher**: *(planned)* Does the same for typed lines while the Printer is listening. Example: `KeyboardWatcher`
-  (was/still)
+- **keyboard watcher**: Does the same for typed lines as the hinge finder does for the room: reads each finished line from the terminal, has it
+  scored and ruled on, and yields the attempt. It has the eavesdropper's `pause()` and `skip_ahead()`: a line finished during a turn is read
+  and thrown away unscored. Example: `KeyboardWatcher` (was/still)
 - **the floor**: Who may speak: the room, or the Printer during a turn. One holds it at a time, first come, first served.
 - **FloorKeeper**: Keeps the floor: the state (listening, writing, printing, recovering), the one-turn-at-a-time rule (first come, first
   served), and the watchdog that takes the floor back from a turn that runs too long (it goes to recovering, then listening). The limits

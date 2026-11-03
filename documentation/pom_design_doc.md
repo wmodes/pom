@@ -160,6 +160,15 @@ the oracle's time and they come every 6 to 8 minutes, so there is no hurry back 
 - **No printer by design** (`terminal` is `None`): write, record, done; the outcome is `not printed (no printer)`. The Printer can be
   watched listening and writing, with everything on the monitoring site, with nothing attached.
 
+### The keyboard's ear: the KeyboardWatcher
+
+(*Built*: `src/pom/conductor/keyboard_watcher.py`.) The typed-line twin of the HingeFinder: it reads each finished line from the terminal
+(`read_line`, with a one-second poll), has the TypedLineScorer score it and the BarKeeper rule on it, and yields the attempt; the one that qualified is
+the hinge, exactly as for the room. It has the Eavesdropper's two calls, `pause()` when a turn takes the floor and `skip_ahead()` when it is yielded: a
+line that finishes during a turn is still read (so the terminal's buffer stays empty) but is dropped unscored and counted, so nothing reaches the scorer
+model mid-turn. Empty lines are skipped. A terminal or a scorer that raises is one warning naming the error type and a short pause, never the end of the
+watching; only `close()` ends it. What was typed is never logged or put in a report.
+
 ## Listening: from sound to text
 
 1. **Microphone** (*built*, `MicDeck`): listens all the time through `arecord` and hands audio on in 30 ms frames. It reads in a thread of its own into a 10-second buffer, so a slow whisper run cannot lose sound; if the buffer fills, the oldest frames are dropped and counted. A recording can be played instead (`WavDeck`), for tests and replays.

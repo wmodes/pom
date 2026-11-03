@@ -651,6 +651,40 @@ class TestRunningForReal:
         with pytest.raises(urllib.error.URLError):
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)
 
+    def poll_once(self):
+        site = MonitorSite(TurnHistory(), PASSWORD)
+        assert site.start("127.0.0.1", 0) is True
+        try:
+            request = urllib.request.Request(f"http://127.0.0.1:{site.port}/api/turns", headers=basic())
+            with urllib.request.urlopen(request, timeout=5) as response:
+                assert response.status == 200
+        finally:
+            site.stop()
+
+    def test_the_pages_polling_leaves_no_line_in_the_log_or_on_the_console(self, caplog, capfd):
+        with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"), caplog.at_level(logging.DEBUG, logger="werkzeug"):
+            self.poll_once()                                                    # even with the loggers turned all the way up
+        seen = capfd.readouterr()
+        assert "/api/turns" not in seen.out + seen.err
+        assert not [r for r in caplog.records if "/api/turns" in r.getMessage()]
+
+    @pytest.mark.parametrize("flag", [None, False])
+    def test_only_an_explicit_true_shows_requests_not_even_the_project_debug_flag(self, flag, caplog, monkeypatch):
+        monkeypatch.setattr("pom.monitor.monitor_site.DEBUG", flag)
+        with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"):
+            self.poll_once()
+        assert not [r for r in caplog.records if "/api/turns" in r.getMessage()]
+
+    def test_with_the_modules_debug_flag_on_each_request_is_one_debug_line_from_this_module(self, caplog, capfd, monkeypatch):
+        monkeypatch.setattr("pom.monitor.monitor_site.DEBUG", True)
+        with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"):
+            self.poll_once()
+        lines = [r for r in caplog.records if r.name == "pom.monitor.monitor_site" and "/api/turns" in r.getMessage()]
+        assert len(lines) == 1 and lines[0].levelno == logging.DEBUG
+        assert '"GET /api/turns HTTP/1.1" 200' in lines[0].getMessage()
+        seen = capfd.readouterr()
+        assert "/api/turns" not in seen.out + seen.err                          # not also werkzeug's own line
+
     def test_starting_twice_keeps_one_server(self):
         site = MonitorSite(TurnHistory(), PASSWORD)
         try:

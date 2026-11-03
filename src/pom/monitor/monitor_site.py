@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Mapping, Optional
 
 from flask import Flask, Response, abort, jsonify, render_template_string, request
-from werkzeug.serving import make_server
+from werkzeug.serving import WSGIRequestHandler, make_server
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
@@ -43,8 +43,21 @@ from pom.monitor.score_chart import DEFAULT_SECONDS as CHART_SECONDS, render_sco
 from pom.monitor.score_trace import ScoreTrace
 from pom.monitor.turn_history import TurnHistory, TurnRecord
 
-DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
+DEBUG = None   # None follows the project debug flag; True/False overrides it for this module (the page's per-request lines need True)
 _log = get_logger(__name__, DEBUG)
+
+
+class _PollingRequestHandler(WSGIRequestHandler):
+    """werkzeug's request handler, except that the line it prints for every request is shown only when this module's DEBUG is True.
+
+    The page asks `/api/turns` and `/chart.svg` every few seconds for as long as it is open, so a line for each request buries
+    everything else in the log, even with the project's debug flag on. With `DEBUG = True` above they come back, as DEBUG lines
+    from this module's logger (the path and the status; no text of any turn). Problems werkzeug reports itself are not touched.
+    """
+
+    def log_request(self, code="-", size="-"):
+        if DEBUG is True:
+            _log.debug('%s "%s" %s', self.address_string(), self.requestline, code)
 
 REALM = "Printer of Mysteries"
 POLL_SECONDS = 5
@@ -258,7 +271,7 @@ class MonitorSite:
         if self.app is None or self._server is not None:
             return self._server is not None
         try:
-            self._server = make_server(host, port, self.app, threaded=True)
+            self._server = make_server(host, port, self.app, threaded=True, request_handler=_PollingRequestHandler)
         except (OSError, OverflowError, ValueError, SystemExit) as problem:      # werkzeug exits the process if the port is taken
             self.report.critical(f"the monitoring site could not listen on port {port} ({type(problem).__name__}); "
                                  f"it is not running")

@@ -112,6 +112,7 @@ scripts/setup/      one-time provisioning for the Pi
 tests/              the test suite
 documentation/      design notes, vocabulary, setup notes, working notes
 experiments/        earlier prototypes and model bake-offs, kept as they were
+LICENSE.md          the MIT License (for the code and docs; the library's texts have their own rights)
 ```
 
 ## Development
@@ -139,4 +140,6 @@ Made by Wes Modes for the Office of Ordinary Hauntings. The CadetWriter board th
 
 ## License
 
-None chosen yet. If you would like to use or adapt any of it, please get in touch.
+The code, the documentation and the rest of the project's own writing are released under the [MIT License](LICENSE.md): use them, change them, build on them, with the notice kept.
+
+That covers the project, not the books. The texts in `library/` keep their own rights, recorded for each holding in [`library/holdings.csv`](library/holdings.csv): most are public domain, and a few are not and were cleared by the project owner for this installation (see [`library/README.md`](library/README.md)). The MIT License does not extend to those, so check a holding's row before reusing its text.

@@ -102,13 +102,15 @@ memory, and nothing is ever unloaded to make room. Consequences, so they are not
 
 ### The servers are services
 
-(*Agreed 2026-11-03; the units are not written yet.*) On the Pi, systemd runs each server as its own unit: `pom-whisper.service`,
+(*Built and installed on the Pi 2026-11-03; see `pi-setup-notes.md`.*) On the Pi, systemd runs each server as its own unit: `pom-whisper.service`,
 `pom-scorer.service` and `pom-oracle.service`, each `Restart=always`, each logging to journald (which rotates the logs). `pom.service`
 runs after them with `After=` and `Wants=`, never `Requires=`: a server that crashes or restarts must not take the Printer down, and the
 Printer already copes with a missing server (it says so on the Monitor page, keeps going, and recovers when the server answers). The
 ports and model paths are in the unit files and the ports are also in `config/pom.toml`; the unit files live in the repo
 (`scripts/setup/`) and reach the Pi through git like everything else. On the Mac, `scripts/dev/pipeline/run_printer_with_servers.py` is the
-test bench that starts the same three servers, runs the Printer on them, and stops what it started.
+test bench that starts the same three servers, runs the Printer on them, and stops what it started. On the Pi the models are loaded with `-lm mmap -lzm off`
+(loaded and fully resident) and NOT pinned with mlock: measured with all three loaded, plain mmap leaves about 7.7 GB of the 16 GB available, while `mmap+mlock`
+pinned the memory twice (this ARM build keeps a repacked copy of the weights) and left 0.9 GB.
 
 ### Pausing the ears, like a tape deck
 

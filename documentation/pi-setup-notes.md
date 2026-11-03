@@ -179,38 +179,40 @@ The tools were first built in the home folder and moved here on 2026-10-23. A bu
 through an absolute path, so they were rebuilt in place, and the setup scripts now build with a relative library
 path (`$ORIGIN`) so the folder can be moved again without rebuilding. Keep the Pi's clone clean (no edits in tracked files), so `git pull` always works; `benchmark_pi_prepare.sh check` says if it is not.
 
-## Running the Printer as a service (draft, not installed)
+## Running the Printer as a service (installed 2026-11-03)
 
-The Printer is `python -m pom` (see the design doc, "The Conductor and the entry point"). With nobody there to restart anything, systemd starts it
-at boot and again if it ever stops. It copes with the servers coming up after it, so it does not have to wait for them; but they are services
-too, and a unit for each (whisper-server, and a llama-server for the scorer and one for the oracle) would start them at boot. This draft is for
-the Printer's own unit; **nothing here is installed on pom1 yet.**
+The Printer and its three model servers are systemd services, and their unit files live in the repo and are linked into place, so a `git pull` rewrites
+them. The files and the scripts are in `scripts/setup/` (its README describes each).
 
-```ini
-# /etc/systemd/system/pom.service
-[Unit]
-Description=Printer of Mysteries
-After=network-online.target
-Wants=network-online.target
+| Service | What | Notes |
+|---|---|---|
+| `pom-whisper` | whisper-server, `base.en`, whisper's own voice detection, port 8110 | |
+| `pom-scorer` | llama-server, Qwen3-4B, port 8098, `-np 2` | |
+| `pom-oracle` | llama-server, Qwen3.5-9B, port 8099, `-np 1` | loads in about 20 s once the files are in the page cache; about a minute cold |
+| `pom` | `python -m pom` | after and wants the three servers (never requires them) |
 
-[Service]
-User=pi
-WorkingDirectory=/home/pi/pom
-Environment=PYTHONPATH=/home/pi/pom/src
-ExecStart=/home/pi/envs/pom/bin/python -m pom
-Restart=always
-RestartSec=5
-# SIGTERM is the clean stop; a portent being typed for longer than 5 s is cut off by it
-KillSignal=SIGTERM
-TimeoutStopSec=30
+**Install (once) and update (after every change):**
 
-[Install]
-WantedBy=multi-user.target
+```
+cd ~/pom && git pull && scripts/setup/install-services.sh --start     # first time: link, enable, start the four
+scripts/setup/update-pi.sh                                           # afterwards: pull, relink, restart only what changed
 ```
 
-Then `sudo systemctl daemon-reload && sudo systemctl enable --now pom`, and `journalctl -u pom -f` to watch it. The log holds counts, labels and
-seconds, never anything said. The monitoring site's password lives in `config/pom.local.toml` (gitignored) under `[monitor]`, with `enabled = true`.
-`PYTHONPATH` is there because the project is not packaged yet (the tests do the same with `pythonpath = src`).
+`install-services.sh` first checks every flag in the server units against each server's own `--help` (a flag this llama.cpp does not know made the
+first scorer crash-loop), links the units with `systemctl link`, makes the journal persistent (the Pi ships it volatile; `scripts/setup/journald/90-pom.conf`,
+500 MB cap), reloads, enables, and restarts only the services whose unit changed, so the models stay loaded. `journalctl -u pom -f` follows the Printer;
+the log holds counts, labels and seconds, never anything said.
+
+**The Pi's own `config/pom.local.toml`** (gitignored; not in the repo) holds the monitor's password and `[terminal] mode = "none"` while no typewriter is
+connected. The monitoring page is at `http://pom1.local:8080` (any user name). Set `mode = "serial"` (or remove the section) once the CadetWriter is plugged in.
+
+**Memory: the models are loaded with `-lm mmap -lzm off`, not pinned.** Measured on the Pi 2026-11-03 with whisper, the scorer and the oracle all loaded and idle:
+about 7.7 GB of the 16 GB available (the oracle holds 9.2 GB resident, 5.0 anonymous and 4.2 mapped file; the scorer 5.1 GB). Pinning the models in RAM
+(`-lm mmap+mlock`) was tried and rejected: this ARM build keeps a repacked copy of the weights, so it pinned the memory twice and left 0.9 GB available, close
+to the OOM-killer. The oracle alone: 10.6 GB available with `mmap`, 10.1 GB with `mlock`, 6.1 GB with `mmap+mlock`.
+
+**Tried and working:** killing the oracle with SIGKILL, systemd restarted it and it was answering again in about 32 s; the Printer never stopped and the monitor's
+service lights stayed green. The microphone is open (`arecord -D plughw:0,0`). Not yet tried: a reboot (do all four come up by themselves?), and the typewriter.
 
 ## Fan check
 

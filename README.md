@@ -79,7 +79,7 @@ To watch what it is doing, switch on the monitoring page: copy `config/pom.local
 
 ### On the Pi
 
-The Printer is `python -m pom`, run by systemd, with each model server as its own service so a crashed server restarts without taking the Printer down. Provisioning (OS, Wi-Fi with a fallback hotspot, whisper.cpp and llama.cpp builds) is in [`documentation/pi-setup-notes.md`](documentation/pi-setup-notes.md). The systemd units are drafted there but not installed yet.
+The Printer is `python -m pom`, run by systemd, with each model server as its own service so a crashed server restarts without taking the Printer down. Provisioning (OS, Wi-Fi with a fallback hotspot, whisper.cpp and llama.cpp builds) is in [`documentation/pi-setup-notes.md`](documentation/pi-setup-notes.md). The unit files are in [`scripts/setup/systemd/`](scripts/setup/systemd/) and are linked into place by `scripts/setup/install-services.sh`, so a `git pull` then `scripts/setup/update-pi.sh` brings the Pi up to date; the log is `journalctl -u pom`.
 
 ## Configuration
 

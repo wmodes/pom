@@ -4,8 +4,6 @@ A nationwide civil defense system now exists in the United States, and is being 
 
 If an enemy should threaten to attack the United States, you would not be alone. The entire Nation would be mobilizing to repulse the attack, destroy the enemy, and hold down our own loss of life. Much assistance would be available to you--from local, State and Federal governments, from the U.S. armed forces units in your area, and from your neighbors and fellow-Americans. If an attack should come, many lives would be saved through effective emergency preparations and actions.
 
-You can give yourself and your family a much better chance of surviving and recovering from a nuclear attack if you will take time now to:
-
 Understand the dangers you would face in an attack.
 
 Make your own preparations for an attack.
@@ -41,8 +39,6 @@ For the best possible protection, use heavy and dense materials for shielding.
 Water and other liquids.
 
 Food requiring no cooking.
-
-If no doctor is available, especially important are actions to:
 
 Stop serious bleeding.
 
@@ -140,8 +136,6 @@ Many U.S. cities and towns have outdoor warning systems, using sirens, whistles,
 
 Different cities and towns are using their outdoor warning systems in different ways. Most local governments, however, have decided to use a certain signal to warn people of an enemy attack, and a different signal to notify them of a peacetime disaster.
 
-The two "standard" signals that have been adopted in most communities are these:
-
 THE ATTACK WARNING SIGNAL. This will be sounded only in case of enemy attack. The signal itself is a 3- to 5-minute wavering sound on the sirens, or a series of short blasts on whistles, horns or other devices, repeated as deemed necessary. The Attack Warning Signal means that an actual enemy attack against the United States has been detected, and that protective action should be taken immediately. This signal has no other meaning, and will be used for no other purpose.
 
 THE ATTENTION OR ALERT SIGNAL. This is used by some local governments to get the attention of citizens in a time of threatened or impending natural disaster, or some other peacetime emergency. The signal itself is a 3-to 5-minute steady blast on sirens, whistles, horns or other devices. In most places, the Attention or Alert Signal means that the local government wants to broadcast important information on radio or television concerning a peacetime disaster.
@@ -197,10 +191,6 @@ In setting up any home fallout shelter, the basic aim is to place enough "shield
 Shielding material is any substance that would absorb and deflect the invisible rays given off by fallout particles outside the house, and thus reduce the amount of radiation reaching the occupants of the shelter. The thicker or denser the shielding material is, the more it would protect the shelter occupants.
 
 Some radiation protection is provided by the existing, standard walls and ceiling of a basement. But if they are not thick or dense enough, other shielding material will have to be added.
-
-Concrete, bricks, earth and sand are some of the materials that are dense or heavy enough to provide fallout protection. For comparative purposes, 4 inches of concrete would provide the same shielding density as:
-
-If there is no public fallout shelter near your home, or if you would prefer to use a family-type shelter in a time of attack, you should prepare a home fallout shelter. Here is how to do it:
 
 A PERMANENT BASEMENT SHELTER. If your home basement--or one corner of it--is below ground level, your best and easiest action would be to prepare a permanent-type family shelter there. The required shielding material would cost perhaps $100-$200, and if you have basic carpentry or masonry skills you probably could do the work yourself in a short time.
 
@@ -282,8 +272,6 @@ An improvised shelter probably would not give you as much protection as a perman
 
 The best place to improvise a shelter would be the basement or storm cellar, if your home has one.
 
-To improvise a shelter you would need shielding materials such as those mentioned on page 25--concrete blocks, bricks, sand, etc. Other things could also be used as shielding material, or to support shielding material, such as:
-
 House doors that have been taken off their hinges (especially heavy outside doors).
 
 Dressers and chests (fill the drawers with sand or earth after they are placed in position, so they won't be too heavy to carry and won't collapse while being carried).
@@ -297,8 +285,6 @@ Large appliances (such as washers and dryers).
 Books, magazines, and stacks of firewood or lumber.
 
 Flagstones from outside walks and patios.
-
-Here are two ways of improvising fallout protection in the basement of a home:
 
 Set up a large, sturdy table or workbench in the corner of your basement that is most below ground level.
 
@@ -329,8 +315,6 @@ As the location for your shelter, select a crawl-space area that is under the ce
 Around the selected shelter area, place shielding material-- preferably bricks or blocks, or containers filled with sand or earth--from the ground level up to the first floor of the house, so that the shielding material forms the "walls" of your shelter area. On the floor above, place other shielding material to form a "roof" for the shelter area.
 
 If time permits, dig out more earth and make the shelter area deeper, so you can stand erect or at least sit up in it.
-
-If your home has no basement, no storm cellar and no protected crawl space, here are two ways of improvising fallout protection in your yard:
 
 Dig an L-shaped trench, about 4 feet deep and 3 feet wide. One side of the L, which will be the shelter area, should be long enough to accommodate all family members. The other side of the L can be shorter, since its purpose is to serve as an entrance-way and to reduce the amount of radiation getting into the shelter area.
 
@@ -381,8 +365,6 @@ During this time they would need certain supplies and equipment in order to stay
 This chapter tells you what supplies and equipment to take with you if you go to a public fallout shelter, and what items you should keep on hand if you plan to use a family fallout shelter at home.
 
 To augment the supply of food and liquids usually found in large buildings, most public fallout shelters are stocked--and others are being stocked--with emergency supplies. These include water containers, emergency food rations, sanitation items, basic medical supplies, and instruments to measure the radiation given off by fallout particles.
-
-If the public shelter you will use in a time of attack contains these or other emergency supplies, you should plan to take with you only these additional items:
 
 Special medicines or foods required by members of your family, such as insulin, heart tablets, dietetic food or baby food.
 
@@ -478,8 +460,6 @@ In a home fallout shelter, however, you and your family would be largely on your
 
 The average person in a shelter would need at least 1 quart of water or other liquids per day to drink, but more would be useful (to allow some for washing, etc.). Therefore a rationing plan might be required in your home shelter, so as to make your available liquids last for 14 days. (Many communities may continue to have potable water available, and families could relax their rationing plans.)
 
-In addition to water stored in containers, there is usually other water available in most homes that is drinkable, such as:
-
 Water and other liquids normally found in the kitchen, including ice cubes, milk, soft drinks, and fruit and vegetable juices.
 
 Water (20 to 60 gallons) in the hot water tank.
@@ -490,8 +470,6 @@ Water in the pipes of your home plumbing system. In a time of nuclear attack, lo
 
 In a home shelter, occupants should drink first the water they know is uncontaminated, such as that mentioned above. Of course, if local authorities tell you the regular water is drinkable, it should be used.
 
-If necessary, "suspicious" water--such as cloudy water from regular faucets or perhaps some muddy water from a nearby stream or pond--can be used after it has been purified. This is how to purify it:
-
 Strain the water through a paper towel or several thicknesses of clean cloth, to remove dirt and fallout particles, if any. Or else let the water "settle" in a container for 24 hours, by which time any solid particles would have sunk to the bottom. A handful of clay soil in each gallon of water would help this settling process.
 
 After the solid particles have been removed, boil the water if possible for 3 to 5 minutes, or add a water-purifying agent to it. This could be either: (a) water-purifying tablets, available at drug stores, or (b) two percent tincture of iodine, or (c) liquid chlorine household bleach, provided the label says that it contains hypochlorite as its only active ingredient. For each gallon of water, use 4 water-purifying tablets, or 12 drops of tincture of iodine, or 8 drops of liquid chlorine bleach. If the water is cloudy, these amounts should be doubled.
@@ -499,8 +477,6 @@ After the solid particles have been removed, boil the water if possible for 3 to
 There would not be much danger of drinking radioactive particles in water, as they would sink quickly to the bottom of the container or stream. Very few would dissolve in the water. Although open reservoirs might contain some radioactive iodine in the first few days after an attack, this danger is considered minor except to very young children.
 
 Food also should be rationed carefully in a home shelter, to make it last for at least a 2-week period of shelter occupancy. Usually, half the normal intake would be adequate, except for growing children or pregnant women.
-
-In a shelter, it is especially important to be sanitary in the storing, handling and eating of food, so as to avoid digestive upsets or other more serious illness, and to avoid attracting vermin. Be sure to:
 
 Keep all food in covered containers.
 
@@ -536,25 +512,17 @@ Fire, always a danger, could be even more of a disaster during a nuclear attack 
 
 Normal fire-prevention rules are of special importance in an emergency. They include familiar commonsense precautions such as not allowing trash to accumulate, especially near heat sources; exercising extreme caution in the use of flammable fluids such as gasoline, naphtha, etc.; storage of such fluids outdoors when possible; care in the use of electricity; repairing of faulty wiring and avoiding overloaded circuits; and repair of faulty heating systems.
 
-These special fire precautions should be taken in a time of nuclear emergency, especially if you plan to use a home shelter:
-
 Keep some of the intense heat rays from nuclear explosions from entering your house by closing your doors, windows, venetian blinds, window shades and drapes. If the climate will not permit this for an extended period of time, close as many as possible, then close the rest when the Attack Warning Signal is given.
 
 Unless local authorities advise otherwise, fill buckets, bathtubs and other containers with water, for use in emergency fire fighting.
 
 If a fire does occur, your home might be saved if you know how to fight fires, and have on hand some basic firefighting tools. These should include a garden hose, a ladder, buckets filled with sand, containers filled with water, and a fire extinguisher. Keep in mind that vaporizing-liquid types of fire extinguishers can produce dangerous fumes when used in small enclosed spaces.
 
-Remember the 3 basic ways to put out a fire:
-
 Take away its fuel.
 
 Take away its air (smother it).
 
 Cool it with water or fire-extinguisher chemicals.
-
-Getting the burning material out of the house (carry it out, or throw it out of a door or window if you can); or
-
-Putting out the fire with water, sand, earth or fire-extinguisher chemicals; or
 
 Smothering the fire with a rug or blanket, preferably wet.
 
@@ -594,8 +562,6 @@ Keep calm, and reassure the patient. Keep him lying down and comfortably warm, b
 
 Never attempt to give liquids to an unconscious person. If he is not able to swallow, he may choke to death or drown. Also, don't give him any liquids to drink if he has an abdominal injury.
 
-Quick action is required. You must get air into his lungs again immediately or he may die. The best and simplest way of doing this is to use mouth-to-mouth artificial respiration. Here is how to do it:
-
 Place the patient on his back. Loosen his collar.
 
 Open his mouth and use your fingers to remove any food or foreign matter. If he has false teeth or removable dental bridges, take them out.
@@ -624,8 +590,6 @@ Treat the patient for shock.
 
 If blood soaks through the dressing, do not remove the dressing. Apply more dressings.
 
-SPECIAL ADVICE ON TOURNIQUETS: Never use a tourniquet unless you cannot stop excessive, life-threatening bleeding by any other method. Using a tourniquet increases the chances that the arm or leg will have to be amputated later. If you are forced to use a tourniquet to keep the patient from bleeding to death (for example, when a hand or foot has been accidentally cut off), follow these instructions carefully:
-
 Place the tourniquet as close to the wound as possible, between the wound and the patient's heart.
 
 After the tourniquet has been applied, do not permit it to be loosened (even temporarily, or even though the bleeding has stopped) by anyone except a physician, who can control the bleeding by other methods and replace the blood that the patient has lost.
@@ -639,8 +603,6 @@ These are the symptoms of shock: The patient's pulse is weak or rapid, or he may
 A person can be "in shock" whether he is conscious or unconscious.
 
 Important: All seriously-injured persons should be treated for shock, even though they appear normal and alert. Shock may cause death if not treated promptly, even though the injuries which brought on shock might not be serious enough to cause death. In fact, persons may go into shock without having any physical injuries.
-
-Here is how to treat any person who may be in shock:
 
 Keep him lying down and keep him from chilling, but do not apply a hot water bottle or other heat to his body. Also, loosen his clothing.
 
@@ -665,8 +627,6 @@ Fractured bones in the NECK OR BACK are very serious, because they may injure th
 A person with a neck injury should be moved gently with his head, neck, and shoulders kept in the same position they were when he was found. His neck should not be allowed to bend when he is being moved.
 
 Non-serious or superficial (first degree) burns should not be covered--in fact, nothing need be done for them. However, if a first degree burn covers a large area of the body, the patient should be given fluids to drink as mentioned in item 2 following.
-
-The most important things to do about serious (second or third degree) burns are: (a) Treat the patient for shock, (b) Prevent infection, and (c) Relieve pain. These specific actions should be taken:
 
 Keep the patient lying down, with his head a little lower than his legs and hips unless he has a head or chest wound, or has difficulty in breathing.
 
@@ -732,8 +692,6 @@ The most important items to keep on hand are water (preferably in plastic jugs o
 
 In those parts of the country subject to hurricanes or floods, it is also wise to keep on hand certain emergency materials you may need to protect your home from wind and water--such as plywood sheeting or lumber to board up your windows and doors, and plastic sheeting or tarpaulins to protect furniture and appliances.
 
-Fires are a special hazard in a time of disaster. They may start more readily, and the help of the fire department may not be available quickly. Therefore, it is essential that you:
-
 Follow the fire prevention rules given on page 52, and be especially careful not to start fires.
 
 Know how to put out small fires yourself.
@@ -766,11 +724,7 @@ Follow the advice and instructions of your local government on ways to help your
 
 In addition to the general guidance in Chapter 1 of this section, there are certain emergency actions particularly associated with major floods, hurricanes, and storm tides or surges. These types of disasters usually are preceded by extended periods of warning. People living in areas likely to be most severely affected often are warned to move to safer locations.
 
-If you are warned to evacuate your home and move to another location temporarily, there are certain things to remember and do. Here are the most important ones:
-
 FOLLOW THE INSTRUCTIONS AND ADVICE OF YOUR LOCAL GOVERNMENT. If you are told to evacuate, do so promptly. If you are instructed to move to a certain location, go there--don't go anywhere else. If certain travel routes are specified or recommended, use those routes rather than trying to find short cuts of your own. (It will help if you have previously become familiar with the routes likely to be used.) If you are told to shut off your water, gas or electric service before leaving home, do so. Also find out on the radio where emergency housing and mass feeding stations are located, in case you need to use them.
-
-SECURE YOUR HOME BEFORE LEAVING. If you have time, and if you have not received other instructions from your local government, you should take the following actions before leaving your home:
 
 Bring outside possessions inside the house, or tie them down securely. This includes outdoor furniture, garbage cans, garden tools, signs, and other movable objects that might be blown or washed away.
 
@@ -781,8 +735,6 @@ If flooding is likely, move furniture and other movable objects to the upper flo
 Do not stack sandbags around the outside walls of your house to keep flood waters out of your basement. Water seeping downward through the earth (either beyond the sandbags or over them) may collect around the basement walls and under the floor, creating pressure that could damage the walls or else raise the entire basement and cause it to "float" out of the ground. In most cases it is better to permit the flood waters to flow freely into the basement (or flood the basement yourself with clean water, if you feel sure it will be flooded anyway). This will equalize the water pressure on the inside and outside of the basement walls and floor, and thus avoid structural damage to the foundation and the house.
 
 Lock house doors and windows. Park your car in the garage or driveway, close the windows, and lock it (unless you are driving to your new temporary location).
-
-TRAVEL WITH CARE. If your local government is arranging transportation for you, precautions will be taken for your safety. But if you are walking or driving your own car to another location, keep in mind these things:
 
 Leave early enough so as not to be marooned by flooded roads, fallen trees, and wires.
 
@@ -808,8 +760,6 @@ In a period of heavy rains, be aware of this hazard and be prepared to protect y
 
 When a tornado watch (forecast) is announced, this means that tornadoes are expected in or near your area. Keep your radio or television set tuned to a local station for information and advice from your local government or the Weather Bureau. Also, keep watching the sky, especially to the south and southwest. (When a tornado watch is announced during the approach of a hurricane, however, keep watching the sky to the east.) If you see any revolving, funnel-shaped clouds, report them by telephone immediately to your local police department, sheriff's office or Weather Bureau office. But do not use the phone to get information and advice--depend on radio or TV.
 
-When a tornado warning is issued, take shelter immediately. The warning means that a tornado has actually been sighted, and this (or other tornadoes) may strike in your vicinity. You must take action to protect yourself from being blown away, struck by falling objects, or injured by flying debris. Your best protection is an underground shelter or cave, or a substantial steel-framed or reinforced-concrete building. But if none of these is available, there are other places where you can take refuge:
-
 If you are at home, go to your underground storm cellar or your basement fallout shelter, if you have one. If not, go to a corner of your home basement and take cover under a sturdy workbench or table (but not underneath heavy appliances on the floor above). If your home has no basement, take cover under heavy furniture on the ground floor in the center part of the house, or in a small room on the ground floor that is away from outside walls and windows. (As a last resort, go outside to a nearby ditch, excavation, culvert or ravine.) Doors and windows on the sides of your house away from, the tornado may be left open to help reduce damage to the building, but stay away from them to avoid flying debris. Do not remain in a trailer or mobile home if a tornado is approaching; take cover elsewhere.
 
 If you are at work in an office building, go to the basement or to an inner hallway on a lower floor. In a factory, go to a shelter area, or to the basement if there is one.
@@ -817,8 +767,6 @@ If you are at work in an office building, go to the basement or to an inner hall
 If you are outside in open country, drive away from the tornado's path, at a right angle to it. If there isn't time to do this--or if you are walking--take cover and lie flat in the nearest depression, such as a ditch, culvert, excavation, or ravine.
 
 Here is advice that will help you protect yourself and your family against the hazards of winter storms--blizzards, heavy snows, ice storms, freezing rain, or sleet.
-
-KEEP POSTED ON WEATHER CONDITIONS. Use your radio, television and newspapers to keep informed of current weather conditions and forecasts in your area. Even a few hours' warning of a storm may enable you to avoid being caught outside in it, or at least be better prepared to cope with it. You should also understand the terms commonly used in weather forecasts:
 
 A blizzard is the most dangerous of all winter storms. It combines cold air, heavy snow, and strong winds that blow the snow about and may reduce visibility to only a few yards. A blizzard warning is issued when the Weather Bureau expects considerable snow, winds of 35 miles an hour or more, and temperatures of 20 degrees Fahrenheit or lower. A severe blizzard warning means that a very heavy snowfall is expected, with winds of at least 45 miles an hour and temperatures of 10 degrees or lower.
 
@@ -828,8 +776,6 @@ Freezing rain or freezing drizzle is forecast when expected rain is likely to fr
 
 Sleet is small particles of ice, usually mixed with rain. If enough sleet accumulates on the ground, it will make the roads slippery.
 
-BE PREPARED FOR ISOLATION AT HOME. If you live in a rural area, make sure you could survive at home for a week or two in case a storm isolated you and made it impossible for you to leave. You should:
-
 Keep an adequate supply of heating fuel on hand and use it sparingly, as your regular supplies may be curtailed by storm conditions. If necessary, conserve fuel by keeping the house cooler than usual, or by "closing off" some rooms temporarily. Also, have available some kind of emergency heating equipment and fuel so you could keep at least one room of your house warm enough to be livable. This could be a camp stove with fuel, or a supply of wood or coal if you have a fireplace. If your furnace is controlled by a thermostat and your electricity is cut off by a storm, the furnace probably would not operate and you would need emergency heat.
 
 Stock an emergency supply of food and water, as well as emergency cooking equipment such as a camp stove. Some of this food should be of the type that does not require refrigeration or cooking.
@@ -837,8 +783,6 @@ Stock an emergency supply of food and water, as well as emergency cooking equipm
 Make sure you have a battery-powered radio and extra batteries on hand, so that if your electric power is cut off you could still hear weather forecasts, information and advice broadcast by local authorities. Also, flashlights or lanterns would be needed.
 
 Consult page 72 of this handbook for other supplies and equipment that you may need if isolated at home. Be sure to keep on hand the simple tools and equipment needed to fight a fire. Also, be certain that all family members know how to take precautions that would prevent fire at such a time, when the help of the fire department may not be available.
-
-TRAVEL ONLY IF NECESSARY. Avoid all unnecessary trips. If you must travel, use public transportation if possible. However, if you are forced to use your automobile for a trip of any distance, take these precautions:
 
 Make sure your car is in good operating condition, properly serviced, and equipped with chains or snow tires.
 
@@ -859,8 +803,6 @@ KEEP CALM IF YOU GET IN TROUBLE. If your car breaks down during a storm, or if y
 Wherever you are, if there is no house or other source of help in sight, do not leave your car to search for assistance, as you may become confused and get lost.
 
 AVOID OVEREXERTION. Every winter many unnecessary deaths occur because people--especially older persons, but younger ones as well--engage in more strenuous physical activity than their bodies can stand. Cold weather itself, without any physical exertion, puts an extra strain on your heart. If you add to this physical exercise, especially exercise that you are not accustomed to--such as shovelling snow, pushing an automobile, or even walking fast or far--you are risking a heart attack, a stroke, or other damage to your body. In winter weather, and especially in winter storms, be aware of this danger, and avoid overexertion.
-
-If your area is one of the places in the United States where earthquakes occur, keep these points in mind:
 
 When an earthquake happens, keep calm. Don't run or panic. If you take the proper precautions, the chances are you will not be hurt.
 

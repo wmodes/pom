@@ -167,8 +167,6 @@ Instances might be multiplied to show that the effects of Eclipses are of the mo
 
 It is impossible to categorically state the effects which are due to the positions of the planets in the several Houses, because very much depends upon the signs they are in and the aspects they have from other planets.
 
-The means of judging the effects is very simple, when once the natures of the planets and the dominion of the several Houses have been thoroughly digested. Thus, it is first necessary to see in what House a planet is situated. Then consider the nature of the planet in the following concrete manner:
-
 Neptune means chaos, confusion, deception.
 Uranus, eccentricity, originality, estrangement.
 Saturn, privation, hindrance, denial.
@@ -252,8 +250,6 @@ Sun--Dignity, independence. Vanity, egotism.
 Venus--Affability, art. Self-indulgence, disorderliness.
 Mercury--Alertness, ingenuity. Inquisitiveness, meddling.
 Moon--Grace, idealism. Inconstancy, awkwardness.
-
-The general trend of the disposition and habit of mind is judged by the position of the majority of the planets, according to the "Constitution" of the Signs they occupy. Thus, the majority of the planets being in--
 
 Cardinal or Movable Signs indicates executive ability, business aptitude, pioneer spirit, ambition, capability to cut out a line in life for oneself, and to make headway against difficulties. Such persons are usually the foremost in their particular sphere of life, and are always found in the most progressive movements, reforms, &c.
 
@@ -631,8 +627,6 @@ For the calculation of the approximate geocentric longitude of the major planets
 
 Suppose I want the longitude of Uranus in the year A. D. 827. I have its longitude on the first of January, 1912, in Capricorn 28 degrees 17'. Then 1912-827 gives 1,085 years, which being divided by the period of Uranus (84 years), yields 12 periods and 77 years. The increment for 1 period being 1 degrees 5', that for 12 will be 13 degrees, and 77-84ths of 1 degrees 5' will be another degree, making 14 degrees. As the date is anterior, this amount must be subtracted from its longitude on the first of January, A. D. 827, and in effect we obtain Capricorn 14 degs. 17 mins. as the longitude of Uranus on the first of January, 827, as seen from the Earth.
 
-For the purpose of determining the effects, if any, due to the presence of a planet in its Aphelion, Perihelion, or Node, the following values are given for the year 1800 A. D.:
-
 In the present state of astronomical science it is not certain that these values are absolutely correct. Calculated from the Tables of Kepler, the differences are only slight, but still sufficient to make considerable error in testing for exact conjunctions or ingresses.
 
 Lilly, who predicted the Great Plague and Fire of London some years previous to the event from the ingress of the Aphelion of Mars to the sign Virgo, evidently made use of the Rudolphine Tables constructed by Tycho and Kepler, and according to these the ingress took place in 1654, while according to more modern Tables it did not take place until 1672. It is probable, however, that the positions of the Aphelia here given will be sufficiently close for all practical purposes.
@@ -661,8 +655,6 @@ These problems need not, however, vex the minds of the student of Astrology. It 
 
 Sir Isaac Newton was first led to the subject of Astronomy by his thoroughness and scientific propensity. He studied Astrology, and proceeded to the study of Astronomy the better to understand and deal with the problems that the predictive science presented. For it is to be observed that Astrology in his day was entirely in the hands of astronomers, who calculated their own ephemerides and pursued the higher methods of astrological calculation as presented in my "Profnostic Astronomy." Kepler avowed himself to be convinced of the truth of the science of Astrology, and showed himself to be a competent critic as much by his understanding of the astronomical problems involved as by his marvellous forecast of the rise and fall of Wallenstein. Tycho, his colleague and collaborator, also a great astronomical discoverer, was a professed Astrologer, and added to his stipend by the calculation of horoscopes. Astrology is quite a reputable study, and needs but to be emancipated from the service of a horde of half-educated plagiarists and parasites in order to take its place once more among subjects of serious consideration by the learned. Astronomy is interesting, but to be made useful it must find interpretation in terms of our daily life and common needs. It is in this connection that Astrology has played Cinderella since the days of official science. The day is not far off when it will come into its own.
 
-Beyond the various time measures and indicators mentioned in Section IV, Chapter II, there are others which have a certain reputation among astrological students. The chief of these, and one that has been in vogue for many centuries, is the
-
 Solar Revolution, or Birthday Figure, as it is sometimes called. It consists in a map of the heavens for the return of the Sun to the exact zodiacal position that it held at birth, and this sidereal revolution is made the basis of an annual forecast of the general trend of affairs in the life of the subject. To find the time of the Sun's return to its own place in the zodiac is, of course, a simple matter of proportion from the ephemeris for the current year. This is effected by comparing the radical or birthplace of the Sun with the longitude of the Sun in the Ephemeris on the anniversary day, which will give the increment more or less required to be equated. Then with this difference of the two positions of the Sun (a) at birth and (b) at noon of the anniversary, find the diurnal proportional logarithm and subtract from this the logarithm for the Sun's motion in 24 hours. The result will be the logarithm for the hours and minutes from Noon at which the Sun was in the exact position it held at the birth. Thus you have the time of the solar return, and all that is necessary is to erect a horoscope for this time and set the planets in the figure.
 
 Then, if the benefic planets are in elevation and the Lord or Ruler of the Ascendant is well placed and aspected, there will be commensurate results, and a beneficial year may be predicted; but if, on the contrary, the malefic planets are elevated and the ruler of the horoscope is badly aspected, the year ensuing will be fraught with many troubles and vexatious events.
@@ -676,8 +668,6 @@ Events that are benefic in nature may be produced from the transit of the Sun ov
 In similar manner the return of the Moon to its own place may be taken as a monthly guide to the nature of ensuing events, but it is to be observed that the Moon's place cannot be taken with the same degree of accuracy as that of the Sun, owing to the varied acceleration of the Moon from hour to hour. The Nautical Almanac gives this hourly acceleration, so that by means of it the Moon's longitude can be arrived at with great accuracy for any time of the day, but the cheaper ephemerides do not contain more than the longitude for noon and midnight. The student will find, however, that the general purposes of a Lunar horoscope may be served with sufficient accuracy from this source if chief regard be had to the aspects of the Moon at its return and not to the mundane positions of the planets.
 
 Arguing from analogy, one would suppose that a similar horoscope could be made for the return of any of the planets to their radical places, but until we have a popular publication in which the planets' places are given with a greater degree of accuracy than at present, we cannot pretend to indicate the true time of the revolutions of these bodies.
-
-Another means of prognosis to which some astrologers have attached considerable importance is what is known as
 
 The Synodical Revolution.
 
@@ -698,8 +688,6 @@ The effects of eclipses last for eighteen months, and will be great or small acc
 Falling in other parts of the figure, they are not of such significance, but generally it may be said that eclipses have a detrimental effect on such affairs as are governed by the House wherein the eclipse falls.
 
 It has been said that unless an eclipse is visible in that part of the world where the subject was born, it will have no effect upon his health or fortunes. But this cannot be the case, for then those planets that are beneath the horizon at the time of birth could with equal reason be exempt from any share in our consideration, whereas, on the contrary, we know full well that in whatever part of the circle the planets may be situated at the moment of birth they will affect the life and fortunes in equal degree, but especially such department of the life as may be ruled by the House a planet occupies.
-
-The following is a list of the visible eclipses that will be witnessed in Great Britain during the next ten years:
 
 1914.--12th March, Moon eclipsed in the third hour of the morning, nearly total.
 

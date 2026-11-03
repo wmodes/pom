@@ -2,8 +2,6 @@ This chapter contains general information about the contents of this maintenance
 
 You will find a list of the tools and test equipment you will need to service this machine at the end of the chapter.
 
-The diagnostic information contains the procedures you will use to diagnose and isolate product failures. Diagnostic information consists of:
-
 Start Maintenance Analysis Procedures (MAPs)
 
 MAINTENANCE ANALYSIS PROCEDURES: When Start sends you to a MAP, go to that page and perform the steps as instructed. If there are any notes or instructions at the top of the page you must read them before you start the procedure.
@@ -104,14 +102,6 @@ Does the correct character print when you press a keybutton?
 
 Memory will be lost if you disconnect the batteries from the function board/system board while the machine is turned off.
 
-Measure the voltage between J7-1 (red) and J7-3 (black) on the plug. Other Two board machines:
-
-Measure the voltage between J4-1 (red) and J4-3 (black) on the plug. Two battery machines:
-
-Do not disconnect the battery cable from.the unless the machine is turned on. All single board machines and two-board WW10:
-
-Measure the voltage between J7-1 (red) and J7-2 (black) on the plug. Other two-board machines:
-
 Disconnect J-4 from the function board.
 
 The function board is failing.
@@ -148,13 +138,9 @@ The cable is failing.
 
 Check the following chart for your identical symptom.
 
-Image on screen rolls up or rolls down The CRT control board is failing. (Loss of vertical sync.) or
-
 Image on screen rolls sideways (Loss of The CRT display assembly is failing. horizontal sync).
 
 Loss of both horizontal and vertical sync.
-
-Image on screen all white. Controls on CRT The CRT control board is failing. have no effect. or
 
 The function board is failing.
 
@@ -366,8 +352,6 @@ Function board failure The function board ts failing. ' System board failure The
 
 Spelling RAM/Correction Buffer The function board is failing. failure The system board is failing.
 
-Not an Error See Note. Power the printer Off then On
-
 Note: (WW15, WW1500, and WW3000) LED 1 and 3 will alternate blinking with LED 1.5 and 2. This LED code indicates the batteries are "Good." and the machine has performed a reset of the format and forms storage areas. This code is displayed upon initial battery installation or battery replacement with the power off.
 
 164 Diskette Drive Operator Check Failure
@@ -488,8 +472,6 @@ Measure the resistance as indicated below.
 
 The LED is failing.
 
-Disconnect the carrier cable at the carrier cable board. -- Measure continuity between the following points on the carrier cable board:
-
 Check the continuity of lines 6 and 22 in the carrier cable.
 
 Is there continuity?
@@ -552,8 +534,6 @@ Turn the machine on.
 
 Turn the machine off.
 
-Carefully check the carrier cable for cracks, wear, and damaged edges. Is the cable damaged?:
-
 Replace the carrier cable.
 
 Carefully install the cables.
@@ -565,8 +545,6 @@ Does the machine have the same symptom?
 Check the homing LED cable at the carrier cable board to make sure it is not loose and fits properly.
 
 Repair as necessary.
-
-WW10- Measure the voltage at J8-5 on the function board as you slowly push the homing sensor flag in
 
 Disconnect the 16-pin cable from J8 on the function board. -- Turn the machine on.
 
@@ -776,13 +754,7 @@ Turn the machine off.
 
 Turn the machine on.
 
-Check for a spell check option installed in the machine. WHEELWRITER 10 typewriter:
-
-There will be a module in the U102 socket on the function board or system board and it can be removed. WHEELWRITER 15, 1500, 3000 typewriter:
-
 There will be a module in the U3 socket on the system board.
-
-Single board machines: The system board is failing. Two-board machines:
 
 Check the continuity of the 16-Pin cable between the motor contro! board and the function board.
 
@@ -968,8 +940,6 @@ Turn the machine off..
 
 Turn the machine off. -- Carefully disconnect and connect the carrier cable to the motor control board or the function board.
 
-Single board machines: The system board is failing or the power supply is failing. Two-board machines:
-
 Measure the voltage at the +5V dc test point on the motor control board.
 
 The motor control board is failing.
@@ -1041,8 +1011,6 @@ The line cord is failing.
 The On/Off switch is failing.
 
 Install the power cord.
-
-Measure the voltage on the power supply plug at the system board or motor control board between pin 4 (GND) and pin 2 (+5V dc).:
 
 The system board is failing.
 
@@ -1534,13 +1502,9 @@ The Printer option board is failing.
 
 The diskette control board is failing.
 
-Check each of the following, in the order shown, for pin-to-housing shorts (check between the pins in he motor connector and the motor or solenoid housing):
-
 The motor control board is failing.
 
 The motor control board is failing.
-
-The motor and the motor control board are failing. eee A A
 
 Turn the machine off.
 
@@ -1614,8 +1578,6 @@ Set your meter to the RX10K scale.
 
 Measure the resistance between J5-2 (+5V) and J5-8 (+32V) on the motor control board.; The meter polarity switch must be set to + and the red meter lead (VOM) connected to J5-8 and the black meter lead (COM) connected to J5-2.
 
-Check each of the following, in the order shown, for pin-to-housing shorts (check.between the pins in the motor connector and the motor or solenoid housing):
-
 The motor control board is failing.
 
 The motor and the motor control board are failing.
@@ -1683,8 +1645,6 @@ Turn the machine off.
 Disconfiett the printer option board. -- Turn the machine on.
 
 The 22-pin cables between the system board and the printer option board are failing.
-
-The 22-pin function to printer option board cables are failing. or
 
 Turn the machine off.
 
@@ -1841,8 +1801,6 @@ Hold Code and press 7.
 Does the typewriter respond?
 
 Does the sheetfeed respond (drive motor turns, solenoid activates)?
-
-If your machine is a Wheelwriter 10, 15, 1500, or 3000 check the printer option for proper operation. -- Hold Code and press 5. The typewriter should go into the print mode.:
 
 Hold Code and press 5 lo exit.
 
@@ -2026,11 +1984,7 @@ Turn the machine around until the back is facing you.
 
 Turn the machine back around to the operator position.
 
-Using a small pair of pliers, remove the tabs on the comb (as shown in the figure below) to match the keyboard identification holes for the country you are changing to (
-
 If a section or the complete keyboard is inoperative, the sense flat cable is not connected properly. As you press each keybutton, make sure that the appropriate character is typed or function performed. i
-
-Power On Reset Sequence Turn the machine on. All LEDs are turned on
 
 Platen moves up and down one line.
 
@@ -2056,8 +2010,6 @@ Line space indicator last selected by the operator turns on.
 
 The machine will beep three times if the battery is low.
 
-Cursor, linespace symbol, and linespace number is displayed (warm start). Storage cleared message, linespace symbol, and linespace number is displayed (cold start).:
-
 The diskette will initialize if it is installed.
 
 LO-BATT will be displayed if the batteries are low.
@@ -2072,8 +2024,6 @@ Press any keybutton to stop the play-in-loop test.
 
 Note: The machine will perform a SAPI operation when you exit the test.
 
-The play-in-loop test is run using document storage. To create the play-in-loop test phrase:
-
 Type the test phrase or words you want to use into storage. Any machine function may be used to test the machine, such as; bold, continuous underscore, stop codes, or pitch/wheel changes.
 
 Press PLAY + the storage number of the test phrase.
@@ -2083,8 +2033,6 @@ The words will play-in-loop until you stop it. Press any keybutton to stop the p
 To store the play-in-loop document, press the STORE keybutton. 4, To erase the play-in-loop document, press DEL +, nn.
 
 You may also store your play-in-loop document on a diskette if the diskette option is installed.
-
-Note: The machine will perform a SAPI operation when you exit the test. Play-In-Loop Test, Wheelwriter 70, 7000 To run the play-in-loop test:
 
 Go to typewriter mode.
 
@@ -2184,8 +2132,6 @@ TADJ should appear on the display as the switch is activated.
 
 When the pinfeed/sheetfeed sensor switch cable is connected to the function board.
 
-Activate the switch and sensor test. Manually depress the pinfeed sensor switch (larger of the two) until you hear it activate. SUSPND should appear on the display as the switch is activated. To check the Sheetfeed Option Present:
-
 When the pinfeed!/sheetfeed sensor switch cable is connected to the printer option board. Activate the switch and sensor test.
 
 Manually depress the pinfeed sensor switch actuators until both switches activate. CENTER should appear on the display as the switch is activated.
@@ -2242,8 +2188,6 @@ When the pinfeed/sheetfeed sensor switch cable is connected to the printer optio
 
 When the pinfeed/sheetfeed sensor switch cable is connected to the function board. Activate the switch and sensor test. Manually depress the pinfeed sensor switch actuators until both switches activate. e PLAY should appear on the display as the switch is activated.
 
-You must use a scratch diskette to run these tests. You must prepare or format the diskette before you run the test. This will destroy all data on the diskette. Be sure to use a diskette that does not contain useful data, To prepare or format a diskette:
-
 Hold down the Code and Shift keybuttons then press the = keybutton.
 
 A test menu will appear on the display. The menu has the following choices: TEST -- Test diskette hardware e MEASURE - Measure diskette signals e WRITE PROTECT -- Test write-protect and change line
@@ -2251,8 +2195,6 @@ A test menu will appear on the display. The menu has the following choices: TEST
 To select a test, move the cursor to the test and press CRTN.
 
 Press the erase key to stop a test and return to the service menu.
-
-Diskette write/read track 0 and 79 test Diskette random sector/track read/write test an error displays indicating the nature of the problem. If an error code occurs, the following appears on
 
 Select TEST from the service menu.
 
@@ -2281,8 +2223,6 @@ Type a line of underscores.
 4, Backspace the carrier until at least 10 mm (0.4 in) of the line of underscores is visible to the right of the cardholder.
 
 Rotate the ribbon lift gear counterclockwise until the lift cam stops turning.
-
-These machines have a beige-colored ribbon cartridge latch with two cartridge latching surfaces:
 
 Make this adjustment whenever you replace the retainer.
 
@@ -2509,8 +2449,6 @@ Tighten all the transport bracket mounting screws.
 Bottom Lug Touches (Right Side View)
 
 Position the right hand end of the transport bracket.in the side frame Eq to meet two conditions: b. Forward so the top and bottom lugs touch the front of the holes in the side frame.
-
-Position the left end of the transport bracket in the side frame EJ to meet two conditions:
 
 Keep the ESD-sensitive part in its original shipping container (a special "ESD bag") until you are ready to install the part into the machine.;
 

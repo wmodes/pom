@@ -14,7 +14,11 @@ Rules, in order:
      sentence alone is over the limit, then at clause breaks, then at word boundaries.
   2. Merge (off by default). With --min-words N, short utterances join the next one in
      the same holding until they reach N words, without crossing --max-words.
-  3. Deduplicate. An exact repeat of a passage anywhere in the library is dropped; the kept
+  3. Drop unfinished pieces. A piece that stops before its thought is done (it ends on a colon or
+     on a word like "the": see pom.library.endings) is dropped, because the oracle copies its
+     exemplar's ending. Splitting a long speech at a line or clause break makes a few of these;
+     whole utterances that end this way are already dropped by normalize.py before ready/.
+  4. Deduplicate. An exact repeat of a passage anywhere in the library is dropped; the kept
      copy records how many times it occurred.
 
 A passage holds only facts about itself (holding, shelf, text). How likely it is to be
@@ -42,7 +46,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
-from pom.library import Circulation  # noqa: E402  (scripts may import the package, never the reverse)
+from pom.library import Circulation, ends_unfinished  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.log_setup import configure_logging  # noqa: E402
 
 LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
@@ -168,7 +172,7 @@ def build(limit, minimum):
         for row in csv.DictReader(handle):
             if row["status"] == "approved":
                 manifest[row["id"]] = row
-    seen, records, stats = {}, {}, {"split": 0, "pieces": 0, "duplicates": 0, "unsplittable": 0}
+    seen, records, stats = {}, {}, {"split": 0, "pieces": 0, "duplicates": 0, "unsplittable": 0, "unfinished": 0}
     for path in sorted(os.path.join(READY, d, f)
                        for d in sorted(os.listdir(READY)) if os.path.isdir(os.path.join(READY, d))
                        for f in sorted(os.listdir(os.path.join(READY, d))) if f.endswith(".txt")):
@@ -186,6 +190,9 @@ def build(limit, minimum):
         texts = merge_short(texts, minimum, limit)
         out = []
         for text in texts:
+            if ends_unfinished(text):
+                stats["unfinished"] += 1
+                continue
             if text in seen:
                 seen[text]["repeats"] += 1
                 stats["duplicates"] += 1
@@ -243,7 +250,7 @@ def report(records, stats, shares, limit, minimum):
     print(f"{n} passages from {len(records)} holdings  (max {limit} words, "
           f"min-merge {'off' if minimum <= 0 else minimum})")
     print(f"split {stats['split']} long utterances into {stats['pieces']} pieces; "
-          f"dropped {stats['duplicates']} exact duplicates; {stats['unsplittable']} still over the limit")
+          f"dropped {stats['unfinished']} unfinished pieces and {stats['duplicates']} exact duplicates; {stats['unsplittable']} still over the limit")
     print("words per passage, percentiles:", {p: pct(p / 100) for p in (5, 25, 50, 75, 95, 99)},
           f"max {lengths[-1]}")
     near = sum(1 for w in lengths if limit * 0.9 <= w <= limit)

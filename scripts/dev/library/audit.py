@@ -13,7 +13,8 @@ Usage:
 The checks are deliberately blunt. A rate above zero is a prompt to look, not a
 verdict: digits are normal in horoscopes and furniture words are normal in a
 printing manual. Rates that should be zero everywhere: nonascii, lower_start,
-leading_label, url_email.
+leading_label, url_email, and unfinished (a passage that ends on a colon or a word like "the": the oracle copies its
+exemplar's ending, so these must not reach the passages; see pom.library.endings).
 """
 import argparse
 import glob
@@ -23,10 +24,13 @@ import sys
 from collections import Counter
 
 LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
+sys.path.insert(0, os.path.join(LIBRARY, "..", "src"))
+from pom.library.endings import ends_unfinished                      # noqa: E402  the one definition, shared with the Bibliomancer
 
 CHECKS = {
     "nonascii": lambda p: bool(re.search(r"[^\x20-\x7e\n]", p)),
     "lower_start": lambda p: bool(re.match(r"[a-z]", p)),
+    "unfinished": ends_unfinished,
     "no_end_punct": lambda p: not re.search(r"[.!?\"')\]:;,-]\s*$", p.rstrip()),
     "digits": lambda p: bool(re.search(r"\d", p)),
     "allcaps": lambda p: len(re.findall(r"[A-Za-z]", p)) > 6 and p.upper() == p,

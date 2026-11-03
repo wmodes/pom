@@ -32,8 +32,6 @@ further (other than distance)
 
 Omit the dieresis in such words as reexamine, cooperation, preemption, zoology.
 
-The following is a list of words in common use in which accented letters occur. Follow it, except in works of the United States Geological Survey and United States Coast and Geodetic Survey, in which no accented letters are permissible:
-
 In the spelling of geographic names give preference as follows: Decisions of the United States Board on Geographic Names, United States Postal Guide, Lippincott's Gazetteer, and Rand, McNally & Co.'s Atlas, in the order named.
 
 The possessive apostrophe is dropped.
@@ -46,8 +44,6 @@ Hong-Kong.
 Spell Center, not Centre.
 Accented letters are not used, except in rare instances, as Curacao;
 Reunion; St. Francois.
-
-Follow Postal-Guide contractions for States and Territories (except Oregon, for which use Oreg.) after names of forts, barracks, arsenals, navy-yards, naval stations, post-offices, counties, military or Indian reservations, and Indian agencies. Note the following examples:
 
 Fort Barrancas, Fla.
 Vancouver Barracks, Wash.
@@ -187,8 +183,6 @@ In parenthetic references to books use "p." and "pp." for page and pages, and "s
 
 "St." will be used for Saint, but Fort and Mount will not be abbreviated.
 
-Use "etc." instead of "&c." Use the character "&" in firm names, but not in titles of companies having geographic or commercial words as part of the corporate name, nor in literary, scientific, artistic, or musical companionships. Examples:
-
 Smith & Brown.
 George W. Johnson & Co.
 William Greene & Bro.
@@ -230,8 +224,6 @@ Use caps for roman numerals designating pages, chapters, articles, or plates.
 
 Capitalize, both singular and plural, "department," "bureau," "survey," "corps," and "service," when referring to an Executive Department or important bureau, of the United States Government; "congress," referring to the United States Congress; "house," referring to the United States Senate or House of Representatives.
 
-Capitalize, singular and plural, Senator, Representative, Delegate, and Member of the United States Congress and the principal officers of both Houses. Observe the following:
-
 The words "president," "king," "queen," "czar," "emperor," etc., when used definitely and referring to rulers of countries, should be capitalized, as the President, the Emperor, the Emperor of China, the Chinese Emperor, etc.
 
 Capitalize the first word of a direct quotation. Example: Solomon says, "Pride goeth before destruction." Do not capitalize such indirect quotations as "a wise man says that pride goeth before destruction."
@@ -244,15 +236,11 @@ Capitalize all commissions and boards authorized by act of Congress when given i
 
 Capitalize all words denoting the Deity; "Reformation" (the), "Revolution" (1776), "Revolutionary war," "French Revolution."
 
-Capitalize the words "army" and "navy" only when they mean the entire Army and Navy of the United States, and lower-case when used as adjectives. Examples:
-
 The troops were supplied with army saddles and blankets.
 The army before Nashville was commanded by General Thomas.
 He spoke for the Army and Navy, as well as the Administration.
 Their clothes were made of navy cloth, and their general appearance was that of navy officials.
 He is at the head of the American Navy and conversant with everything pertaining to navy affairs.
-
-When any word is used specifically as a synonym for "Government" and refers to any nation, as "crown," "empire," "kingdom," "republic," "administration," or "state," capitalize it, singular or plural. When indefinite or applied to dependencies, lower-case it. Examples:
 
 The Government of the United States, which Government is the best of Governments.
 President Cleveland's Administration compared favorably with preceding Administrations.
@@ -276,8 +264,6 @@ Capitalize all designations in connection with capital letters or roman numerals
 Capitalize the principal words in full titles of books, plays, and pictures, but do not quote. Also short titles of books, when in the singular, as Brown's Grammar, Bancroft's History, Webster's Dictionary, etc. When referring to a subject in a book, quote, but capitalize only the first word.
 
 Capitalize "Presidential," "Congressional," "Senatorial," and "Territorial," referring to the President, Congress, Senate, and a Territory of the United States.
-
-Signature and address names will be set in caps and small caps, with title or direction following in italics, in the same line if not over half the line is used for the purpose; otherwise hanging two ems or more. Capitalize principal words in lines connected with signatures and addresses. Make signatures and addresses compact, using partially filled lines where the contiguous matter is open enough to give a signature proper prominence. It is well to have a white line between text and signature, but this is not imperative; general appearance must govern. Signatures are placed at the right of the page, indented 1, 3, or 5 ems from the right, as may be necessary; addresses are placed to the left, flush if at the top of a paper, indented one em if at the bottom, italic lines following indented as much as necessary to a good appearance. Do not use slugs to separate dash lines from signature or address lines where the dash will bear off one or more blank lines if solid. The following examples cover the most common forms:
 
 Very respectfully, JAMES KERR,
 Clerk of the House of Representatives.
@@ -306,14 +292,10 @@ Lower-case participles derived from proper names, such as anglicized, frenchifie
 
 Geographic zones or sections of the world, when used as proper nouns, take the capital, as the Tropics, the Arctics, the Levant, the Orient. When used as adjectives, use lower-case, as antarctic ice, tropical plants, oriental customs, levantine silk, morocco or russia leather, china or wedgwood pottery. Such words as india rubber, india ink, paris green, london purple, prussian blue, venetian red, roman type, gothic letter (but Gothic architecture), that describe things and are also used as nouns, do not take the capital, although they are, or are derived from, proper names.
 
-Capitalize titles clearly intended as synonyms of proper names. Examples:
-
 You will go, Major, to New York.
 I am anxious about our friend, the Captain.
 Mr. Speaker, I rise to a point of order.
 I am, General, your obedient servant.
-
-Titles not clearly used as synonyms, or when used in a general way, will not be capitalized. Examples:
 
 He was taken before the judge.
 The captain was breveted.
@@ -321,8 +303,6 @@ The captain was breveted.
 Where the word "o'clock" occurs in phrases or headlines involving the use of capitals, always set it "o'clock;" never use the form o'Clock, O'Clock, or O'clock.
 
 In tables of contents which are set in small caps capitalize only the first word and proper names.
-
-Capitalize the titles of standing and select committees of the Senate and House of Representatives of the United States and the different forms of the same, both singular and plural, as Committee on Ways and Means; Ways and Means Committees. The following list gives the official nomenclature of Congressional committees, with the proper capitalization:
 
 Committee on--
 Elections.
@@ -869,8 +849,6 @@ Make one word of horsepower, candlepower, and hundredweight, and use adjectively
 
 Compound adjectives take the hyphen: A 2-foot rule, 10-horsepower engine, 16-candlepower light, 6-hundredweight load, many-colored coat, light-armed soldier, asked-for opinion, fine-grained wood, light-green color, etc.
 
-Follow compounding, etc., in the appended list of fishes and fishery appliances:
-
 Fractions, when spelled, will be compounded: One twenty-first, one-fifth, eighty-one one-hundredths, one one-hundredth, the one-hundredth part.
 
 The words "well," "so," and "ill" will be used as follows: He is an ill-tempered man; he is very ill tempered. Well-meant intentions; his intentions are well meant. His so-called poem; his poem (so called) is, etc. But generally adverbs are not compounded with adjectives which they qualify: A divinely inspired book; a finely modeled statue; a nicely kept lawn.
@@ -887,8 +865,6 @@ Use inferior figures in all chemical symbols, and omit spaces between the letter
 
 Use superior figures in connection with reference letters, as A1, A2, a1, a2.
 
-It is impossible to give definite rules that will govern in all cases as to what should go in figures and what should be spelled out. It is a question which must be left to the judgment of the workman. General rules which will serve as a guide to the tendency of the style follow:
-
 Degrees, etc.: 17 degrees 24' 17"; 10 degrees below zero; in longitude 46 degrees west (but tenth meridian of longitude, sixth degree of latitude, etc.).
 
 Age: My age is 52 years and 6 months; a boy 6 years old;
@@ -902,8 +878,6 @@ Length of time: It lasted fifteen years; we were three days on the way; four hou
 Amounts or numbers larger than 1,000, if spelled, are expressed thus: One thousand eight hundred and fifty dollars; A. D. eighteen hundred and fifty; number seventeen hundred and twenty-two. But in serial numbers, where even multiples of one thousand occur, use the word "thousand," as section two thousand and four (not twenty hundred and four); paragraph seven thousand and sixty-nine.
 
 When beginning a sentence: Five million dollars' worth; in other cases, $5,000,000 worth.
-
-All amounts beginning sentences or paragraphs, except when, in testimony, an answer begins with a serial or complex number, in which case use figures. Examples:
 
 Numbered streets of all cities, except in tabular matter.
 
@@ -936,8 +910,6 @@ In boxes of two or more lines which run across, or where two or more boxes occur
 In boxes of three lines or more in depth and 10 ems or more in width over reading columns or over several figure columns, and in all run-up heads of three lines or more, make hanging indention; otherwise center each line.
 
 In boxes containing two lines the first line must be the longer when possible.
-
-Contractions.--In columns of names of persons, follow copy in the use of contractions of given names; but to avoid overruns always contract such names as William and Charles. Use "Co." for "Company" where the name of the company is given; use "R. R." for railroad and "Rwy." for railway where the name of the railroad or railway is given, and use Bro. and Bros. in firm names. Contract names of months whenever the day of the month is given, excepting in first columns consisting of dates only, which may, however, be contracted to save overruns. All other well-known contractions can be used, by direction of copy preparer, to save overruns. The following contractions for months of the year will be used:
 
 January Jan.
 February Feb.
@@ -999,8 +971,6 @@ Indention from rules.--An indention from a rule means so many ems in addition to
 Word "number."--Spell the word "number," referring to quantity or things, in box heads where possible. Where necessary to abbreviate or where used in connection with serial figures, use "No."
 
 Flush and sub heads.--Use colons after flush heads and em dashes after heads subordinate thereto.
-
-Units of quantity.--Units of quantity to the right of reading columns and over figure columns will be spelled where possible. Where the space available demands a contraction, use the following forms: Dolls., galls., lbs., oz., bbls., cwt., yds., ft., in. (inches), doz., bush., M, sq. feet, M feet, cub. feet, kilo., kilos. Observe style of the following table:
 
 Leader work.--Leader work is not classified as tabular work.
 
@@ -1136,8 +1106,6 @@ Follow literally in engrossed and enrolled bills. This applies to the title of t
 
 Heads and Indorsements.
 
-The "indorsement" on a bill is the form printed on the back for convenience of reference when folded. "Document style" prevails on indorsements until the bill reaches the "engrossed" stage. Senate bills differ from House bills in the forms used in heads and indorsements. As a bill progresses new "actions" appear, which should be set in the same style as the "actions" that precede. The "style" of a head or indorsement is governed by the "style" for the branch of Congress in which the bill is pending. Examples of a new bill in each House are given on the following page:
-
 Referred to the Committee on Claims and ordered to be printed.
 
 Mr. VOORHEES introduced the following bill; which was read twice and referred to the Committee on Pensions.
@@ -1165,8 +1133,6 @@ Set "Calendar No.--," on both face and indorsement of bills which have reached t
 
 Set "Report No." on both face and indorsement of reported bills in both Houses, centering under the number of the bill.
 
-"Line type" and italic are used only to show amendments. When it is proposed to strike out certain portions in a bill that is "reported with amendments," such portions will be set in "line type." Example:
-
 When new matter is inserted, it is set in italics.
 
 When it is proposed to strike out and insert, always let the italics FOLLOW the line type.
@@ -1175,17 +1141,11 @@ Do not complicate amendments. When one amendment can be made to cover the sense,
 
 Proposed Senate amendments are printed in bill form, all roman. The general style of the head may be either that of bills or of "miscellaneous documents." These headings are generally in proper form as they come from the bill clerk.
 
-Intended to be proposed by Mr. HOAR to the bill (H. R. 4864) to reduce taxation, to provide revenue for the Government, and for other purposes, viz:
-
 1 In line 24, page 19, strike out the words "per centum ad valorem"
 and insert the words
 2 "cents per pound;" in line 16, page 25, strike out the word "shall;"
 and in line 12, page 34, after
 3 the word "and," insert the word "any."
-
-Intended to be proposed by Mr. GORMAN to the bill (H. R. 2476)
-entitled "An Act to establish a fish-hatching station at Port
-Tobacco, Maryland," viz: After the word "Maryland," in line 14, section 2, insert the following:
 
 1 To enable the United States Commissioner of Fish and Fisheries to carry out the provisions
 2 of this act there is hereby appropriated the sum of seventy-five thousand dollars.
@@ -1233,10 +1193,6 @@ Spell out States after county in both Journals.
 
 The Journals are set in brevier, solid, Record measure, and as a rule Record style prevails.
 
-A message from the Senate, by Mr. Cox, its Secretary, announced that the Senate had passed a bill entitled:
-
-S. 2000. An act for the relief of James Robinson; and
-
 S. 2001. An act granting a pension to Sam Jones.
 
 It further announced that the Senate had passed, without amendment, the bill (H. R. 10241) to amend "An act making appropriations for the construction, repair, and preservation of certain public works on rivers and harbors, and for other purposes," approved July 4, 1894.
@@ -1252,8 +1208,6 @@ Which was referred to the Committee on Claims.
 H. R. 3458. An act extending the time for final proof on land claims under the public land laws.
 
 On motion of Mr. Sweet the amendments were concurred in.
-
-Mr. Pearson, from the Committee on Enrolled Bills, reported that the committee had examined and found truly enrolled bills of the following titles; which were thereupon signed by the Speaker, to wit:
 
 By Mr. Maguire: A resolution for the appointment of a special committee to investigate Pacific railroads--to the Committee on Rules.
 
@@ -1279,13 +1233,7 @@ Mr. Allen suggested that the House should take a recess, under Rule
 
 And then, in pursuance of Rule XXVI, the House took a recess until 8 p. m.
 
-A message from the President of the United States, by Mr. Pruden, one of his secretaries, announced that the President had approved and signed bills and a joint resolution of the following titles:
-
-H. R. 4701. An act to incorporate the Supreme Lodge of the Knights of Pythias; and
-
 H. Res. 196. Joint resolution to provide temporarily for the expenditures of the Government.
-
-The committee of conference on the disagreeing votes of the two Houses to the bill (H. R. 6518) making appropriations for rivers and harbors do recommend to their respective Houses as follows:
 
 Baltimore Harbor, Maryland: To widen the ship channel to one thousand feet, one thousand nine hundred and sixty-nine dollars and fifty-one cents.
 
@@ -1303,8 +1251,6 @@ A message from the House of Representatives, by Mr. Towles, its chief clerk.
 
 Mr. President: The House of Representatives has disagreed to the amendments of the Senate to the bill (H. R. 6913) making appropriations for the current expenses of the Indian Department. It asks a conference with the Senate thereon, and has appointed Mr. Holman, Mr. Allen, and Mr. Wilson of Washington managers at the same on its part.
 
-Mr. Caffery reported from the committee that they had examined and found duly enrolled the following bill:
-
 The President pro tempore signed the same, and it was delivered to the committee to be presented to the President of the United States.
 
 The Senate proceeded, by unanimous consent, to consider the said bill as in Committee of the Whole; and no amendment being made, it was reported to the Senate.
@@ -1315,13 +1261,7 @@ The said bill was read the third time.
 
 Resolved, That it pass, and that the title thereof be as aforesaid.
 
-The Senate proceeded to consider, as in Committee of the Whole, the bill (S. 1296) for the relief of Andrew Gray; and
-
 Ordered, That it be postponed indefinitely.
-
-Mr. Allison called for a division of the question; and
-
-On the question to recede from the amendment No. 87, viz: Insert as an additional paragraph the following:
 
 Messrs. Allen, Hill, Irby.
 
@@ -1443,13 +1383,9 @@ Press, stone, and foundry revises are equally important. In the latter especial 
 
 In the body of the work new pages will be properly indicated on the proof sheet. Tables of contents, letters of transmittal, lists of illustrations, the text proper of a book, and all matter following half titles (except parallel tables) should begin on a new odd page.
 
-All signatures are designated by consecutive numbers--2, 3, 4, etc.--from the first to the last. The distinguishing feature is usually the jacket number, preceding the signature number and connected with it by a 2-em dash. For some works contractions of the title are used, especially in annual or other periodical reports, forms for which can be had upon reference to the last one issued. House and Senate documents take the following signature forms:
-
 Signatures are usually worked in sixteens, but with large pages the form of eights is the standard when printed from type.
 
 In sending bills to press there are points to be watched which do not appear in other work. The open character of the pages makes the form peculiarly liable to accident, and each page must be closely scanned for faults. A press reviser must be fully conversant with all the details and peculiarities of bill work and be ready to correct or take counsel upon any seeming error of style or apparent fault. He must see that the indorsements on bills fall on "even" pages and that they back up properly and have the proper make-up; also compare the number of the bill on the indorsement with that on the face, as a safeguard against error. When any change has been made in the side folios, he must run the same to the end of the series and answer for their correctness. He must see that the proper number of copies is written on each signature page, according to the schedule or memorandum furnished him. In short, the reviser is an umpire on bill work whose alertness is his qualification for the work. He is not expected to read the proof, but he must train his eye to detect errors at a glance.
-
-Bills are worked in forms of eights. The signatures are made up like the following:
 
 When a bill is reprinted on account of some error or change, an asterisk is used at the foot of the first page. When more than one signature is reprinted, the asterisk follows the signature number.
 

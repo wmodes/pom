@@ -10,7 +10,9 @@ What is removed, in general terms:
     directions, jest and list numbers, page numbers, running heads, footnotes,
     cross-references ("see page 14"), tables, rule lines, markup
   - typography a typewriter cannot print (curly quotes, dashes, accents, symbols)
-  - paragraphs that are not usable utterances (OCR garbage, fragments)
+  - paragraphs that are not usable utterances (OCR garbage, fragments), among them paragraphs that stop before their
+    thought is done: one that begins mid-sentence, and one that ENDS unfinished (on a colon, a lead-in whose list is
+    gone, or on a word like "the"), because the oracle copies its exemplar's ending (see pom.library.endings)
 What is kept: the utterances themselves, lightly standardized.
 
 Applied by library.py after trimming (so trim markers still match the extracted
@@ -40,8 +42,13 @@ Per-holding behavior comes from flags in the manifest `normalize` column
     dictionary    "Term--meaning" entries (a dream dictionary) become "Term: meaning"
     keep-accents  keep accented letters instead of folding them to ASCII
 """
+import os
 import re
+import sys
 import unicodedata
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
+from pom.library.endings import ends_unfinished           # noqa: E402  the one definition, shared with the Bibliomancer and audit.py
 
 KEEP_AUDIT = 400    # samples recorded per rule
 
@@ -608,6 +615,11 @@ def clean_paragraphs(paragraphs, drop_patterns, stats, audit, dictionary=False, 
         elif not usable_utterance(paragraph):
             note(audit, "junk paragraphs", paragraph)
             stats["junk paragraphs dropped"] += 1
+        elif ends_unfinished(paragraph):
+            # The oracle copies its exemplar's ending: a lead-in ending on a colon, or a text cut at "...is the", would
+            # make a portent that stops the same way. Checked last, so a heading ending in a colon is still counted as a heading.
+            note(audit, "unfinished endings", paragraph)
+            stats["unfinished endings dropped"] += 1
         else:
             kept.append(paragraph)
     return kept

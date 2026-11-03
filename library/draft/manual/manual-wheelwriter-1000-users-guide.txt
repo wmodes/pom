@@ -74,8 +74,6 @@ PS (Proportional Varies in e This is a sample. Spacing) Width
 
 A 10-, 12-, or PS-pitch printwheel prints six lines per vertical inch. A 15-pitch printwheel prints eight lines per vertical inch.
 
-For each setting, move the carrier to the desired point, and press the key(s) indicated:
-
 LMar to set the left margin.
 
 RMar to set the right margin.
@@ -85,8 +83,6 @@ TCir to clear a tab.
 The carrier does not lock at the right margin. The typewriter beeps when the carrier is about five spaces before the right margin. You can type or space through the right margin. Margin and tab settings are saved when the typewriter is turned off.
 
 The typewriter has a correction memory of approximately one page. Correction memory allows you to easily and automatically erase and correct characters before you remove the paper.
-
-After typing, proofread the page before removing it from the typewriter. The correction memory is cleared if you:
 
 Turn your typewriter off.
 
@@ -99,8 +95,6 @@ Hold down the Correction key to erase characters repeatedly.
 If the typewriter does not automatically erase a character when you press the Correction key, you may be out of the correction memory.
 
 Erasing a Word Hold down Code while you press the Correction key to erase the entire word. Code {x} Word
-
-Erasing Manually in 10,12, and 15 Pitch To erase characters outside the correction memory:
 
 You may need to eraes one or several characters.
 
@@ -334,8 +328,6 @@ Position the paper on the line where you want to begin reprinting.
 
 Remove the paper using the Paper Release Lever.
 
-Clearing Reprint To clear Reprint, do either of the following:
-
 Type a character after the Paper Bail Load Lever has been pulled all the way forward. e Turn the typewriter off.
 
 Note: If you overstrike a character using a different printwheel of the same pitch, you will be unable to reprint the text correctly.
@@ -378,8 +370,6 @@ Printwheels for alternate keyboards contain characters not printed on the typewr
 
 Select a keyboard for a country or special application from the: charts on pages 2-17 through 2-23.
 
-The keyboard charts show the keyboard!D numbers and character locations for each alternate keyboard. The charts are arranged keyboard ID number from the chart to the number on the numerically. printwheel.:
-
 Hold down Code while you press L (Lang) and type the keyboard: Keyboard Charts for Typewriters Without the U.S. 1D number. The Lang light comes on and the alternate keyboard: Keyboard is selected.: The keyboard charts beginning on the following page show the key-
 
 Use the keyboard chart that matches your keyboard ID to locate f board layout for the U.S. keyboard shown on page 1-2. This keyboard the characters you want to type. has 46 keybuttons. All other keyboards have 48 keybuttons.
@@ -393,8 +383,6 @@ Note: It you hold down Code while you press L (Lang) and do not type a keyboard 
 The Lang light blinks when the carrier is positioned over text of a different language. To overstrike a character using a different language, you must clear the correction memory by turning the machine off and then on again. You will not be able to reprint your original text when the correction memory is cleared.
 
 The alternate keyboard charts show some keybuttons with special characters.
-
-Many alternate keyboards contain accent marks (dead keys) that print without advancing the carrier to the next space. To type accent marks over alphabetic characters:
 
 Type the accent mark. The carrier does not move.
 
@@ -428,10 +416,6 @@ The IBM Easystrike Correctable Ribbon Cassette is available in brown (1337762) a
 
 The typewriter uses two size AA alkaline batteries to save margins, tabs, and other settings when you turn the typewriter off. Change the batteries at least once every year (before they run down).
 
-The following settings are saved when you turn the typewriter off, if good batteries are installed:
-
-If the beep sounds three times and the Line Space lights blink continuously when you turn the typewriter on, do the following while the typewriter is on:
-
 Replacing Batteries Warning: Do not turn the typewriter off while replacing batteries. If you do, margins and other settings will be lost.
 
 All battery holders contain three openings. Be sure to place the batteries in only the two holder positions that contain springs.
@@ -455,8 +439,6 @@ Complete as many steps as needed to correct the problem.
 For assistance, call an authorized dealer. You will need serial number, machine type, and model number when you call.
 
 Wait until the typewriter stops printing, then continue typing.
-
-Typewriter Beeps Three Times and Line Space Lights Blink If the typewriter beeps three times and the Line Space lights blink when the typewriter is turned on, there is a possible battery problem:
 
 For either a or b, do the following while the typewriter is on.
 
@@ -564,8 +546,6 @@ Use the same pitch printwheel used when the text was typed.
 
 Insert another sheet of paper and reprint the text again.
 
-Spell Check Problems if Spell Check does not work, one of the following might cause the problem:
-
 Spell Check is turned off.
 
 Another typewriter function is active which prevents Spell Check from operating (for example, the Printer Option).
@@ -575,8 +555,6 @@ You did not end the word with a word ending.
 You are trying to add a word that is already in a dictionary.
 
 You are trying to delete a word from the main dictionary.
-
-Spelling Beep Sounded Three Times When You Turned the Typewriter On
 
 There was a supplemental dictionary error and the dictionary has been erased from memory. If you selected a spelling beep tone, it is erased from memory and will have to be selected again.
 

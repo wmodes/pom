@@ -16,8 +16,6 @@ This Manual is prepared to partially meet this want in deliberative assemblies t
 
 The Manual is divided into two distinct parts, each complete in itself.
 
-Part I contains a set of Rules of Order systematically arranged, as shown in the Table of Contents. Each one of the forty-five sections is complete in itself, so that no one unfamiliar with the work can be misled in examining any particular subject. Cross references are freely used to save repeating from other sections, and by this means the reader, without using the index, is referred to everything in the Rules of Order that has any bearing upon the subject he is investigating. The references are by sections, and for convenience the numbers of the sections are placed at the top of each page. The motions are arranged under the usual classes, in their order of rank, but in the index under the word motion will be found an alphabetical list of all the motions generally used. In reference to each motion there is stated:
-
 Of what motions it takes precedence (that is, what motions may, be pending, and yet it be in order to make this motion).
 
 To what motions it yields (that is, what motions may be made while this motion is pending).
@@ -74,13 +72,7 @@ Art. II. General Classification of Motions.
 
 A Principal or Main Question or Motion, is a motion made to bring before the assembly, for its consideration, any particular subject. No Principal Motion can be made when any other question is before the assembly. It takes precedence of nothing, and yields to all Privileged, Incidental and Subsidiary Questions.
 
-Subsidiary or Secondary Questions or Motions relate to a Principal Motion, and enable the assembly to dispose of it in the most appropriate manner. These motions take precedence of the Principal Question, and must be decided before the Principal Question can be acted upon. They yield to Privileged and Incidental Questions, and are as follows (being arranged in their order of precedence among themselves):
-
 Any of these motions (except Amend) can be made when one of a lower order is pending, but none can supersede one of a higher order. They cannot be applied to one another except in the following cases: (a) the Previous Question applies to the motion to Postpone, without affecting the principal motion, and can, if specified, be applied to a pending amendment; (b) the motions to Postpone to a certain day, and to Commit, can be amended; and (c) a motion to Amend the minutes can be laid on the table without carrying the minutes with it.
-
-Incidental Questions are such as arise out of other questions, and, consequently, take precedence of, and are to be decided before, the questions which give rise to them. They yield to Privileged Questions, and cannot be amended. Excepting an Appeal, they are undebatable; an Appeal is debatable or not, according to circumstances, as shown in section 14. They are as follows:
-
-Privileged Questions are such as, on account of their importance, take precedence over all other questions whatever, and on account of this very privilege they are undebatable, excepting when relating to the rights of the assembly or its members, as otherwise they could be made use of so as to seriously interrupt business. They are as follows (being arranged in their order of precedence among themselves):
 
 To Fix the Time to which the Assembly shall Adjourn See section 10.
 Adjourn " section 11.
@@ -95,8 +87,6 @@ To Fix the Time to which the Assembly shall Adjourn. This motion takes precedenc
 The Form of this motion is, "When this assembly adjourns, it adjourns to meet at such a time."
 
 To Adjourn. This motion (when unqualified) takes precedence of all others, except to "fix the time to which to adjourn," to which it yields. It is not debatable, and cannot be amended, or have any other subsidiary motion applied to it. If qualified in any way it loses its privileged character, and stands as any other principal motion. The motion to adjourn can be repeated if there has been any intervening business, though it be simply progress in debate. When a committee is through with any business referred to it, and prepared to report, instead of adjourning, a motion should be made "to rise," which motion, in committee, has the same privileges as to adjourn in the assembly.
-
-The effect upon Unfinished Business of an adjournment is as follows:
 
 When it does not close the session, the business interrupted by the adjournment is the first in order after the reading of the minutes at the next meeting, and is treated the same as if there had been no adjournment; an adjourned meeting being legally the continuation of the meeting of which it is an adjournment.
 
@@ -166,8 +156,6 @@ The Effect of this motion is to postpone the entire subject to the time specifie
 
 To Commit. This motion takes precedence of the motions to Amend or Indefinitely Postpone, and yields to any Privileged or Incidental Question, and also to the motion to Lie on the Table, or for the Previous Question, or to Postpone to a certain day. It can be amended by altering the committee, or giving it instructions. It is debatable, and opens to debate the merits of the question it is proposed to commit.
 
-The Form of this motion is "to refer the subject to a committee." When different committees are proposed they should he voted in the following order:
-
 Committee the whole, (2) a standing committee, and (3) a special (or select) committee. The number of a committee is usually decided without the formality of a motion, as in filling blanks: the Chairman asks "of how many shall the committee consist?" and a question is then put upon each number suggested, beginning with the largest. The number and kind of the committee need not be decided till after it has been voted to refer the subject to a committee. If the committee is a select one, and the motion does not include the method of appointing it, and there is no standing rule on the subject, the Chairman inquires how the committee shall be appointed, and this is usually decided informally. Sometimes the Chair "appoints," in which case he names the members of the committee and no vote is taken upon them; or the committee is "nominated" either by the Chair or members of the assembly (no member nominating more than one except by general consent), and then they are all voted upon together, except where more nominations are made than the number of the committee, when they shall be voted upon singly.
 
 Where a committee is one for action (a committee of arrangements for holding a public meeting, for example), it should generally be small, and no one placed upon it who is not favorable to the proposed action; and if any such should be appointed he should ask to be excused. But when the committee is for deliberation or investigation, it is of the utmost importance that all parties be represented on it, so that in committee the fullest discussion may take place, and thus diminish the chances of unpleasant debates in the assembly.
@@ -226,8 +214,6 @@ If the committee originate the resolutions, they vote, in the same way, on amend
 
 The committee has no power to punish its members for disorderly conduct, its resource being to report the facts to the assembly. No allusion can be made in the assembly to what has occurred in committee, except it be by a report of the committee, or by general consent. It is the duty of a committee to meet on the call of any two its of members, if the chairman be absent or decline to appoint such meeting. When a committee adjourns without appointing a time for the next meeting, it is called together in the same way as at its first meeting. When a committee adjourns to meet at another time, it is not necessary (though usually advisable) that absent members should be notified of the adjourned meeting.
 
-Forms of Reports of Committees. The form of a report is usually similar to the following:
-
 A standing committee reports thus: "The committee on respectfully report," etc., letting the report follow.
 
 A select or special committee reports as follows: "The committee to which was referred having considered the same respectfully report," etc. Or for "The committee" is sometimes written "Your committee," or "The undersigned, a committee."
@@ -258,8 +244,6 @@ This motion "to rise" is equivalent to the motion to adjourn, in the assembly, a
 
 The clerk does not record the proceedings of the committee on the minutes, but should keep a memorandum of the proceedings for the use of the committee. In large assemblies the clerk vacates his chair, which is occupied by the chairman of the committee, and the assistant clerk acts as clerk of the committee. Should the committee get disorderly, and the chairman be unable to preserve order, the presiding officer can take the chair, and declare the committee dissolved. The quorum of the committee of the whole is the same as that of the assembly. If the committee finds itself without a quorum, it can only rise and report the fact to the assembly, which in such a case would have to adjourn.
 
-Informal Consideration of a Question (or acting as if in committee of the whole). It has become customary in many assemblies, instead of going into committee of the whole, to consider the question "informally," and afterwards to act "formally." In a small assembly there is no objection to this. While acting informally upon any resolutions, the assembly can only amend and adopt them, and without further motion the Chairman announces that "the assembly acting informally has had such a subject under consideration, and has made certain amendments, which he will report." The subject comes before the assembly then as if reported by a committee. While acting informally, the Chairman retains his seat, as it is not necessary to move that the committee rise, but at any time the adoption of such motions as to adjourn, the previous question, to commit, or any motion except to amend or adopt, puts an end to the informal consideration; as for example, the motion to commit is equivalent to the following motions when in committee of the whole:
-
 That the committee rise; (2) that the committee of the whole be discharged from the further consideration of the subject, and (3) that it be referred to a committee.
 
 While acting informally, every member can speak as many times as he pleases, and as long each time as permitted in the assembly, and the informal action may be rejected or altered by the assembly. While the clerk should keep a memorandum of the informal proceedings, it should not be entered on the minutes, being only for temporary use. The Chairman's report to the assembly of the informal action, should be entered on the minutes, as it belongs to the assembly's proceedings.
@@ -270,8 +254,6 @@ Debate. When a motion is made and seconded, it shall be stated by the Chairman b
 
 If greater freedom is desired, the proper course is to refer the subject to the committee of the whole, or to consider it informally. No member can speak the second time to a question, until every member choosing to speak has spoken. But an amendment, or any other motion being offered, makes the real question before the assembly a different one, and, in regard to the right to debate, is treated as a new question. Merely asking a question, or making a suggestion, is not considered as speaking.
 
-Undebatable Questions. The following questions shall be decided without debate, all others being debatable:
-
 To Fix the Time to which the Assembly shall Adjourn (when a privileged question, section 10). --To Adjourn, (or in committee, to rise, which is used instead of to adjourn). --For the Orders of the Day, and questions relating to the priority of business. --An Appeal when made while the Previous Question is pending, or when simply relating to indecorum or transgressions of the rules of speaking, or to the priority of business. --Objection to the Consideration of a Question. --Questions relating to Reading of Papers, or Withdrawing a Motion, or Suspending the Rules, or extending the limits of debate, or limiting or closing debate, or granting leave to continue his speech to one who has been guilty of indecorum in debate. --To Lie on the Table or to Take from the Table. --The Previous Question. --To Reconsider a question which is itself undebatable.
 
 The motion to Postpone to a certain time allows of but very limited debate, which must be confined to the propriety of the postponement; but to Reconsider a debatable question, or to Commit, or Indefinitely Postpone, opens the main question to debate. To Amend opens the main question to debate only so far as it is necessarily involved in the amendment.
@@ -279,8 +261,6 @@ The motion to Postpone to a certain time allows of but very limited debate, whic
 The distinction between debate and making suggestions or asking a question, should always be kept in view, and when the latter will assist the assembly in determining the question, is allowed to a limited extent, even though the question before the assembly is undebatable.
 
 Note On Undebatable Questions.--The English common parliamentary law makes all motions debatable, without there is a rule adopted limiting debate; but every assembly is obliged to restrict debate upon certain motions. The restrictions to debate prescribed in this section conform to the practice of Congress, where, however, it is very common to allow of brief remarks upon the most undebatable questions, sometimes five or six members speaking; this of course is allowed only when no one objects.
-
-By examining the above list, it will be found, that, while free debate is allowed upon every principal question, it is permitted or prohibited upon other questions in accordance with the following principles:
 
 Highly privileged questions, as a rule, should not be debated, as in that case they could be used to prevent the assembly from coming to a vote on the main question; (for instance, if the motion to adjourn were debatable, it could be used in a way to greatly hinder business). High privilege is, as a rule, incompatible with the right of debate on the privileged question.
 
@@ -298,15 +278,11 @@ Decorum in Debate. In debate a member must confine himself to the question befor
 
 Disorderly words should be taken down by the member who objects to them, or by the clerk, and then read to the member; if he denies them, the assembly shall decide by a vote whether they are his words or not. If a member cannot justify the words he used, and will not suitably apologize for using them, it is the duty of the assembly to act in the case, requiring both members to withdraw till it has decided its course, it being a general rule that no member should he present in the assembly when any matter relating to himself is under debate. If any business has taken place since the member spoke, it is too late to take notice of any disorderly words he used.
 
-Closing Debate. Debate upon a question is not closed by the Chairman rising to put the question, as, until both the affirmative and negative are put, a member can claim the floor, and re-open debate. Debate can be closed by the following motions, which are undebatable, and, except to Lie on the Table, shall require a two-thirds vote for their adoption:
-
 An objection to the consideration of a question, which, if sustained, not only stops debate, but also throws the subject out of the assembly for that session; which latter effect is the one for which it was designed.
 
 To lie on the table, which, if adopted, carries the question to the table, from which it cannot be taken without a majority favors such action.
 
 The previous question, which has the effect of requiring all the questions before the assembly to be put to vote at once without further debate. It may be applied merely to an amendment or to an amendment of an amendment.
-
-For the assembly to adopt an order (1) limiting debate upon a special subject, either as to the number or length of the speeches; or
 
 (2) closing debate upon the subject at a stated time, when all pending questions shall be put to vote without further debate. Either of these two measures may be applied only to a pending amendment, or an amendment thereto, and when this is voted upon, the original question is still open to debate and amendment.
 
@@ -325,8 +301,6 @@ Another form of voting is by ballot. This method is only adopted when required b
 The assembly can by a majority vote order that the vote on any question be taken by Yeas and Nays. In this method of voting the Chairman states both sides of the question at once; the clerk calls the roll and each member as his name is called rises and answers yes or no, and the clerk notes his answer. Upon the completion of the roll call the clerk reads over the names of those who answered the affirmative, and afterwards those in the negative, that mistakes may be corrected; he then gives the number voting on each side to the Chairman, who announces the result. An entry must be made in the minutes of the names of all voting in the affirmative, and also of those in the negative.
 
 The form of putting a question upon which the vote has been ordered to be taken by yeas and nays, is similar to the following: "As many as are in favor of the adoption of these resolutions will, when their names are called, answer yes--those opposed will answer no." The Chairman will then direct the clerk to call the roll. The negative being put at the same time as the affirmative, it is too late, after the question is put, to renew the debate. After the commencement of the roll call, it is too late to ask to be excused from voting. The yeas and nays cannot be ordered in committee of the whole.
-
-Motions Requiring More than a Majority Vote. The following motions shall require a two-thirds vote for their adoption, as the right of discussion, and the right to have the rules enforced, should not be abridged by a mere majority:
 
 An Objection to the Consideration of a Question section 15.
 To Take up a Question out of its proper order section 13.
@@ -358,8 +332,6 @@ The chairman should not only be familiar with parliamentary usage, and set the e
 
 A chairman will often find himself perplexed with the difficulties attending his position, and in such cases he will do well to heed the advice of a distinguished writer on parliamentary law, and recollect that--"The great purpose of all rules and forms, is to subserve the will of the assembly, rather than to restrain it; to facilitate, and not to obstruct, the expression of their deliberate sense."
 
-Clerk or Secretary. The recording officer is usually called the "Clerk" or "Secretary," and the record of proceedings the "Minutes." His desk should be near that of the chairman, and in the absence of the chairman, (if there is no vice president present) when the hour for opening the session arrives, it is his duty to call the meeting to order, and to preside until the election of a chairman pro tem., which should be done immediately. He should keep a record of the proceedings, commencing in a form similar to the following:
-
 "At a regular quarterly meeting of held on the 31st day of March, 1875, at, the President in the chair, the minutes were read by the clerk and approved." If the regular clerk is absent, insert after the words "in the chair," the following: "The clerk being absent, Robert Smith was appointed clerk pro tem. The minutes were then read and approved." If the minutes were not read, say "the reading of the minutes was dispensed with." The above form will show the essentials, which are as follows: (a) The kind of meeting, "regular" or "special," or "adjourned regular," or "adjourned special;" (6) name of the assembly; (c) date and place of meeting (excepting when the place is always the same); (d) the fact of the presence of the regular chairman and clerk, or in their absence the names of their substitutes; (e) whether the minutes of the previous meeting were approved.
 
 The minutes should be signed by the person who acted as clerk for that meeting: in some societies the chairman must also sign them. When published, they should be signed by both officers.
@@ -388,8 +360,6 @@ The Chairman should not take the chair till a quorum is present, except where th
 
 In committee of the whole, the quorum is the same as in the assembly; in any other committee the majority is a quorum, without the assembly order otherwise, and it must wait for a quorum before proceeding to business. If the number afterwards should be reduced below a quorum, business is not interrupted, unless a member calls attention to the fact; but no question can be decided except when a quorum is present. Boards of Trustees, Managers, Directors, etc., are on the same footing as committees, in regard to a quorum. Their power is delegated to them as a body, and what number shall be present in order that they may act as a Board, is to be decided by the society that appoints the Board. If no quorum is specified, then a majority constitutes a quorum.
 
-Order of Business. It is customary for every society having a permanent existence, to adopt an order of business for its meetings. When no rule has been adopted, the following is the order:
-
 Reading the Minutes of the previous meeting.
 
 Reports of Standing Committees.
@@ -397,8 +367,6 @@ Reports of Standing Committees.
 Reports of Select Committees.
 
 Boards of Managers, Trustees, etc., come under the head of standing committees. Questions that have been postponed from a previous meeting, come under the head of unfinished business; and if a subject has been made a "special order" for the day, it shall take precedence of all business except reading the minutes. If it is desired to transact business out of its order, it is necessary to suspend the rules, which can only be done by a two-thirds vote; but as each subject comes up, a majority can at once lay it on the table, and thus reach any question which they desire to first dispose of.
-
-The order of business, in considering any report or proposition containing several paragraphs, is as follows:
 
 The whole paper should be read entirely through by the clerk; then the Chairman should read it by paragraphs, pausing at the end of each, and asking, "Are there any amendments proposed to this paragraph?" If none are offered, he says, "No amendments being offered to this paragraph, the next will be read;" he then reads the next, and proceeds thus to the last paragraph, when he states that the whole report or resolutions have been read, and are open to amendment. He finally puts the question on agreeing to or adopting the whole paper as amended. If there is a preamble it should be read after the last paragraph.
 
@@ -458,8 +426,6 @@ If the society is one that expects to own real estate, it should be incorporated
 
 Constitutions, By-Laws, Rules of Order and Standing Rules. In forming a Constitution and By-Laws, it is always best to procure copies of those adopted by several similar societies, and for the committee, after comparing them, to select one as the basis of their own, amending each article just as their own report is amended by the Society. When they have completed amending the Constitution, it is adopted by the committee. The By-Laws are treated in the same way, and then, having finished the work assigned them, some one moves, "That the committee rise, and that the chairman (or some other member) report the Constitution and By-Laws to the assembly." If this is adopted, the Constitution and By-Laws are written out, and a brief report made of this form: "Your committee, appointed to draft a Constitution and By-Laws, would respectfully submit the following, with the recommendation that they be adopted as the Constitution and By-Laws of this society;" which is signed by all the members of the committee that concur in it. Sometimes the report is only signed by the chairman of the committee.
 
-In the organization just given, it is assumed that both a Constitution and By-Laws are adopted. This is not always done; some societies adopt only a Constitution, and others only By-Laws. Where both are adopted, the constitution usually contains only the following:
-
 Name and object of the society.
 
 Qualification of members.
@@ -486,8 +452,6 @@ In a convention it is often desirable to keep a full record for publication, and
 
 Sometimes a convention does its work by having certain topics previously assigned to certain speakers, who deliver formal addresses or essays, the subjects of which are afterwards open for discussion in short speeches, of five minutes, for instance. In such cases the minutes are very brief, without they are to be published, when they should contain either the entire addresses or carefully prepared abstracts of them, and should show the drift of the discussion that followed each one. In permanent societies, where the minutes are not published, they consist of a record of what was done and not what was said, and should be kept in a book.
 
-"At a regular meeting of the M. L. Society, held in their hall, on Tuesday evening, March 16, 1875, Mr. A. in the chair and Mr. B. acting as secretary, the minutes of the previous meeting were read and approved. The committee on Applications reported the names of Messrs. C. and D. as applicants for membership; and on motion of Mr. F. they were admitted as members. The committee on ---- reported a series of resolutions, which were thoroughly discussed and amended, and finally adopted as follows:
-
 If the proceedings are to be published, the secretary should always examine the published proceedings of similar meetings, so as to conform to the custom, excepting where it is manifestly improper.
 
 The Constitution, By-Laws, Rules of Order and Standing Rules should all be written in one book, leaving every other page blank; and whenever an amendment is made to any of them, it should be immediately entered on the page opposite to the article amended, with a reference to the date and page of the minutes where is recorded the action of the society.
@@ -502,13 +466,7 @@ It should always be remembered that the financial report is made for the informa
 
 Every disbursing officer should be careful to get a receipt whenever he makes a payment; these receipts should be preserved in regular order, as they are the vouchers for the payments, which must be examined by the auditing committee. Disbursing officers cannot be too careful in keeping their accounts, and they should insist upon having their accounts audited every time they make a report, as by this means any error is quickly detected and may be corrected. When the society has accepted the auditing committee's report that the financial report is correct, the disbursing officer is relieved from the responsibility of the past, and if his vouchers were lost afterwards, it would cause no trouble. The best form for these financial reports depends upon the kind of society, and is best determined by examining those made in similar societies.
 
-The following form can be varied to suit most cases: (when the statement of receipts and expenses is very long, it is often desirable to specify the amounts received from one or two particular sources, which can be done immediately after stating the total receipts; the same course can be taken in regard to the expenditures):
-
-The undersigned, Treasurer of the M. L. Society, begs leave to submit the following annual report:
-
 The balance on hand at the commencement of the year was ---- dollars and ---- cents. There was received from all sources during the year, ---- dollars and ---- cents; during the same time the expenses amounted to ---- dollars and ---- cents, leaving a balance on hand of ---- dollars and ---- cents. The annexed statement of receipts and expenditures will show in detail the sources from which the receipts were obtained, and the objects to which the expenditures have been applied. All of which is respectfully submitted.
-
-The "Statement of receipts and expenditures" can be made, by simply giving a list of receipts, followed by a list of expenses, and finishing up with the balance on hand. The auditing committee's certificate to the correctness of the account should be written on the statement. Often the statement is made out in the form of an account, as follows:
 
 We do hereby certify that we have examined the accounts and vouchers of the treasurer, and find them correct; and that the balance in his hands is twenty-four dollars and sixty-three cents. R. V., J. L., Audit Comm.
 
@@ -519,8 +477,6 @@ The first member named on a committee is their chairman, and it is his duty to c
 If the minority submit a report, it commences thus: "The undersigned, a minority of the committee appointed," etc., continuing as the regular report of the committee. After the committee's report has been read, it is usual to allow the minority to present their report, but it cannot be acted upon except by a motion to substitute it for the report of the committee. When the committee's report is read, they are discharged without any motion. A motion to refer the paper back to the same committee (or to re-commit), if adopted, revives the committee.
 
 Art. XI. Introduction of Business.
-
-Any member wishing to bring business before the assembly, should, without it is very simple, write down in the form of a motion, what he would like to have the assembly adopt, thus:
 
 Resolved, That the thanks of this convention be tendered to the citizens of this community for their hearty welcome and generous hospitality.
 
@@ -616,8 +572,6 @@ To Close the Meeting. (a) Fix the time to which to adjourn. If it is desired to 
 
 Adjourn. In order to prevent an assembly from being kept in session an unreasonably long time, it is necessary to have a rule limiting the time that the floor can be occupied by any one member at one time. When it is desired to close the meeting, without the member who has the floor will yield it, the only resource is to wait till his time expires, and then a member who gets the floor should move "to adjourn." The motion being seconded, the chairman instantly put the question, as it allows of no amendment or debate; and if decided in the affirmative, he says, "The motion is carried;--this assembly stands adjourned." If the assembly is one that will have no other meeting, instead of "adjourned," he says "adjourned without day," or "sine die." If previously it had been decided when they adjourned to adjourn to a particular time, then he states that the assembly stands adjourned to that time. If the motion to adjourn is qualified by specifying the time, as, "to adjourn to to-morrow evening," it cannot be made when any other question is before the assembly; like any other main motion, it can then be amended and debated.
 
-Order of Precedence of Motions. The ordinary motions rank as follows, and any of them (except to amend) can be made while one of a lower order is pending, but none can supersede one of a higher order:
-
 To Fix the Time to which to Adjourn. To Adjourn (when unqualified). For the Orders of the Day. To Lie on the Table. For the Previous Question. To Postpone to a Certain Time. To Commit. To Amend. To Postpone Indefinitely.
 
 The motion to Reconsider can be made when any other question is before the assembly, but cannot be acted upon until the business then before the assembly is disposed of; when, if called up, it takes precedence of all other motions except to adjourn and to fix the time to which to adjourn. Questions incidental to those before the assembly take precedence of them, and must be acted upon first.
@@ -638,8 +592,6 @@ Forms of Stating and Putting Questions. Whenever a motion has been made and seco
 
 Often in routine work the chairman puts the question without waiting for even a motion, as few persons like to make such formal motions, and much time would be wasted by waiting for them: (but the chairman can only do this as long as no one objects.) The following motions, however, do not have to be seconded: (a) a call for the orders of the day; (b) a call to order, or the raising of any question of order; and (c) an objection to the consideration of a question.
 
-One of the commonest forms of stating a question is to say that, "It is moved and seconded that," and then give the motion. When an amendment has been voted on, the chairman announces the result, and then says, "The question now recurs on the resolution," or, "on the resolution as amended," as the case may be. So in all cases, as soon as a vote is taken, he should immediately state the question then before the assembly, if there be any. If the motion is debatable or can be amended, the chairman, usually after stating the question, and always before finally putting it, inquires, "Are you ready for the question?" Some of the common forms of stating and putting questions are shown in section section 46-48. The forms of putting the following questions, are, however, peculiar:
-
 If a motion is made to Strike out certain words, the question is put in this form: "Shall these words stand as a part of the resolution?" so that on a tie vote they are struck out.
 
 If the Previous Question is demanded, it is put thus: "Shall the main question be now put?"
@@ -652,8 +604,6 @@ If the vote has been ordered to be taken by yeas and nays, the question is put i
 
 Motions requiring a two-thirds vote.
 
-All motions that have the effect to make a variation from the established rules and customs, should require a two-thirds vote for their adoption. Among these established customs should be regarded the right of free debate upon the merits of any measure, before the assembly can be forced to take final action upon it. The following motions would come under this rule:
-
 To amend or suspend the rules. To make a special order. To take up a question out of its proper order. An objection to the consideration of a question. The Previous Question, or a motion to limit or close debate.
 
 Unfinished Business. When an assembly adjourns, the unfinished business comes up at the adjourned meeting, if one is held, as the first business after the reading of the minutes; if there is no adjourned meeting, the unfinished business comes up immediately before new business at the next regular meeting, provided the regular meetings are more frequent than yearly. If the meetings are only once a year, the adjournment of the session puts an end to all unfinished business.
@@ -663,8 +613,6 @@ Session. Each regular meeting of a society constitutes a separate session. Any m
 When an assembly has meetings for several days consecutively, they all constitute one session. Each session of a society is independent of the other sessions, excepting as expressly provided in their Constitution, By-Laws, or Rules of Order, and excepting that resolutions adopted by one session are in force during succeeding sessions until rescinded by a majority vote.
 
 Where a society holds more than one regular session a year, these rules limit the independence of each session as follows: (a) The Order of Business prescribed in section 72 requires that the minutes of the previous meeting, the reports of committees previously appointed, and the unfinished business of the last session, shall all take precedence of new business, and that no subject can be considered out of its proper order, except by a two-thirds vote; (b) it is allowable to postpone a question to the next session, when it comes up with unfinished business, but it is not allowable to postpone to a day beyond the next session, and thus interfere with the right of the next session to consider the question; (c) a motion to reconsider a vote can be made at one meeting and called up at the next meeting even though it be another session, provided the society holds its regular sessions as frequently as monthly.
-
-Order of Business. Every society should adopt an order of business adapted to its special wants. The following is the usual order where no special rule is adopted, and when more than one regular meeting is held each year:
 
 Reading of the minutes of the last meeting.
 
@@ -735,8 +683,6 @@ An appeal is undebatable only when relating to indecorum, or to transgressions o
 The objection can only be made when the question is first introduced, before debate.
 
 Order of Precedence of Motions.
-
-The ordinary motions rank as follows, and any of them (except to amend) can be made while one of a lower order is pending, but none can supercede one of a higher order:
 
 To Fix the Time to which to Adjourn. To Adjourn (when unqualified). For the Orders of the Day. To Lie on the Table. For the Previous Question. To Postpone to a Certain Time. To Commit. To Amend. To Postpone Indefinitely.
 

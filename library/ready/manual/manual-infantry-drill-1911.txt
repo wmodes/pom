@@ -30,8 +30,6 @@ In field exercises the enemy is said to be imaginary when his position and force
 
 General Rules for Drills and Formations.
 
-When the preparatory command consists of more than one part, its elements are arranged as follows:
-
 For movements to be executed successively by the subdivisions or elements of an organization: (a) Description of the movement; (b) how executed, or on what element executed.
 
 For movements to be executed simultaneously by the subdivisions of an organization: (a) The designation of the subdivisions; (b) the movement to be executed.
@@ -154,8 +152,6 @@ Indifference in giving commands must be avoided as it leads to laxity in executi
 
 The authorized bugle signals are published in Part V of these regulations.
 
-The following bugle signals may be used off the battle field, when not likely to convey information to the enemy:
-
 Attention: Troops are brought to attention.
 
 Attention to orders: Troops fix their attention.
@@ -165,8 +161,6 @@ Forward, march: Used also to execute quick time from double time.
 Double time, march.
 
 To the rear, march: In close order, execute squads right about.
-
-The following bugle signals may be used on the battle field:
 
 These signals are used only when intended for the entire firing line; hence they can be authorized only by the commander of a unit (for example, a regiment or brigade) which occupies a distinct section of the battle field. Exception: Fix bayonet.
 
@@ -415,8 +409,6 @@ When the facings, alignments, open and close ranks, taking interval or distance,
 Seventh. The piece is brought to the order on halting. The execution of the order begins when the halt is completed.
 
 Eighth. A disengaged hand in double time is held as when without arms.
-
-The following rules govern the execution of the manual of arms:
 
 First. In all positions of the left hand at the balance (center of gravity, bayonet unfixed) the thumb clasps the piece; the sling is included in the grasp of the hand.
 
@@ -880,8 +872,6 @@ Executed by each platoon as described for the company.
 
 Before forming line the captain sees that the guides on the flank toward which the movement is to be executed are covering. This is effected by previously announcing the guide to that flank.
 
-Being in line, to form column of squads, or the reverse; or, being in line of platoons, to form column of platoons, or the reverse:
-
 Executed by each squad as described in the School of the Squad.
 
 If the company or platoons be formed in line toward the side of the file closers, they dart through the column and take posts in rear of the company at the second command. If the column of squads be formed from line, the file closers take posts on the pivot flank, abreast of and 4 inches from the nearest rank. (C.I.D.R., No. 2.)
@@ -933,8 +923,6 @@ The units in rear continue to march straight to the front; each, when opposite t
 If executed in double time, the leading squad marches in double time until halted.
 
 Front Into Line.
-
-Being in column of platoons or squads, to form line to the front:
 
 At the first command the leaders of the units in rear of the leading one command: Right oblique. If at a halt, the leader of the leading unit commands: Forward. At the second command the leading unit moves straight forward; the rear units oblique as indicated. The command halt is given when the leading unit has advanced the desired distance; it halts; its leader then commands: Left dress. Each of the rear units, when opposite its place in line, resumes the original direction at the command of its leader; each is halted on the line at the command of its leader, who then commands: Left dress. All dress on the first unit in line.
 
@@ -1039,8 +1027,6 @@ Skirmishers move to the right or left front and successively place themselves in
 Being in platoon or squad columns: 1. Assemble, 2. MARCH.
 
 The platoon or squad leaders signal assemble. The men of each platoon or squad, as the case may be, advance and, moving to the right and left, take their proper places in line, each unit assembling on the leading element of the column and re-forming in line. The platoon or squad leaders conduct their units toward the element or point indicated by the captain, and to their places in line; the company is re-formed in line.
-
-Being in skirmish line, to advance by a succession of thin lines:
 
 (Such numbers), forward, 2. MARCH.
 
@@ -1203,8 +1189,6 @@ Captains repeat such preparatory commands as are to be immediately executed by t
 In giving commands or cautions captains may prefix the proper letter designations of their companies, as A Company, HALT; B Company, squads right, etc.
 
 At the command guide center (right or left), captains command: Guide right or left, according to the positions of their companies. Guide center designates the left guide of the center company.
-
-When the companies are to be dressed, captains place themselves on that flank toward which the dress is to be made, as follows:
 
 The battalion in line: Beside the guide (or the flank file of the front rank, if the guide is not in line) and facing to the front.
 
@@ -1746,8 +1730,6 @@ Defending troops can prevent a charge only when they can master the enemy's fire
 
 To obtain fire superiority it is necessary to produce a heavy volume of accurate fire. Every increase in the effectiveness of the fire means a corresponding decrease in the effectiveness of the enemy's fire.
 
-The volume and accuracy of fire will depend upon several considerations:
-
 The number of rifles employed. On a given front the greatest volume of fire is produced by a firing line having only sufficient intervals between men to permit the free use of their rifles. The maximum density of a firing line is therefore about one man per yard of front.
 
 The rate of fire affects its volume; an excessive rate reduces its accuracy.
@@ -2084,8 +2066,6 @@ Where the defense is assumed with a view to making a counterattack, the troops f
 
 The force for the counterattack should be held echeloned in rear of the flank which offers it the greatest advantage for the proposed attack.
 
-The counterattack should be made vigorously and at the proper time. It will usually be made:
-
 By launching the reserve against the enemy's flank when his attack is in full progress. This is the most effective form of counterattack.
 
 Straight to the front by the firing line and supports after repulsing the enemy's attack and demoralizing him with pursuing fire.
@@ -2093,8 +2073,6 @@ Straight to the front by the firing line and supports after repulsing the enemy'
 Or, by the troops in rear of the firing line when the enemy has reached the defensive position and is in disorder.
 
 Minor counterattacks are sometimes necessary in order to drive the enemy from important positions gained by him.
-
-When a position is taken merely to delay the enemy and to withdraw before becoming closely engaged, the important considerations are:
 
 The enemy should be forced to deploy early. The field of fire should therefore be good at distances from 500 to 1,200 yards or more; a good field of fire at close range is not necessary.
 
@@ -2394,8 +2372,6 @@ Dummy trenches frequently draw the enemy's attention and fire and thus protect t
 
 Any type is suitable which presents to the enemy the appearance of a true trench imperfectly concealed.
 
-When it is uncertain whether time will permit the completion of all the work planned, work should proceed with due regard to the order of importance of the several operations. Ordinarily the order of importance will be:
-
 Clearing foreground to improve the field of fire and construction of fire trench.
 
 Head or overhead cover; concealment.
@@ -2631,8 +2607,6 @@ In large commands the halt order should assign camp sites to the next smaller co
 The Selection of Camp Sites.
 
 In campaign, tactical necessity may leave little choice in the selection of camp sites, but under any conditions the requirements of sanitation should be given every consideration consistent with the tactical situation.
-
-Great care should be exercised in selecting sites. In general, the following principles govern:
 
 The site should be convenient to an abundant supply of pure water.
 
@@ -2970,8 +2944,6 @@ The band continues to play while the companies are in march upon the parade grou
 
 When the company officers have saluted the major, he may direct them to form line with the staff, in which case they individually move to the front, passing to the right and left of the major and staff, halt on the line established by the staff, face about, and stand at attention. The music ceases when the officers join the staff. The major causes the companies to pass in review under the command of their first sergeants by the same commands as before. The company officers return saber with the major and remain at attention. (C.I.D.R., No. 19.)
 
-The regiment is formed in line or in line of masses; the formation having proceeded up to, but not including the present, the parade proceeds as described for the battalion, with the following exceptions:
-
 "Colonel" is substituted for "major," "regiment" for "battalion," in the description, and "battalions" for "battalion" in the commands.
 
 Lieutenants remain in the line of file closers.
@@ -2999,8 +2971,6 @@ The color bearer, preceded by the first lieutenant and followed by a sergeant of
 When the color bearer comes out, followed by the lieutenant and sergeant, he halts before the entrance, facing the escort; the lieutenant places himself on the right, the sergeant on the left of the color bearer; the escort presents arms, and the field music sounds to the color; the first lieutenant and sergeant salute.
 
 Arms are brought to the order; the lieutenant and sergeant return to their posts; the company is formed in column of platoons, the band taking post in front of the column; the color bearer places himself between the platoons; the escort marches in quick time, with guide left, back to the regiment, the band playing; the march is so conducted that when the escort arrives at 50 paces in front of the right of the regiment, the direction of the march shall be parallel to its front; when the color arrives opposite its place in line, the escort is formed in line to the left; the color bearer, passing between the platoons, advances and halts 12 paces in front of the colonel.
-
-The color bearer having halted, the colonel, who has taken post 30 paces in front of the center of his regiment, faces about, commands:
 
 Present, 2. ARMS, resumes his front, and salutes; the field music sounds to the color; and the color bearer executes the color salute at the command present arms.
 
@@ -3065,8 +3035,6 @@ When necessary to escort the remains from the quarters of the deceased to the ch
 The commander of the escort, previous to the funeral, gives the clergyman and pallbearers all needful directions.
 
 Being in line at a halt: 1. Open ranks, 2. MARCH.
-
-At the command march the front rank executes right dress; the rear rank and the file closers march backward 4 steps, halt, and execute right dress; the lieutenants pass around their respective flanks and take post, facing to the front, 3 paces in front of the center of their respective platoons. The captain aligns the front rank, rear rank, and file closers, takes post 3 paces in front of the right guide, facing to the left, and commands: 1. FRONT, 2. PREPARE FOR
 
 At the second command the lieutenants carry saber; the captain returns saber and inspects them, after which they face about, order saber, and stand at ease; upon the completion of the inspection they carry saber, face about, and order saber. The captain may direct the lieutenants to accompany or assist him, in which case they return saber and, at the close of the inspection, resume their posts in front of the company, draw and carry saber.
 
@@ -3392,8 +3360,6 @@ Officers and noncommissioned officers armed with the saber, when mounted, return
 
 At inspection enlisted men with the saber drawn execute the first motion of present saber and turn the wrist to show both sides of the blade, resuming the carry when the inspector has passed.
 
-Being in line or in column of platoons, the captain commands:
-
 The officers, first sergeant, and guides fall out; the cooks form a file on the flank of the company nearest the kitchen, the first sergeant and right guide fall in, forming the right file of the company; blank files are filled by the file closers or by men taken from the front rank; the remaining guide, or guides, and file closers form on a convenient flank. Before forming column of platoons, preparatory to pitching tents, the company may be redivided into two or more platoons, regardless of the size of each. (C.I.D.R., No. 2.)
 
 The captain then causes the company to take intervals as described in the School of the Squad, and commands: PITCH TENTS.
@@ -3588,8 +3554,6 @@ At the second command the rolls are slung, the end containing the pole to the re
 
 The company is assembled, takes arms, and the captain completes the inspection as before.
 
-Being in line or in column of platoons, the captain commands:
-
 The officers, first sergeant, and guides fall out; the cooks form a file on the flank of the company nearest the kitchen, the first sergeant and right guide fall in, forming the right file of the company; blank files are filled by the file closers or by men taken from the front rank; the remaining guide or guides, and file closers form on a convenient flank. Before forming column of platoons, preparatory to pitching tents, the company may be redivided into two or more platoons regardless of the size of each. (C.I.D.R., No. 2.)
 
 The captain then causes the company to take intervals as described in the School of the Squad, and commands: PITCH TENTS.
@@ -3650,8 +3614,6 @@ The instructor explains the importance of good footwork and impresses on the men
 
 All foot movements should be made from the position of guard. As far as practicable, they will be made on the balls of the feet to insure quickness and agility. No hard and fast rule can be laid down as to the length of the various foot movements; this depends entirely on the situations occurring in combat.
 
-The men having taken intervals or distances, the instructor commands:
-
 At the command guard, half face to the right, carry back and place the right foot about once and a half its length to the rear and about 3 inches to the right, the feet forming with each other an angle of about 60 degrees, weight of the body balanced equally on the balls of the feet, knees slightly bent, palms of hands on hips, fingers to the front, thumbs to the rear, head erect, head and eyes straight to the front.
 
 To resume the attention, 1. Squad, 2. ATTENTION. The men take the position of the soldier and fix their attention.
@@ -3673,8 +3635,6 @@ Left, 2. STEP. Step to the left with the left foot about once its length and pla
 These steps are used to circle around an enemy, to secure a more favorable line of attack, or to avoid the opponent's attack. Better ground or more favorable light may be gained in this way. In bayonet fencing and in actual combat the foot first moved in stepping to the right or left is the one which at the moment bears the least weight.
 
 The commands for and the execution of the foot movements are the same as already given for movements without the rifle.
-
-The men having taken intervals or distances, the instructor commands:
 
 At the second command take the position of guard; at the same time throw the rifle smartly to the front, grasp the rifle with the left hand just below the lower band, fingers between the stock and gun sling, barrel turned slightly to the left, the right hand grasping the small of the stock about 6 inches in front of the right hip, elbows free from the body, bayonet point at the height of the chin.
 
@@ -3966,15 +3926,11 @@ Occasionally the instructor should leave himself uncovered and fail to parry, in
 
 In competitions between different organizations none but skillful fencers will be allowed to participate.
 
-In contests between two men judges may assign values to hits as follows:
-
 Stepping out of bounds, 4 points.
 
 When superiority between two men is decided by bouts, each bout will be decided by itself, i.e., points won in one bout can not be carried over to another.
 
 Details other than those mentioned above will be arranged by the officials of the competition.
-
-Paragraph 150 and paragraph 150 of Appendix A, Infantry Drill Regulations (corrected to Apr. 15, 1917), are changed as follows, to correct error made in printing that edition:
 
 Firing stops; pieces not already there are brought to the position of load; those not loaded are loaded; sights are laid, pieces are locked and brought to the order.
 

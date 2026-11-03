@@ -8,8 +8,6 @@ Historically, food preservation and processing assured a food supply and prevent
 
 Our people want a food supply that is safe, high in quality and appearance, adequate nutritionally, and reasonably priced. Many consumers try to obtain these food attributes by returning to the "old ways" of growing and preserving food themselves.
 
-To understand food preservation, let's look at five causes of food spoilage or deterioration (four are biological, the fifth physical or mechanical):
-
 The primary cause of food spoilage in the United States is microbiological. Micro-organisms are small living organisms such as yeast, molds, or bacteria. They are the chief causes of microbial spoilage.
 
 Related to microbiological spoilage of food and also a concern in food preservation is microbiological food-borne disease. There are two types. Salmonellosis is an example of a food infection where food may not support growth of the micro-organisms but merely serves to transfer it from the source to the human host. In the second type, the micro-organism grows in the food and produces a poison or toxin which when eaten, causes illness symptoms. Staphylococcal food poisoning is the most common of the second type in the US.
@@ -31,8 +29,6 @@ Food preservation processes have been developed to slow down, prevent, or stop c
 An inherent part of food preservation is the package containing the food before or after processing.
 
 Packaging provides a convenient method of handling food, prevents contamination during and after processing, bars vermin infestation, supplies a container for storage, and is a necessary part of preservation. An example would be a mason jar with proper seal for pickling.
-
-What are the major methods available for home preservation of food? How are they carried out? Why do they prevent spoilage, food-borne disease, and give desired attributes of safety, quality, appearance, nutrition, and economy? The economics of food preservation will be developed in a subsequent chapter. Let's explore the following available methods for home preservation of food:
 
 The major method used for home preservation of food is temperature control. This includes canning with a pressure canner or a boiling water bath, blanching food before freezing, refrigerating food, and freezing it. Micro-organisms which cause disease and food spoilage are sensitive to environment temperature variations. By increasing the food's temperature, micro-organisms are destroyed. When the temperature is decreased, their growth is inhibited.
 
@@ -254,8 +250,6 @@ Raising a garden takes time over a significant number of months. As a hobby for 
 The author, an experienced gardener, kept records of the hours spent cultivating and harvesting a 20 by 40-foot garden, planted primarily for fresh consumption. Only three foods--tomatoes, green beans and cucumbers--were raised in amounts sufficient for a limited amount of home preservation. Over 40 person-hours were required. The actual grocery store value of the garden food consumed by the family of three was $45. Food given as gifts and preserved raised the dollar value to $75.
 
 Gardening often helps stretch cash income, but the dollar return is low for hours of effort. And poor weather may cause crop failures and small yields, regardless of effort. Food preservation also is time-consuming.
-
-Satisfactions. Why garden or preserve food at home? Most gardeners will cite a number of reasons:
 
 The best of good fresh food with no unknown additives or ingredients
 --Healthy exercise
@@ -647,8 +641,6 @@ When using a boiling-water-bath canner you must add more time in processing, as 
 
 At altitudes above sea level it takes more than 10 pounds of pressure for the temperature of boiling water to reach 240 degrees F.
 
-When using the steam-pressure canner, the pressure must be increased although the time remains the same as that recommended for sea level. At altitudes above 2,000 feet, process as follows:
-
 Increase processing time if the time recommended is:
 Altitude (feet) 20 minutes or less More than 20 minutes
 
@@ -682,8 +674,6 @@ When using the porcelain-lined zinc cap, fit the wet rubber ring down on the jar
 
 Sugar or sugar-water sirup is often added to fruits to help them hold their shape, color, and flavor. Sugar can be added in the dry form to very juicy fruits.
 
-To make sugar sirup--mix sugar with water or juice extracted from the fruit. Proportions for 3 types of sirup are as follows:
-
 Type of Sirup Sugar (cups) Liquid (cups)
 
 Heat sugar and water or juice together until sugar is dissolved.
@@ -699,8 +689,6 @@ Cover the canner and when the water comes to a rolling boil, start to count the 
 When the processing time is completed, immediately remove the jars from the canner with a pair of jar tongs. Adjust the jar lids if necessary. Cool the jars on a rack or folded towel away from drafts.
 
 A steam-pressure canner must be used for processing all vegetables except tomatoes and pickled vegetables. Work only with the quantity of vegetable needed for one canner load at a time. As each jar is filled, adjust the lid, and place the jar in the pressure canner containing 2 to 3 inches of hot or boiling water for raw or hot pack, respectively, to keep food hot.
-
-The manufacturer's directions for general operation of the canner you are using should be followed. A few pointers on the use of any canner follow:
 
 Use 2 to 3 inches of boiling water in the bottom of the canner.
 
@@ -1024,8 +1012,6 @@ For heating pickling liquids, use utensils of unchipped enamelware, stainless st
 
 Among small utensils that will help you do the job are measuring spoons, stainless steel spoons, measuring cups, household scales, sharp knives, vegetable peelers, large trays, canning tongs, ladle with a lip for pouring, slotted metal spoons, footed colander or wire basket, canning funnel, food chopper or grinder, and non-porous cutting board.
 
-All pickles and relishes should be processed in a boiling-water bath canner. Any large metal or enamel container may be used if it:
-
 Is deep enough to allow 2 inches or more of water above the tops of the jars, plus extra space for boiling
 
 A steam-pressure canner can be used if it is deep enough. For this purpose, set the cover in place without fastening it. Be sure the petcock is wide open so that steam escapes and pressure is not built up.
@@ -1080,15 +1066,11 @@ Store canned pickles and relishes in a dark, dry, cool place where there is no d
 
 Before using, always examine each jar for signs of spoilage. A bulging lid or leakage may mean that the contents are spoiled.
 
-When a jar is opened look for other signs of spoilage such as:
-
 If there is ever the slightest indication of spoilage, do not eat or even taste the contents. Dispose of the contents so they cannot be eaten by humans or animals. Also dispose of the lid.
 
 After emptying the jar of spoiled food, wash the jar in hot, soapy water and rinse. Boil in clean water for 15 minutes.
 
 Why are pickles soft or slippery?
-
-This generally results from microbial action which causes spoilage. Once a pickle becomes soft it cannot be made firm again. Microbial activity may be caused by
 
 Too little salt or acid
 --Cucumbers not covered with brine during fermentation
@@ -1132,8 +1114,6 @@ Insufficient salt
 --Air pockets caused by improper packing
 
 Why does kraut get pink?
-
-This is caused by growth of certain types of yeast on the surface of the kraut due to:
 
 Too much salt
 --Uneven distribution of salt
@@ -1665,8 +1645,6 @@ If you store nuts (especially peanuts), soybeans, other dry beans or peas, make 
 
 Discard all produce that shows any sign of decay.
 
-Insects, rats, and other pests can spread disease and are unwanted guests in any food storage area. To escape these undesirables:
-
 Build them out. Close all cracks and use adequate screening over all openings
 --Prevent trash piles from accumulating
 --Keep the storage area clean
@@ -1696,8 +1674,6 @@ Farmers, low-income people, business people, contractors, Extension personnel, c
 Although organizing a community cannery requires a lot of work, this need not be a roadblock to initiating the project. It takes many hours to plan the canning operation, draft proposals, develop community support, locate a site, and to select, purchase and install equipment. Because this can easily be a full-time job for one person, efforts should be made to hire a coordinator. In many instances, paid community organizers, Vista volunteers, and home economists have provided valuable assistance in completing the work.
 
 Preparation for and organization of the cannery are the foundation of the project. At least six months should be set aside for organizing.
-
-Here are some questions to consider before starting a community center:
 
 How many people will commit themselves to organizing a center?
 
@@ -1767,8 +1743,6 @@ In recent years, some schools have wanted to close canneries for several reasons
 
 If the cannery is the result of a community endeavor, adjoining small towns could appropriate funds sufficient to set up and man a center. Such a proposal would have to be presented to the town governing bodies. This points up the need for ample planning time. Devising means to allow the cannery to remain open year-round would favor obtaining a site other than in a public building.
 
-Cost of organizing a community cannery is influenced by its size and scope of operation. Expenses can be broken down into these major areas:
-
 Miscellaneous costs (office supplies, freight, postage, insurance, cleaning supplies, maintenance)
 
 At least two companies manufacture community canning equipment (Ball Corp. and Dixie Canner Equipment Co.). Prices start at $4,300 for a single-unit operation, and go up to $20,000 for a large center. This does not include the price of a steam boiler, which costs between $3,000 and $5,000. By fabricating some of its own equipment, and by buying used equipment from canning and restaurant equipment suppliers, the cannery can reduce some of its purchase costs substantially.
@@ -1790,8 +1764,6 @@ To maintain high standards of cleanliness and safety, at least one supervisor sh
 The Food and Drug Administration requires that a "certified registered canner" be in attendance only when low-acid foods are processed to be sold. An FDA-approved course is offered by the National Canners Association for commercial cannery personnel in various sections of the country. The cost would involve a registration fee of approximately $125 plus expenses. At present, the course content is geared chiefly toward industry. A shift to a more practical approach would be of greater help to community cannery personnel.
 
 Cannery supervisors and attendants can participate in food preservation classes and demonstrations provided by the Extension Service. When canneries are equipped with commercial food preservation centers, representatives of the manufacturing companies are available for technical information to the cannery staff. Manufacturers may also provide the cannery with a complete operations manual, processing charts, and recipes.
-
-Cannery supervisors will benefit by employing people to work at the cannery who can provide or learn such skills as:
 
 Bookkeeping/accounting--to keep records of input and outflow of goods and money; to pay bills.
 

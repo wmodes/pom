@@ -35,6 +35,7 @@ Nothing in `draft/` or `ready/` is edited by hand. Both come from `scripts/dev/l
 2. **Every holding gets a row in `holdings.csv` first.** If it isn't in the manifest, it isn't in the library.
 3. **Holding furniture does not reach `ready/`.** Title pages, copyright notices, contents, indexes, ads, transcriber notes, footnotes, and prefaces, forewords and introductions that talk *about* the book, by anyone. The test: text starts at the first section of the work itself; an opening essay that is part of the work stays.
 4. **A human reviews before promotion.** `promote` refuses anything not marked `reviewed`.
+5. **Nothing ends unfinished.** An utterance that stops before its thought is done (it ends on a colon, or on a word like "the" or "of") is dropped by `normalize.py`, and so is a piece the cataloguer cuts that way, because the oracle copies its exemplar's ending. One definition, `ends_unfinished` in `src/pom/library/endings.py`, shared with the Bibliomancer; `audit.py`'s `unfinished` column must read 0 everywhere. Verse and comma or semicolon endings are not unfinished.
 
 ## holdings.csv columns
 

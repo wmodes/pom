@@ -11,13 +11,16 @@ consumer needs: where it came from, its shelf, and its chance of being drawn.
 Rules, in order:
   1. Split. A utterance over --max-words (150) is cut at sentence breaks (prose) or line
      breaks (verse and wrapped text) into near-equal pieces, never mid-sentence unless one
-     sentence alone is over the limit, then at clause breaks, then at word boundaries.
+     sentence alone is over the limit, then at clause breaks, then at word boundaries. A cut never
+     leaves a piece ending unfinished ("...of the", "...as follows:"); if no line or sentence
+     boundary can avoid that, the text is cut at words instead (every word kept, line breaks lost).
   2. Merge (off by default). With --min-words N, short utterances join the next one in
      the same holding until they reach N words, without crossing --max-words.
   3. Drop unfinished pieces. A piece that stops before its thought is done (it ends on a colon or
      on a word like "the": see pom.library.endings) is dropped, because the oracle copies its
-     exemplar's ending. Splitting a long speech at a line or clause break makes a few of these;
-     whole utterances that end this way are already dropped by normalize.py before ready/.
+     exemplar's ending. Rule 1 avoids making them (it will not cut after an unfinished line,
+     sentence or clause, nor chunk words on "the"), so this is only the backstop; whole utterances
+     that end this way are already dropped by normalize.py before ready/.
   4. Deduplicate. An exact repeat of a passage anywhere in the library is dropped; the kept
      copy records how many times it occurred.
 
@@ -86,8 +89,24 @@ def explode(unit, limit):
     clauses = [c for c in CLAUSE_BREAK.split(unit) if c.strip()]
     if len(clauses) > 1:
         return [piece for clause in clauses for piece in explode(clause, limit)]
-    tokens = unit.split()
-    return [" ".join(tokens[i:i + limit]) for i in range(0, len(tokens), limit)]
+    return chunk_words(unit.split(), limit)
+
+
+def chunk_words(tokens, limit):
+    """Cuts a run of words into chunks of at most `limit`, never ending a chunk on "the", "of", a colon...
+
+    The last resort for one long sentence with no clause break. A chunk that would end unfinished (see
+    pom.library.endings) is cut a word or more earlier; the words are all kept, in order. A chunk is never
+    made shorter than one word, so this always finishes.
+    """
+    chunks, start = [], 0
+    while start < len(tokens):
+        end = min(start + limit, len(tokens))
+        while end < len(tokens) and end - start > 1 and ends_unfinished(" ".join(tokens[start:end])):
+            end -= 1
+        chunks.append(" ".join(tokens[start:end]))
+        start = end
+    return chunks
 
 
 def cut_evenly(units, limit, joiner):
@@ -104,9 +123,12 @@ def cut_evenly(units, limit, joiner):
     for index, size in enumerate(sizes[:-1], start=1):
         running += size
         boundary[index] = running
+    # Never cut after a unit that stops before its thought is done ("...is the", "...as follows:"): the oracle copies the
+    # ending of what it is shown. If every boundary is like that, any will do, and `build` drops what is left.
+    allowed = {i: n for i, n in boundary.items() if not ends_unfinished(units[i - 1])} or boundary
     for j in range(1, k):
         goal = j * total / k
-        cuts.append(min(boundary, key=lambda i: (abs(boundary[i] - goal), i)))
+        cuts.append(min(allowed, key=lambda i: (abs(allowed[i] - goal), i)))
     cuts = sorted(set(cuts))
     edges = [0] + cuts + [len(units)]
     groups = [units[a:b] for a, b in zip(edges, edges[1:]) if b > a]
@@ -115,8 +137,11 @@ def cut_evenly(units, limit, joiner):
     pieces, current, size = [], [], 0
     for unit, n in zip(units, sizes):
         if current and (size + n > limit or size >= total / k):
+            carried = []                                    # an unfinished tail goes on into the next piece, not at the end of this
+            while len(current) > 1 and ends_unfinished(current[-1]):
+                carried.insert(0, current.pop())
             pieces.append(joiner.join(current))
-            current, size = [], 0
+            current, size = carried, sum(words(u) for u in carried)
         current.append(unit)
         size += n
     if current:
@@ -137,7 +162,20 @@ def split_utterance(text, limit):
     units = text.split("\n") if by_lines else split_sentences(text)
     units = [u for unit in units if unit.strip() for u in explode(unit, limit)]
     pieces = [p for p in cut_evenly(units, limit, "\n" if by_lines else " ") if p.strip()]
+    if flaws(pieces, limit):
+        # No line or sentence boundary avoids a piece that ends unfinished or runs over the limit (a run of lines that all end
+        # on "and", "of the"...). Cut the flowed text into near-equal chunks at words instead: every word is kept, never a chunk
+        # ending on "the"; only the line breaks are lost.
+        tokens = text.split()
+        flowed = chunk_words(tokens, math.ceil(len(tokens) / math.ceil(len(tokens) / limit)))
+        if flaws(flowed, limit) < flaws(pieces, limit):
+            pieces = flowed
     return pieces, len(pieces)
+
+
+def flaws(pieces, limit):
+    """How many pieces end unfinished or hold more than `limit` words."""
+    return sum(ends_unfinished(p) or words(p) > limit for p in pieces)
 
 
 def merge_short(texts, minimum, limit):

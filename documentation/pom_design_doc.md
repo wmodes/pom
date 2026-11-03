@@ -537,8 +537,10 @@ Whether to start them depends on how far the prompted oracle model gets.
   passages (1.47%) end unfinished (918 on a colon, 144 on a word like "the" or "of"; `pom.library.endings` is the one definition). Two
   fixes, both on purpose: the Bibliomancer draws again when a pick lands on one (`[oracle] exemplar_redraws`, 50 tries a pick, 0 is off; the odds among
   the finished passages are unchanged), and the library pipeline no longer keeps them: `normalize.py` drops the utterances (1,004 in `ready/`,
-  across 55 holdings, verified to be only those) and the cataloguer drops the 60 pieces it cuts that way, leaving 71,169 passages and none unfinished.
-  The redraw stays as the safety net for any new holding. Verse and comma or semicolon endings are left alone.
+  across 55 holdings, verified to be only those), and the cataloguer's splitter no longer cuts a long utterance into a piece that ends that way:
+  it will not cut after an unfinished line, sentence or clause or chunk words on "the", and when no line or sentence cut can avoid it, it cuts
+  at words and keeps every word. 60 pieces that used to be cut badly are cut elsewhere and their text is back. That leaves 71,230 passages and none
+  unfinished (the cataloguer still drops any piece that ends that way as a backstop, and reports 0). The redraw stays as the safety net for any new holding. Verse and comma or semicolon endings are left alone.
 - (open) Equal shelf shares make small shelves repeat. A simulation showed repeats are negligible over an evening
   (0.1%) and matter over months; a recency decay was prototyped and deliberately left out.
 - Adding material: `adding-material.md`. How the standardizer works and what went wrong: `library-notes.md`.

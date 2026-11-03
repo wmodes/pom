@@ -530,6 +530,13 @@ Whether to start them depends on how far the prompted oracle model gets.
 - Rights: public domain, plus `owner-cleared` material (the IBM/Lexmark Wheelwriter manuals and the dad jokes), decided
   by the project owner. Licensing and content are not concerns for this project: it is an art installation, far from
   the consumer market.
+- **Unfinished exemplars are not drawn** (found 2026-11-03). The prompt tells the model to match its exemplar's form, tone and length, so it
+  also copies the exemplar's ending: a passage that stops at "...is the", or is a lead-in ending on a colon ("The following bugle signals
+  may be used:") with its list gone, makes a portent that stops the same way. This was the "cut-off portent": the writer's text, the formatter
+  and the printing were all intact; the exemplar was the cause (the oracle server showed a normal stop at 22 tokens). 1,059 of the 72,264
+  passages (1.47%) end unfinished (918 on a colon, 144 on a word like "the" or "of"; `pom.library.endings` is the one definition). Two
+  fixes, both on purpose: the Bibliomancer draws again when a pick lands on one (`[oracle] exemplar_redraws`, 50 tries a pick, 0 is off; the odds among
+  the finished passages are unchanged), and the library pipeline stops producing them. Verse and comma or semicolon endings are left alone.
 - (open) Equal shelf shares make small shelves repeat. A simulation showed repeats are negligible over an evening
   (0.1%) and matter over months; a recency decay was prototyped and deliberately left out.
 - Adding material: `adding-material.md`. How the standardizer works and what went wrong: `library-notes.md`.

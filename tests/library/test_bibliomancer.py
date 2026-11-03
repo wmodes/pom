@@ -175,8 +175,8 @@ def test_a_pull_never_repeats_a_passage():
 
 def test_skewed_odds_still_complete_a_pull_without_repeats():
     """With one passage at ~98% a plain redraw would rarely finish; the exact fallback must."""
-    passages = [Passage("big#0", "big", "red", "Big one", 2), Passage("a#0", "a", "red", "Small a", 2),
-              Passage("b#0", "b", "red", "Small b", 2)]
+    passages = [Passage("big#0", "big", "red", "Big one.", 2), Passage("a#0", "a", "red", "Small a.", 2),
+              Passage("b#0", "b", "red", "Small b.", 2)]
     store = Catalog.from_passages(passages)
     circulation = circulation_for(red={"holdings": {"big": 98, "a": 1, "b": 1}})
     for seed in range(50):
@@ -194,8 +194,8 @@ def test_zero_chance_passages_are_never_returned_even_when_more_are_asked_for():
 
 def test_the_exact_fallback_still_follows_the_odds():
     """Skewed odds make the fallback path common; it must stay proportional, not just complete."""
-    passages = [Passage("big#0", "big", "red", "Big one", 2), Passage("a#0", "a", "red", "Small a", 2),
-              Passage("b#0", "b", "red", "Small b", 2)]
+    passages = [Passage("big#0", "big", "red", "Big one.", 2), Passage("a#0", "a", "red", "Small a.", 2),
+              Passage("b#0", "b", "red", "Small b.", 2)]
     store = Catalog.from_passages(passages)
     circulation = circulation_for(red={"holdings": {"big": 98, "a": 1, "b": 4}})
     selector = Bibliomancer(store, circulation, random.Random(9))
@@ -492,3 +492,140 @@ def test_the_real_library_builds_cleanly_and_balances_the_shelves():
     assert set(shares) == set(targets)          # every shelf turns up, whatever the shelf count
     for shelf, target in targets.items():
         assert shares[shelf] == pytest.approx(target, abs=0.015), shelf
+
+
+# --- Unfinished passages are drawn again -------------------------------------------------------------------------
+# The oracle copies its exemplar's ending, so an exemplar that stops at "is the" (or is a lead-in ending on a colon)
+# makes a portent that stops there too. A pick that lands on one is drawn again.
+
+GOOD = "A finished thought."
+LEAD_IN = "The following signals may be used:"
+CUT = "and one that has been in silence for many decades, is the"
+
+
+def unfinished_store(good_weights=None, extra_unfinished=("lead", "cut")):
+    """Finished passages (one per holding in good_weights) plus unfinished ones, all on one shelf."""
+    good_weights = good_weights or {"good": 1}
+    passages = [Passage(f"{h}#0", h, "red", GOOD, 3) for h in good_weights]
+    passages += [Passage("lead#0", "lead", "red", LEAD_IN, 6), Passage("cut#0", "cut", "red", CUT, 11)]
+    weights = dict(good_weights, lead=1, cut=1)
+    return Catalog.from_passages(passages), circulation_for(red={"holdings": weights})
+
+
+def test_an_unfinished_passage_is_never_drawn_while_a_finished_one_exists():
+    store, circulation = unfinished_store()
+    selector = Bibliomancer(store, circulation, random.Random(1))
+    seen = {p.id for _ in range(2000) for p in selector.draw(1)}
+    assert seen == {"good#0"}
+
+
+def test_redrawing_can_be_turned_off_and_then_the_unfinished_come_at_their_own_odds():
+    store, circulation = unfinished_store()
+    selector = Bibliomancer(store, circulation, random.Random(1), redraw_limit=0)
+    seen = collections.Counter(p.id for _ in range(2000) for p in selector.draw(1))
+    assert set(seen) == {"good#0", "lead#0", "cut#0"}
+    assert seen["good#0"] / 2000 == pytest.approx(1 / 3, abs=0.04)
+
+
+def test_redrawing_leaves_the_odds_among_the_finished_passages_alone():
+    store, circulation = unfinished_store(good_weights={"one": 1, "three": 3})
+    selector = Bibliomancer(store, circulation, random.Random(2))
+    seen = collections.Counter(p.holding for _ in range(4000) for p in selector.draw(1))
+    assert seen["three"] / (seen["one"] + seen["three"]) == pytest.approx(0.75, abs=0.03)
+
+
+def test_the_probability_reported_is_the_odds_of_one_pick_before_any_redraw():
+    store, circulation = unfinished_store()
+    selector = Bibliomancer(store, circulation, random.Random(3))
+    assert selector.probability(store.get("good#0")) == pytest.approx(1 / 3)
+    assert selector.probability(store.get("cut#0")) == pytest.approx(1 / 3)
+
+
+def test_a_library_of_only_unfinished_passages_still_answers_and_says_so_once():
+    store = Catalog.from_passages([Passage("lead#0", "lead", "red", LEAD_IN, 6), Passage("cut#0", "cut", "red", CUT, 11)])
+    selector = Bibliomancer(store, circulation_for(red={}), random.Random(4), redraw_limit=5)
+    for _ in range(20):
+        assert len(selector.draw(1)) == 1
+    tired = [w for w in selector.report.warnings if "ended unfinished" in w]
+    assert len(tired) == 1 and "5 picks in a row" in tired[0] and "2 of 2" in tired[0]
+
+
+def test_with_redrawing_off_nothing_is_warned_when_unfinished_passages_come_up():
+    store = Catalog.from_passages([Passage("lead#0", "lead", "red", LEAD_IN, 6)])
+    selector = Bibliomancer(store, circulation_for(red={}), random.Random(4), redraw_limit=0)
+    selector.draw(1)
+    assert not [w for w in selector.report.warnings if "unfinished" in w]
+
+
+def test_the_exact_fallback_also_prefers_the_finished_passages():
+    """One finished passage at 98% makes the pull of two fall back to the exact path in many seeds."""
+    passages = [Passage("big#0", "big", "red", GOOD, 3), Passage("small#0", "small", "red", GOOD, 3),
+                Passage("cut#0", "cut", "red", CUT, 11)]
+    store = Catalog.from_passages(passages)
+    circulation = circulation_for(red={"holdings": {"big": 98, "small": 1, "cut": 1}})
+    for seed in range(300):
+        assert sorted(p.id for p in Bibliomancer(store, circulation, random.Random(seed)).draw(2)) == ["big#0", "small#0"]
+
+
+def test_when_only_unfinished_passages_are_left_the_pull_still_fills():
+    passages = [Passage("big#0", "big", "red", GOOD, 3), Passage("cut#0", "cut", "red", CUT, 11)]
+    store = Catalog.from_passages(passages)
+    circulation = circulation_for(red={"holdings": {"big": 98, "cut": 2}})
+    for seed in range(100):
+        assert sorted(p.id for p in Bibliomancer(store, circulation, random.Random(seed)).draw(2)) == ["big#0", "cut#0"]
+
+
+@pytest.mark.parametrize("bad", [-1, True, "5", 2.5, None])
+def test_a_bad_redraw_limit_is_reported_and_replaced_by_the_default(bad):
+    store, circulation = tiles()
+    selector = Bibliomancer(store, circulation, random.Random(5), redraw_limit=bad)
+    assert any("redraw_limit must be" in w and "using 50" in w for w in selector.report.warnings)
+
+
+@pytest.mark.parametrize("fine", [0, 1, 7])
+def test_a_good_redraw_limit_is_accepted_quietly(fine):
+    store, circulation = tiles()
+    assert not Bibliomancer(store, circulation, random.Random(5), redraw_limit=fine).report.warnings
+
+
+def test_a_bad_redraw_limit_raises_in_strict_mode():
+    store, circulation = tiles()
+    with pytest.raises(BibliomancerError):
+        Bibliomancer(store, circulation, random.Random(5), strict=True, redraw_limit=-1)
+
+
+def test_the_debug_log_counts_the_redraws_without_any_text(caplog):
+    store, circulation = unfinished_store()
+    selector = Bibliomancer(store, circulation, random.Random(6))
+    with caplog.at_level(logging.DEBUG, logger="pom.library.bibliomancer"):
+        selector.draw(1)
+    line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("drew"))
+    assert "pick(s) redone for an unfinished ending" in line
+    assert LEAD_IN not in line and CUT not in line
+
+
+def test_the_startup_line_says_how_many_are_unfinished(caplog):
+    store, circulation = unfinished_store()
+    with caplog.at_level(logging.INFO, logger="pom.library.bibliomancer"):
+        Bibliomancer(store, circulation, random.Random(6))
+    assert any("2 end unfinished and are drawn again" in r.getMessage() for r in caplog.records)
+
+
+class ScriptedRandom(random.Random):
+    """A random generator that hands out the values it was given, in order."""
+
+    def __init__(self, values):
+        super().__init__(0)
+        self._values = list(values)
+
+    def random(self):
+        return self._values.pop(0)
+
+
+def test_the_debug_log_counts_exactly_how_many_picks_were_redone(caplog):
+    store, circulation = unfinished_store()                  # the table runs cut, good, lead: each a third of the odds
+    selector = Bibliomancer(store, circulation, ScriptedRandom([0.1, 0.9, 0.5]))     # cut, lead, then good
+    with caplog.at_level(logging.DEBUG, logger="pom.library.bibliomancer"):
+        assert [p.id for p in selector.draw(1)] == ["good#0"]
+    line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("drew"))
+    assert "(2 pick(s) redone for an unfinished ending)" in line

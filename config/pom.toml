@@ -239,6 +239,11 @@ score_room_tone = false
 exemplars_min = 1
 exemplars_max = 1
 
+# The oracle copies its exemplar's ending, so an exemplar that stops before its thought is done (it ends on a colon, or on a word like
+# "the" or "of") makes a portent that stops there too. A pick that lands on one is drawn again; this is how many times, for one pick,
+# before the unfinished one is used anyway (so a library full of them still answers). 0 turns it off. A whole number, 0 or more.
+exemplar_redraws = 50
+
 # What the model is given. {exemplars} is replaced by a few library passages drawn at random, and {hinge} by
 # the clip that qualified, word for word. Nothing else is added, so everything the model needs to
 # be told goes here.

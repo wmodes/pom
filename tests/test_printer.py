@@ -74,6 +74,10 @@ class TestTheWiring:
     def test_the_library_is_the_real_one(self, tmp_path):
         assert p_ready(build(tmp_path))
 
+    def test_the_selector_redraws_unfinished_exemplars_as_often_as_the_config_says(self, tmp_path):
+        assert build(tmp_path, "[oracle]\nexemplar_redraws = 7\n").parts["selector"]._redraw_limit == 7
+        assert build(tmp_path).parts["selector"]._redraw_limit == 50
+
 
 def p_ready(p):
     return p.parts["selector"].ready

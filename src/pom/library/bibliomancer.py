@@ -50,6 +50,13 @@ Design decisions, and why:
     and decide to adjust a share; the counts hold no text, so they are safe to log.
   * Passages with zero chance (a zero holding weight, or a zero-share shelf) are left out of the
     table entirely, so they can never be drawn.
+  * A pick that lands on an UNFINISHED passage (one that stops before its thought is done: it ends on a colon
+    or on a word like "the"; see pom.library.endings) is drawn again, up to `redraw_limit` times for that pick, because
+    the oracle copies its exemplar's ending. Redrawing keeps the odds among the finished passages exactly in
+    proportion; it only moves a little of each shelf's share to the shelves with fewer unfinished passages
+    (about 1.5% of the library today), and `probability()` still reports the odds of one pick before any redraw.
+    After `redraw_limit` unlucky picks the unfinished passage is used, so the oracle is never stopped by this; 0 turns
+    the redraw off. The count of redraws is in the debug log, with no text.
 """
 import bisect
 import random
@@ -57,6 +64,7 @@ from typing import Optional, Sequence
 
 from pom.library.catalog import Passage, Catalog
 from pom.library.circulation import Circulation
+from pom.library.endings import ends_unfinished
 from pom.log_setup import get_logger
 from pom.fault_recorder import FaultRecorder
 
@@ -64,6 +72,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
+DEFAULT_REDRAW_LIMIT = 50
 
 
 class BibliomancerError(ValueError):
@@ -80,7 +89,8 @@ class Bibliomancer:
 
     def __init__(self, store: Catalog, circulation: Circulation,
                  rng: Optional[random.Random] = None, strict: bool = False,
-                 exemplar_range: Sequence[int] = DEFAULT_EXEMPLAR_RANGE):
+                 exemplar_range: Sequence[int] = DEFAULT_EXEMPLAR_RANGE,
+                 redraw_limit: int = DEFAULT_REDRAW_LIMIT):
         """Builds the draw odds from the store and the weights.
 
         Args:
@@ -90,10 +100,15 @@ class Bibliomancer:
                 for repeatable draws.
             strict: Raise BibliomancerError on any problem instead of recording it.
             exemplar_range: The (fewest, most) passages `draw()` returns when not told how many.
+            redraw_limit: How many times one pick that lands on an unfinished passage is drawn again before the
+                unfinished one is accepted; a whole number, 0 for never redrawing.
         """
         self._rng = rng if rng is not None else random.Random()
         self.report = FaultRecorder(strict=strict, error=BibliomancerError, logger=_log)
         self._exemplar_range = self._valid_exemplar_range(exemplar_range)
+        self._redraw_limit = self._valid_redraw_limit(redraw_limit)
+        self._unfinished: set[int] = set()       # table positions of the passages that end unfinished
+        self._gave_up_warned = False
         self.check_report = circulation.check(store.layout())   # logs any drift; the odds still work
         self._passages: list[Passage] = []
         self._probability: list[float] = []
@@ -121,6 +136,13 @@ class Bibliomancer:
             self.report.warn(f"exemplar_range ({low}, {high}) is backwards; using ({high}, {low})")
             low, high = high, low
         return (low, high)
+
+    def _valid_redraw_limit(self, redraw_limit) -> int:
+        """A whole number of at least 0; anything else is reported and replaced by the default."""
+        if isinstance(redraw_limit, int) and not isinstance(redraw_limit, bool) and redraw_limit >= 0:
+            return redraw_limit
+        self.report.warn(f"redraw_limit must be a whole number of at least 0, got {redraw_limit!r}; using {DEFAULT_REDRAW_LIMIT}")
+        return DEFAULT_REDRAW_LIMIT
 
     # --- Building the odds ----------------------------------------------------------
 
@@ -150,6 +172,8 @@ class Bibliomancer:
                           / totals[shelf])
                 if chance <= 0:
                     continue          # a zero-share shelf or a zero-weight holding
+                if ends_unfinished(passage.text):
+                    self._unfinished.add(len(self._passages))
                 self._passages.append(passage)
                 self._probability.append(chance)
                 running += chance
@@ -158,8 +182,8 @@ class Bibliomancer:
         if not self._passages:
             self.report.critical("nothing to draw from: no passage has a positive chance")
             return
-        _log.info("selector ready: %d drawable passage(s) in %d shelf(s)",
-                  len(self._passages), len(drawable))
+        _log.info("selector ready: %d drawable passage(s) in %d shelf(s); %d end unfinished and are %s", len(self._passages),
+                  len(drawable), len(self._unfinished), "drawn again" if self._redraw_limit else "left in (redraw is off)")
         _log.debug("shelf shares: %s",
                    ", ".join(f"{r}={s:.3f}" for r, s in sorted(self._shares.items())))
 
@@ -222,8 +246,10 @@ class Bibliomancer:
         picked: list[int] = []
         seen: set[int] = set()
         attempts, limit = 0, max(50, 20 * wanted)
+        redraws = 0
         while len(picked) < wanted and attempts < limit:
-            index = self._pick()
+            index, redone = self._pick_finished()
+            redraws += redone
             attempts += 1
             if index not in seen:
                 seen.add(index)
@@ -233,8 +259,25 @@ class Bibliomancer:
         passages = [self._passages[i] for i in picked]
         for passage in passages:
             self._counts[passage.shelf] = self._counts.get(passage.shelf, 0) + 1
-        _log.debug("drew %d passage(s): %s", len(passages), ", ".join(c.id for c in passages))
+        _log.debug("drew %d passage(s): %s (%d pick(s) redone for an unfinished ending)", len(passages),
+                   ", ".join(c.id for c in passages), redraws)
         return passages
+
+    def _pick_finished(self) -> tuple[int, int]:
+        """A weighted pick, drawn again while it lands on an unfinished passage: (the position, how many redraws).
+
+        After `redraw_limit` redraws the unfinished passage stands (and, once, that is warned about), so a library that is
+        mostly unfinished still gives the oracle something.
+        """
+        index, redraws = self._pick(), 0
+        while index in self._unfinished and redraws < self._redraw_limit:
+            index = self._pick()
+            redraws += 1
+        if index in self._unfinished and self._redraw_limit and not self._gave_up_warned:
+            self._gave_up_warned = True
+            self.report.warn(f"{self._redraw_limit} picks in a row ended unfinished; using one anyway "
+                             f"({len(self._unfinished)} of {len(self._passages)} passages are unfinished)")
+        return index, redraws
 
     def _pick(self) -> int:
         """One weighted pick: a point in [0, total) located in the cumulative table."""
@@ -244,6 +287,8 @@ class Bibliomancer:
     def _finish_exactly(self, picked: list[int], seen: set[int], wanted: int) -> None:
         """Completes a pull among the passages not yet picked, still in proportion to their odds."""
         rest = [i for i in range(len(self._passages)) if i not in seen]
+        if self._redraw_limit:                  # prefer the finished passages, as `_pick_finished` does, if any are left
+            rest = [i for i in rest if i not in self._unfinished] or rest
         while rest and len(picked) < wanted:
             choice = self._rng.choices(rest, weights=[self._probability[i] for i in rest])[0]
             rest.remove(choice)

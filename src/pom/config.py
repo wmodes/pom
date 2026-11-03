@@ -82,7 +82,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.clip_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
-         "oracle.temperature", "qualifying.min_scores", "qualifying.window_seconds", "qualifying.percentile",
+         "oracle.temperature", "oracle.exemplar_redraws", "qualifying.min_scores", "qualifying.window_seconds", "qualifying.percentile",
          "qualifying.cooldown_seconds", "qualifying.algorithm", "qualifying.starting_bar", "qualifying.exclude_qualifiers",
          "qualifying.half_life_seconds", "qualifying.average_fraction", "qualifying.average_half_life_scores",
          "qualifying.average_floor_fraction", "qualifying.typed_handicap", "qualifying.typed_lines_affect_bar",
@@ -109,6 +109,7 @@ DEFAULT_SCORER_RETRY_SECONDS = 30.0
 DEFAULT_ORACLE_URL = "http://127.0.0.1:8099/v1/chat/completions"
 DEFAULT_ORACLE_TIMEOUT = 240.0
 DEFAULT_ORACLE_MAX_TOKENS = 300
+DEFAULT_ORACLE_EXEMPLAR_REDRAWS = 50
 DEFAULT_ORACLE_TEMPERATURE = 0.8
 DEFAULT_QUALIFYING_PERCENTILE = 99.5
 DEFAULT_QUALIFYING_WINDOW_SECONDS = 300.0
@@ -233,12 +234,15 @@ class OracleSettings:
             Empty means none was set, and no portent can be asked for.
         max_tokens: The most the model may write (a portent is 15 to 150 words; this stops a runaway).
         temperature: How adventurous the model's word choice is; higher is more varied.
+        exemplar_redraws: How many times one pick of an exemplar that stops before its thought is done (it ends on a colon or on a
+            word like "the") is drawn again before it is used anyway; 0 turns the redraw off.
     """
     url: str = DEFAULT_ORACLE_URL
     timeout: float = DEFAULT_ORACLE_TIMEOUT
     prompt: str = ""
     max_tokens: int = DEFAULT_ORACLE_MAX_TOKENS
     temperature: float = DEFAULT_ORACLE_TEMPERATURE
+    exemplar_redraws: int = DEFAULT_ORACLE_EXEMPLAR_REDRAWS
 
 
 @dataclass(frozen=True)
@@ -567,7 +571,9 @@ class Config:
             _whole(values.get("oracle.max_tokens", DEFAULT_ORACLE_MAX_TOKENS), "oracle.max_tokens",
                    DEFAULT_ORACLE_MAX_TOKENS, 1, report),
             _number(values.get("oracle.temperature", DEFAULT_ORACLE_TEMPERATURE), "oracle.temperature",
-                    DEFAULT_ORACLE_TEMPERATURE, 0.0, report))
+                    DEFAULT_ORACLE_TEMPERATURE, 0.0, report),
+            _whole(values.get("oracle.exemplar_redraws", DEFAULT_ORACLE_EXEMPLAR_REDRAWS), "oracle.exemplar_redraws",
+                   DEFAULT_ORACLE_EXEMPLAR_REDRAWS, 0, report))
         qualifying = QualifyingSettings(
             _percent(values.get("qualifying.percentile", DEFAULT_QUALIFYING_PERCENTILE),
                      "qualifying.percentile", DEFAULT_QUALIFYING_PERCENTILE, report),

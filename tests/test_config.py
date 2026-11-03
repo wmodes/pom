@@ -1131,3 +1131,25 @@ class TestTheLimitsFitTheirSettings:
     def test_a_config_built_without_conductor_settings_has_the_defaults(self):
         from pom.config import ConductorSettings
         assert Config().conductor == ConductorSettings()
+
+
+# --- [oracle] exemplar_redraws ----------------------------------------------------------
+
+def test_exemplar_redraws_defaults_to_fifty_and_the_shipped_config_says_so():
+    assert OracleSettings().exemplar_redraws == 50
+    assert Config.load(environ={}).oracle.exemplar_redraws == 50
+    shipped = Config.load(Path(__file__).resolve().parents[1] / "config" / "pom.toml", environ={})
+    assert shipped.oracle.exemplar_redraws == 50 and not shipped.report.warnings
+
+
+@pytest.mark.parametrize("value,expected", [("0", 0), ("1", 1), ("200", 200)])
+def test_exemplar_redraws_takes_any_whole_number_from_zero(tmp_path, value, expected):
+    config = Config.load(write(tmp_path, f"[oracle]\nexemplar_redraws = {value}\n"), environ={})
+    assert config.oracle.exemplar_redraws == expected and config.report.ok
+
+
+@pytest.mark.parametrize("value", ["-1", "2.5", '"50"', "true"])
+def test_a_bad_exemplar_redraws_means_the_default_with_a_warning(tmp_path, value):
+    config = Config.load(write(tmp_path, f"[oracle]\nexemplar_redraws = {value}\n"), environ={})
+    assert config.oracle.exemplar_redraws == 50
+    assert len(config.report.warnings) == 1 and "oracle.exemplar_redraws" in config.report.warnings[0]

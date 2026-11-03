@@ -61,7 +61,8 @@ The corpus words used to be generic data terms (chunk, source, weights). Nothing
 -   **passage**: A piece of a holding. It avoids "page", which already means the paper. Example: `Passage` (was: chunk)
 -   **catalog**: Every passage, indexed by shelf and holding. Example: `Catalog` (was: `ChunkStore`)
 -   **cataloguer**: Cuts holdings into passages and files them. Example: `cataloguer.py` (was: chunker)
--   **circulation**: The library's own word for how often things go out: shelf shares and holding weights. Example: `Circulation` (was: draw weights)
+-   **circulation**: The set of draw weights: how the library's passages circulate, kept in one hand-edited file. Example: `Circulation`, `circulation.json` (was: draw weights)
+-   **draw weight**: How often a shelf or a holding is drawn: a shelf's *share* among the shelves, or a holding's *weight* among the holdings on its shelf. Anything unlisted counts 1. Not to be confused with a model's weights. Example: `share()`, `holding_weight()` (was/still: draw weights)
 -   **bibliomancy**: Opening a book at random and reading the passage as a sign, which is what this does. Example: `Bibliomancer` (was: `ExemplarSelector`)
 -   **exemplar**: A passage once it's lent for a portent. It's also the oracle prompt's word, so it stays as the bridge. Example: `exemplar` (was/still: exemplar)
 

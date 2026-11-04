@@ -289,7 +289,7 @@ def test_scorer_defaults_when_nothing_is_set():
     assert config.scorer == ScorerSettings() and config.report.ok
     assert config.scorer.url == "http://127.0.0.1:8098/v1/chat/completions"
     assert (config.scorer.timeout, config.scorer.clip_filter_score, config.scorer.min_content_words,
-            config.scorer.failure_limit, config.scorer.retry_seconds) == (15.0, 1.0, 1, 3, 30.0)
+            config.scorer.failure_limit, config.scorer.retry_seconds) == (30.0, 1.0, 1, 3, 30.0)
     assert config.scorer.prompt_scoring == "" and config.scorer.prompt_output == ""
     assert config.scorer.prompt_output_debug == "" and config.scorer.prompt == "" and config.scorer.prompt_debug == ""
 

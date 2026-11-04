@@ -44,8 +44,9 @@ local_logs = false
 # Where the model answers: a llama-server on this port, running as a service (on the Mac, started by scripts/dev/pipeline/run_printer_with_servers.py).
 url = "http://127.0.0.1:8098/v1/chat/completions"
 
-# Seconds to wait for one score before giving up on that sentence (it is left unscored).
-timeout = 15
+# Seconds to wait for one score before giving up on that sentence (it is left unscored). A score takes about 1 s on the Pi, but the
+# first one after the server starts evaluates the whole scoring prompt (15.7 s measured), so this leaves room for it.
+timeout = 30
 
 # Sentences with fewer than this many content words (not filler, stopwords or numbers) are not sent
 # to the model; they get clip_filter_score. 0 sends everything.

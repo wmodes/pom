@@ -101,7 +101,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "conductor.print_pause_seconds", "conductor.restart_pause_seconds", "conductor.check_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
-DEFAULT_SCORER_TIMEOUT = 15.0
+DEFAULT_SCORER_TIMEOUT = 30.0
 DEFAULT_SCORER_CLIP_FILTER_SCORE = 1.0
 DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3

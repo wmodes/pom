@@ -64,6 +64,7 @@ released yet, so everything is under Unreleased. Update this file in the same co
 
 ### Changed
 
+- **The scorer's timeout is 30 s, not 15** (`[scorer] timeout`, and the two defaults that must match it): on the Pi the first score after the scorer server starts evaluates the whole scoring prompt (300 tokens, 15.7 s measured in the server's log) and missed the old limit by 0.7 s, so that clip went unscored and the microphone's buffer overflowed while the listener waited. Every score after it takes about 1 s because llama-server reuses the cached start of the prompt (the log shows `selected slot by LCP similarity, f_sim_best = 0.941`).
 - **The Conductor, the entry point and `[conductor]`** (the Conductor is finished): `python -m pom` (`src/pom/printer.py`, `__main__.py`) builds every part from one `Config` and runs the `Conductor`
   (`src/pom/conductor/conductor.py`) on four ordinary threads: the room (HingeFinder), the keyboard (KeyboardWatcher), the turn (TurnTaker, one at a time) and the watcher. First come, first served for the floor; the ears
   shut the moment it is taken and open again because the watching thread looks at the floor every second (level-triggered, so a turn that ends any way, the watchdog's included, cannot leave the Printer deaf); a microphone

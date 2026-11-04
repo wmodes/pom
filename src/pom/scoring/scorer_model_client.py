@@ -60,7 +60,7 @@ _log = get_logger(__name__, DEBUG)
 # The user message, word for word as in the experiment, so scores match its saved results.
 USER_TEMPLATE = "Rate this line: {clip_text}"
 WARM_UP_CLIP = "Hello there."
-DEFAULT_TIMEOUT = 15.0
+DEFAULT_TIMEOUT = 30.0
 DEFAULT_EXPLAIN_TIMEOUT = 90.0
 EXPLAIN_MAX_TOKENS = 80
 

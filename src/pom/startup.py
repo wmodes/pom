@@ -16,7 +16,7 @@ The duties, in order (see `planned_steps` for each one's detail):
     4. audio-device       a capture device exists
     5. transcriber        whisper is present and answering
     6. scorer-server      the Scorer's llama-server answers
-    7. scorer-warm-up     load the Scorer's model into memory (12 to 28 s the first time)
+    7. scorer-warm-up     DONE ELSEWHERE: the Printer's ScorerWarmer (pom/scoring/scorer_warmer.py) does it in the background
     8. oracle-model       the oracle model's server answers
     9. typewriter         the typewriter's serial port is present (Pi only)
    10. summary            one log line of readiness, counts only
@@ -185,8 +185,8 @@ def planned_steps() -> list:
                     critical=True),
         PlannedStep("scorer-server", "the Scorer's llama-server answers on the configured address "
                     "(start it if config says to); without it every clip goes unscored"),
-        PlannedStep("scorer-warm-up", "Scorer.warm_up(): the first request loads the model into memory "
-                    "and takes 12 to 28 s on the Pi, so do it before the first real sentence"),
+        PlannedStep("scorer-warm-up", "done by the ScorerWarmer, which the Printer runs in the background "
+                    "because the scorer's server may not be up yet when the Printer starts"),
         PlannedStep("oracle-model", "the oracle model's server answers; without it nothing can be "
                     "said", critical=True),
         PlannedStep("typewriter", "the Wheelwriter's serial port is present; Pi only", critical=True),

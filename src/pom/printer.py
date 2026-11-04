@@ -46,7 +46,7 @@ from pom.log_setup import configure_logging, get_logger
 from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TurnHistory
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort
 from pom.qualifying import bar_keeper_from_settings
-from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
+from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
 from pom.writing import OracleModelClient, PortentWriter, PromptBuilder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -131,21 +131,25 @@ class Printer:
     """
 
     def __init__(self, conductor: Conductor, history: TurnHistory, site: Optional[MonitorSite], terminal, floor: FloorKeeper, parts: dict,
-                 services):
+                 services, warmer: Optional[ScorerWarmer] = None):
         self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
-        self._services = services
+        self._services, self._warmer = services, warmer
 
     def run(self) -> None:
-        """Starts the monitoring site (if any), runs the Conductor until it stops, then stops the site and closes the terminal. Blocks."""
+        """Starts the monitoring site (if any) and the scorer's warm-up, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
         if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
             _log.warning("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
             self.site = None
         elif self.site is not None:
             _log.info("monitoring site listening on port %s", self.site.port)
         _log.info("services: %s", ", ".join(f"{name} {'up' if up else 'NOT answering'}" for name, up in self._services().items()))
+        if self._warmer is not None:
+            self._warmer.start()                         # in the background: the Printer listens at once, whatever state the servers are in
         try:
             self.conductor.run()
         finally:
+            if self._warmer is not None:
+                self._warmer.stop()
             if self.site is not None:
                 self.site.stop()
             close = getattr(self.terminal, "close", None)
@@ -176,6 +180,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                         clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                         failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
+    warmer = ScorerWarmer(scorer, lambda: answers(scoring.url))     # sends the scorer one throwaway request once its server is up
     bar_keeper = bar_keeper_from_settings(qualifying)
     take_cutter = TakeCutter()
 
@@ -249,8 +254,9 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
-             "turn_taker": turn_taker, "trace": trace, "monitor": monitor, "keyboard": keyboard, "mode": mode}
-    return Printer(conductor, history, site, terminal, floor, parts, services)
+             "turn_taker": turn_taker, "trace": trace, "monitor": monitor, "keyboard": keyboard, "mode": mode,
+             "warmer": warmer}
+    return Printer(conductor, history, site, terminal, floor, parts, services, warmer)
 
 
 def _make_terminal(mode: str, settings):

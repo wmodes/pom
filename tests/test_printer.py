@@ -16,6 +16,7 @@ from pom.listening import MicDeck
 from pom.monitor import MonitorSite
 from pom.printer import Options, Printer, ServiceWatch, answers, build_printer, parse_options, reachable
 from pom.printing import ConsoleTerminal, TerminalPort
+from pom.scoring import ScorerWarmer
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -45,6 +46,15 @@ class TestTheWiring:
         assert isinstance(p.parts["turn_taker"], TurnTaker)
         for name in ("whisper", "scorer", "bar_keeper", "selector", "writer", "formatter", "trace", "monitor"):
             assert p.parts[name] is not None
+
+    def test_the_scorers_warm_up_is_built_on_the_printers_own_scorer_and_asks_the_scorers_address(self, tmp_path, monkeypatch):
+        asked = []
+        monkeypatch.setattr(printer_module, "answers", lambda url: asked.append(url) or True)
+        p = build(tmp_path, '[scorer]\nurl = "http://127.0.0.1:9123/v1/chat/completions"\n')
+        warmer = p.parts["warmer"]
+        assert isinstance(warmer, ScorerWarmer) and warmer._scorer is p.parts["scorer"] and p._warmer is warmer
+        assert warmer._server_answers() is True and asked == ["http://127.0.0.1:9123/v1/chat/completions"]
+        assert warmer.warmed is False                      # building contacts no server: nothing has been started
 
     def test_the_conductor_settings_reach_the_floor_and_the_turn_taker(self, tmp_path):
         p = build(tmp_path, "[conductor]\nwriting_seconds = 500\nprinting_seconds = 400\nrecovering_seconds = 7\nfreshness_seconds = 99\n"
@@ -226,10 +236,33 @@ class FakeTerminalClose:
         self.closed += 1
 
 
-def assembled(site=None, terminal=None, conductor=None, services=None):
+def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None):
     monitor = type("M", (), {"host": "0.0.0.0", "port": 8080})()
     return Printer(conductor or FakeConductor(), None, site, terminal, None, {"monitor": monitor, "mode": "none"},
-                   services or (lambda: {"whisper": True, "scorer": False}))
+                   services or (lambda: {"whisper": True, "scorer": False}), warmer)
+
+
+class FakeWarmer:
+    """Records when it was started and stopped, in the same list the conductor writes to."""
+
+    def __init__(self, events):
+        self.events = events
+
+    def start(self):
+        self.events.append("warmer started")
+
+    def stop(self):
+        self.events.append("warmer stopped")
+
+
+class RecordingConductor(FakeConductor):
+    def __init__(self, events, raises=None):
+        super().__init__(raises)
+        self.events = events
+
+    def run(self):
+        self.events.append("conductor ran")
+        super().run()
 
 
 class TestRunningAndStopping:
@@ -261,6 +294,17 @@ class TestRunningAndStopping:
         with caplog.at_level(logging.INFO, logger="pom.printer"):
             assembled(None, None, conductor).run()
         assert conductor.ran and any("whisper up, scorer NOT answering" in r.getMessage() for r in caplog.records)
+
+    def test_the_scorers_warm_up_starts_before_the_conductor_and_stops_after_it(self):
+        events = []
+        assembled(None, None, RecordingConductor(events), warmer=FakeWarmer(events)).run()
+        assert events == ["warmer started", "conductor ran", "warmer stopped"]
+
+    def test_the_warm_up_is_stopped_even_when_the_conductor_raises(self):
+        events = []
+        with pytest.raises(RuntimeError):
+            assembled(None, None, RecordingConductor(events, RuntimeError("boom")), warmer=FakeWarmer(events)).run()
+        assert events == ["warmer started", "conductor ran", "warmer stopped"]
 
     def test_stop_stops_the_conductor_and_may_be_repeated(self):
         conductor = FakeConductor()

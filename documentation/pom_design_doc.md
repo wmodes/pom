@@ -282,7 +282,10 @@ that belong to the listening side are the `[listening]` section of the config, a
 - **Unscored**: if the model does not answer, the clip has no score (None), and the BarKeeper leaves it out. A
   circuit breaker stops asking after `failure_limit` (3) failures and tries again after `retry_seconds` (30). The
   Printer stays quiet and keeps listening. (A word-counting fallback is shelved, unused, in `fallback_scorer.py`.)
-- **Warm-up.** The first request after the server starts takes 12 to 28 seconds on the Pi, so startup warms it first.
+- **Warm-up.** The first request after the server starts evaluates the whole scoring prompt (300 tokens, 15.7 s measured on the Pi); llama-server
+  then reuses the cached start of the prompt, so every later request costs only its sentence (about 1 s). The `ScorerWarmer` (a background thread
+  the Printer starts) waits until the scorer's server answers, sends it one throwaway request, and ends, so no real sentence pays for the first.
+  The scorer's timeout (30 s) covers the first clip after a server is restarted later, since the cache is lost then.
 
 **What the scores look like** (4,278 sentences from four recorded meetings): they are lumpy, not bell-shaped. About 27%
 sit at 1 (the clip_filter's 497 plus the model's own), with humps near 3 and near 5, and almost nothing above 7

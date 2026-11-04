@@ -132,7 +132,9 @@ python -m pytest                    # the whole suite (over 3,000 tests)
 
 Built and tested: listening, scoring, qualifying, the library and its draws, writing, formatting, a serial port that survives unplugging, the Conductor that runs it all, the entry point, and the monitoring page. The whole Printer has been run end to end on a Mac against recordings with a stand-in typewriter.
 
-Still to do: a test on the real CadetWriter (including how it signals "on hold" and "out of paper"), the systemd services on the Pi, a printer status line on the monitoring page, and the start-up duties (microphone gain, readiness checks).
+Running on the Pi: the Printer and its three model servers are systemd services that start by themselves at boot, restart after a crash, keep a persistent log, and hold all three models in memory at once (about 7 GB of the 16 GB left free). A reboot and a hard kill of a server both passed. It has listened to a live room through the microphone and written portents, with no typewriter attached.
+
+Still to do: a test on the real CadetWriter (including how it signals "on hold" and "out of paper"), a printer status line on the monitoring page, and the remaining start-up duties (a check of the microphone gain, other readiness checks).
 
 ## Credits
 

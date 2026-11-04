@@ -40,8 +40,10 @@ Design decisions, and why:
     story the model tells about it, not a readout of its insides.) Writing words is slow on a small
     machine, so it has its own, longer timeout. It is for watching how the model reads speech while
     refining the prompt, not for the running Printer.
-  * The first request after a server starts is slow (the model is being loaded into memory, 12 to 28
-    seconds measured on the Pi), so the entry point should call `warm_up` at startup.
+  * The first request after a server starts is slow: nothing is cached yet, so the whole scoring prompt is
+    evaluated (300 tokens, 15.7 s measured on the Pi), where every later request reuses the cached start of
+    the prompt and costs about 1 s. So `warm_up` should be called once the server is up (the Printer's
+    ScorerWarmer does it).
 """
 import json
 import math
@@ -211,9 +213,9 @@ class ScorerModelClient:
         return value
 
     def warm_up(self) -> bool:
-        """Asks for one throwaway score so the model is loaded before a real clip needs it.
+        """Asks for one throwaway score so the server has the scoring prompt cached before a real clip needs it.
 
-        Returns True if the model answered with a score. Call this once at startup; the first
+        Returns True if the model answered with a score. Call this once the server is up; the first
         request after a server starts can take many seconds.
         """
         return self.score(WARM_UP_CLIP) is not None

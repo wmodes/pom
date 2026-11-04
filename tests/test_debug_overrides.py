@@ -15,7 +15,7 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 MODULES = ["pom/config.py", "pom/library/circulation.py", "pom/library/catalog.py",
            "pom/library/bibliomancer.py", "pom/listening/take_cutter.py",
            "pom/scoring/word_tagger.py", "pom/scoring/scorer_model_client.py",
-           "pom/scoring/clip_scorer.py", "pom/scoring/fallback_scorer.py",
+           "pom/scoring/clip_scorer.py", "pom/scoring/fallback_scorer.py", "pom/scoring/scorer_warmer.py",
            "pom/qualifying/bar_keeper.py", "pom/writing/prompt_builder.py", "pom/writing/oracle_model_client.py",
            "pom/startup.py",
            "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py",

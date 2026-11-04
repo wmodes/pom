@@ -239,7 +239,8 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   sentences. The word-counting fallback is shelved, unused. Evidence: `experiments/interest-scorer/`.
 - **Pi timing of the scorer** (2026-10-22, `experiments/pi-benchmark/`): with whisper running flat out on shared cores,
   Qwen3-4B scores a sentence in a median 2.3 s (p95 3.2 s); both use about 3 GB, peak 72 °C, no throttling. The first call
-  after a server starts takes 12 to 28 s, so warm it up at startup. Whisper output on a quiet room needs a filter for
+  after a server starts takes 12 to 28 s (it evaluates the whole scoring prompt; later calls reuse the cached start of it), so the Printer's
+  `ScorerWarmer` sends it one throwaway request once the server is up. Whisper output on a quiet room needs a filter for
   non-speech tags and phantom repeats.
 - **The microphone** (ATR4697-USB on the Pi, 2026-10-23): records quietly; capture gain **24 of 30** with hardware
   auto-gain off (a yell at gain 26 peaked near -3 dB). It resets on reboot, so startup must set it (a config setting, to be
@@ -277,7 +278,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[printing]` line width, `linefeeds_after_portent` line feeds at the end.)
 3. **The service on the Pi.** The Conductor and the entry point are built (`python -m pom`) and the Pi has its virtualenv
    (`/home/pi/envs/pom`). What is left: the systemd units (a draft is in `pi-setup-notes.md`), the startup duties in `startup.py` (mic gain,
-   scorer warm-up, checks for whisper, the oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script
+   checks for whisper, the oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script
    (Wes's idea: fast-forward pull only, refuse on a dirty tree, install dependencies only if they changed, check the new config before
    touching the running service, skip the restart for docs-only changes, then show the startup "ready" line).
 4. **Paper guards** (nothing qualifies unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour

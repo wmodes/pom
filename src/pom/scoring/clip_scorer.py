@@ -174,7 +174,7 @@ class ClipScorer:
                       key=lambda scored: (scored.score is None, -(scored.score or 0.0)))
 
     def warm_up(self) -> bool:
-        """Loads the model before a real sentence needs it. True if it answered."""
+        """Has the server cache the scoring prompt before a real sentence needs it. True if the model answered."""
         return bool(self._scorer_model_client.available and self._scorer_model_client.warm_up())
 
     # --- State ----------------------------------------------------------------------

@@ -28,6 +28,8 @@ The machine does one thing at a time: while it writes and types, it does not lis
 
 It is built to run unattended in a gallery. If the typewriter is unplugged, out of paper, or on hold, it waits and carries on where it stopped. If a model server dies and comes back, it recovers by itself. Each stage has a time limit, so a stuck step cannot silence it for good.
 
+The reasons behind each choice are in the [Design Document](documentation/Design%20Document.md). The parts most worth reading: [how the bar is set](documentation/Design%20Document.md#qualifying-when-does-the-printer-speak) (and the rules tried and dropped), [how a turn is run and kept from hanging](documentation/Design%20Document.md#conducting-running-a-turn), and [how the library is drawn](documentation/Design%20Document.md#the-library-the-form-that-influences-the-oracle).
+
 ### The models
 
 All three stay loaded in memory at once, which is why the Pi is the 16 GB one.
@@ -124,6 +126,7 @@ python -m pytest                    # the whole suite (over 3,000 tests)
 - **Testbenches.** [`scripts/dev/README.md`](scripts/dev/README.md) lists small tools that exercise one stage with the real modules: type a hinge and read the portent, type sentences and see their scores, watch what would qualify on a recording.
 - **Vocabulary.** [`documentation/Lexicon.md`](documentation/Lexicon.md) defines the words the code, docs and conversation share (hinge, portent, bar, circulation, turn, and the rest). Use them.
 - **Design.** [`documentation/Design Document.md`](documentation/Design%20Document.md) explains how it works and why, and what was measured. [`documentation/Project State.md`](documentation/Project%20State.md) is the working handoff.
+- **The Pi.** [`documentation/Pi Setup Notes.md`](documentation/Pi%20Setup%20Notes.md) covers setting it up, its services and microphone, and what to do when `pom1.local` will not resolve.
 - **History.** [`CHANGELOG.md`](CHANGELOG.md) records every change.
 - **Adding to the library.** [`documentation/Adding Material.md`](documentation/Adding%20Material.md).
 - **AI use.** Use of remote AI in this project is logged in [`documentation/AI Ledger.md`](documentation/AI%20Ledger.md). The models that run the installation are local and are not counted there.

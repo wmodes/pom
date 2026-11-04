@@ -192,6 +192,11 @@ class TerminalPort:
         """False if the port name was unusable, so nothing will ever be typed."""
         return self._usable
 
+    def online(self) -> bool:
+        """True if the typewriter's port is open, or opens now. Asks quietly (no warning, nothing typed), so it can be asked again and again."""
+        with self._lock:
+            return self._usable and self._connect(quiet=True)
+
     def transmit(self, text: str, still_alive: Optional[Callable[[], object]] = None) -> PrintResult:
         """Types the text and returns when the typewriter has had time to finish. Never raises (except in strict mode).
 

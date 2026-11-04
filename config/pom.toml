@@ -458,3 +458,37 @@ restart_pause_seconds = 5
 
 # How often the Conductor looks at the floor to open the ears again and at its own threads (above 0).
 check_seconds = 1
+
+
+# ================================================
+# BOOT SLIP: what the typewriter types when it comes online
+# ================================================
+
+# Every time the Printer starts (on the Pi, every boot) and the typewriter is online, the typewriter types a short slip that
+# looks like a terminal announcing itself, and one line of it is the address the Pi has, so the monitoring page and ssh can be
+# reached without a screen. It waits in the background (the Printer listens meanwhile), types as soon as the typewriter is
+# there, whether or not the Pi has a network, and the Printer is deaf only while it types. With no terminal (--terminal none) it
+# types nothing.
+[boot_slip]
+
+# true types the slip. false types nothing at start-up.
+enabled = true
+
+# The slip's words, set for the paper like a portent (a line too long wraps; several spaces in a row become one). {address} is
+# replaced by the Pi's IPv4 address, every usable one if it has more than one (the home network's and the Comitup hotspot's),
+# or by 127.0.0.1 if it has none; {hostname} by the machine's name.
+text = """
+CADETWRITER - IBM-1620
+MODE ......... TERMINAL
+SELF TEST .... OK
+LINE 1 ....... {address}
+ON LINE
+"""
+
+# Once the typewriter is online, how many seconds to wait for the Pi to get an address (Wi-Fi may come up after the Printer
+# does) before typing without one. 0 or more. It types at once if an address is already there.
+address_grace_seconds = 15
+
+# How often, in seconds, to ask whether the typewriter is online, and whether the floor is free (a portent may be printing).
+# 0 or more.
+retry_seconds = 5

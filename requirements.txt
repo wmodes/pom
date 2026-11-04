@@ -14,3 +14,6 @@ nltk>=3.9,<4
 
 # The serial port to the typewriter (pom.printing.TerminalPort). Pure Python, the standard choice.
 pyserial>=3.5,<4
+
+# The machine's network addresses, for the boot slip (pom.conductor.AddressFinder). Prebuilt wheels for the Pi (aarch64) and the Mac.
+psutil>=5.9,<8

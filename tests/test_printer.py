@@ -11,7 +11,7 @@ import pytest
 
 from pom import printer as printer_module
 from pom.config import Config
-from pom.conductor import Conductor, FloorKeeper, KeyboardWatcher, TurnTaker
+from pom.conductor import BootSlipper, Conductor, FloorKeeper, KeyboardWatcher, TurnTaker
 from pom.listening import MicDeck
 from pom.monitor import MonitorSite
 from pom.printer import Options, Printer, ServiceWatch, answers, build_printer, parse_options, reachable
@@ -143,6 +143,39 @@ class TestWhatItPrintsOn:
         assert p.parts["turn_taker"]._terminal is p.terminal
 
 
+class TestTheBootSlip:
+    def test_a_real_terminal_gets_a_boot_slipper_on_the_floor_and_the_terminal(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "console"\n')
+        slipper = p.parts["boot_slipper"]
+        assert isinstance(slipper, BootSlipper) and p._slipper is slipper
+        assert slipper._floor is p.floor and slipper._terminal is p.terminal and slipper._formatter is p.parts["formatter"]
+
+    def test_the_serial_default_gets_one_too(self, tmp_path):
+        assert isinstance(build(tmp_path).parts["boot_slipper"], BootSlipper)
+
+    def test_no_terminal_means_no_slip(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n')
+        assert p.parts["boot_slipper"] is None and p._slipper is None
+
+    def test_a_command_line_none_means_no_slip(self, tmp_path):
+        assert build(tmp_path, terminal="none").parts["boot_slipper"] is None
+
+    def test_it_can_be_switched_off(self, tmp_path):
+        assert build(tmp_path, '[terminal]\nmode = "console"\n[boot_slip]\nenabled = false\n').parts["boot_slipper"] is None
+
+    def test_the_settings_reach_the_slipper(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "console"\n[conductor]\ncheck_seconds = 2\n'
+                            '[boot_slip]\ntext = "HELLO {address}"\naddress_grace_seconds = 7\nretry_seconds = 3\n')
+        s = p.parts["boot_slipper"]
+        assert (s._template, s._grace, s._retry) == ("HELLO {address}", 7.0, 3.0)
+        assert s._ears_shut == 3.0                                  # the Conductor's check interval (2 s) plus a second
+
+    def test_the_slip_is_found_with_the_address_finder(self, tmp_path):
+        from pom.conductor import AddressFinder
+        s = build(tmp_path, '[terminal]\nmode = "console"\n').parts["boot_slipper"]
+        assert s._find_addresses.__self__.__class__ is AddressFinder
+
+
 class TestTheMonitoringSite:
     def test_it_is_off_by_default_and_says_nothing_about_a_password(self, tmp_path, caplog):
         with caplog.at_level(logging.WARNING, logger="pom.printer"):
@@ -236,10 +269,10 @@ class FakeTerminalClose:
         self.closed += 1
 
 
-def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None):
+def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None, slipper=None):
     monitor = type("M", (), {"host": "0.0.0.0", "port": 8080})()
     return Printer(conductor or FakeConductor(), None, site, terminal, None, {"monitor": monitor, "mode": "none"},
-                   services or (lambda: {"whisper": True, "scorer": False}), warmer)
+                   services or (lambda: {"whisper": True, "scorer": False}), warmer, slipper)
 
 
 class FakeWarmer:
@@ -253,6 +286,19 @@ class FakeWarmer:
 
     def stop(self):
         self.events.append("warmer stopped")
+
+
+class FakeSlipper:
+    """Records when the boot slip was started and stopped, in the same list the conductor writes to."""
+
+    def __init__(self, events):
+        self.events = events
+
+    def start(self):
+        self.events.append("slipper started")
+
+    def stop(self):
+        self.events.append("slipper stopped")
 
 
 class RecordingConductor(FakeConductor):
@@ -305,6 +351,17 @@ class TestRunningAndStopping:
         with pytest.raises(RuntimeError):
             assembled(None, None, RecordingConductor(events, RuntimeError("boom")), warmer=FakeWarmer(events)).run()
         assert events == ["warmer started", "conductor ran", "warmer stopped"]
+
+    def test_the_boot_slip_starts_before_the_conductor_and_stops_after_it(self):
+        events = []
+        assembled(None, None, RecordingConductor(events), warmer=FakeWarmer(events), slipper=FakeSlipper(events)).run()
+        assert events == ["warmer started", "slipper started", "conductor ran", "slipper stopped", "warmer stopped"]
+
+    def test_the_boot_slip_is_stopped_even_when_the_conductor_raises(self):
+        events = []
+        with pytest.raises(RuntimeError):
+            assembled(None, None, RecordingConductor(events, RuntimeError("boom")), slipper=FakeSlipper(events)).run()
+        assert events == ["slipper started", "conductor ran", "slipper stopped"]
 
     def test_stop_stops_the_conductor_and_may_be_repeated(self):
         conductor = FakeConductor()

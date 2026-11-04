@@ -1203,3 +1203,48 @@ def test_the_shipped_config_says_how_to_make_a_local_file():
     text = (CONFIG_DIR / "pom.toml").read_text(encoding="utf-8")
     assert "cp config/pom.local.toml.example config/pom.local.toml" in text and "public" in text
     assert (CONFIG_DIR / "pom.local.toml.example").exists()
+
+
+# --- The [boot_slip] section ----------------------------------------------------------------
+
+BOOT_SLIP_KEYS = ("enabled", "text", "address_grace_seconds", "retry_seconds")
+
+
+def test_the_boot_slip_defaults_type_the_slip_with_a_short_grace():
+    from pom.config import BootSlipSettings
+    config = Config.load(write_nothing_in(), environ={})
+    assert config.boot_slip == BootSlipSettings() and config.report.ok
+    s = config.boot_slip
+    assert (s.enabled, s.address_grace_seconds, s.retry_seconds) == (True, 15.0, 5.0)
+    assert s.text.splitlines()[0] == "CADETWRITER - IBM-1620" and "{address}" in s.text
+
+
+def test_all_the_boot_slip_values_are_read_from_the_section(tmp_path):
+    from pom.config import BootSlipSettings
+    text = '[boot_slip]\nenabled = false\ntext = "HELLO {hostname}\\n{address}"\naddress_grace_seconds = 0\nretry_seconds = 2.5\n'
+    config = Config.load(write(tmp_path, text), environ={})
+    assert config.boot_slip == BootSlipSettings(False, "HELLO {hostname}\n{address}", 0.0, 2.5) and config.report.ok
+
+
+@pytest.mark.parametrize("key, value", [
+    ("enabled", '"yes please"'), ("enabled", "7"), ("text", "5"), ("text", "true"), ("address_grace_seconds", "-1"),
+    ("address_grace_seconds", '"soon"'), ("retry_seconds", "-1"), ("retry_seconds", "true"),
+])
+def test_a_bad_boot_slip_value_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import BootSlipSettings
+    config = Config.load(write(tmp_path, f"[boot_slip]\n{key} = {value}\n"), environ={})
+    assert config.boot_slip == BootSlipSettings()
+    assert len(config.report.warnings) == 1 and f"boot_slip.{key}" in config.report.warnings[0]
+
+
+def test_the_committed_config_sets_every_boot_slip_key_and_the_slip_is_the_default_one():
+    import tomllib
+    from pom.config import BootSlipSettings
+    path = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
+    with open(path, "rb") as f:
+        section = tomllib.load(f)["boot_slip"]
+    assert set(section) == set(BOOT_SLIP_KEYS)
+    config = Config.load(path, environ={})
+    assert config.report.ok
+    assert config.boot_slip.text.strip() == BootSlipSettings().text         # the code's default and the shipped words agree
+    assert "{address}" in config.boot_slip.text

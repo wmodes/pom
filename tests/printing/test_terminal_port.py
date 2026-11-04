@@ -916,6 +916,38 @@ class TestAPortThatWillNotOpen:
         assert len(port.report.warnings) == 2
 
 
+class TestOnline:
+    """`online()` asks whether the typewriter is there without typing anything or complaining."""
+
+    def test_an_open_port_is_online_and_nothing_is_typed(self):
+        port, fake, _, opened = make()
+        assert port.online() is True and fake.written == b"" and len(opened) == 1
+
+    def test_a_port_that_will_not_open_is_offline_quietly_however_often_it_is_asked(self):
+        def opener(*a):
+            raise OSError("not plugged in")
+        port = TerminalPort("/dev/x", opener=opener, finish_wait_seconds=0)
+        assert [port.online() for _ in range(5)] == [False] * 5
+        assert port.report.ok
+
+    def test_it_turns_online_when_the_typewriter_is_plugged_in(self):
+        clock = FakeClock()
+        state = {"up": False}
+
+        def opener(*a):
+            if not state["up"]:
+                raise OSError("no")
+            return FakeSerial(clock)
+        port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
+        assert port.online() is False
+        state["up"] = True
+        assert port.online() is True
+
+    def test_a_port_name_that_cannot_be_used_is_never_online(self):
+        port = TerminalPort("", opener=lambda *a: FakeSerial(), finish_wait_seconds=0)
+        assert port.online() is False
+
+
 @pytest.mark.parametrize("setting", ["stall_patience_seconds", "reconnect_seconds"])
 @pytest.mark.parametrize("bad", [0, -1, "x", None, True, float("nan")])
 def test_a_bad_patience_or_reconnect_is_the_default_with_a_warning(setting, bad):

@@ -81,7 +81,7 @@ To watch what it is doing, switch on the monitoring page: copy `config/pom.local
 
 ### On the Pi
 
-The Printer is `python -m pom`, run by systemd, with each model server as its own service so a crashed server restarts without taking the Printer down. Provisioning (OS, Wi-Fi with a fallback hotspot, whisper.cpp and llama.cpp builds) is in [`documentation/Pi Setup Notes.md`](documentation/Pi%20Setup%20Notes.md). The unit files are in [`scripts/setup/systemd/`](scripts/setup/systemd/) and are linked into place by `scripts/setup/install-services.sh`, so a `git pull` then `scripts/setup/update-pi.sh` brings the Pi up to date; the log is `journalctl -u pom`.
+The Printer is `python -m pom`, run by systemd, with each model server as its own service so a crashed server restarts without taking the Printer down. Provisioning (OS, Wi-Fi with a fallback hotspot, whisper.cpp and llama.cpp builds) is in [`documentation/Pi Setup Notes.md`](documentation/Pi%20Setup%20Notes.md). The unit files are in [`scripts/setup/systemd/`](scripts/setup/systemd/) and are linked into place by `scripts/setup/install-services.sh`, so a `git pull` then `scripts/setup/update-pi.sh` brings the Pi up to date; the log is `journalctl -u pom`. Each time the Pi and the typewriter come online, the typewriter types a short slip like a terminal's greeting, one line of it the Pi's address (its words are `[boot_slip]` in the config).
 
 ## Configuration
 

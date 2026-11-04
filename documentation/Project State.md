@@ -1,9 +1,9 @@
 # Project state: read this first after a break
 
 A handoff for whoever picks the work up next (a person, or Claude after its context was compacted).
-Written 2026-10-21, rewritten 2026-10-27. It says where things stand, the rules we work by, and what comes next.
+Written 2026-10-21, rewritten 2026-10-27, brought up to date 2026-11-04. It says where things stand, the rules we work by, and what comes next.
 For detail it points at the other docs instead of repeating them: **the design is in `Design Document.md`**, the words
-are in `Lexicon.md`. If this file and the code disagree, trust the code and fix this file.
+are in `Lexicon.md`, the Pi is in `Pi Setup Notes.md`. If this file and the code disagree, trust the code and fix this file.
 
 ## What this is
 
@@ -12,39 +12,44 @@ hostname `pom1`), that eavesdrops on a room and every so often types a tangentia
 pronouncement (a *portent*). People can also type to it. Fully local: no cloud at run time. Its in-world home is
 the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study CS-0027).
 
-## Where things stand (2026-10-27)
+## Where things stand (2026-11-04)
 
-- **Built and tested** (1,494 tests, all passing): the shared plumbing (`fault_recorder`, `log_setup`, `config` with
-  `[scorer]`, `[qualifying]`, `[listening]` and `[oracle]` sections, the `startup` runner whose ten duties are still placeholders); the library
-  module (`Circulation`, `Catalog`, `Bibliomancer`); the `TakeCutter`; the whole listening side (`MicDeck`, `WavDeck`, `WhisperModelClient`, `RollingCutter`,
-  `TrackSplitter`, `Eavesdropper`); the Scorer (`WordTagger`,
-  `ScorerModelClient`, `ClipScorer`); the `BarKeeper` (qualifying); the `PromptBuilder`; the `OracleModelClient`.
+- **Built and tested** (3,396 tests, all passing): everything in the module map below except the start-up duties. In short: the shared plumbing (`fault_recorder`, `log_setup`, `config` with
+  `[scorer]`, `[qualifying]`, `[listening]`, `[oracle]`, `[monitor]`, `[printing]`, `[terminal]` and `[conductor]` sections); the library
+  (`Circulation`, `Catalog`, `Bibliomancer`); the whole listening side; the Scorer and its warm-up; the `BarKeeper` and its three bars; the `PromptBuilder` and the oracle client; the
+  `PortentFormatter` and the `TerminalPort`; the typed-line path; the Conductor (floor, turns, watchdogs); the entry point (`python -m pom`); and the monitoring site.
+  The boot slip (the Pi's address, typed when the typewriter comes online) is built. The `startup` runner is built, but its ten duties are still placeholders and `printer.py` does not call it.
 - **Decided:**
-  - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score.
-  - **Qualifying:** a percentile of the last five minutes of scores (the larger of 5 minutes or the last 20 scores), `percentile`
-    99.5 (about one score in 200 stands above the bar), 60 s cooldown, no floor. Replayed on five recorded meetings (four Zoom,
-    one live room) it gives about 9.8 qualifiers an hour (8.1 to 11.2 by meeting; the live room 11.2, one every 5.4 minutes). The goal is about six an hour. Tukey's fence was tried first and replaced
+  - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score. Its timeout is 30 s (the first score after a server starts took 15.7 s on the Pi).
+  - **Qualifying:** `algorithm = "decaying_quantile"` (EWMQ): the bar is the 99.5th percentile of all recent scores, each counting for less the older it is (half-life 300 s),
+    starting at 6.8 until the room has said enough. 60 s cooldown, no floor. `exclude_qualifiers = true`: neither a qualifier nor a score held by the cooldown feeds the bar
+    (the held-score half was fixed 2026-11-04). `percentile` and `moving_average` stay selectable. The goal is about six qualifiers an hour. Replays gave about 7 an hour, but a
+    later measurement gave 13.5 (a busy room) and 11.1 (a quiet one), taken before the held-score fix; **re-measure it.** Tukey's fence was tried first and replaced
     (2026-10-29): it sat above the window's best score in two windows out of three.
   - **Hinge:** the sentence that qualified (Wes, 2026-10-27). No separate hinge picker.
   - **Oracle model:** Qwen3.5-9B, with Gemma 2 9B as the named alternate. On the Pi a typical portent takes 35 to 40 s
-    (first word after 20 s, up to about 100 s for a long one); Wes judged that acceptable.
+    (first word after 20 s, up to about 100 s for a long one); Wes judged that acceptable. Temperature 0.8, at most 300 tokens, a 240 s timeout.
   - **Half-duplex:** nothing is sent to whisper or the scorer model while the oracle model writes or the typewriter prints.
-  - **All the models stay loaded (Wes's decision, restated 2026-11-03):** whisper, the scorer and the oracle are resident in memory at the same time, always (the 16 GB Pi is why). Half-duplex is about CPU, not memory. Never propose loading on demand or shrinking contexts for memory. Servers run as separate systemd services (agreed 2026-11-03, units not written yet); see the design doc, "All the models stay loaded, always".
+  - **All the models stay loaded (Wes's decision, restated 2026-11-03):** whisper, the scorer and the oracle are resident in memory at the same time, always (the 16 GB Pi is why). Half-duplex is about CPU, not memory. Never propose loading on demand or shrinking contexts for memory. Servers run as separate systemd services, and `pom.service` uses `Wants=`, not `Requires=`; see the design doc, "All the models stay loaded, always".
 - **Experiments** (`experiments/`, not part of the Printer until rebuilt in `src/pom/`): `hearing-debug` (the working
   listening prototype), `interest-scorer`, `pi-benchmark`, `oracle-playground`, `oracle-bakeoff` (seven models, 160 rated
   portents each), `pi-oracle-benchmark` (the 9B on the Pi, run 2026-10-27).
-- **Library:** 81 holdings, 14 shelves, about 72,000 passages, public on GitHub.
+- **Library:** 81 holdings, 14 shelves, about 71,000 passages, public on GitHub. No passage ends unfinished (`audit.py` reads 0).
 - **Git:** branch `main`, remote `origin` (github.com/wmodes/pom, public). Run `git status -sb` to see what is
-  unpushed. The Pi's checkout (`~/pom`) was last pulled at `b0b68e9`, with the 4B and 9B model files in `data/models/`.
-- **Testbenches** (`scripts/dev/`, small tools that use the real modules): `listening/split_whisper_tracks.py`, `listening/listen_to_room.py` (the
-  microphone or a recording through the Eavesdropper, Scorer and BarKeeper), `scoring/score_typed_sentences.py` (type sentences, see scores and
-  the BarKeeper's ruling), `scoring/score_typed_lines.py` (the typed-line path: score, handicap, answer or silence), `writing/write_portent_from_hinge.py` (type a hinge, get a portent), and `listening/cut_speech_into_hinges.py`, and `pipeline/listening_to_portent.py` (the whole pipeline but the typewriter,
-  live from the microphone, `--mac-mic` on a Mac). `pipeline/run_printer_with_servers.py` starts the three servers, runs `python -m pom` with your options, and stops what it started.
-- **The Conductor and the entry point are built** (2026-11-02): `python -m pom` runs the whole Printer (see the design doc, "The Conductor"),
-  burn-tested on the Mac with real servers; only the real typewriter and the Pi's services are not yet tried together.
-- **The Printer runs as services on the Pi** (2026-11-03): `scripts/setup/systemd/` linked into place by `install-services.sh`, persistent journal, models loaded with mmap
-  (7.7 GB available), crash recovery tried. A reboot test passed (all four up by themselves, mic gain still 24). Next: the typewriter, the start-up duties (check the mic gain), a real-voice test.
-- **Not built yet:** the monitoring site's printer status line and per-turn outcome (they need a preview and Wes's say), the paper guards, "failing loudly", and a full startup check (`startup.py`'s steps are still placeholders). Track B (the fine-tuned oracle)
+  unpushed. The Pi's checkout (`~/pom`) is brought up to date with `scripts/setup/update-pi.sh` (it holds the 4B and 9B model files in `data/models/`).
+- **Testbenches** (`scripts/dev/`, small tools that use the real modules; the list, with what each needs, is `scripts/dev/README.md`; read it before diagnosing anything):
+  `listening/` (cut speech, split whisper's tracks, `listen_to_room.py` on the microphone or a recording), `scoring/` (type sentences or typed lines and see the scores and the bar's ruling),
+  `writing/write_portent_from_hinge.py` (type a hinge, get a portent), `printing/` (format text for the typewriter, type it paced on the screen or a real port), `monitor/serve_fake_turns.py`
+  (the monitoring site with invented turns), `library/`, and `pipeline/`: `listening_to_portent.py` (the whole pipeline but the typewriter; `--mac-mic` on a Mac) and
+  `run_printer_with_servers.py` (starts the three servers, runs `python -m pom` with your options, and stops what it started).
+- **The Conductor and the entry point are built** (2026-11-02): `python -m pom` runs the whole Printer (see the design doc, "Conducting: running a turn"),
+  burn-tested on the Mac with real servers.
+- **The Printer runs as services on the Pi** (2026-11-03): `scripts/setup/systemd/` linked into place by `install-services.sh`, persistent journal, models loaded with mmap and not pinned
+  (about 7 GB left free), crash recovery tried. A reboot test passed (all four services up by themselves, mic gain still 24). It has listened to a live room through the
+  microphone and written portents, with no typewriter attached. Wi-Fi power saving is off (a NetworkManager drop-in linked by `install-services.sh`; it was already off, so this is insurance).
+  The Mac sometimes cannot resolve `pom1.local` while the Pis and a phone can; the diagnosis so far is in `Pi Setup Notes.md`, "When `pom1.local` will not resolve" (its cause is not proven).
+- **Not built yet:** the typewriter on the Pi (the real CadetWriter, including how it signals "on hold" and "out of paper"), the monitoring site's printer status line and per-turn outcome (they need a preview and Wes's say),
+  the paper guards, "failing loudly", and the start-up duties (`startup.py`'s steps are still placeholders; the scorer warm-up is the one already done, by `ScorerWarmer`). Track B (the fine-tuned oracle)
   and the curated hinge pairs have not been started.
 
 ## The rules we work by
@@ -104,14 +109,16 @@ src/pom/
   fault_recorder.py    built   faults as data (WARNING / CRITICAL, strict mode, cap, logging)
   log_setup.py         built   stdout logging, debug flag, per-module override, local log file
   config.py            built   shared settings, layered; [scorer], [qualifying], [oracle]
-  startup.py           built   the startup runner; its ten duties are placeholders in planned_steps()
+  startup.py           built   the startup runner; its ten duties are placeholders in planned_steps(), and printer.py does not call it yet
+  printer.py           built   the entry point (python -m pom): builds every part from one Config and runs the Conductor; --mac-mic, --wav, --terminal
   library/
     circulation.py     built   circulation.json: shelf shares, holding weights, defaults, drift checks
     catalog.py         built   reads library/passages/*.jsonl into immutable Passage objects
-    bibliomancer.py    built   weighted random draws; passages per pull set by [oracle]; no repeats in a pull
+    bibliomancer.py    built   weighted random draws; passages per pull set by [oracle]; no repeats in a pull; redraws an unfinished pick
+    endings.py         built   the one definition of an unfinished ending (ends_unfinished, ends_sentence)
   listening/
     take_cutter.py     built   a take's words -> sentence / clause / phrase clips, all levels
-    audio_deck, mic_deck, wav_deck built the microphone (arecord, read in a thread) and a recording replay
+    audio_deck, mic_deck, wav_deck, mac_mic_deck built the microphone (arecord, read in a thread), a recording replay, and the Mac's microphone through ffmpeg
     whisper_model_client built audio to whisper-server from memory; text or timed segments back
     track_splitter     built   whisper's text -> words / room tone / blanks
     rolling_cutter     built   whisper's own voice detection cuts the stream, every 5 s
@@ -121,15 +128,26 @@ src/pom/
     word_tagger.py     built   text -> words with lemma, part of speech, name/number/filler flags (NLTK)
     scorer_model_client.py built one clip to the scorer model, one score (or an explanation) back
     clip_scorer.py     built   clip_filter, scorer model, circuit breaker; unscored if no answer
+    scorer_warmer.py   built   a background thread: waits for the scorer's server, sends one throwaway request so the first real score is fast
     fallback_scorer.py shelved word-counting stand-in for the scorer model; unused
   qualifying/
-    bar_keeper.py      built   the window, the bar, the cooldown: whether an attempt qualifies (bars: percentile, decaying quantile, moving average)
+    bar_keeper.py      built   the cooldown and the ruling: whether an attempt qualifies
+    bar.py, percentile_bar.py, decaying_quantile_bar.py, moving_average_bar.py  built  where the bar sits, three ways; config `algorithm` picks one
+    bar_keeper_factory.py built builds the BarKeeper the config asks for
     attempt.py         built   one score trying to qualify, and the ruling it got
   conductor/
-    hinge_finder.py    built   listening to hinge
-                       planned the Conductor, the only module that knows the whole pipeline; hands the qualifying sentence on as the hinge
+    conductor.py       built   runs the whole Printer: offers attempts, takes the floor for one turn, listens again; restarts what dies
+    floor_keeper.py    built   who may speak, the room or the Printer (half-duplex), and the watchdog on each state
+    turn_taker.py      built   one hinge through a turn: the oracle writes (asked again if it fails), the terminal prints, the portent must still be fresh
+    hinge_finder.py    built   listening to hinge: sound in, qualifying sentences out
+    boot_slipper.py    built   a background thread: waits for the typewriter, takes the floor and types the boot slip (the Pi's address)
+    address_finder.py  built   the machine's usable IPv4 addresses (psutil), for the boot slip
+    keyboard_watcher.py built  lines typed at the terminal in, attempts out (the typed twin of the HingeFinder)
   keyboard/
     typed_line_scorer.py built a typed line scored (multiplied by `typed_handicap`) and judged by the same bar
+  monitor/
+    monitor_site.py    built   the password-protected web page: the last hour of turns, with a score chart
+    turn_history.py, score_trace.py, score_chart.py built the turns kept in memory, the numbers-only trace of every attempt, the chart drawn from it
   writing/
     prompt_builder.py  built   hinge + drawn exemplars into the oracle prompt from config
     oracle_model_client.py built the finished oracle prompt to the oracle model's llama-server, one portent back
@@ -226,7 +244,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   thread; `TaskGroup` (Python 3.11) for clean shutdown.
 - **Deaf only while the typewriter is printing** (2026-10-21) *superseded 2026-10-27 by half-duplex:* nothing is sent
   to whisper or the scorer model while the oracle model writes or the typewriter prints; both stay loaded and idle. No
-  lockfiles (they can lock the system out); the plan is a Conductor state with a watchdog timeout, not built.
+  lockfiles (they can lock the system out); built as the FloorKeeper's states with a watchdog on each (2026-11-02).
 - **Segmenting:** the energy-based cutter (a slowly moving noise floor, a 0.7 s pause) never finds a pause in a room
   with bursty noise, so **cutting is whisper-driven** (`experiments/hearing-debug/rolling_cutter.py`: a whisper run every
   5 s on a rolling buffer, whisper's own Silero voice detection at threshold 0.5). The energy cutter and the level
@@ -243,8 +261,8 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   `ScorerWarmer` sends it one throwaway request once the server is up. Whisper output on a quiet room needs a filter for
   non-speech tags and phantom repeats.
 - **The microphone** (ATR4697-USB on the Pi, 2026-10-23): records quietly; capture gain **24 of 30** with hardware
-  auto-gain off (a yell at gain 26 peaked near -3 dB). It resets on reboot, so startup must set it (a config setting, to be
-  built).
+  auto-gain off (a yell at gain 26 peaked near -3 dB). It survived a clean reboot on the Pi (ALSA restores the mixer state, 2026-11-03),
+  but a start-up check that sets and verifies it (a config setting) is still to be built.
 - **The Printer reacts to what it hears, not only conversation** (Wes, 2026-10-23): the Transcriber strips the music
   symbol and keeps lyric words, which are scored. **Whisper's bracketed room tone** such as "(dog barks)" are never
   scored (a hallucinated "(gunshot)" scored 8.0); they are kept as a short list of recent sounds to give the oracle model
@@ -253,8 +271,10 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   the room, not from constants. Related: the filters must work reasonably well in every room, not perfectly in one; nothing
   is tuned per room.
 - **Qualifying** (2026-10-27). *Superseded:* a fixed 7.0 threshold, then 25% above a decaying average with a floor (it fired on
-  34% of sentences in recorded meetings and barely responded to its setting). Then Tukey's fence (2026-10-27 to 29; above the real top of the scores).
-  *Current:* a percentile of a time window with a cooldown, no floor (see the design doc and `[qualifying]` in `config/pom.toml`).
+  34% of sentences in recorded meetings and barely responded to its setting). Then Tukey's fence (2026-10-27 to 29; above the real top of the scores). Then a plain percentile of
+  the last five minutes (about 9.8 qualifiers an hour on five recorded meetings; kept as `algorithm = "percentile"`).
+  *Current* (2026-10-30): a decaying quantile (EWMQ), so a zinger fades by degrees instead of holding the bar until it falls off the edge of a window; a cooldown, no floor;
+  qualifiers and held scores kept out of the bar (see the design doc, "Qualifying: when does the Printer speak?", and `[qualifying]` in `config/pom.toml`).
 - **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `Model Bakeoff.md`; the Pi run
   is in `experiments/pi-oracle-benchmark/`. Writing is memory-speed-bound on the Pi (about 2 tokens a second) and the first
   word waits on the prompt (about 0.095 s a token). llama.cpp reuses none of a changed prompt for Qwen3.5 (a hybrid model);
@@ -269,27 +289,25 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 
 ## Next steps, in order
 
-1. **Try the new listening code in the real room, on the Pi.** `git pull`, start whisper and the scorer model
-   (the known-good commands are in `scripts/dev/listening/listen_to_room.py`), then run `listen_to_room.py` and compare with the
-   known-good `probe_hearing_run.sh` run. The code matches the experiment on a recorded meeting (all 705 things heard
-   identical), but the new `MicDeck` has only met stand-in `arecord` programs. One known limit: the room-tone pass for
-   lyrics hears about two seconds, not ten (see the design doc).
-2. **The Printing side:** the "stop listening while printing" signal belongs to the Conductor. (The `TerminalPort` is built too: paced serial, flow control, CR+LF, keyboard lines back with echoplex; config `[terminal]`; tested on fakes only, not yet on the machine. The `PortentFormatter` is built:
-   fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[printing]` line width, `linefeeds_after_portent` line feeds at the end.)
-3. **The service on the Pi.** The Conductor and the entry point are built (`python -m pom`) and the Pi has its virtualenv
-   (`/home/pi/envs/pom`). What is left: the systemd units (a draft is in `Pi Setup Notes.md`), the startup duties in `startup.py` (mic gain,
-   checks for whisper, the oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script
-   (Wes's idea: fast-forward pull only, refuse on a dirty tree, install dependencies only if they changed, check the new config before
-   touching the running service, skip the restart for docs-only changes, then show the startup "ready" line).
-4. **Paper guards** (nothing qualifies unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour
+1. **The typewriter.** Connect the CadetWriter to the Pi and switch `[terminal] mode` on the Pi from `none` to `serial`. Test on the real machine what has so far been tested on fakes:
+   paced typing, flow control, CR+LF, keyboard lines back with echoplex, and how it signals "on hold" and "out of paper" (the Conductor waits for the printer and drops a portent that
+   is no longer fresh, but how the machine reports those states is unknown). The boot slip types on the first connection: check it there, and that its address is right.
+2. **Start-up duties.** `printer.py` does not call `startup.py` yet, and its ten duties are placeholders. First the mic-gain check (set and verify it from config), then the readiness checks
+   for whisper, the servers and the typewriter. (The scorer warm-up is already done by `ScorerWarmer`; confirm on the Pi that a real clip now scores in about 1 s after it.)
+3. **Re-measure the qualifying rate.** The EWMQ rates on record (13.5 an hour busy, 11.1 quiet) predate the held-score fix, against a goal of about six. Replay the recordings with the
+   testbenches (`pipeline/listening_to_portent.py`, `listening/listen_to_room.py`), then try a real room, a quiet one too, and retune from that. The `[qualifying]` settings were tuned on chatty meetings.
+4. **The monitoring site's printer status line** and per-turn outcome. They need a preview and Wes's say before they are built.
+5. **Paper guards** (nothing qualifies unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour
    and 60 a day; proposed values) and **"failing loudly"** (Wes, 2026-10-24): if the scorer model or the oracle model is
    down, the Printer can never respond, and a log line is not loud when someone is switching a printer on. Decide what loud
    means (a beep, an email to Wes, something at the venue).
-5. **A real-room test,** a quiet room too, then retune from that. The `[qualifying]` settings were tuned on four chatty meetings.
-6. Later: the Conductor's typed-input wiring, the curated hinge pairs, Track B if wanted.
-7. Open and small: Wes's spot-check of about 20 bake-off ratings; a prompt tuned for the top two oracle models; defining
-   "interesting" ourselves before asking the model (Wes, 2026-10-22, deferred); `ratings/report.md` still says Stheno 4.72
-   (it is 4.73); a "silence" tic that repeats across portents would not show up in the one-at-a-time ratings.
+6. Later: the curated hinge pairs, Track B if wanted.
+7. Open and small:
+   - Wes's spot-check of about 20 bake-off ratings; a prompt tuned for the top two oracle models; defining "interesting" ourselves before asking the model (Wes, 2026-10-22, deferred);
+     `ratings/report.md` still says Stheno 4.72 (it is 4.73); a "silence" tic that repeats across portents would not show up in the one-at-a-time ratings.
+   - `Pi Setup Notes.md` lacks the latest on the Mac's failed `.local` lookups (a looping network extension in the Cisco VPN client is the strong, unproven lead; Cisco was removed 2026-11-04 and the Mac may need a restart) and says
+     Wi-Fi power saving was already off.
+   - The cataloguer's `--oversize 1.5` question: keep a passage of up to 225 words whole instead of dropping the few over 150.
 
 ## Gotchas
 
@@ -309,6 +327,8 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 - whisper.cpp 1.9.5's server **crashes** on `verbose_json` with voice detection on when the audio holds no speech; ask
   for SRT subtitles to get timestamps.
 - llama.cpp reuses none of a changed prompt for Qwen3.5 (hybrid recurrent layers); `cached_tokens` is 0. Not worth fighting.
+- The servers' models are loaded with `-lm mmap` and not pinned: on the Pi's ARM build `mmap+mlock` pinned the memory twice and left 0.9 GB available with both models loaded. Resident is not the same as pinned.
+  This llama.cpp build also renamed `--mlock`; `scripts/setup/check-service-flags.sh` checks every flag in the units against the installed server's `--help` before an install changes anything.
 - On the Pi, `pgrep -f NAME` run through `ssh` matches its own command line; use `pgrep -x` or look for the process
   another way. Detach long runs on the Pi (`setsid nohup ... < /dev/null`) so a dropped connection does not kill them.
 - The shell tool here sometimes drops the output or a variable of a compound command (`cd X && VAR=... && cmd`, or a

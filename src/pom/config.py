@@ -40,6 +40,10 @@ of being threaded through by hand. Today there are five:
     [conductor] A section (see ConductorSettings): how a turn is run and how long each part may take (the watchdog's limits, how
                long a portent stays worth printing, how often to ask the oracle again). Every limit errs long on purpose, and
                the limits are checked against the settings they depend on (a warning, never a change).
+    [boot_slip] A section (see BootSlipSettings): the short slip the typewriter types, every time the Printer and the typewriter come
+               online, telling whoever is there the Pi's address. Whether it types, its words (`{address}` and `{hostname}` are
+               filled in), how long to wait for an address, and how often to ask whether the typewriter is there. The entry
+               point builds the BootSlipper from `config.boot_slip`.
     [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
                baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
                (`echoplex`, `type_during_printing`). The entry point builds the
@@ -98,7 +102,8 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "terminal.stall_patience_seconds", "terminal.reconnect_seconds", "terminal.mode",
          "conductor.writing_seconds", "conductor.printing_seconds", "conductor.recovering_seconds", "conductor.freshness_seconds",
          "conductor.write_attempts", "conductor.write_pause_seconds", "conductor.write_budget_seconds",
-         "conductor.print_pause_seconds", "conductor.restart_pause_seconds", "conductor.check_seconds"}
+         "conductor.print_pause_seconds", "conductor.restart_pause_seconds", "conductor.check_seconds",
+         "boot_slip.enabled", "boot_slip.text", "boot_slip.address_grace_seconds", "boot_slip.retry_seconds"}
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_SCORER_URL = "http://127.0.0.1:8098/v1/chat/completions"
 DEFAULT_SCORER_TIMEOUT = 30.0
@@ -176,6 +181,10 @@ DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS = 270.0
 DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS = 10.0
 DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS = 5.0
 DEFAULT_CONDUCTOR_CHECK_SECONDS = 1.0
+DEFAULT_BOOT_SLIP_ENABLED = True
+DEFAULT_BOOT_SLIP_TEXT = ("CADETWRITER - IBM-1620\nMODE ......... TERMINAL\nSELF TEST .... OK\nLINE 1 ....... {address}\nON LINE")
+DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS = 15.0
+DEFAULT_BOOT_SLIP_RETRY_SECONDS = 5.0
 MIN_PRINTING_LINE_WIDTH = 20
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -451,6 +460,22 @@ class ConductorSettings:
     check_seconds: float = DEFAULT_CONDUCTOR_CHECK_SECONDS
 
 
+@dataclass(frozen=True)
+class BootSlipSettings:
+    """The `[boot_slip]` section: the short slip the typewriter types when the Printer and the typewriter are both online.
+
+    Attributes:
+        enabled: True types the slip; False types nothing at start-up.
+        text: The slip's words. `{address}` is replaced by the machine's IPv4 address (127.0.0.1 if it has none) and `{hostname}` by its name.
+        address_grace_seconds: Once the typewriter is online, how long to wait for the machine to get an address before typing without one. 0 or more.
+        retry_seconds: How often to ask whether the typewriter is online, and whether the floor is free. 0 or more.
+    """
+    enabled: bool = DEFAULT_BOOT_SLIP_ENABLED
+    text: str = DEFAULT_BOOT_SLIP_TEXT
+    address_grace_seconds: float = DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS
+    retry_seconds: float = DEFAULT_BOOT_SLIP_RETRY_SECONDS
+
+
 class Config:
     """The project's shared settings, plus a report of anything that had to be recovered from.
 
@@ -468,6 +493,7 @@ class Config:
         printing: The `[printing]` section, as a PrintingSettings.
         terminal: The `[terminal]` section, as a TerminalSettings.
         conductor: The `[conductor]` section, as a ConductorSettings.
+        boot_slip: The `[boot_slip]` section, as a BootSlipSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -477,7 +503,7 @@ class Config:
                  qualifying: Optional[QualifyingSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
                  printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
-                 conductor: Optional[ConductorSettings] = None):
+                 conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
@@ -487,6 +513,7 @@ class Config:
         self.printing = printing if printing is not None else PrintingSettings()
         self.terminal = terminal if terminal is not None else TerminalSettings()
         self.conductor = conductor if conductor is not None else ConductorSettings()
+        self.boot_slip = boot_slip if boot_slip is not None else BootSlipSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -698,8 +725,15 @@ class Config:
             _positive(values.get("conductor.check_seconds", DEFAULT_CONDUCTOR_CHECK_SECONDS), "conductor.check_seconds",
                       DEFAULT_CONDUCTOR_CHECK_SECONDS, report))
         _check_the_limits_fit(conductor, oracle, terminal, report)
+        boot_slip = BootSlipSettings(
+            _bool(values.get("boot_slip.enabled", DEFAULT_BOOT_SLIP_ENABLED), "boot_slip.enabled", report, DEFAULT_BOOT_SLIP_ENABLED),
+            _text(values.get("boot_slip.text", DEFAULT_BOOT_SLIP_TEXT), "boot_slip.text", DEFAULT_BOOT_SLIP_TEXT, report),
+            _number(values.get("boot_slip.address_grace_seconds", DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS),
+                    "boot_slip.address_grace_seconds", DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS, 0.0, report),
+            _number(values.get("boot_slip.retry_seconds", DEFAULT_BOOT_SLIP_RETRY_SECONDS), "boot_slip.retry_seconds",
+                    DEFAULT_BOOT_SLIP_RETRY_SECONDS, 0.0, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
-                   printing, terminal, conductor)
+                   printing, terminal, conductor, boot_slip)
 
 
 # A portent is at most this many characters per token (4 is typical English; 5 leaves room), for the printing time worked out below.

@@ -367,6 +367,28 @@ A serial printer is fickle (switched off, unplugged, held, out of paper), so onc
 
 Not visible to software: whether the CadetWriter signals a hold or out-of-paper through flow control (to be tested on the machine), and a printer powered off behind a USB adapter that swallows the bytes. A character or two in flight at an unplug may be lost or doubled.
 
+#### The boot slip
+
+*Built* (2026-11-04): every time the Printer and the typewriter come online, the typewriter types a few lines laid out like a terminal announcing itself, one of them the address the Pi has, so the monitoring page and ssh can be reached with no screen and no router page. It is a plain terminal's greeting and nothing from the Office. The words are `[boot_slip] text` in [config/pom.toml](../config/pom.toml), with `{address}` and `{hostname}` filled in:
+
+```
+CADETWRITER - IBM-1620
+MODE ......... TERMINAL
+SELF TEST .... OK
+LINE 1 ....... 192.168.1.23
+ON LINE
+```
+
+The design choices, and why:
+
+- **It waits in the background and holds nothing.** `BootSlipper` (`src/pom/conductor/`) is a thread in the manner of the scorer's warm-up. The Printer listens at once, whatever state the world is in: the servers may still be loading, the typewriter may be switched on later than the Pi, Wi-Fi may not be up.
+- **It types whenever the typewriter is online, every start, network or not.** It asks the terminal port, quietly (`TerminalPort.online()`), until the port opens. A Pi with no network still types its slip.
+- **The address is read at the last moment.** If the machine has none yet, it waits up to `address_grace_seconds` (15) for Wi-Fi to come up, then types anyway with the loopback address, 127.0.0.1, which says plainly that there is no network. Every usable address is listed, so the Comitup hotspot's shows when that is what is live.
+- **The `AddressFinder` asks the operating system about every interface** (psutil, a maintained library with prebuilt wheels for the Pi and the Mac). The usual stand-in, a UDP socket toward an outside address, finds nothing when there is no default route, which is exactly when the Pi is its own hotspot and the address matters most. Loopback and link-local (169.254.x.x, assigned when DHCP failed) addresses are left out.
+- **Typing takes the floor, like a portent.** The Printer is deaf while the slip types and does not hear its own typing. The floor is first come, first served, so a slip that arrives while a portent is printing waits for it. After taking the floor it waits the Conductor's check interval plus a second, so the ears are shut before the first character, since the Conductor shuts them when its watching thread next looks.
+- **It types once.** If the typewriter drops out before the first character, it goes back to waiting; part-way through, the start is on the paper and it is not typed again, as with a portent.
+- **Nothing that was said is in it.** The addresses go in the log (they are not speech); the monitor password is never printed.
+
 #### Output checks
 
 The output validation hook ([scripts/dev/library/validate_output.py](../scripts/dev/library/validate_output.py)) is a deliberate stub. Checking for verbatim overlap with the library was judged the wrong measure: false positives on quotes that land, false negatives on near-copies, blind to echoing the hinge. (open) A "silence" tic across portents: the rubric rated portents one at a time, so a habit that repeats across them would not show up.

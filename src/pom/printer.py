@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from pom.conductor import Conductor, FloorKeeper, HingeFinder, KeyboardWatcher, TurnTaker
+from pom.conductor import AddressFinder, BootSlipper, Conductor, FloorKeeper, HingeFinder, KeyboardWatcher, TurnTaker
 from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
@@ -131,12 +131,12 @@ class Printer:
     """
 
     def __init__(self, conductor: Conductor, history: TurnHistory, site: Optional[MonitorSite], terminal, floor: FloorKeeper, parts: dict,
-                 services, warmer: Optional[ScorerWarmer] = None):
+                 services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None):
         self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
-        self._services, self._warmer = services, warmer
+        self._services, self._warmer, self._slipper = services, warmer, slipper
 
     def run(self) -> None:
-        """Starts the monitoring site (if any) and the scorer's warm-up, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
+        """Starts the monitoring site (if any), the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
         if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
             _log.warning("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
             self.site = None
@@ -145,9 +145,13 @@ class Printer:
         _log.info("services: %s", ", ".join(f"{name} {'up' if up else 'NOT answering'}" for name, up in self._services().items()))
         if self._warmer is not None:
             self._warmer.start()                         # in the background: the Printer listens at once, whatever state the servers are in
+        if self._slipper is not None:
+            self._slipper.start()                        # in the background: waits for the typewriter, then types the boot slip
         try:
             self.conductor.run()
         finally:
+            if self._slipper is not None:
+                self._slipper.stop()
             if self._warmer is not None:
                 self._warmer.stop()
             if self.site is not None:
@@ -218,6 +222,13 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                            write_attempt_seconds=oracle.timeout, write_budget_seconds=conductor_settings.write_budget_seconds,
                            print_pause_seconds=conductor_settings.print_pause_seconds)
 
+    # the boot slip: types the Pi's address when the typewriter is online (only if there is a terminal to type on)
+    slip = config.boot_slip
+    slipper = None
+    if terminal is not None and slip.enabled:
+        slipper = BootSlipper(floor, terminal, formatter, slip.text, AddressFinder().find, grace_seconds=slip.address_grace_seconds,
+                              retry_seconds=slip.retry_seconds, ears_shut_seconds=conductor_settings.check_seconds + 1.0)
+
     # the keyboard: only a real typewriter has one
     keyboard = None
     if terminal is not None and mode == "serial" and options.keyboard:
@@ -255,8 +266,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
              "turn_taker": turn_taker, "trace": trace, "monitor": monitor, "keyboard": keyboard, "mode": mode,
-             "warmer": warmer}
-    return Printer(conductor, history, site, terminal, floor, parts, services, warmer)
+             "warmer": warmer, "boot_slipper": slipper}
+    return Printer(conductor, history, site, terminal, floor, parts, services, warmer, slipper)
 
 
 def _make_terminal(mode: str, settings):

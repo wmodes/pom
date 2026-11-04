@@ -1,5 +1,5 @@
 #!/bin/sh
-# Link the Printer's systemd units, and the journald setting, from this repo into place on the Pi. Safe to run again, and meant to be.
+# Link the Printer's systemd units, the journald setting and the Wi-Fi power-saving setting from this repo into place on the Pi. Safe to run again, and meant to be.
 #
 # The unit files live in scripts/setup/systemd/ and are LINKED (`systemctl link`), not copied, so the file systemd reads IS the file in
 # the repo. After a `git pull` that changes one, run this again: it reloads systemd and restarts only the services whose unit changed
@@ -15,6 +15,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 UNITS="pom-whisper pom-scorer pom-oracle pom"
 DROPIN_SOURCE="$ROOT/scripts/setup/journald/90-pom.conf"
 DROPIN="/etc/systemd/journald.conf.d/90-pom.conf"
+WIFI_SOURCE="$ROOT/scripts/setup/networkmanager/90-pom-wifi.conf"
+WIFI_DROPIN="/etc/NetworkManager/conf.d/90-pom-wifi.conf"
 
 if [ "$ROOT" != /home/pi/pom ]; then
     echo "the unit files name /home/pi/pom, but this checkout is $ROOT; move it, or edit the units" >&2
@@ -45,6 +47,15 @@ sudo mkdir -p /etc/systemd/journald.conf.d
 sudo ln -sfn "$DROPIN_SOURCE" "$DROPIN"
 sudo systemctl restart systemd-journald
 sudo journalctl --flush                    # a restart alone leaves the journal in memory (/run); the flush moves it to disk (/var/log/journal)
+
+# Wi-Fi power saving off, NetworkManager's own setting, linked the same way. Only when the link is new or changed, so an update that does not
+# touch it never touches the Wi-Fi. `reapply` puts it on the connection already up without dropping it; if that cannot, it takes hold at the next connect.
+if [ "$(readlink "$WIFI_DROPIN" 2>/dev/null || true)" != "$WIFI_SOURCE" ]; then
+    sudo ln -sfn "$WIFI_SOURCE" "$WIFI_DROPIN"
+    sudo nmcli general reload conf
+    sudo nmcli device reapply wlan0 > /dev/null 2>&1 || true
+    echo "wifi: power saving set off (scripts/setup/networkmanager/90-pom-wifi.conf)"
+fi
 
 sudo systemctl daemon-reload
 for unit in $UNITS; do

@@ -21,6 +21,7 @@ and is **linked** into place (`systemctl link`), not copied: the file systemd re
 - `systemd/pom-whisper.service`, `pom-scorer.service`, `pom-oracle.service`: the three servers. Each keeps its model loaded and resident (`-lm mmap -lzm off` for the llama-servers). They are not pinned with mlock: measured on the Pi, pinning used the memory twice and left under 1 GB available; plain mmap leaves about 7 GB with all three running.
 - `systemd/pom.service`: the Printer (`python -m pom`). It comes after and wants the servers, and never requires them, so a crashed server cannot take it down.
 - `journald/90-pom.conf`: keeps the log across reboots, capped in size (`journalctl -u pom`).
+- `networkmanager/90-pom-wifi.conf`: Wi-Fi power saving off, so the Pi's radio does not sleep through broadcasts and multicast.
 - `check-service-flags.sh`: checks that every flag in the server units is one the installed server lists in its own `--help` (a flag the Pi's build does not know makes the service crash-loop); the install script runs it first.
 - `install-services.sh`: link the units and the log setting, reload systemd, enable them, and restart only the services whose unit file changed (so the models stay loaded). `--start` also starts any that are not running. Run it as the `pi` user.
 - `update-pi.sh`: `git pull`, refresh the Python packages, run the install script, and restart the Printer only if code, settings or the library changed.

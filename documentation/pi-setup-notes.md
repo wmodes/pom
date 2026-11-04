@@ -11,7 +11,7 @@ No passwords or Wi-Fi secrets belong in this file.
 | OS | Raspberry Pi OS (Legacy, 64-bit) Lite = Debian 12 Bookworm, aarch64 |
 | Hostname | `pom1` (reachable as `pom1.local`) |
 | User | `pi`, SSH key only (password login off), passwordless `sudo` |
-| Network | Wi-Fi on the home network, MAC `88:a2:9e:87:88:41` (DHCP, was 192.168.4.22) |
+| Network | Wi-Fi on the home network, MAC `88:a2:9e:87:88:41` (DHCP: 192.168.4.22 on 2026-10-18, 192.168.4.95 on 2026-11-04) |
 | Updates | `apt full-upgrade` done 2026-10-18 (6 packages, no reboot needed) |
 | Bootloader | EEPROM 2026-09-25 (updated 2026-10-18) |
 | Wi-Fi fallback | Comitup 1.47.1 (hotspot `pom1-direct`, portal at `http://10.41.0.1`); tested 2026-10-18 |
@@ -57,6 +57,29 @@ Bookworm is also the release the Comitup docs mention. Revisit Trixie when the u
 3. A `for ... &` loop with ~1000 background jobs hits zsh's job-table limit. Use `xargs -P`.
 4. The router app's online/offline status is unreliable (it kept showing an unplugged device as online). Trust probes, not the app.
 5. A blinking green ACT LED during boot is normal (SD card activity).
+
+### When `pom1.local` will not resolve (diagnosed 2026-11-04)
+
+The installation has to work on whatever Wi-Fi it is given, so a name that does not resolve is a case to understand, not to work around. On 2026-11-04 `ssh pi@pom1.local` stopped working from the Mac while the Pi was running normally. What was found, in the order that narrowed it down:
+
+1. **Was the Pi down?** No. The journal is persistent, so `journalctl -b -1` (the boot before the one you power-cycled into) shows it ran to the last second: the four services never restarted, Wi-Fi stayed associated, the DHCP lease renewed every 2 hours, and there were no kernel, memory, SD-card or Wi-Fi errors. (Whisper's "vad time" in its log is a cumulative counter, not a per-clip time; it climbs by about 42 s an hour and is not a stall.)
+2. **Reach it without the name.** `ssh -o HostKeyAlias=pom1.local pi@192.168.4.95` checks the Pi against the host key already saved for `pom1.local`, so the identity is still verified when only the address is known. Find the address with the ARP sweep above.
+3. **Is the Pi's mDNS responder working?** Ask it directly, over unicast, so no multicast is involved: `dig +short @192.168.4.95 -p 5353 pom1.local` answered `192.168.4.95`. Avahi had joined `224.0.0.251` on `wlan0` and registered the name.
+4. **Does mDNS work between machines on this Wi-Fi?** Use a third machine. `lpfm` (another Pi) resolved `pom1.local` and the Mac's name, and `pom1` resolved `lpfm.local` (`avahi-resolve -n lpfm.local`, or `getent hosts lpfm.local`, which is the resolver programs really use). So the network carries multicast, and the Pi is fine.
+5. **So the Mac is the one that cannot.** `ping pom1.local` and `ping lpfm.local` both fail from the Mac, inside and outside Claude Code's sandbox, after `sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder`, and after turning Wi-Fi off and on. `scutil --dns` is normal (`.local` is handed to mDNS). `dns-sd -B _services._dns-sd._udp local.` finds **no Bonjour service at all**, not even the SSH entries the Pis advertise, so the Mac is receiving no mDNS from anyone. (Run `dns-sd` under `script -q /dev/null dns-sd ...`: redirected to a file it buffers its output and looks empty.)
+
+**Not the cause, as tested:** the Pi's Wi-Fi power saving (it was on, but Pi-to-Pi lookups worked 5 of 5 with it on and 5 of 5 with it off); the Mac's application firewall (off); the Pi's avahi; Claude Code's sandbox.
+
+**Still open: why the Mac receives no mDNS.** Suspects, none confirmed: (a) the Mac's weaker signal (-70 dBm against -54 for the Pis, both on channel 36) or a different mesh node, since the router is an eero and multicast can fail between nodes while unicast works; (b) the Cisco Secure Client agents on the Mac (Umbrella, Zero Trust, Network Visibility), which are known to interfere with `.local` and Bonjour on managed Macs; the eero also answers a plain `http://192.168.4.1` with a redirect to its `blocked.eero.com` page. The cheap tests that tell these apart: take the Mac next to the Pis and try `ping lpfm.local` again; try a phone on the same Wi-Fi; look in Cisco Secure Client for which modules are on. A packet capture on the Mac needs root (`sudo tcpdump -i en0 -n udp port 5353`).
+
+**Working when it fails:**
+- Use the address with `HostKeyAlias` (step 2). The address is DHCP and can change; a DHCP reservation in the router keeps it, but that is a convenience for one house, not a fix.
+- The Pi's own hotspot (`pom1-direct`, portal at `http://10.41.0.1`) needs no mDNS and no router; see the Comitup section.
+- Nothing in the Printer itself depends on mDNS: the Pi talks to its own servers on `127.0.0.1`, and the monitoring page is reached by address.
+
+**Wi-Fi power saving is turned off on the Pi** (`scripts/setup/networkmanager/90-pom-wifi.conf`, linked into `/etc/NetworkManager/conf.d/` by `scripts/setup/install-services.sh`). A radio that sleeps between the access point's beacons can miss broadcast and multicast traffic, and the Printer runs unattended. `sudo iw dev wlan0 get power_save` reports the live state. It was on, by default, until 2026-11-04.
+
+**Diagnostic tools installed on pom1 on 2026-11-04:** `tcpdump`, `iw` (in `/usr/sbin`, so use `sudo /usr/sbin/iw`) and `avahi-utils` (`avahi-browse`, `avahi-resolve`). Watching mDNS from the Pi: `sudo tcpdump -i wlan0 -n udp port 5353`.
 
 ## Reading a Pi SD card's logs from macOS (read-only)
 
@@ -233,6 +256,7 @@ Fan noise may matter for the hidden mic, so include it in the typewriter idle-no
 
 ## Pending
 
+- [ ] **Why the Mac cannot resolve `.local` names** (2026-11-04): the Pis and the network are fine; the Mac sees no Bonjour services at all. See "When `pom1.local` will not resolve". Next test: the Mac beside the Pis, and a phone.
 - [x] **Bootloader EEPROM update.** Done 2026-10-18: 2025-08-28 -> 2026-09-25 via `sudo rpi-eeprom-update -a` (`VERIFY: SUCCESS`), then reboot. `rpi-eeprom-update` now reports up to date.
 - [x] **Wi-Fi fallback AP for venues.** Done 2026-10-18 with Comitup (see the section above). Still untested: whether it rescans for known networks while the hotspot is up, and the real venue Wi-Fi flow.
 - [x] Fan verified 2026-10-18: during the llama.cpp build the Pi reached 52.7 C and `fan1_input` read 2794 RPM (it is off at idle).

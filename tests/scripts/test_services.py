@@ -197,6 +197,25 @@ class TestTheLogs:
         assert "90-pom.conf" in (SETUP / "install-services.sh").read_text(encoding="utf-8")
 
 
+class TestTheWifi:
+    def test_wifi_power_saving_is_turned_off_for_every_connection(self):
+        text = (SETUP / "networkmanager" / "90-pom-wifi.conf").read_text(encoding="utf-8")
+        assert re.search(r"^\[connection\]\s*$", text, re.MULTILINE) and re.search(r"^wifi\.powersave = 2\s*$", text, re.MULTILINE)
+
+    def test_the_install_script_links_it_into_networkmanager_and_reloads_the_config(self):
+        text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
+        assert '/etc/NetworkManager/conf.d/90-pom-wifi.conf' in text and "networkmanager/90-pom-wifi.conf" in text
+        assert text.index('ln -sfn "$WIFI_SOURCE" "$WIFI_DROPIN"') < text.index("nmcli general reload conf") < text.index("nmcli device reapply wlan0")
+
+    def test_the_wifi_is_only_touched_when_the_link_is_new_or_changed(self):
+        text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
+        assert 'readlink "$WIFI_DROPIN"' in text and text.index('readlink "$WIFI_DROPIN"') < text.index("nmcli general reload conf")
+
+    def test_a_reapply_that_cannot_be_done_does_not_stop_the_install(self):
+        # `set -e` is on: a Pi whose NetworkManager cannot reapply yet must still finish linking the services.
+        assert "nmcli device reapply wlan0 > /dev/null 2>&1 || true" in (SETUP / "install-services.sh").read_text(encoding="utf-8")
+
+
 class TestTheFlagCheck:
     """check-service-flags.sh against a stand-in server whose --help lists some flags."""
     HELP = "usage: fakeserver\n  -m,  --model FILE   the model\n  -t,  --threads N    threads\n  -lm, --load-mode MODE   how to load\n      --jinja         templates\n"

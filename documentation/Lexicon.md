@@ -391,9 +391,9 @@ The places we try things, the records we keep, and the practices we work by.
 **Records**
 
 - **handoff**: Where the project stands and the working rules, for whoever picks the work up next. Example:
-  `documentation/project-state.md` (was/still)
+  `documentation/Project State.md` (was/still)
 - **changelog**: Updated in the same commit as each change; commits are small and frequent. Example: `CHANGELOG.md` (was/still)
-- **AI ledger**: The record of remote AI (Claude) use. Local models are never counted. Example: `documentation/ai-ledger.md`
+- **AI ledger**: The record of remote AI (Claude) use. Local models are never counted. Example: `documentation/AI Ledger.md`
   (was/still)
 
 **Practices**

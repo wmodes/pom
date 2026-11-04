@@ -1,6 +1,6 @@
 # Bake-off report
 
-Marks are yes/no, yes is good; see documentation/bakeoff-rubric.md.
+Marks are yes/no, yes is good; see documentation/Bakeoff Rubric.md.
 
 ## Hermes-3-Llama-3.1-8B-GGUF_Q4_K_M
 

@@ -96,7 +96,7 @@ def main() -> None:
     if not results or not key:
         sys.exit("nothing to report: run the benchmark, make the rating sheet and rate it first")
 
-    out = ["# Bake-off report", "", "Marks are yes/no, yes is good; see documentation/bakeoff-rubric.md.", ""]
+    out = ["# Bake-off report", "", "Marks are yes/no, yes is good; see documentation/Bakeoff Rubric.md.", ""]
     ranking = []
     for label, (run, cells) in results.items():
         rows = []

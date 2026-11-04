@@ -79,7 +79,7 @@ To watch what it is doing, switch on the monitoring page: copy `config/pom.local
 
 ### On the Pi
 
-The Printer is `python -m pom`, run by systemd, with each model server as its own service so a crashed server restarts without taking the Printer down. Provisioning (OS, Wi-Fi with a fallback hotspot, whisper.cpp and llama.cpp builds) is in [`documentation/pi-setup-notes.md`](documentation/pi-setup-notes.md). The unit files are in [`scripts/setup/systemd/`](scripts/setup/systemd/) and are linked into place by `scripts/setup/install-services.sh`, so a `git pull` then `scripts/setup/update-pi.sh` brings the Pi up to date; the log is `journalctl -u pom`.
+The Printer is `python -m pom`, run by systemd, with each model server as its own service so a crashed server restarts without taking the Printer down. Provisioning (OS, Wi-Fi with a fallback hotspot, whisper.cpp and llama.cpp builds) is in [`documentation/Pi Setup Notes.md`](documentation/Pi%20Setup%20Notes.md). The unit files are in [`scripts/setup/systemd/`](scripts/setup/systemd/) and are linked into place by `scripts/setup/install-services.sh`, so a `git pull` then `scripts/setup/update-pi.sh` brings the Pi up to date; the log is `journalctl -u pom`.
 
 ## Configuration
 
@@ -122,11 +122,11 @@ python -m pytest                    # the whole suite (over 3,000 tests)
 ```
 
 - **Testbenches.** [`scripts/dev/README.md`](scripts/dev/README.md) lists small tools that exercise one stage with the real modules: type a hinge and read the portent, type sentences and see their scores, watch what would qualify on a recording.
-- **Vocabulary.** [`documentation/lexicon.md`](documentation/lexicon.md) defines the words the code, docs and conversation share (hinge, portent, bar, circulation, turn, and the rest). Use them.
-- **Design.** [`documentation/pom_design_doc.md`](documentation/pom_design_doc.md) explains how it works and why, and what was measured. [`documentation/project-state.md`](documentation/project-state.md) is the working handoff.
+- **Vocabulary.** [`documentation/Lexicon.md`](documentation/Lexicon.md) defines the words the code, docs and conversation share (hinge, portent, bar, circulation, turn, and the rest). Use them.
+- **Design.** [`documentation/Design Document.md`](documentation/Design%20Document.md) explains how it works and why, and what was measured. [`documentation/Project State.md`](documentation/Project%20State.md) is the working handoff.
 - **History.** [`CHANGELOG.md`](CHANGELOG.md) records every change.
-- **Adding to the library.** [`documentation/adding-material.md`](documentation/adding-material.md).
-- **AI use.** Use of remote AI in this project is logged in [`documentation/ai-ledger.md`](documentation/ai-ledger.md). The models that run the installation are local and are not counted there.
+- **Adding to the library.** [`documentation/Adding Material.md`](documentation/Adding%20Material.md).
+- **AI use.** Use of remote AI in this project is logged in [`documentation/AI Ledger.md`](documentation/AI%20Ledger.md). The models that run the installation are local and are not counted there.
 
 ## Where it stands
 

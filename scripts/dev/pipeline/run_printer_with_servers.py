@@ -2,7 +2,7 @@
 
 The Printer (`python -m pom`) listens to whisper-server and talks to two llama-servers, the scorer model and the oracle
 model. All three stay loaded in memory at once; that is the design (see "All the models stay loaded" in
-documentation/pom_design_doc.md). This script starts the three, waits until each answers, runs `python -m pom` on
+documentation/Design Document.md). This script starts the three, waits until each answers, runs `python -m pom` on
 them in the foreground, and when the Printer ends (or you press Ctrl-C) stops the servers it started.
 
 Every option it does not use itself goes straight to the Printer, so anything `python -m pom` takes works here:

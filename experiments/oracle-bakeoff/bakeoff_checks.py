@@ -3,7 +3,7 @@
 Part of experiments/oracle-bakeoff. Three of the rubric's seven yes/no items are mechanical, so they are
 decided here, the same way for every model, instead of by eye: the portent does not repeat the hinge, it has no
 extra text, and its length is close to the exemplar's. (The other four, and any override of these three, are
-judged by reading; see documentation/bakeoff-rubric.md.)
+judged by reading; see documentation/Bakeoff Rubric.md.)
 
 Nothing here reads a config file or a model: each function takes text and answers.
 """

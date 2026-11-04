@@ -5,7 +5,7 @@ Part of experiments/oracle-bakeoff. For each benchmark hinge (benchmark_hinges.t
 exemplars, builds the prompt with the real PromptBuilder, asks the model for a portent through the real
 OracleModelClient, and writes one line per portent to results/<label>.jsonl: the hinge, the exemplars it was
 shown, the portent, the time, and the three mechanical checks (bakeoff_checks.py). Rating the portents is done
-afterwards, by reading, against documentation/bakeoff-rubric.md.
+afterwards, by reading, against documentation/Bakeoff Rubric.md.
 
 THE PROMPT AND SETTINGS ARE FROZEN BY BEING RECORDED. Nothing is configured here: the prompt, temperature,
 max_tokens and exemplar count come from config/pom.toml, exactly as the Printer will use them, and the first line

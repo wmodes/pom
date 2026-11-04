@@ -2,7 +2,7 @@
 
 A repeatable way to compare models as the oracle. Each model gets the same prompt, the same settings and the
 same exemplars for the same hinges, and its portents are rated against a fixed rubric
-(`documentation/bakeoff-rubric.md`). The results so far are in `documentation/model-bakeoff.md`.
+(`documentation/Bakeoff Rubric.md`). The results so far are in `documentation/Model Bakeoff.md`.
 
 ## What is frozen
 

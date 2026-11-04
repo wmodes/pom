@@ -345,7 +345,7 @@ def ocr_pdf(pdf, cache):
     """OCRs a scanned PDF with tesseract and caches the result next to the PDF.
 
     OCR is slow, so the text is cached in raw/ (ignored by git). The output
-    depends on the tesseract version, which is noted in documentation/library-notes.md.
+    depends on the tesseract version, which is noted in documentation/Library Notes.md.
     """
     if cache.exists():
         return cache.read_text(encoding="utf-8")

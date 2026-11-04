@@ -10,7 +10,7 @@ find it -> add -> process -> set markers/flags -> audit -> promote -> catalog ->
 The commands below use `python`, meaning the pom venv's Python (`/Users/wmodes/dev/envs/pom/bin/python`).
 Library scripts are in `scripts/dev/library/`. For what each library column and flag means, see
 `library/README.md`; for how the standardizer works and what went wrong before, see
-`documentation/library-notes.md`.
+`documentation/Library Notes.md`.
 
 ## 1. Decide where it belongs
 

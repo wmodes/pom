@@ -1,7 +1,7 @@
 # Bake-off rubric
 
 How a portent is rated in the oracle model bake-off. The benchmark, how it is run and what is frozen are in
-`experiments/oracle-bakeoff/README.md`; the results so far are in `documentation/model-bakeoff.md`.
+`experiments/oracle-bakeoff/README.md`; the results so far are in `documentation/Model Bakeoff.md`.
 
 Each portent gets seven yes/no marks, all worded so that **yes is good**. A portent's score is its number of
 yeses, out of 7. A model's score is the share of yeses on each item over all of its portents, and its speed.

@@ -2,8 +2,8 @@
 
 A handoff for whoever picks the work up next (a person, or Claude after its context was compacted).
 Written 2026-10-21, rewritten 2026-10-27. It says where things stand, the rules we work by, and what comes next.
-For detail it points at the other docs instead of repeating them: **the design is in `pom_design_doc.md`**, the words
-are in `lexicon.md`. If this file and the code disagree, trust the code and fix this file.
+For detail it points at the other docs instead of repeating them: **the design is in `Design Document.md`**, the words
+are in `Lexicon.md`. If this file and the code disagree, trust the code and fix this file.
 
 ## What this is
 
@@ -142,7 +142,7 @@ src/pom/
 
 ## Design decisions to keep
 
-The reasoning and the numbers are in `pom_design_doc.md`. In short:
+The reasoning and the numbers are in `Design Document.md`. In short:
 
 - **The pipeline:** whisper (cutting the audio itself) -> the track split (words / room tone / nothing) ->
   TakeCutter -> Scorer -> BarKeeper -> the qualifying sentence is the hinge -> PromptBuilder -> oracle
@@ -159,7 +159,7 @@ The reasoning and the numbers are in `pom_design_doc.md`. In short:
   (`scripts/dev/library/validate_output.py`) is a deliberate stub: verbatim-overlap checking was judged the wrong measure.
 - **Hinge pairs** (a mundane overheard line paired with a tangential in-shelf reply) will be curated by Wes, Neil
   and River, with a large LLM drafting candidates; that drafting is logged in the AI-use ledger
-  (`documentation/ai-ledger.md`, which counts remote AI use only, never local models).
+  (`documentation/AI Ledger.md`, which counts remote AI use only, never local models).
 - **The Observation Session theatre.** The site's "clean room" and wireless ban are pure theatre; the
   Pi keeps its radios. Speech is transcribed and discarded; nothing is kept. A door notice such as "Speech in the room
   is transcribed and discarded. Nothing is kept." is the honest line.
@@ -174,9 +174,9 @@ at load time, never stored. Shelves are *what the oracle might say*, not where t
 by default share the draws equally. `library/samples/` holds Wes's 100 benchmark sentences for the Scorer (test inputs, not
 library material).
 
-- Adding material, start to finish: `documentation/adding-material.md`.
+- Adding material, start to finish: `documentation/Adding Material.md`.
 - Rules, columns, flags: `library/README.md`. How the standardizer works and what went wrong:
-  `documentation/library-notes.md`.
+  `documentation/Library Notes.md`.
 - Rights: public domain, plus `owner-cleared` (not public domain, decided by Wes: the IBM/Lexmark
   Wheelwriter manuals and the dad jokes). Wes made the repo public knowing this; `library.py
   publish-check` still flags them by design. Licensing and content are not concerns for this project.
@@ -212,7 +212,7 @@ To hear the Printer's judgment live, on the Pi: `cd ~/pom/experiments/hearing-de
 scorer's llama-server and run `probe_hearing_pipeline.py --wav FILE --speed 0 --no-explain` (see that folder's README).
 The Pi oracle benchmark is `experiments/pi-oracle-benchmark/benchmark_oracle_pi_run.sh`, run on the Pi.
 
-The Pi (`ssh pi@pom1.local`) is only reachable on the home network. See `documentation/pi-setup-notes.md` for its setup,
+The Pi (`ssh pi@pom1.local`) is only reachable on the home network. See `documentation/Pi Setup Notes.md` for its setup,
 Comitup Wi-Fi fallback and the whisper.cpp and llama.cpp setup scripts.
 
 ## Decision log
@@ -255,7 +255,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 - **Qualifying** (2026-10-27). *Superseded:* a fixed 7.0 threshold, then 25% above a decaying average with a floor (it fired on
   34% of sentences in recorded meetings and barely responded to its setting). Then Tukey's fence (2026-10-27 to 29; above the real top of the scores).
   *Current:* a percentile of a time window with a cooldown, no floor (see the design doc and `[qualifying]` in `config/pom.toml`).
-- **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `model-bakeoff.md`; the Pi run
+- **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `Model Bakeoff.md`; the Pi run
   is in `experiments/pi-oracle-benchmark/`. Writing is memory-speed-bound on the Pi (about 2 tokens a second) and the first
   word waits on the prompt (about 0.095 s a token). llama.cpp reuses none of a changed prompt for Qwen3.5 (a hybrid model);
   left alone.
@@ -277,7 +277,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
 2. **The Printing side:** the "stop listening while printing" signal belongs to the Conductor. (The `TerminalPort` is built too: paced serial, flow control, CR+LF, keyboard lines back with echoplex; config `[terminal]`; tested on fakes only, not yet on the machine. The `PortentFormatter` is built:
    fences out, a quote indented with blank lines around it, ASCII only, wrapped to the `[printing]` line width, `linefeeds_after_portent` line feeds at the end.)
 3. **The service on the Pi.** The Conductor and the entry point are built (`python -m pom`) and the Pi has its virtualenv
-   (`/home/pi/envs/pom`). What is left: the systemd units (a draft is in `pi-setup-notes.md`), the startup duties in `startup.py` (mic gain,
+   (`/home/pi/envs/pom`). What is left: the systemd units (a draft is in `Pi Setup Notes.md`), the startup duties in `startup.py` (mic gain,
    checks for whisper, the oracle model and the typewriter...). Updating the Pi is then `git pull` plus a restart script
    (Wes's idea: fast-forward pull only, refuse on a dirty tree, install dependencies only if they changed, check the new config before
    touching the running service, skip the restart for docs-only changes, then show the startup "ready" line).

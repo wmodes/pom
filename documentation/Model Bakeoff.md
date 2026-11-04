@@ -2,7 +2,7 @@
 
 Which local model should write the portent. This is the record of what each candidate did, kept so the choice is
 not made from memory. It is general, not detailed: it says what each model is good and bad at, not every output.
-The method is in `experiments/oracle-bakeoff/README.md` and the rubric in `documentation/bakeoff-rubric.md`.
+The method is in `experiments/oracle-bakeoff/README.md` and the rubric in `documentation/Bakeoff Rubric.md`.
 
 **Status (2026-10-26): seven models, one frozen prompt, 160 portents each, all rated.** Qwen3.5-9B comes out
 ahead, Gemma 2 9B second, and the Llama 3.1 8B models are in the middle of the pack. Ratings are by Claude,

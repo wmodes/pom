@@ -106,6 +106,6 @@ The manifest is edited only through `add` and `set`, never by hand or by scratch
 
 A long file with several self-contained parts (Chaucer, Shakespeare) becomes several rows with the same `url` and different markers; a part that is mostly plot, or is only banter, is left out.
 
-Promoting is not the end: the text still has to be cut into passages and given a weight. The whole path, from choosing a shelf to the commit, is in `documentation/adding-material.md`.
+Promoting is not the end: the text still has to be cut into passages and given a weight. The whole path, from choosing a shelf to the commit, is in `documentation/Adding Material.md`.
 
-See `documentation/library-notes.md` for the process, tool versions, lessons learned, and known gaps.
+See `documentation/Library Notes.md` for the process, tool versions, lessons learned, and known gaps.

@@ -11,6 +11,7 @@ library path (`$ORIGIN`) so a built folder can be moved without rebuilding. Over
 
 Run them on the Pi. They skip steps already done and never delete an existing checkout.
 
+- `setup-tailscale.sh` puts the Pi on a Tailscale network (apt repository, package, service, sign-in, name resolution left alone) so its pages and a shell can be reached from anywhere. Safe to run again. See "Remote access (Tailscale)" in the Pi setup notes.
 - `setup-nltk-data.sh` fetches the NLTK data (WordNet, stopwords, a part-of-speech tagger) into the gitignored `data/nltk/` folder, for the Scorer. Run it on each machine after `pip install -r requirements.txt`.
 
 ## Running it as services

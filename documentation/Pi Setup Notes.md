@@ -15,6 +15,7 @@ No passwords or Wi-Fi secrets belong in this file.
 | Updates | `apt full-upgrade` done 2026-10-18 (6 packages, no reboot needed) |
 | Bootloader | EEPROM 2026-09-25 (updated 2026-10-18) |
 | Wi-Fi fallback | Comitup 1.47.1 (hotspot `pom1-direct`, portal at `http://10.41.0.1`); tested 2026-10-18 |
+| Remote access | Tailscale (installed 2026-11-06, `scripts/setup/setup-tailscale.sh`): the monitor and a shell from anywhere, by the name `pom1`; see "Remote access (Tailscale)" |
 | Mic | Audio-Technica ATR4697-USB (omni boundary, **wired** USB-C with USB-A adapter, 1.5 m cable); ordered, not yet tested |
 
 Connect with `ssh pi@pom1.local`.
@@ -240,6 +241,28 @@ command) all three servers were answering within about 90 s (a cold load from th
 NOT answering" and then saw them come up, the monitor's lights were green, 7.1 GB was available, and the journal had kept the previous boot (`journalctl --list-boots`).
 The microphone gain was still 24 of 30 with auto gain off: ALSA saves the mixer state at shutdown and restores it at boot, so it does not reset on a clean reboot
 (the start-up step stays as a check that sets it if it differs). Not yet tried: the typewriter, and a real voice.
+
+## Remote access (Tailscale)
+
+*Installed 2026-11-06.* On the same network the Pi is reachable as `pom1.local` (`ssh pi@pom1.local`, `http://pom1.local:8080`). Away from it (a phone on a cafe's cellular or Wi-Fi) it
+is reached through Tailscale: a private network between the devices signed in to one account. Each runs a small client and gets a private address and a name (`pom1`), they dial out to
+Tailscale's coordination service, and they connect to each other directly when they can and through encrypted relays when they cannot. Nothing on the Pi listens on the open
+internet and no router or firewall changes are needed, which matters behind a venue's or the lab's network.
+
+- **Install:** `scripts/setup/setup-tailscale.sh`, run on the Pi as `pi`. It adds Tailscale's own apt repository for the OS (`debian` or `raspbian`, by release name), installs the package,
+  enables `tailscaled` at boot, and signs the Pi in. Signing in prints a link; open it on any device, sign in to the tailnet's account (use two-factor on that account, since
+  whoever controls it controls which devices join), and approve the Pi once. Safe to run again.
+- **Name resolution is left alone.** The script sets `--accept-dns=false`, so Tailscale never rewrites the Pi's `resolv.conf` (NetworkManager's, pointing at the router). The names such as `pom1`
+  work on the phone and the Mac, which is where they are wanted. This was chosen because of the venue and lab DNS trouble described above.
+- **What it does not touch:** the Printer and the three model servers (they listen on localhost only), Comitup (in hotspot mode Tailscale simply goes offline and returns with Wi-Fi), `pom1.local`
+  on the LAN, and the update flow. Only SSH (22) and the monitor (8080) are open to the network, as before; they are now also reachable on the tailnet address. It uses little memory
+  (tens of MB) and `pom.service` does not depend on it.
+- **From a phone:** install the Tailscale app, sign in to the same account, switch it on, then open `http://pom1:8080` (type the `http://`; the full name or the `100.x` address, both shown in the app, work
+  if the short one does not). For a shell, use an SSH app to `pom1` as `pi` with a key. Tested from a phone on cellular, 2026-11-06.
+- **Not turned on:** Tailscale SSH (it would let the account log in without keys), exit nodes, and subnet routing (which would also enable IP forwarding). Each is a separate decision.
+- **Device keys expire** after a while by default (about 6 months); an expired Pi shows as such in Tailscale's admin console and is re-approved there, or the expiry is disabled for that device.
+- **Undo:** `sudo tailscale down`, `sudo apt remove tailscale`, and remove the Pi from the admin console.
+- **Another Pi in the lab (`lpfm`, not part of this repo)** was put on the same tailnet the same way the same day, so from `pom1` it is reachable as `ssh pi@lpfm` too.
 
 ## Fan check
 

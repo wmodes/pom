@@ -152,7 +152,7 @@ class TestThePrinterUnit:
 
 
 class TestTheScripts:
-    @pytest.mark.parametrize("script", ["install-services.sh", "update-pi.sh"])
+    @pytest.mark.parametrize("script", ["install-services.sh", "update-pi.sh", "setup-tailscale.sh"])
     def test_it_is_executable_and_parses(self, script):
         path = SETUP / script
         assert os.access(path, os.X_OK)

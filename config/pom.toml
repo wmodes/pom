@@ -145,7 +145,7 @@ cooldown_seconds = 60
 # what the bar is built from as the bar plus this much of the way up to the score: 1 goes in as the score itself, 0 as the
 # bar itself (so it adds nothing new), 0.5 half way between. A plain number, not limited to 0 to 1, so an experiment may
 # try 1.1 or -0.1. All three bars work this way.
-qualifier_bar_influence = 0.5
+qualifier_bar_influence = 0.75
 
 # A line typed on the typewriter's keyboard is someone talking to the Printer directly, so it is judged against the same
 # bar as the room's sentences but gets a bonus: its score is multiplied by this before it meets the bar. 1 is no bonus;

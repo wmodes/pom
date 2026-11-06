@@ -19,9 +19,9 @@ def bar(**options):
     return DecayingQuantileBar(**options)
 
 
-def feed(b, scores, start=0.0, step=1.0, weight=1.0):
+def feed(b, scores, start=0.0, step=1.0):
     for i, score in enumerate(scores):
-        b.add(score, start + i * step, weight)
+        b.add(score, start + i * step)
 
 
 def line_through_the_shares(scores, percentile):
@@ -205,117 +205,6 @@ class TestTheDecay:
         b = DecayingQuantileBar(half_life_seconds=60)
         b.add(5.0, 100.0)
         assert b.level_at(50.0) is not None
-
-
-class TestTheWeightOfAScore:
-    """`add` takes the weight the BarKeeper gives a score: 1 is ordinary, 0 or less leaves it out, in between it counts for that share."""
-
-    def test_a_score_with_no_weight_is_left_out(self):
-        b = DecayingQuantileBar()
-        b.add(9.0, 0.0, 0.0)
-        assert b.window_size_at(0.0) == 0
-
-    def test_a_score_with_a_normal_weight_is_kept(self):
-        b = DecayingQuantileBar()
-        b.add(9.0, 0.0, 1.0)
-        assert b.window_size_at(0.0) == 1
-
-    def test_a_score_with_no_third_argument_counts_as_an_ordinary_one(self):
-        b = DecayingQuantileBar()
-        b.add(9.0, 0.0)
-        assert b.window_size_at(0.0) == 1
-
-    def test_a_negative_weight_is_left_out(self):
-        b = DecayingQuantileBar()
-        b.add(9.0, 0.0, -0.1)
-        assert b.window_size_at(0.0) == 0
-
-    def test_only_the_scores_with_no_weight_are_left_out(self):
-        b = DecayingQuantileBar()
-        b.add(3.0, 0.0)
-        b.add(9.0, 1.0, 0.0)
-        b.add(4.0, 2.0)
-        assert b.window_size_at(2.0) == 2
-
-    def test_leaving_a_zinger_out_keeps_the_bar_at_the_rooms_high_tide(self):
-        keep, leave = bar(percentile=99.5, starting_bar=3.0), bar(percentile=99.5, starting_bar=3.0)
-        for b in (keep, leave):
-            feed(b, [3.0] * 30)
-        keep.add(9.0, 30.0, 1.0)
-        leave.add(9.0, 30.0, 0.0)
-        assert keep.level_at(31.0) == pytest.approx(8.07, abs=0.01) and leave.level_at(31.0) == pytest.approx(3.0)
-
-    @pytest.mark.parametrize("weight", [0.0, -0.1, -5])
-    def test_a_score_with_no_weight_is_not_kept_at_all(self, weight):
-        b = DecayingQuantileBar()
-        b.add(9.0, 0.0, weight)
-        assert len(b._memory) == 0
-
-    def test_a_low_score_with_no_weight_does_not_pull_the_interpolation_down(self):
-        """A kept zero-weight score would start the line the first real score is read along, from its own value instead of that score's."""
-        alone, with_a_ghost = bar(percentile=10, starting_bar=3.0), bar(percentile=10, starting_bar=3.0)
-        for b in (alone, with_a_ghost):
-            b.add(5.0, 1.0)
-            b.add(7.0, 2.0)
-        with_a_ghost.add(0.0, 3.0, 0.0)
-        assert with_a_ghost.level_at(4.0) == pytest.approx(alone.level_at(4.0))
-
-    def test_a_weight_that_is_not_a_number_changes_nothing(self):
-        b = DecayingQuantileBar()
-        for junk in (None, "1", True, float("nan"), float("inf")):
-            b.add(9.0, 0.0, junk)
-        assert b.window_size_at(0.0) == 0
-
-class TestTheDialBetweenTheExtremes:
-    """A weight between 0 and 1 puts the bar between leaving the score out and counting it whole."""
-
-    @staticmethod
-    def level_with_a_zinger_of(weight):
-        b = bar(percentile=99.5, starting_bar=3.0)
-        feed(b, [3.0] * 30)
-        b.add(9.0, 30.0, weight)
-        return b.level_at(31.0)
-
-    def test_the_bar_rises_with_the_weight(self):
-        levels = [self.level_with_a_zinger_of(w) for w in (0.0, 0.25, 0.5, 1.0)]
-        assert levels == sorted(levels) and len(set(levels)) == 4
-        assert levels[0] == pytest.approx(3.0)
-
-    def test_a_weight_of_a_half_counts_half_as_much(self):
-        b = bar()
-        feed(b, [5.0, 5.0], weight=0.5)
-        assert b.window_size_at(2.0) == 1
-
-    def test_a_weight_above_one_counts_for_more_than_an_ordinary_score(self):
-        b = bar()
-        feed(b, [5.0, 5.0], weight=2.0)
-        assert b.window_size_at(2.0) == 4
-
-    def test_a_weight_above_one_raises_the_bar_more_than_a_weight_of_one(self):
-        assert self.level_with_a_zinger_of(2.0) >= self.level_with_a_zinger_of(1.0)
-
-    def test_a_share_is_the_same_as_aging_the_score_by_half_life_times_log2_of_one_over_the_share(self):
-        """A score at weight 0.5 equals an ordinary one heard a half-life earlier, and 0.25 equals two half-lives, 0.75 about 0.415."""
-        import math
-        half_life = 300.0
-        for share in (0.5, 0.25, 0.75):
-            weighted = DecayingQuantileBar(half_life_seconds=half_life, starting_bar=3.0)
-            aged = DecayingQuantileBar(half_life_seconds=half_life, starting_bar=3.0)
-            for b in (weighted, aged):
-                b.level_at(0.0)                                   # the starting line begins at the same moment
-                b.add(9.0, 5000.0 - 1.0, 1.0)                     # the same background score in both
-            weighted.add(7.0, 5000.0, share)
-            aged.add(7.0, 5000.0 - half_life * math.log2(1.0 / share), 1.0)
-            assert weighted.level_at(5000.0) == pytest.approx(aged.level_at(5000.0), abs=1e-9)
-            assert weighted.window_size_at(5000.0) == aged.window_size_at(5000.0)
-
-    def test_the_share_stays_the_same_however_long_ago_the_score_was_heard(self):
-        b = DecayingQuantileBar(half_life_seconds=100.0, starting_bar=3.0)
-        b.add(8.0, 0.0, 0.5)
-        b.add(8.0, 0.0, 1.0)
-        for later in (0.0, 100.0, 250.0):
-            half, whole = b._memory[0][2] * b._weight(later), b._memory[1][2] * b._weight(later)
-            assert half / whole == pytest.approx(0.5)
 
 
 class TestTheWindowSize:

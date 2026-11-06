@@ -9,9 +9,10 @@ scores, a decaying quantile, a moving average), each its own class, so the way o
 parts every way shares:
 
   * Qualifying: a score qualifies when it is ABOVE the bar, as the bar stood BEFORE that score was added, so a sentence is judged
-    against the room as it was before it was said. A score that stood above the bar, whether it qualified or was held by the cooldown, is then handed to the bar
-    at the qualifier's share of a normal score's weight (`qualifier_bar_influence`), so the zinger that fired does not hold the bar up as if it
-    were an ordinary score (0 leaves it out entirely, 1 counts it in full).
+    against the room as it was before it was said. A score that stood above the bar, whether it qualified or was held by the cooldown, goes
+    to the bar as the bar plus `qualifier_bar_influence` of the way up to the score, so the zinger that fired does not hold the bar up as if it
+    were an ordinary score (1 goes in as the score itself, 0 as the bar itself, 0.5 half way between).
+    A typed line goes in by the same rule with its own dial (`typed_lines_bar_influence`), whether or not it stood above the bar.
   * The cooldown: after a qualifier, a score above the bar is not marked until `cooldown_seconds` have passed since that qualifier (60 to
     begin with; 0 turns it off). It is HELD: it still goes to the bar, and it does not restart the cooldown. A burst of strong
     sentences, such as a run of jokes, gives one qualifier and not six, and the next one comes from the room once the cooldown is over.
@@ -24,11 +25,10 @@ A clip that has no score (None), or one the bar ignores (a score under a floor),
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad input to
     `rule` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
-  * THE QUALIFIER'S INFLUENCE IS THE BARKEEPER'S, NOT EACH BAR'S. How much a score that stood above the bar counts toward the bar is one
-    dial, `qualifier_bar_influence`, a plain number that is not limited to 0 to 1 (an experiment may want 1.1 or -0.1): the BarKeeper works out
-    each score's weight and hands it to whichever bar it has. A bar that cannot use a weight (see Bar.add) treats 0 or less as "leave it out" and
-    anything above 0 as "count it". Over a steady room the share of scores above the bar settles near (1 - percentile) / influence, so
-    the dial stretches the percentile's target tail.
+  * THE QUALIFIER'S INFLUENCE IS THE BARKEEPER'S, NOT EACH BAR'S. How much a score that stood above the bar influences the bar is one
+    dial, `qualifier_bar_influence`, a plain number that is not limited to 0 to 1 (an experiment may want 1.1 or -0.1): the BarKeeper changes
+    the score's value on its way in (bar + influence * (score - bar)) and hands it to whichever bar it has, so every bar gets the dial and none
+    needs to know about it. Typed lines (`rule_typed`) use the same rule with their own dial.
   * The bar is passed in, already built (`bar_keeper_from_settings` builds the one the config chose), so a new way of deciding is a new
     Bar and nothing here changes.
   * This module never reads Config, and it never sees any words, only numbers.
@@ -56,7 +56,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 DEFAULT_COOLDOWN_SECONDS = 60.0
-DEFAULT_QUALIFIER_BAR_INFLUENCE = 0.5     # a score that stood above the bar counts half as much as an ordinary one
+DEFAULT_QUALIFIER_BAR_INFLUENCE = 0.5     # a score that stood above the bar goes into the bar half way up from the bar to the score
 LOCK_TIMEOUT_SECONDS = 5.0   # the longest a call waits for the lock; the work inside it takes microseconds
 
 
@@ -70,7 +70,6 @@ class Ruling(Enum):
     DID_NOT_QUALIFY = "did not qualify"        # handed to the bar
     QUALIFIED = "qualified"    # stood above the bar (and was handed to the bar too)
     HELD = "held"    # stood above the bar, but a qualifier was too recent (handed to the bar like a qualifier)
-    TYPED_DNQ = "typed DNQ"          # a direct score (typed) that did not stand above the bar and was kept out of it
 
 
 class BarKeeper:
@@ -86,8 +85,8 @@ class BarKeeper:
         """Args:
             bar: The Bar that works out where the bar sits. None means a PercentileBar with its defaults.
             cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 means no cooldown).
-            qualifier_bar_influence: How much a score that stood above the bar counts toward the bar, against 1 for an ordinary score. Any
-                number (not limited to 0 to 1): 0 or less leaves it out, above 1 counts it for more.
+            qualifier_bar_influence: How far up from the bar to the score a score that stood above the bar goes into the bar: 1 is the score
+                itself, 0 is the bar itself. Any number (not limited to 0 to 1).
             strict: Raise BarKeeperError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=BarKeeperError, logger=_log)
@@ -119,6 +118,15 @@ class BarKeeper:
         return DEFAULT_QUALIFIER_BAR_INFLUENCE
 
     @staticmethod
+    def _value_for_bar(score: float, level: Optional[float], influence: float) -> float:
+        """The value a score goes into the bar as: the bar plus `influence` of the way up to the score.
+
+        With 1 it is the score itself, with 0 it is the bar, and with 0.5 it is half way between. This is the one rule, for a qualifier and for a
+        typed line alike (each with its own influence). With no bar there is nothing to be relative to, so the score goes in as it is.
+        """
+        return float(score) if level is None else level + influence * (score - level)
+
+    @staticmethod
     def _is_number(value) -> bool:
         """True for a real int or float (not a bool, and not NaN or infinity)."""
         return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
@@ -140,7 +148,7 @@ class BarKeeper:
     def describe(self) -> str:
         """One line saying how the BarKeeper works and how it is set."""
         return (f"{self._bar.describe()}; at most one qualifier every {self._cooldown_seconds:g} s; "
-                f"a qualifying score counts {self._qualifier_bar_influence * 100:g}% toward the bar")
+                f"a qualifying score goes into the bar {self._qualifier_bar_influence * 100:g}% of the way up from the bar")
 
     def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to qualify at time `now`, or None if `now` is not a number or the bar has none."""
@@ -180,7 +188,7 @@ class BarKeeper:
             qualified = above and not cooling
             if qualified:
                 self._last_qualifier = now
-            self._bar.add(float(score), now, self._qualifier_bar_influence if above else 1.0)    # a held score stood above the bar too: it counts as the qualifier it would have been
+            self._bar.add(self._value_for_bar(score, level, self._qualifier_bar_influence) if above else float(score), now)    # a held score stood above the bar too: it goes in as the qualifier it would have been
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
@@ -191,12 +199,11 @@ class BarKeeper:
         """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
 
         Such a score is held to the same bar as the room's, but it takes no part in the room's rhythm: no cooldown applies to it,
-        and a qualifier it causes does not start one. How much it also affects the bar (feeds what it is built from) is `bar_influence`,
-        against 1 for a score heard in the room: 0 (the default) keeps the bar a picture of the room alone, so the score changes nothing here.
-        A typed line that stood above the bar also takes the qualifier's share (`qualifier_bar_influence`), like any score that stood above it.
+        and a qualifier it causes does not start one. Every typed line then goes to the bar by the same rule as a qualifier, with its own
+        dial: as the bar plus `bar_influence` of the way up to the score (1 is the score itself, 0 the bar itself).
 
-        A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar. If not, it is
-        DID_NOT_QUALIFY when it affected the bar and TYPED_DNQ when it did not.
+        A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar, and
+        DID_NOT_QUALIFY if not.
         """
         with self._held("rule_typed") as got:
             if not got or not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
@@ -204,12 +211,10 @@ class BarKeeper:
             now = self._steady(now)
             level = self._bar.level_at(now)
             qualified = level is not None and score > level
-            weight = (bar_influence if self._is_number(bar_influence) else 0.0) * (self._qualifier_bar_influence if qualified else 1.0)
-            affects_bar = weight > 0
-            if affects_bar:
-                self._bar.add(float(score), now, weight)
-                self._last_time = now
-                self.counted += 1
-            ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ
+            influence = bar_influence if self._is_number(bar_influence) else 0.0
+            self._bar.add(self._value_for_bar(score, level, influence), now)
+            self._last_time = now
+            self.counted += 1
+            ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY
             _log.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
             return ruling

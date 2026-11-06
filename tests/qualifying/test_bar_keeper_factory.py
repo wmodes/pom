@@ -104,7 +104,7 @@ class TestBuildingABarKeeper:
     @pytest.mark.parametrize("name", ["percentile", "decaying_quantile", "moving_average"])
     def test_every_bar_keeper_says_how_much_a_qualifier_counts(self, name):
         text = bar_keeper_from_settings(settings(algorithm=name, qualifier_bar_influence=0.25)).describe()
-        assert text.endswith("a qualifying score counts 25% toward the bar")
+        assert text.endswith("a qualifying score goes into the bar 25% of the way up from the bar")
 
     def test_the_bar_keeper_gets_the_qualifier_bar_influence_from_the_settings(self):
         assert bar_keeper_from_settings(settings(qualifier_bar_influence=1.1))._qualifier_bar_influence == 1.1

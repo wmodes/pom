@@ -16,9 +16,6 @@ beside it:
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises PercentileBarError instead, for tests and dev tools.
-  * IT CANNOT WEIGHT SCORES. A nearest-rank percentile counts each score whole, so a score handed to `add` with a weight above 0 is
-    remembered whole and one with a weight of 0 or less is left out. (The decaying quantile is the bar that weighs a qualifier by how
-    much it should count.)
   * Only the scores in the window are kept (never fewer than `min_scores`), so memory is bounded however long the room talks.
   * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
 """
@@ -106,11 +103,9 @@ class PercentileBar(Bar):
         window = self._window(now) if _is_number(now) else None
         return len(window) if window is not None else len(self._recent)
 
-    def add(self, score: float, now: float, weight: float = 1.0) -> None:
-        """Takes in a judged score. It is remembered whole if its weight is above 0 and left out if the weight is 0 or less (it cannot weight)."""
-        if not (_is_number(score) and _is_number(now) and _is_number(weight)):
-            return
-        if weight <= 0:
+    def add(self, score: float, now: float) -> None:
+        """Takes in a judged score."""
+        if not (_is_number(score) and _is_number(now)):
             return
         self._recent.append((now, float(score)))
         self._forget_old(now)

@@ -11,9 +11,9 @@ Design decisions, and why:
     the Printer is asking for an answer. The product is not capped at 9, so a typed 7 (10.5) beats any spoken 9.
   * THE SAME BAR, NO COOLDOWN. The line is held to the room's own bar, so a dull one ("hello") is simply ignored: it gets no answer
     and nothing is printed. It has no cooldown, and a qualifier it causes does not start one, so the room's rhythm is the room's.
-  * THE BAR STAYS THE ROOM'S. By default a typed score has no influence on what the bar is built from (`bar_influence` 0), so the bar
-    stays a picture of the room. A number above 0 lets it feed the bar at that share of a score heard in the room (1 is the same share; the number
-    is not limited to 0 to 1). Both are in the config (`[qualifying]`).
+  * HOW IT GOES TO THE BAR. Every typed line, above the bar or below it, goes in by the same rule as a qualifier: as the bar plus
+    `bar_influence` of the way up to the (multiplied) score. 1 is the score itself, 0 is the bar itself (it does not move the bar), and the
+    number is not limited to 0 to 1. Both it and the score multiplier are in the config (`[qualifying]`).
   * Time is the stream's. `clock` gives seconds on the same timeline as the Eavesdropper's (`heard_at`), so the BarKeeper never sees time
     run backwards. The Conductor passes the clock it uses for listening.
   * Nothing here may stop the oracle (see pom/__init__.py). A line the Scorer cannot score, or that is blank, gives an unscored
@@ -53,8 +53,8 @@ class TypedLineScorer:
                 rule_typed and counted).
             clock: Gives now, in seconds on the Eavesdropper's timeline.
             score_multiplier: What a score is multiplied by before it meets the bar, 0 or more.
-            bar_influence: How much the typed score counts toward the bar, against 1 for a score heard in the room; 0 leaves it out. Any
-                number (not limited to 0 to 1).
+            bar_influence: How far up from the bar to the typed score it goes into the bar: 1 is the score itself, 0 is the bar itself.
+                Any number (not limited to 0 to 1).
             strict: Raise TypedLineScorerError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=TypedLineScorerError, logger=_log)

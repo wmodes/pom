@@ -21,7 +21,7 @@ into one built part of the Printer and see what it does, using the real modules 
 - `monitor/`: `serve_fake_turns.py` serves the monitoring site with invented turns (`--live 15` adds one every 15 seconds,
   `--hide-hinges` shows the numbers-only page) so you can open it, click a turn and watch it update. Password: `demo`.
 - `qualifying/`: `replay_scores_through_bar.py` replays a recorded stream of scores (by default the first hour of the live room, 2026-10-26, numbers only) through the real BarKeeper at
-  several `qualifier_bar_influence` values and prints the qualifiers an hour, the share of scores above the bar against the prediction, and the bar's level. `--offset-hours 30` makes the first score
+  several `qualifier_bar_influence` values and prints the qualifiers an hour, the share of scores above the bar, and the bar's level. `--offset-hours 30` makes the first score
   come 30 hours after the Printer started, so the bar's starting line has faded. It needs no models and no servers.
 - `printing/`: `format_text_for_typewriter.py` shows how the PortentFormatter sets text for the typewriter: type or pipe text in (quote the
   heredoc, `<<'EOT'`, or the shell runs anything in backticks) and see it between rulers, with the quote indented. `--cpi 12`, `--width`,

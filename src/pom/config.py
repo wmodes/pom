@@ -23,9 +23,9 @@ of being threaded through by hand. Today there are five:
     [qualifying]  A section (see QualifyingSettings): when the Printer responds, when a score is above a bar worked out from the
                room's recent scores. `algorithm` picks how ("percentile", "decaying_quantile" or "moving_average"; each reads only
                its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a qualifier the next
-               may come (60; 0 for none), `qualifier_bar_influence` how much a score that stood above the bar counts toward it (0.5),
-               `typed_lines_score_multiplier` what a typed line's score is multiplied by (1.5) and `typed_lines_bar_influence` how much a typed
-               line counts toward the bar (0). The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
+               may come (60; 0 for none), `qualifier_bar_influence` how far up toward the score a score that stood above the bar goes into the
+               bar, `typed_lines_score_multiplier` what a typed line's score is multiplied by (1.5) and `typed_lines_bar_influence` the same
+               dial for a typed line. The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `cut_every_seconds`, `hold_back_seconds`,
                `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and room-tone memory. The defaults are the
@@ -274,10 +274,9 @@ class QualifyingSettings:
         cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 is no cooldown). (all)
         starting_bar: The bar before the room has said enough to work one out, and where it begins; it fades as the room speaks.
             There is no silent warm-up. (all)
-        qualifier_bar_influence: How much a score that stood above the bar (a qualifier, or one held by the cooldown) counts toward the bar,
-            against 1 for an ordinary score. Any number, not limited to 0 to 1 (an experiment may want 1.1 or -0.1): 0 or less leaves it out, so
-            the bar cannot follow the room up; 1 counts it in full, so the bar chases the room's best score. The decaying quantile weights it by
-            this; the percentile and moving-average bars cannot, and count it whole if it is above 0. (all)
+        qualifier_bar_influence: How much a score that stood above the bar (a qualifier, or one held by the cooldown) influences the bar: it
+            goes in as the bar plus this much of the way up to the score (1 is the score itself, 0 is the bar itself, 0.5 half way). Any number,
+            not limited to 0 to 1 (an experiment may want 1.1 or -0.1). (all)
         half_life_seconds: Seconds for a score to count half as much, above 0. (decaying_quantile)
         average_fraction: How far above the decaying average the bar sits, 0 or more (0.25 is 25% above). (moving_average)
         average_half_life_scores: How many more scores it takes for a score's influence on the average to halve, above 0.
@@ -287,8 +286,8 @@ class QualifyingSettings:
         algorithm: "percentile", "decaying_quantile" or "moving_average".
         typed_lines_score_multiplier: What a typed line's score is multiplied by before it meets the bar, 0 or more (1 is no bonus). A typed
             line is someone speaking to the Printer directly, so its score is multiplied; the product is not capped at 9. (all)
-        typed_lines_bar_influence: How much a typed line's score counts toward the bar, against 1 for a score heard in the room. Any number, not
-            limited to 0 to 1: 0 keeps the bar a picture of the room alone. A typed line never has a cooldown either way. (all)
+        typed_lines_bar_influence: The same dial for a typed line, above the bar or below it: it goes in as the bar plus this much of the way up
+            to its (multiplied) score. Any number, not limited to 0 to 1. A typed line never has a cooldown. (all)
     """
     percentile: float = DEFAULT_QUALIFYING_PERCENTILE
     window_seconds: float = DEFAULT_QUALIFYING_WINDOW_SECONDS

@@ -19,10 +19,10 @@ def bar(**options):
     return PercentileBar(**options)
 
 
-def feed(b, scores, start=0.0, step=1.0, weight=1.0):
+def feed(b, scores, start=0.0, step=1.0):
     for i, score in enumerate(scores):
         if score is not None:
-            b.add(score, start + i * step, weight)
+            b.add(score, start + i * step)
 
 
 def warmed_up(**options):
@@ -186,77 +186,6 @@ class TestTheWindow:
     def test_a_time_asked_about_before_the_scores_still_works(self):
         b = warmed_up()
         assert b.level_at(0.0) == 5.0
-
-
-class TestTheWeightOfAScore:
-    """The percentile bar cannot weight a score: above 0 it is remembered whole, 0 or less it is left out."""
-
-    def test_a_score_with_no_weight_is_left_out(self):
-        b = bar()
-        feed(b, [9, 9, 9], weight=0.0)
-        assert b.window_size_at(3.0) == 0
-
-    def test_a_score_with_a_normal_weight_is_kept(self):
-        b = bar()
-        feed(b, [9, 9, 9], weight=1.0)
-        assert b.window_size_at(3.0) == 3
-
-    def test_a_partial_weight_is_remembered_whole_because_the_bar_cannot_weight(self):
-        b = bar()
-        feed(b, [9, 9, 9], weight=0.5)
-        assert b.window_size_at(3.0) == 3
-
-    def test_a_weight_above_one_is_remembered_whole_too(self):
-        b = bar()
-        feed(b, [9, 9], weight=1.1)
-        assert b.window_size_at(2.0) == 2
-
-    def test_a_negative_weight_is_left_out(self):
-        b = bar()
-        feed(b, [9, 9, 9], weight=-0.1)
-        assert b.window_size_at(3.0) == 0
-
-    def test_only_the_scores_with_no_weight_are_left_out(self):
-        b = bar()
-        b.add(3.0, 0.0)
-        b.add(9.0, 1.0, 0.0)
-        b.add(4.0, 2.0)
-        assert b.window_size_at(2.0) == 2
-
-    def test_leaving_a_zinger_out_keeps_the_bar_at_the_rooms_high_tide(self):
-        keep, leave = bar(), bar()
-        for b in (keep, leave):
-            feed(b, [3.0] * 5)
-        keep.add(9.0, 5.0, 1.0)
-        leave.add(9.0, 5.0, 0.0)
-        assert keep.level_at(6.0) == 9.0 and leave.level_at(6.0) == 3.0
-
-    def test_a_weight_that_is_not_a_number_changes_nothing(self):
-        b = bar()
-        for junk in (None, "1", True, float("nan"), float("inf")):
-            b.add(9.0, 0.0, junk)
-        assert b.window_size_at(0.0) == 0
-
-class TestWhatIsIgnored:
-    @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
-    def test_a_score_that_is_not_a_number_changes_nothing(self, junk):
-        b = warmed_up()
-        before = (b.window_size_at(5.0), b.level_at(5.0))
-        b.add(junk, 5.0)
-        assert (b.window_size_at(5.0), b.level_at(5.0)) == before
-
-    @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
-    def test_a_time_that_is_not_a_number_changes_nothing(self, junk):
-        b = warmed_up()
-        before = (b.window_size_at(5.0), b.level_at(5.0))
-        b.add(9.0, junk)
-        assert (b.window_size_at(5.0), b.level_at(5.0)) == before
-        assert b.level_at(junk) is None and b.window_size_at(junk) == 5
-
-    def test_a_zero_is_a_real_score(self):
-        b = bar()
-        b.add(0.0, 0.0)
-        assert b.window_size_at(0.0) == 1
 
 
 class TestAgainstAPlainReference:

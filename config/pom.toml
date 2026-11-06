@@ -141,13 +141,10 @@ starting_bar = 6.8
 # 0 turns it off. 0 or more.
 cooldown_seconds = 60
 
-# How much a score that stood above the bar (a qualifier, or one held back by the cooldown) counts toward the bar, against 1
-# for an ordinary score. It is a plain number, not limited to 0 to 1, so an experiment may try 1.1 or -0.1 (0 or less leaves the
-# score out). At 0 the bar can never follow the room up: after a long quiet it sits at the floor and nearly every sentence
-# qualifies. At 1 the zinger that fired is the room's best score and the bar chases it. In between the zinger counts as an
-# ordinary score that is already older: 0.5 is one half-life old, 300 s at the default half-life. Over a steady room the
-# share of scores above the bar settles near (1 - percentile) / this, so 0.5 doubles the share the percentile aims at.
-# The decaying_quantile weighs it by this; the percentile and moving_average bars cannot, and count it whole if it is above 0.
+# How much a score that stood above the bar (a qualifier, or one held back by the cooldown) influences the bar. It goes into
+# what the bar is built from as the bar plus this much of the way up to the score: 1 goes in as the score itself, 0 as the
+# bar itself (so it adds nothing new), 0.5 half way between. A plain number, not limited to 0 to 1, so an experiment may
+# try 1.1 or -0.1. All three bars work this way.
 qualifier_bar_influence = 0.5
 
 # A line typed on the typewriter's keyboard is someone talking to the Printer directly, so it is judged against the same
@@ -156,9 +153,8 @@ qualifier_bar_influence = 0.5
 # typed line that does not clear the bar is simply ignored (nothing is printed).
 typed_lines_score_multiplier = 1.5
 
-# How much a typed line's score counts toward the bar, against 1 for a score heard in the room. A plain number, not limited
-# to 0 to 1. 0 keeps the bar a picture of the room alone: it listens to the room, and typed lines change nothing about it. A typed
-# line that stood above the bar also takes the qualifier's share above, like any score that stood above it.
+# How much a typed line's score influences the bar. The same rule as above, with its own dial: every typed line, above the bar
+# or below it, goes in as the bar plus this much of the way up to its (multiplied) score. A plain number, not limited to 0 to 1.
 typed_lines_bar_influence = 0.1
 
 # --- percentile and decaying_quantile ---

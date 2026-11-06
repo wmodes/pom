@@ -129,17 +129,6 @@ class TestTheFloor:
         b.add(junk, 0.0)
         assert b.level_at(0.0) == before and b.counted == 0
 
-    def test_a_qualifying_score_joins_the_average_like_any_other(self):
-        b = bar(starting_bar=4.0, fraction=0)
-        b.add(8.0, 0.0, 0.5)                    # a qualifier's weight: this bar cannot weight, so it counts whole
-        assert b.level_at(0.0) == pytest.approx(6.0)
-
-    @pytest.mark.parametrize("weight", [0.0, -0.1, None, "1", True, float("nan")])
-    def test_a_score_with_no_weight_or_a_junk_one_is_left_out(self, weight):
-        b = bar(starting_bar=4.0, fraction=0)
-        b.add(8.0, 0.0, weight)
-        assert b.level_at(0.0) == pytest.approx(4.0) and b.counted == 0
-
 
 class TestTheWindowSize:
     def test_it_counts_the_scores_averaged(self):

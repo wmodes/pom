@@ -119,7 +119,7 @@ class TestAgainstTheBar:
     def test_a_line_that_does_not_is_only_judged_and_is_not_a_hinge(self):
         made, _, _, _ = typed({"hello": 1.0}, bar_level=6.0)
         sentence = made.score("hello")
-        assert not sentence.is_hinge and sentence.ruling is Ruling.TYPED_DNQ
+        assert not sentence.is_hinge and sentence.ruling is Ruling.DID_NOT_QUALIFY
 
     def test_a_line_exactly_at_the_bar_is_not_a_hinge(self):
         made, _, _, _ = typed({"x": 4.0}, bar_level=6.0)    # 4.0 * 1.5 = 6.0
@@ -140,39 +140,48 @@ class TestAgainstTheBar:
         assert made.score("x").is_hinge
 
 
-class TestTheBarStaysTheRooms:
-    def test_by_default_a_typed_line_leaves_the_bar_and_the_count_alone(self):
+class TestWhatTheBarIsHanded:
+    """Every typed line, above the bar or below it, goes to the bar as the bar plus the influence of the way up to its (multiplied) score."""
+
+    def test_by_default_a_line_goes_in_as_the_bar_itself_and_is_counted(self):
         made, _, shared, _ = typed({"x": 2.0})
-        made.score("x")
-        assert shared.counted == 0 and shared.window_size_at(100.0) == 0
-
-    def test_by_default_a_typed_hinge_leaves_them_alone_too(self):
-        made, _, shared, _ = typed({"x": 9.0})
-        made.score("x")
-        assert shared.counted == 0
-
-    def test_affecting_the_bar_counts_the_line_with_the_rooms_scores(self):
-        made, _, shared, _ = typed({"x": 2.0}, bar_influence=1.0)
-        sentence = made.score("x")
-        assert shared.counted == 1 and sentence.ruling is Ruling.DID_NOT_QUALIFY
-
-    def test_an_affecting_line_enters_the_window(self):
-        made, _, shared, _ = typed({"x": 2.0}, bar_influence=1.0)
-        made.score("x")
-        assert shared.window_size_at(100.0) == 1
-
-
-class TestTheBarInfluence:
-    def test_by_default_a_typed_line_has_no_influence_on_the_bar(self):
-        made, _, shared, _ = typed({"x": 2.0})
-        made.score("x")
-        assert shared.window_size_at(100.0) == 0
-
-    def test_a_partial_influence_still_counts_the_line(self):
-        made, _, shared, _ = typed({"x": 2.0}, bar_influence=0.5)
         made.score("x")
         assert shared.counted == 1 and shared.window_size_at(100.0) == 1
 
+    def test_a_hinge_is_counted_too(self):
+        made, _, shared, _ = typed({"x": 9.0})
+        made.score("x")
+        assert shared.counted == 1
+
+    def test_a_line_below_the_bar_is_judged_did_not_qualify(self):
+        made, _, _, _ = typed({"x": 2.0}, bar_influence=1.0)
+        assert made.score("x").ruling is Ruling.DID_NOT_QUALIFY
+
+    def test_the_influence_is_what_the_bar_keeper_is_given(self):
+        keeper = self.recording_keeper()
+        TypedLineScorer(FakeScorer({"x": 4.0}), keeper, Clock(), score_multiplier=2, bar_influence=0.25).score("x")
+        assert keeper.calls == [(8.0, 0.25)]
+
+    def test_with_no_influence_given_a_line_goes_in_as_the_bar_itself(self):
+        keeper = self.recording_keeper()
+        TypedLineScorer(FakeScorer({"x": 4.0}), keeper, Clock()).score("x")
+        assert keeper.calls == [(6.0, 0.0)]
+
+    @staticmethod
+    def recording_keeper():
+        class Recording:
+            def __init__(self):
+                self.calls = []
+            def bar_at(self, now): return 6.0
+            def window_size_at(self, now): return 0
+            counted = 0
+            def rule_typed(self, score, now, bar_influence=0.0):
+                self.calls.append((score, bar_influence))
+                return Ruling.DID_NOT_QUALIFY
+        return Recording()
+
+
+class TestTheBarInfluence:
     @pytest.mark.parametrize("influence", [1.1, 2, -0.1, 0])
     def test_the_influence_is_not_limited_to_zero_to_one(self, influence):
         made, _, _, _ = typed({"x": 2.0}, bar_influence=influence)
@@ -182,7 +191,7 @@ class TestTheBarInfluence:
     def test_an_influence_that_is_not_a_number_is_nothing_with_a_warning(self, bad):
         made, _, shared, _ = typed({"x": 2.0}, bar_influence=bad)
         made.score("x")
-        assert len(made.report.warnings) == 1 and shared.counted == 0
+        assert len(made.report.warnings) == 1 and made._bar_influence == 0.0
 
 
 class TestWhenThereIsNoScore:

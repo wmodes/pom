@@ -4,8 +4,8 @@
 The scores are the ones a recording earned when it was run through the Printer's listening and scoring (a CSV with `seconds_into_recording` and
 `score` columns; by default the first hour of the live room on 2026-10-26, which holds numbers only, no words). Each is fed to the BarKeeper built
 from config/pom.toml (`[qualifying]`) at the time it was heard, with `qualifier_bar_influence` set to each value asked for, and what came of it is
-counted: how many qualified, how many were held by the cooldown, how often an hour, and what share of the scores stood above the bar, against what
-`(1 - percentile) / influence` predicts for a steady room. No models and no servers: the scoring was done when the CSV was made. The bar is
+counted: how many qualified, how many were held by the cooldown, how often an hour, what share of the scores stood above the bar, and where the
+bar sat. No models and no servers: the scoring was done when the CSV was made. The bar is
 src/pom/qualifying/; this is only a window onto it.
 
 Usage:
@@ -89,11 +89,10 @@ def main():
     print(f"{len(pairs)} scores over {(pairs[-1][0] - pairs[0][0]) / 60:.0f} minutes; {base.algorithm}, percentile {base.percentile:g}, "
           f"half-life {base.half_life_seconds:g} s, starting bar {base.starting_bar:g}, cooldown {base.cooldown_seconds:g} s; "
           f"first score {args.offset_hours:g} h after the start")
-    print(f"{'influence':>9}  {'qualified':>9}  {'held':>5}  {'per hour':>8}  {'above bar':>9}  {'predicted':>9}  {'bar first':>9}  {'bar mean':>8}  {'bar last':>8}")
+    print(f"{'influence':>9}  {'qualified':>9}  {'held':>5}  {'per hour':>8}  {'above bar':>9}  {'bar first':>9}  {'bar mean':>8}  {'bar last':>8}")
     for influence in args.influence or DEFAULT_INFLUENCES:
         r = replay(dataclasses.replace(base, qualifier_bar_influence=influence), pairs, offset)
-        predicted = f"{(1 - base.percentile / 100.0) / influence * 100:.1f}%" if influence > 0 else "none"
-        print(f"{influence:9g}  {r['qualified']:9d}  {r['held']:5d}  {r['per_hour']:8.1f}  {r['above_share'] * 100:8.1f}%  {predicted:>9}  "
+        print(f"{influence:9g}  {r['qualified']:9d}  {r['held']:5d}  {r['per_hour']:8.1f}  {r['above_share'] * 100:8.1f}%  "
               f"{r['bar_first']:9.2f}  {r['bar_mean']:8.2f}  {r['bar_last']:8.2f}")
 
 

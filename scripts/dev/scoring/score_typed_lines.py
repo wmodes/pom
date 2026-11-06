@@ -11,7 +11,7 @@ Usage:
     echo "The walls are listening." | score_typed_lines.py
     score_typed_lines.py                       # type lines at the prompt; an empty line quits
     score_typed_lines.py --bar 5 "..."         # start the bar at 5 instead of the config's starting_bar
-    score_typed_lines.py --multiplier 2 --bar-influence 0.5 "..."    # try another score multiplier, and let typed lines feed the bar at half weight
+    score_typed_lines.py --multiplier 2 --bar-influence 0.5 "..."    # try another score multiplier, and let typed lines go into the bar half way up from the bar
 
 Nothing you type is kept: it is scored and forgotten.
 """
@@ -58,14 +58,14 @@ def main():
     parser.add_argument("--bar", type=float, default=None, help="start the bar here (default: the config's starting_bar)")
     parser.add_argument("--multiplier", type=float, default=None, help="the score multiplier (default: the config's typed_lines_score_multiplier)")
     parser.add_argument("--bar-influence", type=float, default=None,
-                        help="how much typed lines count toward the bar, 1 being a score heard in the room (default: the config's typed_lines_bar_influence)")
+                        help="how far up from the bar to the score a typed line goes into the bar, 1 being the score itself (default: the config's typed_lines_bar_influence)")
     args = parser.parse_args()
 
     configure_logging("WARNING")
     config = Config.load(args.config)
     scorer, bar_keeper, typed, client, multiplier, bar_influence = build(config, args)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
-    print(f"typed lines: score x {multiplier:g}, no cooldown, count {bar_influence:g} toward the bar")
+    print(f"typed lines: score x {multiplier:g}, no cooldown, go into the bar {bar_influence:g} of the way up from the bar")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: lines will come back unscored (start its llama-server)")
 

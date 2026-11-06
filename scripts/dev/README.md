@@ -11,7 +11,7 @@ into one built part of the Printer and see what it does, using the real modules 
   the TrackSplitter splits whisper's text into words, room tone and blanks; `listen_to_room.py` runs the whole listening side on the
   microphone or a recording, scoring what it hears and marking what would qualify (it needs whisper-server running).
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether it would qualify (it needs
-  the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its typed handicap (`typed_handicap`) and whether
+  the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its score multiplier (`typed_lines_score_multiplier`) and whether
   the Printer would answer or stay silent.
 - `pipeline/`: `listening_to_portent.py` (`--monitor` also serves the monitoring site, fed by every turn) runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
   the Pi's by default) or a recording goes through the Eavesdropper, the scorer and the BarKeeper, and when a sentence qualifies the
@@ -20,6 +20,9 @@ into one built part of the Printer and see what it does, using the real modules 
   (`--mac-mic --terminal console`, or `--wav FILE --speed 6 --terminal none`), and stops the servers it started when the Printer ends.
 - `monitor/`: `serve_fake_turns.py` serves the monitoring site with invented turns (`--live 15` adds one every 15 seconds,
   `--hide-hinges` shows the numbers-only page) so you can open it, click a turn and watch it update. Password: `demo`.
+- `qualifying/`: `replay_scores_through_bar.py` replays a recorded stream of scores (by default the first hour of the live room, 2026-10-26, numbers only) through the real BarKeeper at
+  several `qualifier_bar_influence` values and prints the qualifiers an hour, the share of scores above the bar against the prediction, and the bar's level. `--offset-hours 30` makes the first score
+  come 30 hours after the Printer started, so the bar's starting line has faded. It needs no models and no servers.
 - `printing/`: `format_text_for_typewriter.py` shows how the PortentFormatter sets text for the typewriter: type or pipe text in (quote the
   heredoc, `<<'EOT'`, or the shell runs anything in backticks) and see it between rulers, with the quote indented. `--cpi 12`, `--width`,
   `--indent`, `--feeds`, `--keep` and `--ascii-wheel` change what `[printing]` in the config sets.

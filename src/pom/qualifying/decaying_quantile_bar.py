@@ -19,8 +19,11 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises DecayingQuantileBarError instead, for tests and dev tools.
   * Decay is by time, not by number of scores, so a quiet room and a busy one both remember "the last few minutes".
-  * `exclude_qualifiers` leaves a qualifying score out of what the bar remembers. Otherwise the zinger that fired becomes the room's best
-    score and holds the bar up for a while, shutting out the next good one. With it on, the bar stays at the room's usual high tide.
+  * A SCORE COUNTS BY ITS WEIGHT. `add` takes the weight the BarKeeper gives a score (1 for an ordinary one, the qualifier's share for one
+    that stood above the bar), and the score is remembered at that weight times its decay. At 0 a qualifier is left out, so the bar stays
+    at the room's usual high tide; at 1 the zinger that fired is the room's best score and holds the bar up for a while, shutting out the
+    next good one; in between it is an ordinary score aged by `half_life * log2(1 / weight)`, because every weight decays by the same factor.
+    A weight of 0 or less is left out (a quantile has no use for a negative weight); a weight above 1 counts for more than an ordinary score.
   * Scores older than 8 half-lives (under 0.4% of their weight) are dropped, so memory stays bounded however long the room talks.
   * The starting line is a blend, not an extra score in the list: a stand-in score with almost no weight would still anchor the
     interpolation between its neighbours, and at a percentile of 100 it would be a permanent floor.
@@ -61,13 +64,11 @@ class DecayingQuantileBar(Bar):
     """
 
     def __init__(self, percentile: float = DEFAULT_PERCENTILE, half_life_seconds: float = DEFAULT_HALF_LIFE_SECONDS,
-                 starting_bar: float = DEFAULT_STARTING_BAR, exclude_qualifiers: bool = False,
-                 starting_weight: float = DEFAULT_STARTING_WEIGHT, strict: bool = False):
+                 starting_bar: float = DEFAULT_STARTING_BAR, starting_weight: float = DEFAULT_STARTING_WEIGHT, strict: bool = False):
         """Args:
             percentile: How much of the weighted scores the bar sits above, above 0 and at most 100.
             half_life_seconds: Seconds for a score's weight to halve, above 0.
             starting_bar: The bar before any real score has been heard, and where it returns after a long silence.
-            exclude_qualifiers: True leaves a score that qualified out of what the bar remembers.
             starting_weight: How many scores' worth of weight the starting line begins with, above 0.
             strict: Raise DecayingQuantileBarError on any problem instead of recording it.
         """
@@ -79,15 +80,13 @@ class DecayingQuantileBar(Bar):
         self._starting_bar = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number")
         self._starting_weight = self._valid(starting_weight, "starting_weight", DEFAULT_STARTING_WEIGHT,
                                             lambda v: _is_number(v) and v > 0, "a number above 0")
-        self._exclude_qualifiers = bool(exclude_qualifiers)
-        self._memory: Deque[Tuple[float, float]] = deque()          # (time heard, score), oldest first
+        self._memory: Deque[Tuple[float, float, float]] = deque()   # (time heard, score, weight when heard), oldest first
         self._started_at: Optional[float] = None                    # when the starting line was "heard"
 
     @classmethod
     def from_settings(cls, settings, strict: bool = False) -> "DecayingQuantileBar":
-        """Builds the bar from an object with `percentile`, `half_life_seconds`, `starting_bar` and `exclude_qualifiers`."""
-        return cls(settings.percentile, settings.half_life_seconds, settings.starting_bar, settings.exclude_qualifiers,
-                   strict=strict)
+        """Builds the bar from an object with `percentile`, `half_life_seconds` and `starting_bar`."""
+        return cls(settings.percentile, settings.half_life_seconds, settings.starting_bar, strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -106,34 +105,34 @@ class DecayingQuantileBar(Bar):
         self._forget_old(now)
         if not self._memory:
             return self._starting_bar
-        entries = [(score, self._weight(now - heard)) for heard, score in self._memory]
+        entries = [(score, given * self._weight(now - heard)) for heard, score, given in self._memory]
         line = self._starting_weight * self._weight(now - self._started_at)
         share = line / (line + sum(weight for _, weight in entries))          # how much of the bar is still the starting line
         return share * self._starting_bar + (1.0 - share) * self._quantile(entries)
 
     def window_size_at(self, now: float) -> int:
         """How many scores' worth of weight the real scores carry at `now`, to the nearest whole score (the starting line is not
-        counted). A score counts for 1 when it is heard and for half that a half-life later, so this is the size of the window the
+        counted). A score counts for its weight (1 for an ordinary one) when it is heard and for half that a half-life later, so this is the size of the window the
         bar is really built from (about 100 in a busy room at a 5 minute half-life), not the 40 minutes of scores kept in memory."""
         if not _is_number(now):
             return 0
         self._forget_old(now)
-        return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
+        return int(sum(given * self._weight(now - heard) for heard, _, given in self._memory) + 0.5)
 
-    def add(self, score: float, now: float, qualified: bool) -> None:
-        """Takes in a judged score. A score that stood above the bar (a qualifier, or one held by the cooldown) is left out when `exclude_qualifiers` is on."""
-        if not (_is_number(score) and _is_number(now)):
+    def add(self, score: float, now: float, weight: float = 1.0) -> None:
+        """Takes in a judged score, remembered at `weight` times a normal score (1 is normal; 0 or less leaves it out; above 1 counts for more)."""
+        if not (_is_number(score) and _is_number(now) and _is_number(weight)):
             return
         self._start(now)
-        if qualified and self._exclude_qualifiers:
+        if weight <= 0:
             return
-        self._memory.append((now, float(score)))
+        self._memory.append((now, float(score), float(weight)))
         self._forget_old(now)
 
     def describe(self) -> str:
         """For example: the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8."""
         return (f"the {self._percentile:g}th percentile of scores that count half as much every {self._half_life:g} s, "
-                f"starting at {self._starting_bar:g}" + (", qualifying scores left out" if self._exclude_qualifiers else ""))
+                f"starting at {self._starting_bar:g}")
 
     # --- The arithmetic -------------------------------------------------------------
 

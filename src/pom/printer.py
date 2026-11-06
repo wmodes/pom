@@ -232,8 +232,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     # the keyboard: only a real typewriter has one
     keyboard = None
     if terminal is not None and mode == "serial" and options.keyboard:
-        typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, qualifying.typed_handicap,
-                                qualifying.typed_lines_affect_bar)
+        typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, qualifying.typed_lines_score_multiplier,
+                                qualifying.typed_lines_bar_influence)
         keyboard = KeyboardWatcher(terminal, typed)
 
     # what the monitoring site is told: numbers only, from every attempt

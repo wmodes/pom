@@ -19,10 +19,10 @@ def bar(**options):
     return PercentileBar(**options)
 
 
-def feed(b, scores, start=0.0, step=1.0, qualified=False):
+def feed(b, scores, start=0.0, step=1.0, weight=1.0):
     for i, score in enumerate(scores):
         if score is not None:
-            b.add(score, start + i * step, qualified)
+            b.add(score, start + i * step, weight)
 
 
 def warmed_up(**options):
@@ -57,14 +57,14 @@ class TestTheStartingLine:
         b = bar(starting_bar=6.8)
         feed(b, [9, 9, 9, 9])
         assert b.level_at(4.0) == 6.8
-        b.add(9, 4.0, False)
+        b.add(9, 4.0)
         assert b.level_at(5.0) == 9.0
 
     def test_the_default_needs_twenty(self):
         b = PercentileBar(percentile=100)
         feed(b, [9.0] * 19)
         assert b.level_at(19.0) == DEFAULT_STARTING_BAR
-        b.add(9.0, 19.0, False)
+        b.add(9.0, 19.0)
         assert b.level_at(20.0) == 9.0
 
     def test_there_is_always_a_bar(self):
@@ -137,7 +137,7 @@ class TestThePercentileBar:
     def test_a_score_added_raises_the_best(self):
         b = warmed_up()
         level = b.level_at(5.0)
-        b.add(9.0, 5.0, False)
+        b.add(9.0, 5.0)
         assert b.level_at(6.0) > level
 
 
@@ -188,56 +188,74 @@ class TestTheWindow:
         assert b.level_at(0.0) == 5.0
 
 
-class TestExcludingQualifiers:
-    def test_a_qualifying_score_is_left_out_when_asked(self):
-        b = bar(exclude_qualifiers=True)
-        feed(b, [9, 9, 9], qualified=True)
+class TestTheWeightOfAScore:
+    """The percentile bar cannot weight a score: above 0 it is remembered whole, 0 or less it is left out."""
+
+    def test_a_score_with_no_weight_is_left_out(self):
+        b = bar()
+        feed(b, [9, 9, 9], weight=0.0)
         assert b.window_size_at(3.0) == 0
 
-    def test_a_qualifying_score_is_kept_by_default(self):
+    def test_a_score_with_a_normal_weight_is_kept(self):
         b = bar()
-        feed(b, [9, 9, 9], qualified=True)
+        feed(b, [9, 9, 9], weight=1.0)
         assert b.window_size_at(3.0) == 3
 
-    def test_only_the_qualifying_scores_are_left_out(self):
-        b = bar(exclude_qualifiers=True)
-        b.add(3.0, 0.0, False)
-        b.add(9.0, 1.0, True)
-        b.add(4.0, 2.0, False)
+    def test_a_partial_weight_is_remembered_whole_because_the_bar_cannot_weight(self):
+        b = bar()
+        feed(b, [9, 9, 9], weight=0.5)
+        assert b.window_size_at(3.0) == 3
+
+    def test_a_weight_above_one_is_remembered_whole_too(self):
+        b = bar()
+        feed(b, [9, 9], weight=1.1)
+        assert b.window_size_at(2.0) == 2
+
+    def test_a_negative_weight_is_left_out(self):
+        b = bar()
+        feed(b, [9, 9, 9], weight=-0.1)
+        assert b.window_size_at(3.0) == 0
+
+    def test_only_the_scores_with_no_weight_are_left_out(self):
+        b = bar()
+        b.add(3.0, 0.0)
+        b.add(9.0, 1.0, 0.0)
+        b.add(4.0, 2.0)
         assert b.window_size_at(2.0) == 2
 
     def test_leaving_a_zinger_out_keeps_the_bar_at_the_rooms_high_tide(self):
-        keep, leave = bar(), bar(exclude_qualifiers=True)
+        keep, leave = bar(), bar()
         for b in (keep, leave):
             feed(b, [3.0] * 5)
-            b.add(9.0, 5.0, True)
+        keep.add(9.0, 5.0, 1.0)
+        leave.add(9.0, 5.0, 0.0)
         assert keep.level_at(6.0) == 9.0 and leave.level_at(6.0) == 3.0
 
-    def test_a_score_that_did_not_qualify_is_kept_either_way(self):
-        b = bar(exclude_qualifiers=True)
-        b.add(9.0, 0.0, False)
-        assert b.window_size_at(0.0) == 1
-
+    def test_a_weight_that_is_not_a_number_changes_nothing(self):
+        b = bar()
+        for junk in (None, "1", True, float("nan"), float("inf")):
+            b.add(9.0, 0.0, junk)
+        assert b.window_size_at(0.0) == 0
 
 class TestWhatIsIgnored:
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_score_that_is_not_a_number_changes_nothing(self, junk):
         b = warmed_up()
         before = (b.window_size_at(5.0), b.level_at(5.0))
-        b.add(junk, 5.0, False)
+        b.add(junk, 5.0)
         assert (b.window_size_at(5.0), b.level_at(5.0)) == before
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_time_that_is_not_a_number_changes_nothing(self, junk):
         b = warmed_up()
         before = (b.window_size_at(5.0), b.level_at(5.0))
-        b.add(9.0, junk, False)
+        b.add(9.0, junk)
         assert (b.window_size_at(5.0), b.level_at(5.0)) == before
         assert b.level_at(junk) is None and b.window_size_at(junk) == 5
 
     def test_a_zero_is_a_real_score(self):
         b = bar()
-        b.add(0.0, 0.0, False)
+        b.add(0.0, 0.0)
         assert b.window_size_at(0.0) == 1
 
 
@@ -271,7 +289,7 @@ class TestAgainstAPlainReference:
         got = []
         for when, score in events:
             got.append(b.level_at(when))
-            b.add(score, when, False)
+            b.add(score, when)
         assert got == self.reference(events, 120, 12, percentile, 6.8)
 
 
@@ -280,9 +298,8 @@ class TestDescribing:
         text = PercentileBar(99.5, 300, 20, 6.8).describe()
         assert text == "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"
 
-    def test_it_mentions_leaving_qualifiers_out_only_when_it_does(self):
-        assert "qualifying scores left out" in PercentileBar(exclude_qualifiers=True).describe()
-        assert "qualifying scores left out" not in PercentileBar().describe()
+    def test_it_says_nothing_about_qualifiers_because_the_barkeeper_does(self):
+        assert "qualif" not in PercentileBar().describe()
 
 
 class TestBadSettings:
@@ -327,20 +344,18 @@ class TestBadSettings:
 
 class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
-        settings = SimpleNamespace(percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, exclude_qualifiers=True, other="x")
+        settings = SimpleNamespace(percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, other="x")
         b = PercentileBar.from_settings(settings)
-        assert (b._percentile, b._window_seconds, b._min_scores, b._starting_bar, b._exclude_qualifiers) == (95.0, 120.0, 8, 5.5, True)
+        assert (b._percentile, b._window_seconds, b._min_scores, b._starting_bar) == (95.0, 120.0, 8, 5.5)
         assert b.report.ok
 
     def test_bad_settings_are_replaced_as_usual(self):
-        b = PercentileBar.from_settings(SimpleNamespace(percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5,
-                                                        exclude_qualifiers=False))
+        b = PercentileBar.from_settings(SimpleNamespace(percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5))
         assert b._percentile == DEFAULT_PERCENTILE and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(PercentileBarError):
-            PercentileBar.from_settings(SimpleNamespace(percentile=500, window_seconds=1.0, min_scores=8, starting_bar=1.0,
-                                                        exclude_qualifiers=False), strict=True)
+            PercentileBar.from_settings(SimpleNamespace(percentile=500, window_seconds=1.0, min_scores=8, starting_bar=1.0), strict=True)
 
 
 class TestLogging:

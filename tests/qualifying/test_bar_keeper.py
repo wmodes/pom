@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from pom.qualifying.bar_keeper import (DEFAULT_COOLDOWN_SECONDS, BarKeeper, BarKeeperError,
+from pom.qualifying.bar_keeper import (DEFAULT_COOLDOWN_SECONDS, DEFAULT_QUALIFIER_BAR_INFLUENCE, BarKeeper, BarKeeperError,
                                                 Ruling)
 from pom.qualifying.decaying_quantile_bar import DecayingQuantileBar
 from pom.qualifying.moving_average_bar import MovingAverageBar
@@ -31,8 +31,8 @@ class FakeBar(Bar):
         self.sizes.append(now)
         return 7
 
-    def add(self, score, now, qualified):
-        self.added.append((score, now, qualified))
+    def add(self, score, now, weight=1.0):
+        self.added.append((score, now, weight))
 
     def ignores(self, score):
         return score in self.ignored
@@ -83,15 +83,15 @@ class TestQualifying:
         t, bar = bar_keeper(level=5.0)
         order = []
         bar.level_at = lambda now: order.append("asked") or 5.0
-        bar.add = lambda score, now, qualified: order.append("added")
+        bar.add = lambda score, now, weight: order.append("added")
         t.rule(9.0, 1.0)
         assert order == ["asked", "added"]
 
-    def test_every_counted_score_is_handed_to_the_bar_with_the_time_and_whether_it_qualified(self):
+    def test_every_counted_score_is_handed_to_the_bar_with_the_time_and_the_weight_it_counts_for(self):
         t, bar = bar_keeper(level=5.0)
         t.rule(9.0, 10.0)
         t.rule(2.0, 11.0)
-        assert bar.added == [(9.0, 10.0, True), (2.0, 11.0, False)]
+        assert bar.added == [(9.0, 10.0, 0.5), (2.0, 11.0, 1.0)]       # the qualifier counts half, the other score whole
 
     def test_a_score_is_handed_over_as_a_float(self):
         t, bar = bar_keeper()
@@ -132,7 +132,7 @@ class TestWhatIsIgnored:
         t, bar = bar_keeper(level=5.0)
         for i, score in enumerate([1, None, 2, None, 9]):
             t.rule(score, float(i))
-        assert t.counted == 3 and bar.added[-1] == (9.0, 4.0, True)
+        assert t.counted == 3 and bar.added[-1] == (9.0, 4.0, 0.5)
 
 
 class TestTheCooldown:
@@ -158,17 +158,17 @@ class TestTheCooldown:
         t.rule(9, 5)
         assert t.rule(2, 6) is Ruling.DID_NOT_QUALIFY
 
-    def test_a_held_score_is_handed_to_the_bar_as_a_qualifier_and_counted(self):
+    def test_a_held_score_is_handed_to_the_bar_at_the_qualifiers_weight_and_counted(self):
         t, bar = bar_keeper(level=5.0, cooldown=60)
         t.rule(9, 5)
         t.rule(9, 6)
-        assert bar.added == [(9.0, 5.0, True), (9.0, 6.0, True)] and t.counted == 2
+        assert bar.added == [(9.0, 5.0, 0.5), (9.0, 6.0, 0.5)] and t.counted == 2
 
-    def test_a_score_below_the_bar_in_the_cooldown_is_handed_over_as_no_qualifier(self):
+    def test_a_score_below_the_bar_in_the_cooldown_is_handed_over_at_full_weight(self):
         t, bar = bar_keeper(level=5.0, cooldown=60)
         t.rule(9, 5)
         t.rule(2, 6)
-        assert bar.added == [(9.0, 5.0, True), (2.0, 6.0, False)]
+        assert bar.added == [(9.0, 5.0, 0.5), (2.0, 6.0, 1.0)]
 
     def test_a_cooldown_of_zero_lets_every_strong_score_qualify(self):
         t, _ = bar_keeper(level=5.0, cooldown=0)
@@ -230,9 +230,14 @@ class TestTheQuestions:
         t, _ = bar_keeper()
         assert t.window_size_at(1.0) == 7
 
-    def test_describe_adds_the_cooldown_to_the_bars_line(self):
+    def test_describe_adds_the_cooldown_and_the_qualifiers_share_to_the_bars_line(self):
         t, _ = bar_keeper(cooldown=60)
-        assert t.describe() == "a fake bar; at most one qualifier every 60 s"
+        assert t.describe() == "a fake bar; at most one qualifier every 60 s; a qualifying score counts 50% toward the bar"
+
+    @pytest.mark.parametrize("influence, said", [(0, "0%"), (1, "100%"), (0.25, "25%"), (1.1, "110%"), (-0.1, "-10%")])
+    def test_describe_says_the_qualifier_influence_as_a_percent_even_beyond_0_to_100(self, influence, said):
+        t, _ = bar_keeper(qualifier_bar_influence=influence)
+        assert t.describe().endswith(f"a qualifying score counts {said} toward the bar")
 
     def test_the_questions_change_nothing(self):
         t, bar = bar_keeper()
@@ -311,8 +316,8 @@ class TestOverARealPercentileBar:
         assert t.rule(7.0, 1.0) is Ruling.QUALIFIED
 
     def test_leaving_qualifiers_out_lets_a_good_score_follow_a_great_one(self):
-        keep = BarKeeper(PercentileBar(100, 300, 5, 100.0, exclude_qualifiers=False), 0)
-        leave = BarKeeper(PercentileBar(100, 300, 5, 100.0, exclude_qualifiers=True), 0)
+        keep = BarKeeper(PercentileBar(100, 300, 5, 100.0), 0, qualifier_bar_influence=1.0)
+        leave = BarKeeper(PercentileBar(100, 300, 5, 100.0), 0, qualifier_bar_influence=0.0)
         for t in (keep, leave):
             for i in range(5):
                 t.rule(3.0, float(i))
@@ -326,13 +331,13 @@ class TestOverARealDecayingQuantileBar:
         t = BarKeeper(DecayingQuantileBar(starting_bar=6.8), 0)
         assert t.rule(7.5, 1.0) is Ruling.QUALIFIED
 
-    def test_qualifying_scores_are_left_out_when_asked(self):
-        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8, exclude_qualifiers=True), 0)
+    def test_qualifying_scores_are_left_out_when_their_influence_is_nothing(self):
+        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8), 0, qualifier_bar_influence=0.0)
         t.rule(9.0, 1.0)
         assert t.window_size_at(1.0) == 0
 
     def test_scores_that_did_not_qualify_are_kept(self):
-        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8, exclude_qualifiers=True), 0)
+        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8), 0, qualifier_bar_influence=0.0)
         t.rule(2.0, 1.0)
         assert t.window_size_at(1.0) == 1
 
@@ -344,6 +349,49 @@ class TestOverARealDecayingQuantileBar:
 
     def test_describe_includes_the_cooldown(self):
         assert "at most one qualifier every 60 s" in BarKeeper(DecayingQuantileBar(), 60).describe()
+
+    @staticmethod
+    def share_above_the_bar(influence, seed=7, scores=6000, step=2.0):
+        """The share of an unchanging room's scores that stand above the bar once it has settled (no cooldown, so held scores do not hide any)."""
+        import random
+        rng = random.Random(seed)
+        t = BarKeeper(DecayingQuantileBar(starting_bar=3.0, percentile=99.5, half_life_seconds=300), 0, qualifier_bar_influence=influence)
+        above = counted = 0
+        for i in range(scores):
+            ruling = t.rule(rng.uniform(0.0, 9.0), i * step)
+            if i >= scores // 2:                                   # the second half, after the bar has found its level
+                counted += 1
+                above += ruling is Ruling.QUALIFIED
+        return above / counted
+
+    def test_the_less_a_qualifier_counts_the_more_of_the_room_stands_above_the_bar(self):
+        shares = [self.share_above_the_bar(f) for f in (1.0, 0.5, 0.25)]
+        assert shares[0] < shares[1] < shares[2]
+
+    def test_over_a_steady_room_the_share_above_the_bar_is_about_the_tail_over_the_influence(self):
+        for influence in (1.0, 0.5, 0.25):
+            predicted = (1 - 0.995) / influence
+            assert 0.4 * predicted < self.share_above_the_bar(influence) < 2.5 * predicted
+
+    def test_with_no_influence_a_room_that_is_louder_than_the_bar_keeps_clearing_it(self):
+        """The bar can never follow the room up: a bar that settled low stays low while every score clears it."""
+        t = BarKeeper(DecayingQuantileBar(starting_bar=3.0, percentile=99.5, half_life_seconds=300), 0, qualifier_bar_influence=0.0)
+        for i in range(40):
+            t.rule(2.0 + (i % 3) * 0.1, float(i))
+        later = [t.rule(5.0 + (i % 3), 100.0 + i) for i in range(60)]
+        assert all(r is Ruling.QUALIFIED for r in later) and t.bar_at(160.0) < 3.0
+
+    def test_with_some_influence_the_bar_follows_the_room_up(self):
+        """The same quiet-then-livelier room as with no influence: now the bar rises with the zingers and fewer of them clear it."""
+        def run(influence):
+            t = BarKeeper(DecayingQuantileBar(starting_bar=3.0, percentile=99.5, half_life_seconds=300), 0, qualifier_bar_influence=influence)
+            for i in range(40):
+                t.rule(2.0 + (i % 3) * 0.1, float(i))
+            later = [t.rule(5.0 + (i % 3), 100.0 + i) for i in range(60)]
+            return later.count(Ruling.QUALIFIED), t.bar_at(160.0)
+        (none_cleared, none_bar), (half_cleared, half_bar) = run(0.0), run(0.5)
+        assert none_cleared == 60 and half_cleared < none_cleared
+        assert half_bar > none_bar + 1.0 and half_bar > 5.0
 
 
 class TestOverARealMovingAverageBar:
@@ -403,15 +451,26 @@ class TestRuleTyped:
         t.rule_typed(1.0, 2.0)
         assert bar.added == [] and t.counted == 0
 
-    def test_affecting_the_bar_hands_it_the_score_and_says_whether_it_qualified(self):
+    def test_a_bar_influence_hands_the_bar_the_score_at_that_weight_and_a_qualifier_takes_its_own_share_too(self):
         t, bar = bar_keeper(level=5.0)
-        t.rule_typed(9.0, 1.0, affects_bar=True)
-        t.rule_typed(1.0, 2.0, affects_bar=True)
-        assert bar.added == [(9.0, 1.0, True), (1.0, 2.0, False)] and t.counted == 2
+        t.rule_typed(9.0, 1.0, bar_influence=1.0)
+        t.rule_typed(1.0, 2.0, bar_influence=1.0)
+        assert bar.added == [(9.0, 1.0, 0.5), (1.0, 2.0, 1.0)] and t.counted == 2       # 1 x the qualifier's 0.5, then 1 x 1
+
+    def test_a_bar_influence_of_a_half_counts_a_typed_line_half_as_much(self):
+        t, bar = bar_keeper(level=5.0, qualifier_bar_influence=1.0)
+        t.rule_typed(1.0, 1.0, bar_influence=0.5)
+        assert bar.added == [(1.0, 1.0, 0.5)]
+
+    @pytest.mark.parametrize("influence", [0, 0.0, -0.1, None, "1", True, float("nan")])
+    def test_a_bar_influence_of_nothing_or_less_changes_nothing(self, influence):
+        t, bar = bar_keeper(level=5.0)
+        t.rule_typed(1.0, 1.0, bar_influence=influence)
+        assert bar.added == [] and t.counted == 0
 
     def test_affecting_the_bar_gives_counted_when_it_does_not_qualify(self):
         t, _ = bar_keeper(level=5.0)
-        assert t.rule_typed(1.0, 1.0, affects_bar=True) is Ruling.DID_NOT_QUALIFY
+        assert t.rule_typed(1.0, 1.0, bar_influence=1.0) is Ruling.DID_NOT_QUALIFY
 
     def test_it_has_no_cooldown_of_its_own(self):
         t, _ = bar_keeper(level=5.0, cooldown=60)
@@ -431,11 +490,11 @@ class TestRuleTyped:
                                           (9.0, None), (9.0, "1"), (9.0, float("nan"))])
     def test_a_score_or_time_that_is_not_a_number_is_ignored(self, score, now):
         t, bar = bar_keeper(level=5.0)
-        assert t.rule_typed(score, now, affects_bar=True) is Ruling.NO_MARK and bar.added == [] and t.counted == 0
+        assert t.rule_typed(score, now, bar_influence=1.0) is Ruling.NO_MARK and bar.added == [] and t.counted == 0
 
     def test_a_score_the_bar_ignores_is_ignored(self):
         t, bar = bar_keeper(level=5.0, ignored=(9.0,))
-        assert t.rule_typed(9.0, 1.0, affects_bar=True) is Ruling.NO_MARK and bar.added == []
+        assert t.rule_typed(9.0, 1.0, bar_influence=1.0) is Ruling.NO_MARK and bar.added == []
 
     def test_the_bar_is_asked_at_a_time_that_never_runs_backwards(self):
         t, bar = bar_keeper(level=5.0)
@@ -446,7 +505,7 @@ class TestRuleTyped:
 
     def test_affecting_the_bar_moves_the_bar_keeper_time_forward(self):
         t, bar = bar_keeper(level=5.0)
-        t.rule_typed(1.0, 8.0, affects_bar=True)
+        t.rule_typed(1.0, 8.0, bar_influence=1.0)
         bar.asked.clear()
         t.bar_at(2.0)
         assert bar.asked == [8.0]
@@ -492,7 +551,7 @@ class TestTwoThreads:
     def test_the_calls_of_three_threads_never_overlap_inside_the_bar(self):
         bar = LurchingBar()
         t = BarKeeper(bar, cooldown_seconds=0)
-        calls = [lambda i: t.rule(7.0, float(i)), lambda i: t.rule_typed(7.0, float(i), affects_bar=True),
+        calls = [lambda i: t.rule(7.0, float(i)), lambda i: t.rule_typed(7.0, float(i), bar_influence=1.0),
                  lambda i: (t.bar_at(float(i)), t.window_size_at(float(i)))]
         threads = [threading.Thread(target=lambda call=call: [call(i) for i in range(20)]) for call in calls]
         for thread in threads:
@@ -504,7 +563,7 @@ class TestTwoThreads:
     def test_every_score_from_both_threads_is_counted(self):
         t = BarKeeper(LurchingBar(), cooldown_seconds=0)
         room = threading.Thread(target=lambda: [t.rule(7.0, float(i)) for i in range(20)])
-        keys = threading.Thread(target=lambda: [t.rule_typed(7.0, float(i), affects_bar=True) for i in range(20)])
+        keys = threading.Thread(target=lambda: [t.rule_typed(7.0, float(i), bar_influence=1.0) for i in range(20)])
         room.start()
         keys.start()
         room.join(timeout=10)
@@ -536,7 +595,7 @@ class TestAStuckLock:
 
     def test_rule_typed_gives_no_mark_and_leaves_the_bar_alone(self, stuck):
         t, bar = stuck
-        assert t.rule_typed(9.0, 1.0, affects_bar=True) is Ruling.NO_MARK
+        assert t.rule_typed(9.0, 1.0, bar_influence=1.0) is Ruling.NO_MARK
         assert bar.added == [] and t.counted == 0
 
     def test_the_questions_answer_with_nothing(self, stuck):
@@ -580,21 +639,43 @@ class TestAStuckLock:
         t._lock.release()
 
 
-class TestAHeldScoreAndExcludeQualifiers:
-    """A score held by the cooldown stood above the bar like a qualifier, so `exclude_qualifiers` must leave it out of the bar too."""
+class TestTheQualifierBarInfluenceIsChecked:
+    @pytest.mark.parametrize("bad", [None, "0.5", True, False, [0.5], float("nan"), float("inf"), float("-inf")])
+    def test_a_value_that_is_not_a_number_is_the_default_with_a_warning(self, bad):
+        t = BarKeeper(FakeBar(), cooldown_seconds=0, qualifier_bar_influence=bad)
+        assert t._qualifier_bar_influence == DEFAULT_QUALIFIER_BAR_INFLUENCE and len(t.report.warnings) == 1
+        assert "qualifier_bar_influence" in t.report.warnings[0]
+
+    @pytest.mark.parametrize("good", [0, 0.0, 0.25, 1, 1.1, -0.1, 7])
+    def test_any_finite_number_is_kept_and_is_not_clamped(self, good):
+        t = BarKeeper(FakeBar(), cooldown_seconds=0, qualifier_bar_influence=good)
+        assert t._qualifier_bar_influence == float(good) and t.report.ok
+
+    def test_strict_raises_instead(self):
+        with pytest.raises(BarKeeperError):
+            BarKeeper(FakeBar(), qualifier_bar_influence="half", strict=True)
+
+    def test_a_value_beyond_the_zero_to_one_range_reaches_the_bar_as_it_is(self):
+        t, bar = bar_keeper(level=5.0, qualifier_bar_influence=1.1)
+        t.rule(9.0, 1.0)
+        assert bar.added == [(9.0, 1.0, 1.1)]
+
+
+class TestAHeldScoreAndQualifierBarInfluence:
+    """A score held by the cooldown stood above the bar like a qualifier, so `qualifier_bar_influence` must apply to it too."""
 
     @staticmethod
-    def level_after_a_held_nine(exclude_qualifiers):
-        bar = PercentileBar(100, 600, 5, 6.0, exclude_qualifiers=exclude_qualifiers)
-        t = BarKeeper(bar, 60)
+    def level_after_a_held_nine(influence):
+        bar = PercentileBar(100, 600, 5, 6.0)
+        t = BarKeeper(bar, 60, qualifier_bar_influence=influence)
         for i, score in enumerate([2.0, 3.0, 3.0, 4.0, 3.0]):
             t.rule(score, float(i))
         assert t.rule(7.0, 10.0) is Ruling.QUALIFIED       # fires: above the bar of the room's best, 4
         assert t.rule(9.0, 20.0) is Ruling.HELD            # above the bar, inside the 60 s cooldown
         return bar.level_at(30.0)
 
-    def test_with_exclude_qualifiers_on_a_held_score_does_not_raise_the_bar(self):
-        assert self.level_after_a_held_nine(True) == 4.0   # neither the 7 that fired nor the 9 that was held is in the window
+    def test_with_no_influence_a_held_score_does_not_raise_the_bar(self):
+        assert self.level_after_a_held_nine(0.0) == 4.0   # neither the 7 that fired nor the 9 that was held is in the window
 
-    def test_with_exclude_qualifiers_off_a_held_score_joins_the_bar(self):
-        assert self.level_after_a_held_nine(False) == 9.0
+    def test_with_full_influence_a_held_score_joins_the_bar(self):
+        assert self.level_after_a_held_nine(1.0) == 9.0

@@ -125,9 +125,9 @@ class MovingAverageBar(Bar):
         """True for a score below the floor, and for anything that is not a number."""
         return not (_is_number(score) and score >= self._floor)
 
-    def add(self, score: float, now: float, qualified: bool) -> None:
-        """Moves the average toward a score at or above the floor. Scores below it, and junk, are left out."""
-        if self.ignores(score):
+    def add(self, score: float, now: float, weight: float = 1.0) -> None:
+        """Moves the average toward a score at or above the floor. Scores below it, junk, and a score with a weight of 0 or less are left out."""
+        if self.ignores(score) or not (_is_number(weight) and weight > 0):
             return
         self._average += self._weight * (score - self._average)
         self.counted += 1

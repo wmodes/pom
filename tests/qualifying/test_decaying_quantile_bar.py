@@ -19,9 +19,9 @@ def bar(**options):
     return DecayingQuantileBar(**options)
 
 
-def feed(b, scores, start=0.0, step=1.0, qualified=False):
+def feed(b, scores, start=0.0, step=1.0, weight=1.0):
     for i, score in enumerate(scores):
-        b.add(score, start + i * step, qualified)
+        b.add(score, start + i * step, weight)
 
 
 def line_through_the_shares(scores, percentile):
@@ -64,7 +64,7 @@ class TestTheStartingLine:
     def test_one_early_score_barely_moves_the_bar_off_the_starting_line(self):
         b = DecayingQuantileBar(starting_bar=6.8)
         b.level_at(0.0)
-        b.add(9.0, 0.0, False)
+        b.add(9.0, 0.0)
         assert b.level_at(0.1) == pytest.approx((20 * 6.8 + 1 * 9.0) / 21, abs=0.01)     # 20 parts starting line to 1 part score
 
     def test_low_scores_pull_the_bar_down_from_the_starting_line_as_they_arrive(self):
@@ -89,7 +89,7 @@ class TestTheStartingLine:
     def test_the_starting_line_counts_from_the_first_use_not_from_each_use(self):
         b = DecayingQuantileBar(starting_bar=9.0, percentile=50, half_life_seconds=100, starting_weight=20)
         b.level_at(0.0)
-        b.add(2.0, 500.0, False)
+        b.add(2.0, 500.0)
         b.level_at(500.0)                                     # asked again: the line must not start over
         feed(b, [2.0] * 50, start=500.0, step=0.01)
         assert b.level_at(501.0) == pytest.approx(2.0, abs=0.35)
@@ -109,7 +109,7 @@ class TestTheStartingLine:
 
     def test_the_line_counts_from_the_first_time_the_bar_is_used(self):
         b = DecayingQuantileBar(starting_bar=9.0, percentile=50, half_life_seconds=100, starting_weight=20)
-        b.add(2.0, 5000.0, False)                            # the bar's first use, at 5000 s
+        b.add(2.0, 5000.0)                            # the bar's first use, at 5000 s
         assert b.level_at(5000.0) > 5.0                      # the line is fresh then, not 5000 s old
 
 
@@ -163,7 +163,7 @@ class TestTheWeightedQuantile:
 class TestTheDecay:
     def test_an_old_zinger_loses_its_hold_gradually(self):
         b = DecayingQuantileBar(percentile=99, half_life_seconds=60, starting_bar=3.0, starting_weight=TINY)
-        b.add(9.0, 0.0, False)
+        b.add(9.0, 0.0)
         feed(b, [3.0] * 60, start=1.0, step=1.0)
         levels = [b.level_at(t) for t in (61, 120, 180, 240, 300)]
         assert levels == sorted(levels, reverse=True) and levels[0] > levels[-1]
@@ -172,70 +172,150 @@ class TestTheDecay:
     def test_a_fresh_score_beats_the_bar_set_by_an_old_zinger_but_not_one_just_heard(self):
         old = DecayingQuantileBar(percentile=99.5, half_life_seconds=60, starting_weight=TINY, starting_bar=3.0)
         fresh = DecayingQuantileBar(percentile=99.5, half_life_seconds=60, starting_weight=TINY, starting_bar=3.0)
-        old.add(9.0, 0.0, False)                                   # a zinger ten minutes ago
+        old.add(9.0, 0.0)                                   # a zinger ten minutes ago
         feed(old, [3.0] * 120, start=1.0, step=5.0)                # then ordinary talk up to 596 s
         feed(fresh, [3.0] * 120, start=1.0, step=5.0)
-        fresh.add(9.0, 597.0, False)                               # a zinger three seconds ago
+        fresh.add(9.0, 597.0)                               # a zinger three seconds ago
         assert old.level_at(600.0) < 7.2 < fresh.level_at(600.0)
 
     def test_scores_count_for_half_after_one_half_life(self):
         b = DecayingQuantileBar(percentile=50, half_life_seconds=100, starting_weight=TINY, starting_bar=0.0)
-        b.add(0.0, 0.0, False)           # weight 0.5 at t = 100
-        b.add(10.0, 100.0, False)        # weight 1 at t = 100
+        b.add(0.0, 0.0)           # weight 0.5 at t = 100
+        b.add(10.0, 100.0)        # weight 1 at t = 100
         # weights 0.5 and 1: the 0.0 covers 0 to 0.5, the 10.0 covers 0.5 to 1.5; the 50th percentile (0.75) is a quarter of the way
         # along the 10.0's share, so a quarter of the way from 0.0 to 10.0
         assert b.level_at(100.0) == pytest.approx(2.5, abs=1e-6)
 
     def test_time_decays_the_weight_not_the_number_of_scores(self):
         busy, quiet = bar(percentile=50, half_life_seconds=100), bar(percentile=50, half_life_seconds=100)
-        busy.add(9.0, 0.0, False)
-        quiet.add(9.0, 0.0, False)
+        busy.add(9.0, 0.0)
+        quiet.add(9.0, 0.0)
         feed(busy, [1.0] * 50, start=100.0, step=0.01)
         feed(quiet, [1.0] * 2, start=100.0, step=0.01)
         assert busy.level_at(101.0) < quiet.level_at(101.0) or busy.level_at(101.0) == pytest.approx(1.0)
 
     def test_a_score_heard_after_the_time_asked_about_counts_in_full_not_more(self):
         b = DecayingQuantileBar(percentile=50, half_life_seconds=60, starting_weight=TINY, starting_bar=0.0)
-        b.add(1.0, 0.0, False)
-        b.add(9.0, 100.0, False)
+        b.add(1.0, 0.0)
+        b.add(9.0, 100.0)
         # asked about t = 50, before the second score: its age counts as 0, so its weight is 1, and the first is 2 ** (-50/60) = 0.561
         assert b.level_at(50.0) == pytest.approx(1.0 + (0.5 * (0.5612 + 1.0) - 0.5612) / 1.0 * 8.0, abs=0.01)
 
     def test_a_clock_that_steps_back_does_not_break_it(self):
         b = DecayingQuantileBar(half_life_seconds=60)
-        b.add(5.0, 100.0, False)
+        b.add(5.0, 100.0)
         assert b.level_at(50.0) is not None
 
 
-class TestExcludingQualifiers:
-    def test_a_qualifying_score_is_left_out_when_asked(self):
-        b = DecayingQuantileBar(exclude_qualifiers=True)
-        b.add(9.0, 0.0, True)
+class TestTheWeightOfAScore:
+    """`add` takes the weight the BarKeeper gives a score: 1 is ordinary, 0 or less leaves it out, in between it counts for that share."""
+
+    def test_a_score_with_no_weight_is_left_out(self):
+        b = DecayingQuantileBar()
+        b.add(9.0, 0.0, 0.0)
         assert b.window_size_at(0.0) == 0
 
-    def test_a_qualifying_score_is_kept_by_default(self):
+    def test_a_score_with_a_normal_weight_is_kept(self):
         b = DecayingQuantileBar()
-        b.add(9.0, 0.0, True)
+        b.add(9.0, 0.0, 1.0)
         assert b.window_size_at(0.0) == 1
 
-    def test_only_the_qualifying_scores_are_left_out(self):
-        b = DecayingQuantileBar(exclude_qualifiers=True)
-        b.add(3.0, 0.0, False)
-        b.add(9.0, 1.0, True)
-        b.add(4.0, 2.0, False)
+    def test_a_score_with_no_third_argument_counts_as_an_ordinary_one(self):
+        b = DecayingQuantileBar()
+        b.add(9.0, 0.0)
+        assert b.window_size_at(0.0) == 1
+
+    def test_a_negative_weight_is_left_out(self):
+        b = DecayingQuantileBar()
+        b.add(9.0, 0.0, -0.1)
+        assert b.window_size_at(0.0) == 0
+
+    def test_only_the_scores_with_no_weight_are_left_out(self):
+        b = DecayingQuantileBar()
+        b.add(3.0, 0.0)
+        b.add(9.0, 1.0, 0.0)
+        b.add(4.0, 2.0)
         assert b.window_size_at(2.0) == 2
 
     def test_leaving_a_zinger_out_keeps_the_bar_at_the_rooms_high_tide(self):
-        keep, leave = bar(percentile=99.5, starting_bar=3.0), bar(percentile=99.5, exclude_qualifiers=True, starting_bar=3.0)
+        keep, leave = bar(percentile=99.5, starting_bar=3.0), bar(percentile=99.5, starting_bar=3.0)
         for b in (keep, leave):
             feed(b, [3.0] * 30)
-            b.add(9.0, 30.0, True)
+        keep.add(9.0, 30.0, 1.0)
+        leave.add(9.0, 30.0, 0.0)
         assert keep.level_at(31.0) == pytest.approx(8.07, abs=0.01) and leave.level_at(31.0) == pytest.approx(3.0)
 
-    def test_a_score_that_did_not_qualify_is_kept_either_way(self):
-        b = DecayingQuantileBar(exclude_qualifiers=True)
-        b.add(9.0, 0.0, False)
-        assert b.window_size_at(0.0) == 1
+    @pytest.mark.parametrize("weight", [0.0, -0.1, -5])
+    def test_a_score_with_no_weight_is_not_kept_at_all(self, weight):
+        b = DecayingQuantileBar()
+        b.add(9.0, 0.0, weight)
+        assert len(b._memory) == 0
+
+    def test_a_low_score_with_no_weight_does_not_pull_the_interpolation_down(self):
+        """A kept zero-weight score would start the line the first real score is read along, from its own value instead of that score's."""
+        alone, with_a_ghost = bar(percentile=10, starting_bar=3.0), bar(percentile=10, starting_bar=3.0)
+        for b in (alone, with_a_ghost):
+            b.add(5.0, 1.0)
+            b.add(7.0, 2.0)
+        with_a_ghost.add(0.0, 3.0, 0.0)
+        assert with_a_ghost.level_at(4.0) == pytest.approx(alone.level_at(4.0))
+
+    def test_a_weight_that_is_not_a_number_changes_nothing(self):
+        b = DecayingQuantileBar()
+        for junk in (None, "1", True, float("nan"), float("inf")):
+            b.add(9.0, 0.0, junk)
+        assert b.window_size_at(0.0) == 0
+
+class TestTheDialBetweenTheExtremes:
+    """A weight between 0 and 1 puts the bar between leaving the score out and counting it whole."""
+
+    @staticmethod
+    def level_with_a_zinger_of(weight):
+        b = bar(percentile=99.5, starting_bar=3.0)
+        feed(b, [3.0] * 30)
+        b.add(9.0, 30.0, weight)
+        return b.level_at(31.0)
+
+    def test_the_bar_rises_with_the_weight(self):
+        levels = [self.level_with_a_zinger_of(w) for w in (0.0, 0.25, 0.5, 1.0)]
+        assert levels == sorted(levels) and len(set(levels)) == 4
+        assert levels[0] == pytest.approx(3.0)
+
+    def test_a_weight_of_a_half_counts_half_as_much(self):
+        b = bar()
+        feed(b, [5.0, 5.0], weight=0.5)
+        assert b.window_size_at(2.0) == 1
+
+    def test_a_weight_above_one_counts_for_more_than_an_ordinary_score(self):
+        b = bar()
+        feed(b, [5.0, 5.0], weight=2.0)
+        assert b.window_size_at(2.0) == 4
+
+    def test_a_weight_above_one_raises_the_bar_more_than_a_weight_of_one(self):
+        assert self.level_with_a_zinger_of(2.0) >= self.level_with_a_zinger_of(1.0)
+
+    def test_a_share_is_the_same_as_aging_the_score_by_half_life_times_log2_of_one_over_the_share(self):
+        """A score at weight 0.5 equals an ordinary one heard a half-life earlier, and 0.25 equals two half-lives, 0.75 about 0.415."""
+        import math
+        half_life = 300.0
+        for share in (0.5, 0.25, 0.75):
+            weighted = DecayingQuantileBar(half_life_seconds=half_life, starting_bar=3.0)
+            aged = DecayingQuantileBar(half_life_seconds=half_life, starting_bar=3.0)
+            for b in (weighted, aged):
+                b.level_at(0.0)                                   # the starting line begins at the same moment
+                b.add(9.0, 5000.0 - 1.0, 1.0)                     # the same background score in both
+            weighted.add(7.0, 5000.0, share)
+            aged.add(7.0, 5000.0 - half_life * math.log2(1.0 / share), 1.0)
+            assert weighted.level_at(5000.0) == pytest.approx(aged.level_at(5000.0), abs=1e-9)
+            assert weighted.window_size_at(5000.0) == aged.window_size_at(5000.0)
+
+    def test_the_share_stays_the_same_however_long_ago_the_score_was_heard(self):
+        b = DecayingQuantileBar(half_life_seconds=100.0, starting_bar=3.0)
+        b.add(8.0, 0.0, 0.5)
+        b.add(8.0, 0.0, 1.0)
+        for later in (0.0, 100.0, 250.0):
+            half, whole = b._memory[0][2] * b._weight(later), b._memory[1][2] * b._weight(later)
+            assert half / whole == pytest.approx(0.5)
 
 
 class TestTheWindowSize:
@@ -252,7 +332,7 @@ class TestTheWindowSize:
 
     def test_the_count_is_to_the_nearest_whole_score(self):
         b = DecayingQuantileBar(half_life_seconds=10)
-        b.add(3.0, 0.0, False)
+        b.add(3.0, 0.0)
         assert b.window_size_at(5.0) == 1                     # 0.71 rounds up
         assert b.window_size_at(20.0) == 0                    # 0.25 rounds down
 
@@ -263,7 +343,7 @@ class TestTheWindowSize:
 
     def test_scores_older_than_eight_half_lives_are_forgotten(self):
         b = DecayingQuantileBar(half_life_seconds=10)
-        b.add(5.0, 0.0, False)
+        b.add(5.0, 0.0)
         b.window_size_at(80.0)
         assert len(b._memory) == 1
         b.window_size_at(80.1)
@@ -279,13 +359,13 @@ class TestWhatIsIgnored:
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_score_that_is_not_a_number_changes_nothing(self, junk):
         b = DecayingQuantileBar()
-        b.add(junk, 0.0, False)
+        b.add(junk, 0.0)
         assert b.window_size_at(0.0) == 0
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_time_that_is_not_a_number_changes_nothing(self, junk):
         b = DecayingQuantileBar()
-        b.add(5.0, junk, False)
+        b.add(5.0, junk)
         assert b.window_size_at(0.0) == 0 and b.level_at(junk) is None
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
@@ -296,7 +376,7 @@ class TestWhatIsIgnored:
 
     def test_a_zero_is_a_real_score(self):
         b = DecayingQuantileBar()
-        b.add(0.0, 0.0, False)
+        b.add(0.0, 0.0)
         assert b.window_size_at(0.0) == 1
 
 
@@ -305,9 +385,8 @@ class TestDescribing:
         assert DecayingQuantileBar(99.5, 300, 6.8).describe() == \
             "the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8"
 
-    def test_it_mentions_leaving_qualifiers_out_only_when_it_does(self):
-        assert "qualifying scores left out" in DecayingQuantileBar(exclude_qualifiers=True).describe()
-        assert "qualifying scores left out" not in DecayingQuantileBar().describe()
+    def test_it_says_nothing_about_qualifiers_because_the_barkeeper_does(self):
+        assert "qualif" not in DecayingQuantileBar().describe()
 
 
 class TestBadSettings:
@@ -352,20 +431,19 @@ class TestBadSettings:
 
 class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
-        settings = SimpleNamespace(percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, exclude_qualifiers=True, unrelated="x")
+        settings = SimpleNamespace(percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, unrelated="x")
         b = DecayingQuantileBar.from_settings(settings)
-        assert (b._percentile, b._half_life, b._starting_bar, b._exclude_qualifiers) == (95.0, 120.0, 5.5, True)
+        assert (b._percentile, b._half_life, b._starting_bar) == (95.0, 120.0, 5.5)
         assert b.report.ok
 
     def test_bad_settings_are_replaced_as_usual(self):
-        settings = SimpleNamespace(percentile=500, half_life_seconds=120.0, starting_bar=5.5, exclude_qualifiers=False)
+        settings = SimpleNamespace(percentile=500, half_life_seconds=120.0, starting_bar=5.5)
         b = DecayingQuantileBar.from_settings(settings)
         assert b._percentile == DEFAULT_PERCENTILE and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(DecayingQuantileBarError):
-            DecayingQuantileBar.from_settings(SimpleNamespace(percentile=500, half_life_seconds=1.0, starting_bar=1.0,
-                                                              exclude_qualifiers=False), strict=True)
+            DecayingQuantileBar.from_settings(SimpleNamespace(percentile=500, half_life_seconds=1.0, starting_bar=1.0), strict=True)
 
 
 class TestLogging:

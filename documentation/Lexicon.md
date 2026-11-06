@@ -171,18 +171,21 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
 - **attempt**: One score trying to qualify, with what came of it: the clip (or typed line), its score, the bar as it stood, and the ruling. Example:
   `Attempt` (was: scored sentence, `ScoredSentence`)
 - **ruling**: What the BarKeeper made of an attempt: *qualified*; *did not qualify* (it joins the window); *held* (it qualified inside
-  the cooldown; it is treated as a qualifier for the window, so `exclude_qualifiers` leaves it out too); *no mark* (no usable score); or *typed DNQ* (did not qualify, for a typed line: under the
+  the cooldown; it counts toward the window as a qualifier, at the qualifier's share, `qualifier_bar_influence`); *no mark* (no usable score); or *typed DNQ* (did not qualify, for a typed line: under the
   bar, and kept out of the window). Example: `Ruling`, `rule()`, `rule_typed()` (was: score effect, `ScoreEffect`, `record()`, `record_direct()`)
 - **qualifies**: An attempt qualifies when its score is above the bar, once the window holds `min_scores` and the cooldown is over. The
-  score meets the bar as it stood before that score joined. Example: `QUALIFIED`, `exclude_qualifiers`, `[qualifying]` (was: trigger,
-  `TRIGGERED`, `exclude_triggers`, `[trigger]`)
+  score meets the bar as it stood before that score joined. Example: `QUALIFIED`, `[qualifying]` (was: trigger,
+  `TRIGGERED`, `[trigger]`)
+- **qualifier bar influence**: How much a score that stood above the bar (a qualifier, or one held by the cooldown) counts toward the bar, against 1 for an
+  ordinary score: a plain number, not limited to 0 to 1 (0 or less leaves it out; above 1 counts it for more). It is the same as
+  aging the qualifier by `half_life * log2(1/share)`, so 0.5 is one half-life. Example: `qualifier_bar_influence`, `[qualifying]` (was: `exclude_qualifiers`, on or off)
 - **bar**: The score an attempt must be above to qualify. Example: `Bar`, `bar_at()` (was: bar, `TriggerBar`, `trigger_level_at()`)
 - **bar types**: How the bar is set (`algorithm`): `percentile` of the window; `decaying_quantile`, a percentile in which a score counts
   half as much every `half_life_seconds` (the shipped choice); or `moving_average`, a decaying average plus a margin. Example:
   `PercentileBar`, `DecayingQuantileBar`, `MovingAverageBar` (was/still)
 - **window**: The field an attempt is placed against: the scores of the last `window_seconds` (300), or the last `min_scores` (20) if
-  the room is quiet. A length of time, not a count. Every score joins it, the lowest too, except a qualifier while
-  `exclude_qualifiers` is on, so one zinger does not hold the bar up. Example: `window_seconds` (was/still: window)
+  the room is quiet. A length of time, not a count. Every score joins it, the lowest too; a qualifier joins at a share of an ordinary
+  score's weight (see *qualifier bar influence*), so one zinger does not hold the bar up. Example: `window_seconds` (was/still: window)
 - **percentile**: How much of the window an attempt must beat (99.5 to begin with; 100 is the window's best). Example: `percentile`
   (was/still)
 - **starting bar**: Where the bar begins before the room has said enough to set one; it fades as the room speaks. Example:
@@ -277,18 +280,20 @@ Beside the line: a person types a typed line, which enters at Scoring and is rul
 
 The Keyboard has no metaphor of its own; its words share the plain word *typed*. People type, the Printer prints. A typed line is
 someone speaking to the Printer directly rather than being overheard, so it skips Listening, is scored like a clip, and gets a boost
-before it meets the bar. Once it is scored and ruled on it speaks the language of those sections: the *handicap* is Scoring's sports
-word, and *typed DNQ* is Qualifying's ruling.
+before it meets the bar. Once it is scored and ruled on it speaks the language of those sections: the *score multiplier* is Scoring's word,
+and *typed DNQ* is Qualifying's ruling.
 
-    keyboard -> typed line -> Scoring -> score x handicap -> Qualifying
+    keyboard -> typed line -> Scoring -> score x multiplier -> Qualifying
 
-- **typed line**: A line typed at the terminal's keyboard. It is scored like a clip, given the handicap, and ruled on against the same
+- **typed line**: A line typed at the terminal's keyboard. It is scored like a clip, multiplied by the score multiplier, and ruled on against the same
   bar. It has no cooldown; a typed line under the bar is a *typed DNQ*, and nothing is printed. Example: `TypedLineScorer`
   (was/still), `rule_typed()` (was: `record_direct()`)
-- **handicap**: What a typed line's score is multiplied by before it meets the bar, to even the field against the room (1.5 to begin
-  with; 1 is none). The product is not capped at 9. Example: `typed_handicap` (was: typed score multiplier, `typed_score_multiplier`)
-- **typed lines affect bar**: Off (the default) keeps typed scores out of the window, so the keyboard can't move the room's bar; on
-  lets them join. Example: `typed_lines_affect_bar` (was/still)
+- **score multiplier**: What a typed line's score is multiplied by before it meets the bar, to even the field against the room (1.5 to begin
+  with; 1 is none). The product is not capped at 9. It is a multiplier, not a "factor": it names what is done to the score. Example:
+  `typed_lines_score_multiplier` (was: handicap, `typed_handicap`; before that, `typed_score_multiplier`)
+- **typed lines bar influence**: How much a typed line's score counts toward the bar, against 1 for a score heard in the room: a plain number, not
+  limited to 0 to 1. At 0 typed scores stay out of the window, so the keyboard can't move the room's bar. Example:
+  `typed_lines_bar_influence` (was: `typed_lines_affect_bar`, on or off)
 - **keyboard watcher**: Defined under *Conductor*, beside the hinge finder.
 
 ## Conductor: running the pipeline

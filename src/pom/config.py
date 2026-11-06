@@ -23,8 +23,9 @@ of being threaded through by hand. Today there are five:
     [qualifying]  A section (see QualifyingSettings): when the Printer responds, when a score is above a bar worked out from the
                room's recent scores. `algorithm` picks how ("percentile", "decaying_quantile" or "moving_average"; each reads only
                its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a qualifier the next
-               may come (60; 0 for none), `typed_handicap` what a typed line's score is multiplied by (1.5) and
-               `typed_lines_affect_bar` whether a typed line feeds the bar (false). The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
+               may come (60; 0 for none), `qualifier_bar_influence` how much a score that stood above the bar counts toward it (0.5),
+               `typed_lines_score_multiplier` what a typed line's score is multiplied by (1.5) and `typed_lines_bar_influence` how much a typed
+               line counts toward the bar (0). The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `cut_every_seconds`, `hold_back_seconds`,
                `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and room-tone memory. The defaults are the
@@ -87,9 +88,9 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.prompt_output_debug", "scorer.clip_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
          "oracle.temperature", "oracle.exemplar_redraws", "qualifying.min_scores", "qualifying.window_seconds", "qualifying.percentile",
-         "qualifying.cooldown_seconds", "qualifying.algorithm", "qualifying.starting_bar", "qualifying.exclude_qualifiers",
+         "qualifying.cooldown_seconds", "qualifying.algorithm", "qualifying.starting_bar", "qualifying.qualifier_bar_influence",
          "qualifying.half_life_seconds", "qualifying.average_fraction", "qualifying.average_half_life_scores",
-         "qualifying.average_floor_fraction", "qualifying.typed_handicap", "qualifying.typed_lines_affect_bar",
+         "qualifying.average_floor_fraction", "qualifying.typed_lines_score_multiplier", "qualifying.typed_lines_bar_influence",
          "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
          "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
@@ -127,7 +128,9 @@ DEFAULT_QUALIFYING_HALF_LIFE_SECONDS = 300.0
 DEFAULT_QUALIFYING_AVERAGE_FRACTION = 0.25
 DEFAULT_QUALIFYING_AVERAGE_HALF_LIFE_SCORES = 10.0
 DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION = 0.05
-DEFAULT_QUALIFYING_TYPED_HANDICAP = 1.5
+DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE = 0.5
+DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER = 1.5
+DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE = 0.0
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
 DEFAULT_LISTENING_DEVICE = "plughw:0,0"
@@ -271,8 +274,10 @@ class QualifyingSettings:
         cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 is no cooldown). (all)
         starting_bar: The bar before the room has said enough to work one out, and where it begins; it fades as the room speaks.
             There is no silent warm-up. (all)
-        exclude_qualifiers: True leaves a score that qualified out of what the bar is built from, so one zinger does not hold the bar up
-            and shut out the next. (percentile and decaying_quantile)
+        qualifier_bar_influence: How much a score that stood above the bar (a qualifier, or one held by the cooldown) counts toward the bar,
+            against 1 for an ordinary score. Any number, not limited to 0 to 1 (an experiment may want 1.1 or -0.1): 0 or less leaves it out, so
+            the bar cannot follow the room up; 1 counts it in full, so the bar chases the room's best score. The decaying quantile weights it by
+            this; the percentile and moving-average bars cannot, and count it whole if it is above 0. (all)
         half_life_seconds: Seconds for a score to count half as much, above 0. (decaying_quantile)
         average_fraction: How far above the decaying average the bar sits, 0 or more (0.25 is 25% above). (moving_average)
         average_half_life_scores: How many more scores it takes for a score's influence on the average to halve, above 0.
@@ -280,24 +285,24 @@ class QualifyingSettings:
         average_floor_fraction: How far up the 0 to 9 scale the floor sits; scores below it are ignored. From 0 up to but not
             including 1. (moving_average)
         algorithm: "percentile", "decaying_quantile" or "moving_average".
-        typed_handicap: What a typed line's score is multiplied by before it meets the bar, 0 or more (1 is no bonus). A typed
+        typed_lines_score_multiplier: What a typed line's score is multiplied by before it meets the bar, 0 or more (1 is no bonus). A typed
             line is someone speaking to the Printer directly, so its score is multiplied; the product is not capped at 9. (all)
-        typed_lines_affect_bar: True lets a typed line's score affect the bar, feeding what it is built from like the room's own scores. False keeps
-            the bar a picture of the room alone. A typed line never has a cooldown either way. (all)
+        typed_lines_bar_influence: How much a typed line's score counts toward the bar, against 1 for a score heard in the room. Any number, not
+            limited to 0 to 1: 0 keeps the bar a picture of the room alone. A typed line never has a cooldown either way. (all)
     """
     percentile: float = DEFAULT_QUALIFYING_PERCENTILE
     window_seconds: float = DEFAULT_QUALIFYING_WINDOW_SECONDS
     min_scores: int = DEFAULT_QUALIFYING_MIN_SCORES
     cooldown_seconds: float = DEFAULT_QUALIFYING_COOLDOWN_SECONDS
     starting_bar: float = DEFAULT_QUALIFYING_STARTING_BAR
-    exclude_qualifiers: bool = False
+    qualifier_bar_influence: float = DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE
     half_life_seconds: float = DEFAULT_QUALIFYING_HALF_LIFE_SECONDS
     average_fraction: float = DEFAULT_QUALIFYING_AVERAGE_FRACTION
     average_half_life_scores: float = DEFAULT_QUALIFYING_AVERAGE_HALF_LIFE_SCORES
     average_floor_fraction: float = DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION
     algorithm: str = DEFAULT_QUALIFYING_ALGORITHM
-    typed_handicap: float = DEFAULT_QUALIFYING_TYPED_HANDICAP
-    typed_lines_affect_bar: bool = False
+    typed_lines_score_multiplier: float = DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER
+    typed_lines_bar_influence: float = DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE
 
 
 @dataclass(frozen=True)
@@ -612,7 +617,8 @@ class Config:
                     "qualifying.cooldown_seconds", DEFAULT_QUALIFYING_COOLDOWN_SECONDS, 0.0, report),
             _finite(values.get("qualifying.starting_bar", DEFAULT_QUALIFYING_STARTING_BAR), "qualifying.starting_bar",
                     DEFAULT_QUALIFYING_STARTING_BAR, report),
-            _bool(values.get("qualifying.exclude_qualifiers", False), "qualifying.exclude_qualifiers", report),
+            _finite(values.get("qualifying.qualifier_bar_influence", DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE),
+                    "qualifying.qualifier_bar_influence", DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE, report),
             _positive(values.get("qualifying.half_life_seconds", DEFAULT_QUALIFYING_HALF_LIFE_SECONDS),
                       "qualifying.half_life_seconds", DEFAULT_QUALIFYING_HALF_LIFE_SECONDS, report),
             _number(values.get("qualifying.average_fraction", DEFAULT_QUALIFYING_AVERAGE_FRACTION),
@@ -623,9 +629,10 @@ class Config:
                        "qualifying.average_floor_fraction", DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION, report),
             _choice(values.get("qualifying.algorithm", DEFAULT_QUALIFYING_ALGORITHM), "qualifying.algorithm",
                     DEFAULT_QUALIFYING_ALGORITHM, BAR_ALGORITHMS, report),
-            _number(values.get("qualifying.typed_handicap", DEFAULT_QUALIFYING_TYPED_HANDICAP),
-                    "qualifying.typed_handicap", DEFAULT_QUALIFYING_TYPED_HANDICAP, 0.0, report),
-            _bool(values.get("qualifying.typed_lines_affect_bar", False), "qualifying.typed_lines_affect_bar", report))
+            _number(values.get("qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER),
+                    "qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER, 0.0, report),
+            _finite(values.get("qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE),
+                    "qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE, report))
         whisper_url = _text(values.get("listening.whisper_url", DEFAULT_LISTENING_WHISPER_URL), "listening.whisper_url",
                             DEFAULT_LISTENING_WHISPER_URL, report)
         if "POM_WHISPER_URL" in environ:

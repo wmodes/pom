@@ -448,39 +448,56 @@ def test_the_qualifying_defaults_match_the_bars_defaults():
 
 
 def test_the_starting_qualifying_values():
-    assert QualifyingSettings() == QualifyingSettings(99.5, 300.0, 20, 60.0, 6.8, False, 300.0, 0.25, 10.0, 0.05, "percentile")
+    assert QualifyingSettings() == QualifyingSettings(99.5, 300.0, 20, 60.0, 6.8, 0.5, 300.0, 0.25, 10.0, 0.05, "percentile")
 
 
 def test_all_the_qualifying_values_are_read_from_the_section(tmp_path):
     text = ("[qualifying]\nalgorithm = \"decaying_quantile\"\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
-            "starting_bar = 5.5\nexclude_qualifiers = true\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
+            "starting_bar = 5.5\nqualifier_bar_influence = 0.25\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
             "average_half_life_scores = 4\naverage_floor_fraction = 0.1\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.qualifying == QualifyingSettings(95.0, 120.0, 8, 90.0, 5.5, True, 180.0, 0.5, 4.0, 0.1, "decaying_quantile")
+    assert config.qualifying == QualifyingSettings(95.0, 120.0, 8, 90.0, 5.5, 0.25, 180.0, 0.5, 4.0, 0.1, "decaying_quantile")
     assert config.report.ok
 
 
-def test_the_typed_line_settings_start_as_a_handicap_of_one_and_a_half_that_stays_out_of_the_bar():
+def test_the_typed_line_settings_start_as_a_multiplier_of_one_and_a_half_that_has_no_influence_on_the_bar():
     s = QualifyingSettings()
-    assert s.typed_handicap == 1.5 and s.typed_lines_affect_bar is False
+    assert s.typed_lines_score_multiplier == 1.5 and s.typed_lines_bar_influence == 0.0
 
 
 def test_the_typed_line_settings_are_read_from_the_section(tmp_path):
-    config = Config.load(write(tmp_path, "[qualifying]\ntyped_handicap = 2\ntyped_lines_affect_bar = true\n"), environ={})
-    assert config.qualifying.typed_handicap == 2.0 and config.qualifying.typed_lines_affect_bar is True and config.report.ok
+    config = Config.load(write(tmp_path, "[qualifying]\ntyped_lines_score_multiplier = 2\ntyped_lines_bar_influence = 0.5\n"), environ={})
+    assert (config.qualifying.typed_lines_score_multiplier, config.qualifying.typed_lines_bar_influence) == (2.0, 0.5) and config.report.ok
 
 
-def test_a_typed_handicap_of_zero_and_one_are_accepted(tmp_path):
+def test_a_typed_score_multiplier_of_zero_and_one_are_accepted(tmp_path):
     for text, expected in (("0", 0.0), ("1", 1.0)):
-        config = Config.load(write(tmp_path, f"[qualifying]\ntyped_handicap = {text}\n"), environ={})
-        assert config.qualifying.typed_handicap == expected and config.report.ok
+        config = Config.load(write(tmp_path, f"[qualifying]\ntyped_lines_score_multiplier = {text}\n"), environ={})
+        assert config.qualifying.typed_lines_score_multiplier == expected and config.report.ok
+
+
+@pytest.mark.parametrize("key, default", [("qualifier_bar_influence", 0.5), ("typed_lines_bar_influence", 0.0)])
+@pytest.mark.parametrize("text, expected", [("0", 0.0), ("1", 1.0), ("0.25", 0.25), ("1.1", 1.1), ("-0.1", -0.1), ("2", 2.0), ("-5", -5.0)])
+def test_a_bar_influence_is_any_number_and_is_not_limited_to_zero_to_one(tmp_path, key, default, text, expected):
+    config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {text}\n"), environ={})
+    assert getattr(config.qualifying, key) == expected and config.report.ok
+
+
+def test_the_qualifier_bar_influence_starts_at_a_half():
+    assert QualifyingSettings().qualifier_bar_influence == 0.5
+
+
+@pytest.mark.parametrize("key", ["exclude_qualifiers", "typed_handicap", "typed_lines_affect_bar"])
+def test_the_old_names_are_gone_and_are_warned_about_as_unknown_keys(tmp_path, key):
+    config = Config.load(write(tmp_path, f"[qualifying]\n{key} = 1\n"), environ={})
+    assert any(f"qualifying.{key}" in w for w in config.report.warnings) and config.qualifying == QualifyingSettings()
 
 
 def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
     text = ("[qualifying]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
             "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.qualifying == QualifyingSettings(0.001, 0.5, 2, 0.0, -3.0, False, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
+    assert config.qualifying == QualifyingSettings(0.001, 0.5, 2, 0.0, -3.0, 0.5, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -494,7 +511,8 @@ def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
     ("cooldown_seconds", "nan"),
     ("algorithm", '"median"'), ("algorithm", "5"), ("algorithm", "true"), ("algorithm", '"Percentile"'),
     ("starting_bar", '"6.8"'), ("starting_bar", "true"), ("starting_bar", "inf"), ("starting_bar", "nan"), ("starting_bar", "[6.8]"),
-    ("exclude_qualifiers", "5"), ("exclude_qualifiers", '"maybe"'), ("exclude_qualifiers", "[true]"),
+    ("qualifier_bar_influence", '"half"'), ("qualifier_bar_influence", "true"), ("qualifier_bar_influence", "[0.5]"),
+    ("qualifier_bar_influence", "inf"), ("qualifier_bar_influence", "nan"),
     ("half_life_seconds", "0"), ("half_life_seconds", "-1"), ("half_life_seconds", '"300"'), ("half_life_seconds", "true"),
     ("half_life_seconds", "inf"),
     ("average_fraction", "-0.1"), ("average_fraction", '"0.25"'), ("average_fraction", "true"), ("average_fraction", "[1]"),
@@ -502,9 +520,10 @@ def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
     ("average_half_life_scores", "true"), ("average_half_life_scores", "inf"),
     ("average_floor_fraction", "-0.01"), ("average_floor_fraction", "1"), ("average_floor_fraction", "1.5"),
     ("average_floor_fraction", '"0.05"'), ("average_floor_fraction", "true"), ("average_floor_fraction", "false"),
-    ("typed_handicap", "-0.1"), ("typed_handicap", '"1.5"'), ("typed_handicap", "true"),
-    ("typed_handicap", "[1.5]"),
-    ("typed_lines_affect_bar", "5"), ("typed_lines_affect_bar", '"maybe"'), ("typed_lines_affect_bar", "[true]")])
+    ("typed_lines_score_multiplier", "-0.1"), ("typed_lines_score_multiplier", '"1.5"'), ("typed_lines_score_multiplier", "true"),
+    ("typed_lines_score_multiplier", "[1.5]"),
+    ("typed_lines_bar_influence", '"maybe"'), ("typed_lines_bar_influence", "true"), ("typed_lines_bar_influence", "[1]"),
+    ("typed_lines_bar_influence", "inf"), ("typed_lines_bar_influence", "nan")])
 def test_a_bad_qualifying_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {value}\n"), environ={})
     assert config.qualifying == QualifyingSettings()

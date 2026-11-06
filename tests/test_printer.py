@@ -138,6 +138,15 @@ class TestWhatItPrintsOn:
     def test_the_keyboard_can_be_left_unwatched(self, tmp_path):
         assert build(tmp_path, keyboard=False).parts["keyboard"] is None
 
+    def test_the_typed_line_scorer_gets_the_score_multiplier_and_the_bar_influence_from_the_config(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "serial"\n[qualifying]\ntyped_lines_score_multiplier = 2.5\ntyped_lines_bar_influence = 0.4\n')
+        typed = p.parts["keyboard"]._typed_scorer
+        assert (typed._score_multiplier, typed._bar_influence) == (2.5, 0.4)
+
+    def test_the_bar_keeper_gets_the_qualifier_bar_influence_from_the_config(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nqualifier_bar_influence = 0.3\n')
+        assert p.parts["bar_keeper"]._qualifier_bar_influence == 0.3
+
     def test_the_turn_taker_prints_on_that_terminal(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "console"\n')
         assert p.parts["turn_taker"]._terminal is p.terminal

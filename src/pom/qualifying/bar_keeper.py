@@ -9,7 +9,9 @@ scores, a decaying quantile, a moving average), each its own class, so the way o
 parts every way shares:
 
   * Qualifying: a score qualifies when it is ABOVE the bar, as the bar stood BEFORE that score was added, so a sentence is judged
-    against the room as it was before it was said. A score that stood above the bar, whether it qualified or was held by the cooldown, is then handed to the bar flagged as a qualifier, so the bar leaves it out when `exclude_qualifiers` is on; any other score joins the bar.
+    against the room as it was before it was said. A score that stood above the bar, whether it qualified or was held by the cooldown, is then handed to the bar
+    at the qualifier's share of a normal score's weight (`qualifier_bar_influence`), so the zinger that fired does not hold the bar up as if it
+    were an ordinary score (0 leaves it out entirely, 1 counts it in full).
   * The cooldown: after a qualifier, a score above the bar is not marked until `cooldown_seconds` have passed since that qualifier (60 to
     begin with; 0 turns it off). It is HELD: it still goes to the bar, and it does not restart the cooldown. A burst of strong
     sentences, such as a run of jokes, gives one qualifier and not six, and the next one comes from the room once the cooldown is over.
@@ -22,6 +24,11 @@ A clip that has no score (None), or one the bar ignores (a score under a floor),
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad input to
     `rule` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
+  * THE QUALIFIER'S INFLUENCE IS THE BARKEEPER'S, NOT EACH BAR'S. How much a score that stood above the bar counts toward the bar is one
+    dial, `qualifier_bar_influence`, a plain number that is not limited to 0 to 1 (an experiment may want 1.1 or -0.1): the BarKeeper works out
+    each score's weight and hands it to whichever bar it has. A bar that cannot use a weight (see Bar.add) treats 0 or less as "leave it out" and
+    anything above 0 as "count it". Over a steady room the share of scores above the bar settles near (1 - percentile) / influence, so
+    the dial stretches the percentile's target tail.
   * The bar is passed in, already built (`bar_keeper_from_settings` builds the one the config chose), so a new way of deciding is a new
     Bar and nothing here changes.
   * This module never reads Config, and it never sees any words, only numbers.
@@ -49,6 +56,7 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 DEFAULT_COOLDOWN_SECONDS = 60.0
+DEFAULT_QUALIFIER_BAR_INFLUENCE = 0.5     # a score that stood above the bar counts half as much as an ordinary one
 LOCK_TIMEOUT_SECONDS = 5.0   # the longest a call waits for the lock; the work inside it takes microseconds
 
 
@@ -74,10 +82,12 @@ class BarKeeper:
     """
 
     def __init__(self, bar: Optional[Bar] = None, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
-                 strict: bool = False):
+                 qualifier_bar_influence: float = DEFAULT_QUALIFIER_BAR_INFLUENCE, strict: bool = False):
         """Args:
             bar: The Bar that works out where the bar sits. None means a PercentileBar with its defaults.
             cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 means no cooldown).
+            qualifier_bar_influence: How much a score that stood above the bar counts toward the bar, against 1 for an ordinary score. Any
+                number (not limited to 0 to 1): 0 or less leaves it out, above 1 counts it for more.
             strict: Raise BarKeeperError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=BarKeeperError, logger=_log)
@@ -89,6 +99,7 @@ class BarKeeper:
         self._bar = bar
         self._lock = threading.Lock()      # held for the whole of each public call that reads or changes the bar or the clock
         self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
+        self._qualifier_bar_influence = self._valid_influence(qualifier_bar_influence)
         self._last_time: Optional[float] = None
         self._last_qualifier: Optional[float] = None
         self.counted = 0
@@ -99,6 +110,13 @@ class BarKeeper:
             return float(value)
         self.report.warn(f"cooldown_seconds must be a number of at least 0, got {value!r}; using {DEFAULT_COOLDOWN_SECONDS:g}")
         return DEFAULT_COOLDOWN_SECONDS
+
+    def _valid_influence(self, value) -> float:
+        """Any finite number, or the default with a warning."""
+        if self._is_number(value):
+            return float(value)
+        self.report.warn(f"qualifier_bar_influence must be a number, got {value!r}; using {DEFAULT_QUALIFIER_BAR_INFLUENCE:g}")
+        return DEFAULT_QUALIFIER_BAR_INFLUENCE
 
     @staticmethod
     def _is_number(value) -> bool:
@@ -121,7 +139,8 @@ class BarKeeper:
 
     def describe(self) -> str:
         """One line saying how the BarKeeper works and how it is set."""
-        return f"{self._bar.describe()}; at most one qualifier every {self._cooldown_seconds:g} s"
+        return (f"{self._bar.describe()}; at most one qualifier every {self._cooldown_seconds:g} s; "
+                f"a qualifying score counts {self._qualifier_bar_influence * 100:g}% toward the bar")
 
     def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to qualify at time `now`, or None if `now` is not a number or the bar has none."""
@@ -161,19 +180,20 @@ class BarKeeper:
             qualified = above and not cooling
             if qualified:
                 self._last_qualifier = now
-            self._bar.add(float(score), now, above)         # a held score stood above the bar too: it is treated as the qualifier it would have been
+            self._bar.add(float(score), now, self._qualifier_bar_influence if above else 1.0)    # a held score stood above the bar too: it counts as the qualifier it would have been
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
             _log.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
             return ruling
 
-    def rule_typed(self, score: Optional[float], now: float, affects_bar: bool = False) -> Ruling:
+    def rule_typed(self, score: Optional[float], now: float, bar_influence: float = 0.0) -> Ruling:
         """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
 
         Such a score is held to the same bar as the room's, but it takes no part in the room's rhythm: no cooldown applies to it,
-        and a qualifier it causes does not start one. Whether it also affects the bar (feeds what it is built from) is `affects_bar`: False (the
-        default) keeps the bar a picture of the room alone, so the score changes nothing here.
+        and a qualifier it causes does not start one. How much it also affects the bar (feeds what it is built from) is `bar_influence`,
+        against 1 for a score heard in the room: 0 (the default) keeps the bar a picture of the room alone, so the score changes nothing here.
+        A typed line that stood above the bar also takes the qualifier's share (`qualifier_bar_influence`), like any score that stood above it.
 
         A score or time that is not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar. If not, it is
         DID_NOT_QUALIFY when it affected the bar and TYPED_DNQ when it did not.
@@ -184,8 +204,10 @@ class BarKeeper:
             now = self._steady(now)
             level = self._bar.level_at(now)
             qualified = level is not None and score > level
+            weight = (bar_influence if self._is_number(bar_influence) else 0.0) * (self._qualifier_bar_influence if qualified else 1.0)
+            affects_bar = weight > 0
             if affects_bar:
-                self._bar.add(float(score), now, qualified)
+                self._bar.add(float(score), now, weight)
                 self._last_time = now
                 self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY if affects_bar else Ruling.TYPED_DNQ

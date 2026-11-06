@@ -8,8 +8,10 @@ own class. They all answer the same four questions, so the BarKeeper does not ca
     (a bar with no data and no starting line), and nothing qualifies.
   * `window_size_at(now)`: how many real scores the bar is built from at `now`, for display (a bar that fades scores counts them by
     their weight). Starting-line scores do not count.
-  * `add(score, now, qualified)`: takes in a score that was judged, and whether it qualified. A bar may leave a qualifying score out
-    of what it remembers (`exclude_qualifiers`), which is why it is told.
+  * `add(score, now, weight)`: takes in a score that was judged, and how much it counts toward the bar. A normal score counts 1; the
+    BarKeeper hands a score that stood above the bar the qualifier's share (`qualifier_bar_influence`), and a typed line its own
+    (`typed_lines_bar_influence`). A bar that can weight scores (the decaying quantile) remembers the score at that weight; a bar that cannot
+    remembers it whole if the weight is above 0, and not at all if it is 0 or less (a quantile has no use for a negative weight).
   * `ignores(score)`: True for a score the bar wants nothing to do with (a score under a floor). Most bars ignore nothing.
   * `describe()`: one line saying how this bar works and how it is set, for a testbench or a log (numbers only).
 
@@ -35,8 +37,8 @@ class Bar(ABC):
         """How many real scores the bar is built from at `now`."""
 
     @abstractmethod
-    def add(self, score: float, now: float, qualified: bool) -> None:
-        """Takes in a judged score at `now`; `qualified` says whether it stood above the bar: it fired, or was held back by the cooldown."""
+    def add(self, score: float, now: float, weight: float = 1.0) -> None:
+        """Takes in a judged score at `now`, counting `weight` toward the bar (1 is a normal score; 0 or less leaves it out)."""
 
     @abstractmethod
     def describe(self) -> str:

@@ -39,5 +39,5 @@ def bar_from_settings(settings, strict: bool = False) -> Bar:
 
 
 def bar_keeper_from_settings(settings, strict: bool = False) -> BarKeeper:
-    """A BarKeeper with the bar the settings name and `settings.cooldown_seconds`."""
-    return BarKeeper(bar_from_settings(settings, strict=strict), settings.cooldown_seconds, strict=strict)
+    """A BarKeeper with the bar the settings name, `settings.cooldown_seconds` and `settings.qualifier_bar_influence`."""
+    return BarKeeper(bar_from_settings(settings, strict=strict), settings.cooldown_seconds, settings.qualifier_bar_influence, strict=strict)

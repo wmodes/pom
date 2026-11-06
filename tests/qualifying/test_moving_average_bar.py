@@ -17,7 +17,7 @@ def bar(**options):
 
 def feed(b, scores):
     for i, score in enumerate(scores):
-        b.add(score, float(i), False)
+        b.add(score, float(i))
 
 
 class TestTheDefaults:
@@ -46,7 +46,7 @@ class TestTheStartingLine:
 
     def test_a_score_moves_the_average_part_of_the_way_from_the_starting_line(self):
         b = bar(starting_bar=5.0, fraction=0)             # half-life 1: half way
-        b.add(9.0, 0.0, False)
+        b.add(9.0, 0.0)
         assert b.level_at(0.0) == pytest.approx(7.0)
 
     def test_the_starting_line_fades_by_the_half_life_in_scores(self):
@@ -60,12 +60,12 @@ class TestTheStartingLine:
 class TestTheAverageAndTheBar:
     def test_the_bar_is_the_average_plus_the_fraction(self):
         b = bar(starting_bar=4.0, fraction=0.25)           # the average starts at 3.2
-        b.add(5.0, 0.0, False)                             # half way: 4.1
+        b.add(5.0, 0.0)                             # half way: 4.1
         assert b.level_at(0.0) == pytest.approx(4.1 * 1.25)
 
     def test_a_fraction_of_zero_puts_the_bar_at_the_average(self):
         b = bar(starting_bar=4.0, fraction=0)
-        b.add(6.0, 0.0, False)
+        b.add(6.0, 0.0)
         assert b.level_at(0.0) == pytest.approx(5.0)
 
     def test_a_bigger_fraction_gives_a_higher_bar(self):
@@ -93,7 +93,7 @@ class TestTheAverageAndTheBar:
     def test_the_half_life_sets_how_far_each_score_moves_it(self):
         slow, fast = MovingAverageBar(half_life_scores=20, fraction=0, starting_bar=2.0), MovingAverageBar(half_life_scores=2, fraction=0, starting_bar=2.0)
         for b in (slow, fast):
-            b.add(8.0, 0.0, False)
+            b.add(8.0, 0.0)
         assert fast.level_at(0.0) > slow.level_at(0.0)
         assert fast.level_at(0.0) == pytest.approx(2.0 + (1 - 0.5 ** 0.5) * 6.0)
 
@@ -102,13 +102,13 @@ class TestTheFloor:
     def test_a_score_below_the_floor_is_ignored(self):
         b = bar()
         before = b.level_at(0.0)
-        b.add(0.4, 0.0, False)
+        b.add(0.4, 0.0)
         assert b.level_at(0.0) == before and b.counted == 0 and b.ignores(0.4) is True
 
     def test_a_score_exactly_at_the_floor_counts(self):
         b = bar()
         assert b.ignores(0.45) is False
-        b.add(0.45, 0.0, False)
+        b.add(0.45, 0.0)
         assert b.counted == 1
 
     def test_the_floor_is_a_fraction_of_the_range(self):
@@ -126,13 +126,19 @@ class TestTheFloor:
         b = bar()
         before = b.level_at(0.0)
         assert b.ignores(junk) is True
-        b.add(junk, 0.0, False)
+        b.add(junk, 0.0)
         assert b.level_at(0.0) == before and b.counted == 0
 
     def test_a_qualifying_score_joins_the_average_like_any_other(self):
         b = bar(starting_bar=4.0, fraction=0)
-        b.add(8.0, 0.0, True)
+        b.add(8.0, 0.0, 0.5)                    # a qualifier's weight: this bar cannot weight, so it counts whole
         assert b.level_at(0.0) == pytest.approx(6.0)
+
+    @pytest.mark.parametrize("weight", [0.0, -0.1, None, "1", True, float("nan")])
+    def test_a_score_with_no_weight_or_a_junk_one_is_left_out(self, weight):
+        b = bar(starting_bar=4.0, fraction=0)
+        b.add(8.0, 0.0, weight)
+        assert b.level_at(0.0) == pytest.approx(4.0) and b.counted == 0
 
 
 class TestTheWindowSize:

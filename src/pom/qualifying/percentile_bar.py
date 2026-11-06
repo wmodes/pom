@@ -16,8 +16,9 @@ beside it:
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
     input to `add` is ignored. `strict=True` raises PercentileBarError instead, for tests and dev tools.
-  * `exclude_qualifiers` leaves a qualifying score out of what the bar remembers. Otherwise the zinger that fired is the room's best score
-    and holds the bar up for the rest of the window, shutting out the next good one.
+  * IT CANNOT WEIGHT SCORES. A nearest-rank percentile counts each score whole, so a score handed to `add` with a weight above 0 is
+    remembered whole and one with a weight of 0 or less is left out. (The decaying quantile is the bar that weighs a qualifier by how
+    much it should count.)
   * Only the scores in the window are kept (never fewer than `min_scores`), so memory is bounded however long the room talks.
   * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
 """
@@ -55,15 +56,13 @@ class PercentileBar(Bar):
     """
 
     def __init__(self, percentile: float = DEFAULT_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
-                 min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR,
-                 exclude_qualifiers: bool = False, strict: bool = False):
+                 min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR, strict: bool = False):
         """Args:
             percentile: How much of the window the bar sits above, above 0 and at most 100.
             window_seconds: How many seconds of recent scores the bar is drawn from, above 0.
             min_scores: The window always holds at least this many scores, and until this many have been heard the bar is
                 `starting_bar`; a whole number of at least 2.
             starting_bar: The bar until `min_scores` scores have been heard.
-            exclude_qualifiers: True leaves a score that qualified out of what the bar remembers.
             strict: Raise PercentileBarError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=PercentileBarError, logger=_log)
@@ -75,14 +74,12 @@ class PercentileBar(Bar):
                                        lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= MINIMUM_MIN_SCORES,
                                        f"a whole number of at least {MINIMUM_MIN_SCORES}", int)
         self._starting_bar = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number", float)
-        self._exclude_qualifiers = bool(exclude_qualifiers)
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
     def from_settings(cls, settings, strict: bool = False) -> "PercentileBar":
-        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores`, `starting_bar` and `exclude_qualifiers`."""
-        return cls(settings.percentile, settings.window_seconds, settings.min_scores, settings.starting_bar,
-                   settings.exclude_qualifiers, strict=strict)
+        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores` and `starting_bar`."""
+        return cls(settings.percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str, convert):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -109,11 +106,11 @@ class PercentileBar(Bar):
         window = self._window(now) if _is_number(now) else None
         return len(window) if window is not None else len(self._recent)
 
-    def add(self, score: float, now: float, qualified: bool) -> None:
-        """Takes in a judged score. A score that stood above the bar (a qualifier, or one held by the cooldown) is left out when `exclude_qualifiers` is on."""
-        if not (_is_number(score) and _is_number(now)):
+    def add(self, score: float, now: float, weight: float = 1.0) -> None:
+        """Takes in a judged score. It is remembered whole if its weight is above 0 and left out if the weight is 0 or less (it cannot weight)."""
+        if not (_is_number(score) and _is_number(now) and _is_number(weight)):
             return
-        if qualified and self._exclude_qualifiers:
+        if weight <= 0:
             return
         self._recent.append((now, float(score)))
         self._forget_old(now)
@@ -121,8 +118,7 @@ class PercentileBar(Bar):
     def describe(self) -> str:
         """For example: the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8."""
         return (f"the {self._percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
-                f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}"
-                + (", qualifying scores left out" if self._exclude_qualifiers else ""))
+                f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}")
 
     # --- The window -----------------------------------------------------------------
 

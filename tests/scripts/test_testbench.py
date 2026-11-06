@@ -12,7 +12,7 @@ TESTBENCHES = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/l
                "scripts/dev/writing/write_portent_from_hinge.py",
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_turns.py",
                "scripts/dev/printing/format_text_for_typewriter.py",
-               "scripts/dev/printing/type_text_on_typewriter.py"]
+               "scripts/dev/printing/type_text_on_typewriter.py", "scripts/dev/qualifying/replay_scores_through_bar.py"]
 
 
 def run(script, *args, env=None):

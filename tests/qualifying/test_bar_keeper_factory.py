@@ -11,7 +11,7 @@ from pom.qualifying.percentile_bar import PercentileBarError
 def settings(**overrides):
     """Settings like the config makes, with every algorithm's keys present."""
     values = dict(algorithm="percentile", percentile=99.0, window_seconds=120.0, min_scores=8, cooldown_seconds=45.0, starting_bar=5.5,
-                  exclude_qualifiers=True, half_life_seconds=90.0, average_fraction=0.3, average_half_life_scores=6.0,
+                  qualifier_bar_influence=0.25, half_life_seconds=90.0, average_fraction=0.3, average_half_life_scores=6.0,
                   average_floor_fraction=0.1)
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -34,11 +34,11 @@ class TestBuildingABar:
 
     def test_the_percentile_bar_gets_its_settings(self):
         bar = bar_from_settings(settings(algorithm="percentile"))
-        assert (bar._percentile, bar._window_seconds, bar._min_scores, bar._starting_bar, bar._exclude_qualifiers) == (99.0, 120.0, 8, 5.5, True)
+        assert (bar._percentile, bar._window_seconds, bar._min_scores, bar._starting_bar) == (99.0, 120.0, 8, 5.5)
 
     def test_the_decaying_quantile_bar_gets_its_settings(self):
         bar = bar_from_settings(settings(algorithm="decaying_quantile"))
-        assert (bar._percentile, bar._half_life, bar._starting_bar, bar._exclude_qualifiers) == (99.0, 90.0, 5.5, True)
+        assert (bar._percentile, bar._half_life, bar._starting_bar) == (99.0, 90.0, 5.5)
 
     def test_the_moving_average_bar_gets_its_settings(self):
         bar = bar_from_settings(settings(algorithm="moving_average"))
@@ -46,12 +46,11 @@ class TestBuildingABar:
         assert bar.level_at(0.0) == pytest.approx(5.5)
 
     def test_each_bar_ignores_the_other_algorithms_settings(self):
-        sparse = SimpleNamespace(algorithm="percentile", percentile=99.0, window_seconds=120.0, min_scores=8, starting_bar=5.5,
-                                 exclude_qualifiers=False)
+        sparse = SimpleNamespace(algorithm="percentile", percentile=99.0, window_seconds=120.0, min_scores=8, starting_bar=5.5)
         assert bar_from_settings(sparse).report.ok
 
     def test_no_algorithm_named_means_the_percentile_bar(self):
-        bar = bar_from_settings(SimpleNamespace(percentile=99.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, exclude_qualifiers=False))
+        bar = bar_from_settings(SimpleNamespace(percentile=99.0, window_seconds=120.0, min_scores=8, starting_bar=5.5))
         assert type(bar) is PercentileBar and bar.report.ok
 
     @pytest.mark.parametrize("bad", ["median", "", None, 5, True, ["percentile"], "Percentile"])
@@ -100,4 +99,12 @@ class TestBuildingABarKeeper:
     @pytest.mark.parametrize("name", ["percentile", "decaying_quantile", "moving_average"])
     def test_every_bar_keeper_describes_itself_with_the_cooldown(self, name):
         text = bar_keeper_from_settings(settings(algorithm=name, cooldown_seconds=45.0)).describe()
-        assert text.endswith("at most one qualifier every 45 s") and "starting at 5.5" in text
+        assert "at most one qualifier every 45 s" in text and "starting at 5.5" in text
+
+    @pytest.mark.parametrize("name", ["percentile", "decaying_quantile", "moving_average"])
+    def test_every_bar_keeper_says_how_much_a_qualifier_counts(self, name):
+        text = bar_keeper_from_settings(settings(algorithm=name, qualifier_bar_influence=0.25)).describe()
+        assert text.endswith("a qualifying score counts 25% toward the bar")
+
+    def test_the_bar_keeper_gets_the_qualifier_bar_influence_from_the_settings(self):
+        assert bar_keeper_from_settings(settings(qualifier_bar_influence=1.1))._qualifier_bar_influence == 1.1

@@ -22,7 +22,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 - **Decided:**
   - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score. Its timeout is 30 s (the first score after a server starts took 15.7 s on the Pi).
   - **Qualifying:** `algorithm = "decaying_quantile"` (EWMQ): the bar is the 99.5th percentile of all recent scores, each counting for less the older it is (half-life 300 s),
-    starting at 6.8 until the room has said enough. 60 s cooldown, no floor. `exclude_qualifiers = true`: neither a qualifier nor a score held by the cooldown feeds the bar
+    starting at 6.8 until the room has said enough. 60 s cooldown, no floor. `qualifier_bar_influence` (2026-11-06, replacing the on/off `exclude_qualifiers`): a qualifier or a score held by the cooldown counts toward the bar by that share of an ordinary score's weight
     (the held-score half was fixed 2026-11-04). `percentile` and `moving_average` stay selectable. The goal is about six qualifiers an hour. Replays gave about 7 an hour, but a
     later measurement gave 13.5 (a busy room) and 11.1 (a quiet one), taken before the held-score fix; **re-measure it.** Tukey's fence was tried first and replaced
     (2026-10-29): it sat above the window's best score in two windows out of three.
@@ -144,7 +144,7 @@ src/pom/
     address_finder.py  built   the machine's usable IPv4 addresses (psutil), for the boot slip
     keyboard_watcher.py built  lines typed at the terminal in, attempts out (the typed twin of the HingeFinder)
   keyboard/
-    typed_line_scorer.py built a typed line scored (multiplied by `typed_handicap`) and judged by the same bar
+    typed_line_scorer.py built a typed line scored (multiplied by `typed_lines_score_multiplier`) and judged by the same bar
   monitor/
     monitor_site.py    built   the password-protected web page: the last hour of turns, with a score chart
     turn_history.py, score_trace.py, score_chart.py built the turns kept in memory, the numbers-only trace of every attempt, the chart drawn from it
@@ -164,7 +164,7 @@ The reasoning and the numbers are in `Design Document.md`. In short:
 
 - **The pipeline:** whisper (cutting the audio itself) -> the track split (words / room tone / nothing) ->
   TakeCutter -> Scorer -> BarKeeper -> the qualifying sentence is the hinge -> PromptBuilder -> oracle
-  model -> Printing. Typed input has its own way in: the TypedLineScorer scores the line, multiplies it by `typed_handicap` (1.5), and the same bar judges it (no cooldown; below the bar it is ignored; it stays out of the bar unless `typed_lines_affect_bar`).
+  model -> Printing. Typed input has its own way in: the TypedLineScorer scores the line, multiplies it by `typed_lines_score_multiplier` (1.5), and the same bar judges it (no cooldown; below the bar it is ignored; it counts toward the bar by `typed_lines_bar_influence`).
 - **Unfinished exemplars never reach the oracle** (2026-11-03). The oracle copies its exemplar's ending, so a library passage that stops on a colon or at "...the" produced cut-off portents. `pom.library.endings.ends_unfinished` is the one definition; the library no longer keeps such passages (`normalize.py`, `cataloguer.py`) and the Bibliomancer redraws if one ever turns up (`[oracle] exemplar_redraws`). `audit.py`'s `unfinished` column must read 0. Details in the design doc, "The Library: the form that influences the Oracle".
 - **The scorer** is a small local model scoring one sentence, no context, so a sentence scores the same whatever came
   before. Scores are relative and run low (almost nothing above 7), which is why the BarKeeper works from the room's own
@@ -294,7 +294,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    is no longer fresh, but how the machine reports those states is unknown). The boot slip types on the first connection: check it there, and that its address is right.
 2. **Start-up duties.** `printer.py` does not call `startup.py` yet, and its ten duties are placeholders. First the mic-gain check (set and verify it from config), then the readiness checks
    for whisper, the servers and the typewriter. (The scorer warm-up is already done by `ScorerWarmer`; confirm on the Pi that a real clip now scores in about 1 s after it.)
-3. **Re-measure the qualifying rate.** The EWMQ rates on record (13.5 an hour busy, 11.1 quiet) predate the held-score fix, against a goal of about six. Replay the recordings with the
+3. **Re-measure the qualifying rate with the new dial** (`qualifier_bar_influence`, 2026-11-06). The EWMQ rates on record (13.5 an hour busy, 11.1 quiet) were taken with qualifiers left out (influence 0) and before the held-score fix, against a goal of about six; the Design Document predicts the share of scores above the bar to be about (1 - percentile) / influence, which is to be checked at 0, 25, 50, 75 and 100. First look done 2026-11-06 on the first hour of the live room (`scripts/dev/qualifying/replay_scores_through_bar.py`): the prediction held at 0.25 and 0.5, and the dial reproduced and fixed the post-silence failure, but that lively room still gave 10 an hour at 0.5 and above, so reaching about six is a percentile and cooldown question. The next test is the one on the Pi: leave it in an empty room and talk to it afterward. Replay the recordings with the
    testbenches (`pipeline/listening_to_portent.py`, `listening/listen_to_room.py`), then try a real room, a quiet one too, and retune from that. The `[qualifying]` settings were tuned on chatty meetings.
 4. **The monitoring site's printer status line** and per-turn outcome. They need a preview and Wes's say before they are built.
 5. **Paper guards** (nothing qualifies unless speech was heard in the last 10 minutes; hard ceilings of about 12 an hour

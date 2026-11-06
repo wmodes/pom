@@ -11,7 +11,7 @@ from pom.fault_recorder import FaultRecorder
 from pom.keyboard import TypedLineScorer, TypedLineScorerError
 from pom.qualifying import Attempt, BarKeeper, PercentileBar, Ruling
 from pom.scoring import ScoredBy, ScoredClip
-from pom.keyboard.typed_line_scorer import DEFAULT_HANDICAP, TYPED
+from pom.keyboard.typed_line_scorer import DEFAULT_SCORE_MULTIPLIER, TYPED
 
 
 class FakeScorer:
@@ -45,8 +45,8 @@ def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):
 
 
 class TestTheDefaults:
-    def test_the_handicap_starts_at_one_and_a_half(self):
-        assert DEFAULT_HANDICAP == 1.5
+    def test_the_score_multiplier_starts_at_one_and_a_half(self):
+        assert DEFAULT_SCORE_MULTIPLIER == 1.5
 
     def test_the_kind_is_typed(self):
         assert TYPED == "typed"
@@ -76,37 +76,37 @@ class TestTheSentence:
         assert sentence.bar == 6.0 and sentence.window_size == 0
 
     def test_counted_is_the_bar_keepers_count(self):
-        made, _, _, _ = typed(affects_bar=True)
+        made, _, _, _ = typed(bar_influence=1.0)
         assert made.score("a").counted == 1 and made.score("b").counted == 2
 
 
-class TestTheHandicap:
+class TestTheScoreMultiplier:
     def test_the_score_is_multiplied_by_one_and_a_half_to_begin_with(self):
         made, _, _, _ = typed({"x": 4.0})
         assert made.score("x").score == 6.0
 
-    def test_the_handicap_can_be_set(self):
-        made, _, _, _ = typed({"x": 4.0}, handicap=2)
+    def test_the_score_multiplier_can_be_set(self):
+        made, _, _, _ = typed({"x": 4.0}, score_multiplier=2)
         assert made.score("x").score == 8.0
 
     def test_the_product_is_not_capped_at_nine(self):
         made, _, _, _ = typed({"x": 9.0})
         assert made.score("x").score == 13.5
 
-    def test_a_handicap_of_one_is_no_bonus(self):
-        made, _, _, _ = typed({"x": 4.0}, handicap=1)
+    def test_a_score_multiplier_of_one_is_no_bonus(self):
+        made, _, _, _ = typed({"x": 4.0}, score_multiplier=1)
         assert made.score("x").score == 4.0
 
-    def test_a_handicap_of_zero_is_allowed(self):
-        made, _, _, _ = typed({"x": 9.0}, handicap=0)
+    def test_a_score_multiplier_of_zero_is_allowed(self):
+        made, _, _, _ = typed({"x": 9.0}, score_multiplier=0)
         assert made.score("x").score == 0.0 and made.report.ok
 
-    def test_a_handicap_can_carry_a_dull_line_over_the_bar(self):
+    def test_a_score_multiplier_can_carry_a_dull_line_over_the_bar(self):
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0)
         assert made.score("x").is_hinge        # 4.5 * 1.5 = 6.75
 
-    def test_without_the_handicap_the_same_line_does_not_qualify(self):
-        made, _, _, _ = typed({"x": 4.5}, bar_level=6.0, handicap=1)
+    def test_without_the_score_multiplier_the_same_line_does_not_qualify(self):
+        made, _, _, _ = typed({"x": 4.5}, bar_level=6.0, score_multiplier=1)
         assert not made.score("x").is_hinge
 
 
@@ -152,14 +152,37 @@ class TestTheBarStaysTheRooms:
         assert shared.counted == 0
 
     def test_affecting_the_bar_counts_the_line_with_the_rooms_scores(self):
-        made, _, shared, _ = typed({"x": 2.0}, affects_bar=True)
+        made, _, shared, _ = typed({"x": 2.0}, bar_influence=1.0)
         sentence = made.score("x")
         assert shared.counted == 1 and sentence.ruling is Ruling.DID_NOT_QUALIFY
 
     def test_an_affecting_line_enters_the_window(self):
-        made, _, shared, _ = typed({"x": 2.0}, affects_bar=True)
+        made, _, shared, _ = typed({"x": 2.0}, bar_influence=1.0)
         made.score("x")
         assert shared.window_size_at(100.0) == 1
+
+
+class TestTheBarInfluence:
+    def test_by_default_a_typed_line_has_no_influence_on_the_bar(self):
+        made, _, shared, _ = typed({"x": 2.0})
+        made.score("x")
+        assert shared.window_size_at(100.0) == 0
+
+    def test_a_partial_influence_still_counts_the_line(self):
+        made, _, shared, _ = typed({"x": 2.0}, bar_influence=0.5)
+        made.score("x")
+        assert shared.counted == 1 and shared.window_size_at(100.0) == 1
+
+    @pytest.mark.parametrize("influence", [1.1, 2, -0.1, 0])
+    def test_the_influence_is_not_limited_to_zero_to_one(self, influence):
+        made, _, _, _ = typed({"x": 2.0}, bar_influence=influence)
+        assert made.report.ok and made.score("x").score == 3.0
+
+    @pytest.mark.parametrize("bad", ["1", None, True, [1], float("nan"), float("inf")])
+    def test_an_influence_that_is_not_a_number_is_nothing_with_a_warning(self, bad):
+        made, _, shared, _ = typed({"x": 2.0}, bar_influence=bad)
+        made.score("x")
+        assert len(made.report.warnings) == 1 and shared.counted == 0
 
 
 class TestWhenThereIsNoScore:
@@ -191,18 +214,18 @@ class TestWhenThereIsNoScore:
         assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.CLIP_FILTER, False)
 
 
-class TestTheHandicapIsChecked:
+class TestTheScoreMultiplierIsChecked:
     @pytest.mark.parametrize("bad", [-1, -0.1, "1.5", None, True, [1.5], float("nan"), float("inf")])
-    def test_a_bad_handicap_is_the_default_with_a_warning(self, bad):
-        made, _, _, _ = typed({"x": 4.0}, handicap=bad)
+    def test_a_bad_score_multiplier_is_the_default_with_a_warning(self, bad):
+        made, _, _, _ = typed({"x": 4.0}, score_multiplier=bad)
         assert made.score("x").score == 6.0 and len(made.report.warnings) == 1
 
     def test_strict_raises_instead(self):
         with pytest.raises(TypedLineScorerError):
-            typed(handicap=-1, strict=True)
+            typed(score_multiplier=-1, strict=True)
 
-    def test_a_good_handicap_gives_no_warning(self):
-        assert typed(handicap=2)[0].report.ok
+    def test_a_good_score_multiplier_gives_no_warning(self):
+        assert typed(score_multiplier=2)[0].report.ok
 
 
 class TestWhatIsKept:
@@ -213,6 +236,6 @@ class TestWhatIsKept:
         assert "secret" not in caplog.text
 
     def test_the_typed_text_is_never_in_the_report(self):
-        made, _, _, _ = typed(handicap=-1)
+        made, _, _, _ = typed(score_multiplier=-1)
         made.score("the secret words")
         assert "secret" not in " ".join(made.report.lines())

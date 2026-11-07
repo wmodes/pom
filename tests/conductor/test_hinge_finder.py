@@ -5,7 +5,11 @@ BarKeeper are the real ones, because how the finder joins them is the point.
 """
 import logging
 
+import pytest
+
 from pom.fault_recorder import FaultRecorder
+from pom.listening.eavesdropper import Eavesdropper
+from pom.listening.whisper_model_client import Segment
 from pom.listening import ClipLevel, Take, TakeCutter
 from pom.listening.take_cutter import Clip
 from pom.conductor import HingeFinder
@@ -309,3 +313,67 @@ class TestWhilePaused:
     def test_nothing_is_dropped_when_it_was_never_paused(self):
         made, _, scorer = finder([segment("One. Two. Three.")])
         assert [a.text for a in found(made)] == ["One.", "Two.", "Three."]
+
+
+class TestARoomThatStartsAgain:
+    """The real Eavesdropper, HingeFinder and BarKeeper, with a stand-in for whisper that says a strong sentence in every round. The Conductor builds the
+    room again when it fails; if the new room's clock began again at 0 the BarKeeper, which holds time at the latest it has seen, would stand still."""
+
+    class StrongSentences:
+        """Says a different strong sentence every round, stamped at the stream time the round's audio begins (as the real client does with `offset_s`)."""
+
+        def __init__(self):
+            self.rounds, self.error = 0, None
+
+        def segments(self, pcm, offset_s=0.0, vad=True):
+            self.rounds += 1
+            return [Segment(offset_s + 0.5, offset_s + 3.0, f"A strong sentence number {self.rounds}.")]
+
+        def text(self, pcm, vad=True):
+            return ""
+
+    class EverythingIsStrong(FakeScorer):
+        def score(self, clip):
+            self.clips.append(clip)
+            return ScoredClip(clip, LOUD, ScoredBy.MODEL)
+
+    @staticmethod
+    def hear_for(seconds, keeper, start_seconds=0.0, now=0.0):
+        """A room of `seconds` of sound that begins its clock at `start_seconds`; returns its Eavesdropper and the attempts it gave."""
+        from tests.listening.test_eavesdropper import ScriptedDeck
+        ears = Eavesdropper(ScriptedDeck(seconds), TestARoomThatStartsAgain.StrongSentences(), start_seconds=start_seconds, wall=lambda: now)
+        finder = HingeFinder(ears, TakeCutter(), TestARoomThatStartsAgain.EverythingIsStrong(), keeper)
+        return ears, list(finder.find())
+
+    @staticmethod
+    def keeper():
+        from pom.qualifying import DecayingQuantileBar
+        return BarKeeper(DecayingQuantileBar(), cooldown_seconds=60, qualifier_bar_influence=0.0)       # a qualifier leaves the bar alone, so each strong score stands above it
+
+    def test_a_first_room_qualifies_once_a_cooldown(self):
+        _, attempts = self.hear_for(200, self.keeper())
+        qualified = [a for a in attempts if a.ruling is Ruling.QUALIFIED]
+        assert 3 <= len(qualified) <= 4 and all(b.heard_at - a.heard_at >= 60 for a, b in zip(qualified, qualified[1:]))
+
+    def test_after_a_restart_strong_scores_qualify_normally_once_the_cooldown_has_passed(self):
+        keeper = self.keeper()
+        old, before = self.hear_for(200, keeper, now=0.0)
+        new, after = self.hear_for(200, keeper, start_seconds=old.stream_time_at(5.0), now=5.0)         # five real seconds to restart
+        assert min(a.heard_at for a in after) > max(a.heard_at for a in before)                       # the clock did not go back
+        qualified = [a for a in after if a.ruling is Ruling.QUALIFIED]
+        assert 3 <= len(qualified) <= 4
+        assert all(b.heard_at - a.heard_at >= 60 for a, b in zip(qualified, qualified[1:]))
+
+    def test_a_restart_two_hours_in_loses_nothing(self):
+        """The case that was found: the old clock at about two hours, the new one carried on from it."""
+        keeper = self.keeper()
+        old, _ = self.hear_for(200, keeper, start_seconds=7000.0, now=0.0)                                # a room that began at two hours, less a bit
+        _, after = self.hear_for(200, keeper, start_seconds=old.stream_time_at(5.0), now=5.0)
+        assert len([a for a in after if a.ruling is Ruling.QUALIFIED]) >= 3
+
+    def test_without_carrying_the_clock_on_only_one_strong_score_qualifies_across_the_catch_up(self):
+        """Why it matters: a restarted room whose clock began at 0 while the BarKeeper stood at 7,200 s, then 200 s of it heard."""
+        keeper = self.keeper()
+        self.hear_for(200, keeper, start_seconds=7000.0)
+        _, after = self.hear_for(200, keeper)                                                           # begins again at 0
+        assert len([a for a in after if a.ruling is Ruling.QUALIFIED]) <= 1

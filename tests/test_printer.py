@@ -152,6 +152,27 @@ class TestWhatItPrintsOn:
         assert p.parts["turn_taker"]._terminal is p.terminal
 
 
+class TestARoomBuiltAgain:
+    """The Conductor builds the listening side again if it fails; the new one's stream clock carries on from the old one's."""
+
+    def test_the_new_rooms_clock_carries_on_from_the_old_one_plus_the_real_seconds_between(self, tmp_path, monkeypatch):
+        now = [1000.0]
+        monkeypatch.setattr(printer_module.time, "monotonic", lambda: now[0])
+        make_room = build(tmp_path).conductor._room_factory
+        _, first = make_room()
+        now[0] = 1100.0                                              # the first room fails and, a hundred real seconds later, another is built
+        _, second = make_room()
+        assert first.stream_time_at(1000.0) == 0.0 and second.stream_time_at(1100.0) == pytest.approx(100.0)
+        now[0] = 1160.0
+        _, third = make_room()
+        assert third.stream_time_at(1160.0) == pytest.approx(160.0)  # and through a second restart
+
+    def test_a_first_room_begins_at_zero(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(printer_module.time, "monotonic", lambda: 5000.0)
+        _, first = build(tmp_path).conductor._room_factory()
+        assert first.stream_time_at(5000.0) == 0.0
+
+
 class TestTheBootSlip:
     def test_a_real_terminal_gets_a_boot_slipper_on_the_floor_and_the_terminal(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "console"\n')

@@ -65,6 +65,77 @@ def make(seconds, *rounds, texts=(), failing=(), **options):
     return Eavesdropper(deck, whisper, **options), deck, whisper
 
 
+class TestTheStreamClockCarriesOn:
+    """A room built again after a failure begins its clock where the old one's would stand now, so stream time keeps matching real time."""
+
+    def test_a_first_room_begins_at_zero(self):
+        eavesdropper, _, whisper = make(7, [])
+        hear(eavesdropper)
+        assert whisper.calls[0][0] == 0.0
+
+    def test_a_room_can_begin_its_clock_elsewhere(self):
+        eavesdropper, _, whisper = make(7, [], start_seconds=100.0)
+        hear(eavesdropper)
+        assert whisper.calls[0][0] == 100.0                    # the first window begins at 100, and what whisper is told is stamped from there
+
+    def test_the_time_a_segment_ends_is_on_the_carried_on_clock(self):
+        eavesdropper, _, _ = make(7, [seg(100.5, 102.0, "Hello there.")], start_seconds=100.0)
+        assert [t.ends_at for t in hear(eavesdropper)] == [102.0]
+
+    def test_the_stream_time_is_the_audio_heard_plus_the_real_seconds_since_sound_last_arrived(self):
+        now = [10.0]
+        eavesdropper, _, _ = make(12, wall=lambda: now[0])
+        hear(eavesdropper)                                     # twelve seconds of sound, the last of it at real time 10
+        assert eavesdropper.stream_time_at(10.0) == pytest.approx(12.0, abs=0.05)
+        assert eavesdropper.stream_time_at(17.0) == pytest.approx(19.0, abs=0.05)
+
+    def test_real_time_moves_on_as_the_sound_arrives_as_it_does_live(self):
+        """A deck that delivers each frame in real time, moving the wall clock on, with the room failing at the end of twelve seconds."""
+        now = [100.0]
+
+        class LiveDeck(ScriptedDeck):
+            def frames(self):
+                for frame in super().frames():
+                    now[0] += FRAME_SECONDS
+                    yield frame
+
+        eavesdropper = Eavesdropper(LiveDeck(12), FakeWhisper(), wall=lambda: now[0])
+        hear(eavesdropper)
+        failed_at = now[0]                                         # 112 on the wall
+        assert eavesdropper.stream_time_at(failed_at) == pytest.approx(12.0, abs=0.1)
+        assert eavesdropper.stream_time_at(failed_at + 5.0) == pytest.approx(17.0, abs=0.1)            # five real seconds to build the next room
+
+    def test_it_counts_from_where_the_clock_began(self):
+        eavesdropper, _, _ = make(12, start_seconds=500.0, wall=lambda: 10.0)
+        hear(eavesdropper)
+        assert eavesdropper.stream_time_at(14.0) == pytest.approx(500.0 + 12.0 + 4.0, abs=0.05)
+
+    def test_sound_that_went_by_unheard_while_paused_is_counted_too(self):
+        eavesdropper, _, _ = make(3, wall=lambda: 5.0)
+        eavesdropper.pause()
+        hear(eavesdropper)                                     # three seconds arrive and are thrown away
+        assert eavesdropper.stream_time_at(5.0) == pytest.approx(3.0, abs=0.05)
+
+    def test_a_room_that_never_heard_anything_counts_from_when_it_was_made(self):
+        eavesdropper, _, _ = make(0, start_seconds=40.0, wall=lambda: 100.0)
+        assert eavesdropper.stream_time_at(100.0) == pytest.approx(40.0) and eavesdropper.stream_time_at(107.0) == pytest.approx(47.0)
+
+    def test_a_wall_time_before_the_last_sound_adds_nothing(self):
+        eavesdropper, _, _ = make(3, wall=lambda: 50.0)
+        hear(eavesdropper)
+        assert eavesdropper.stream_time_at(10.0) == pytest.approx(3.0, abs=0.05)
+
+    @pytest.mark.parametrize("bad", [-1, "10", None, True, [5], float("nan"), float("inf")])
+    def test_a_bad_start_is_zero_with_a_warning(self, bad):
+        eavesdropper, _, whisper = make(7, [], start_seconds=bad)
+        hear(eavesdropper)
+        assert whisper.calls[0][0] == 0.0 and len(eavesdropper.report.warnings) == 1 and "start_seconds" in eavesdropper.report.warnings[0]
+
+    def test_strict_raises_on_a_bad_start(self):
+        with pytest.raises(EavesdropperError):
+            make(7, start_seconds=-5, strict=True)
+
+
 class TestWhatIsHeard:
     def test_speech_comes_out_with_where_it_ended(self):
         eavesdropper, _, _ = make(12, [seg(0.5, 3.0, "Hello there.")], [seg(4.0, 6.5, "How are you?")])

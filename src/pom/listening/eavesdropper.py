@@ -30,6 +30,10 @@ Design decisions, and why:
   * `hear()` is a plain generator, so this module needs no threads and no event loop. It blocks while it waits for sound
     and while whisper works. The Conductor runs it in a thread of its own. A MicDeck reads the microphone in a
     thread of its own, so sound is not lost while the Eavesdropper waits for whisper.
+  * THE STREAM CLOCK CARRIES ON ACROSS A RESTART. If the room has to be heard again (this Eavesdropper is replaced after a failure), the new one is given
+    `start_seconds`, where the old one's clock would stand now (`stream_time_at`: the old clock, the sound that went by unheard, and the real seconds since sound
+    last arrived), so stream time keeps matching real time, the same idea as `skip_ahead` after a turn. A clock that began again at 0 would run behind the BarKeeper's,
+    which holds time at the latest it has seen, so its cooldown and the bar's fading would stand still until the new clock caught up (two hours in, about two hours).
   * Time is counted in audio received, not wall-clock time, so a recording replayed at any speed is heard exactly as a
     live stream would be. `ends_at` is the place in the stream where the segment ended, in seconds; it is the time the
     BarKeeper is given. (In a fast replay the room-tone pass looks at the audio received when the round ran, which is also what a
@@ -43,8 +47,9 @@ Design decisions, and why:
 import collections
 import math
 import threading
+import time
 from dataclasses import dataclass
-from typing import Iterator, Optional, Tuple
+from typing import Callable, Iterator, Optional, Tuple
 
 from pom.fault_recorder import FaultRecorder
 from pom.listening.audio_deck import AudioDeck
@@ -100,7 +105,8 @@ class Eavesdropper:
                  rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS,
                  room_tone_pass_every: int = DEFAULT_ROOM_TONE_PASS_EVERY, room_tone_pass_seconds: float = DEFAULT_ROOM_TONE_PASS_SECONDS,
                  room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, splitter: Optional[TrackSplitter] = None,
-                 cutter: Optional[RollingCutter] = None, strict: bool = False):
+                 cutter: Optional[RollingCutter] = None, start_seconds: float = 0.0, wall: Callable[[], float] = time.monotonic,
+                 strict: bool = False):
         """Args:
             deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
@@ -111,6 +117,9 @@ class Eavesdropper:
             room_tone_memory: How many recent bits of room tone to remember, a whole number of at least 1.
             splitter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
+            start_seconds: Where the stream clock begins, 0 or more: 0 for a first room, and for one that replaces a room that stopped, what the old
+                one's `stream_time_at` gave, so the clock carries on.
+            wall: Returns seconds that steadily increase, for noting when sound last arrived (real time, not stream time). Injected so tests need not wait.
             strict: Raise EavesdropperError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=EavesdropperError, logger=_log)
@@ -133,6 +142,11 @@ class Eavesdropper:
         self._paused = threading.Event()          # set by pause(), cleared by skip_ahead(); read by the thread in hear()
         self._skip_wanted = threading.Event()     # set by skip_ahead(); cleared by the thread in hear() when it has done the skipping
         self._unheard_frames = 0                  # frames thrown away while paused (only the thread in hear() touches this)
+        self._wall = wall
+        self._last_sound_at = wall()              # the real time sound last arrived (or this was made, if none has): it is how long a restart took that is wanted
+        start = self._setting(start_seconds, "start_seconds", 0.0, lambda v: _is_number(v) and v >= 0, "a number of at least 0")
+        if start > 0:
+            self._cutter.skip_ahead(start)        # a fresh cutter moved on by `start`: the clock begins there
 
     def _setting(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -163,6 +177,14 @@ class Eavesdropper:
         self._skip_wanted.set()       # first, so a thread that sees the pause cleared also sees the request
         self._paused.clear()
 
+    def stream_time_at(self, wall_now: float) -> float:
+        """Where the stream clock stands at real time `wall_now` (the same clock as `wall`), as if the sound had gone on.
+
+        That is the audio received, plus the sound that went by unheard while paused, plus the real seconds since sound last arrived. A room that has
+        stopped is asked this when it is replaced, and the answer is what the new one's clock begins at.
+        """
+        return self._cutter.total_seconds + self._unheard_frames * FRAME_SECONDS + max(0.0, wall_now - self._last_sound_at)
+
     def hear(self) -> Iterator[Take]:
         """Listens until the sound ends (a recording runs out, the microphone stops, or `close` is called).
 
@@ -171,6 +193,7 @@ class Eavesdropper:
         """
         try:
             for frame in self._deck.frames():
+                self._last_sound_at = self._wall()
                 if self._paused.is_set():
                     self._unheard_frames += 1         # the room goes on while the Printer is busy
                     continue

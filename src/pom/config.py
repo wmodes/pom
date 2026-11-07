@@ -100,12 +100,12 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "terminal.wait_log_reminder_seconds",
          "chart.window_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
          "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
-         "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width", "chart.longest_silence_minutes", "chart.break_mark_size", "chart.break_gap_width",
+         "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width", "chart.longest_silence_minutes", "chart.break_mark_size", "chart.break_gap_width", "display.browser", "display.browser_flags", "display.browser_profile_dir",
          "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
          "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
          "listening.score_room_tone", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
-         "monitor.show_hinges", "monitor.history_seconds", "printing.paper_width_inches", "printing.margin_inches",
+         "monitor.show_hinges", "monitor.password_on_localhost", "monitor.history_seconds", "printing.paper_width_inches", "printing.margin_inches",
          "printing.characters_per_inch", "printing.quote_indent", "printing.linefeeds_after_portent",
          "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
@@ -167,6 +167,7 @@ DEFAULT_MONITOR_SHOW_HINGES = True
 DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
 DEFAULT_MONITOR_SERVICE_CHECK_SECONDS = 15.0
 DEFAULT_MONITOR_POLL_SECONDS = 5.0
+DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST = True
 DEFAULT_PRINTING_PAPER_WIDTH_INCHES = 8.5
 DEFAULT_PRINTING_MARGIN_INCHES = 1.0
 DEFAULT_PRINTING_CHARACTERS_PER_INCH = 10.0
@@ -211,6 +212,10 @@ DEFAULT_CHART_BAR_LINE_WIDTH = 1.6
 DEFAULT_CHART_LONGEST_SILENCE_MINUTES = 5.0
 DEFAULT_CHART_BREAK_MARK_SIZE = 6.0
 DEFAULT_CHART_BREAK_GAP_WIDTH = 64.0
+DEFAULT_DISPLAY_BROWSER = "chromium"
+DEFAULT_DISPLAY_BROWSER_FLAGS = ("--kiosk", "--noerrdialogs", "--disable-infobars", "--disable-session-crashed-bubble", "--no-first-run",
+                                 "--ozone-platform=wayland", "--password-store=basic")
+DEFAULT_DISPLAY_BROWSER_PROFILE_DIR = "~/.config/pom-kiosk"
 DEFAULT_TERMINAL_MODE = "serial"
 TERMINAL_MODES = ("serial", "console", "none")
 DEFAULT_CONDUCTOR_WRITING_SECONDS = 300.0
@@ -414,6 +419,8 @@ class MonitorSettings:
         history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only.
         service_check_seconds: How often, at most, the page's service lights (whisper, scorer, oracle) are checked, above 0, so the page's
             polling does not hammer the servers.
+        password_on_localhost: True asks for the password of every request, including one from the Printer itself (its own display). False lets a
+            request that comes from the Printer's own machine (127.0.0.1 or ::1, and not through a proxy) in without one; everyone else still needs it.
         poll_seconds: How often the open page asks for news and redraws itself (the chart, the status tiles and the turns), above 0. A shorter time
             makes the page and graph move more smoothly and costs a little more work for the Pi.
     """
@@ -425,6 +432,23 @@ class MonitorSettings:
     history_seconds: float = DEFAULT_MONITOR_HISTORY_SECONDS
     service_check_seconds: float = DEFAULT_MONITOR_SERVICE_CHECK_SECONDS
     poll_seconds: float = DEFAULT_MONITOR_POLL_SECONDS
+    password_on_localhost: bool = DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST
+
+
+@dataclass(frozen=True)
+class DisplaySettings:
+    """The `[display]` section: the kiosk, which shows the monitoring page full-screen on a monitor plugged into the Printer.
+
+    Attributes:
+        browser: The command that starts the browser, a name on the path or a full path (Chromium).
+        browser_flags: The flags the browser is started with, a list of text (it may be empty). The profile directory and the page's address are
+            added after them.
+        browser_profile_dir: Where the browser keeps its own settings and cache, a folder of its own so the kiosk never shares them with anything
+            else; `~` means the home directory.
+    """
+    browser: str = DEFAULT_DISPLAY_BROWSER
+    browser_flags: tuple = DEFAULT_DISPLAY_BROWSER_FLAGS
+    browser_profile_dir: str = DEFAULT_DISPLAY_BROWSER_PROFILE_DIR
 
 
 @dataclass(frozen=True)
@@ -617,6 +641,7 @@ class Config:
         conductor: The `[conductor]` section, as a ConductorSettings.
         boot_slip: The `[boot_slip]` section, as a BootSlipSettings.
         chart: The `[chart]` section, as a ChartSettings.
+        display: The `[display]` section, as a DisplaySettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -627,7 +652,7 @@ class Config:
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
                  printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
                  conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None,
-                 chart: Optional["ChartSettings"] = None):
+                 chart: Optional["ChartSettings"] = None, display: Optional["DisplaySettings"] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
@@ -639,6 +664,7 @@ class Config:
         self.conductor = conductor if conductor is not None else ConductorSettings()
         self.boot_slip = boot_slip if boot_slip is not None else BootSlipSettings()
         self.chart = chart if chart is not None else ChartSettings()
+        self.display = display if display is not None else DisplaySettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -806,7 +832,9 @@ class Config:
             _positive(values.get("monitor.service_check_seconds", DEFAULT_MONITOR_SERVICE_CHECK_SECONDS), "monitor.service_check_seconds",
                       DEFAULT_MONITOR_SERVICE_CHECK_SECONDS, report),
             _positive(values.get("monitor.poll_seconds", DEFAULT_MONITOR_POLL_SECONDS), "monitor.poll_seconds",
-                      DEFAULT_MONITOR_POLL_SECONDS, report))
+                      DEFAULT_MONITOR_POLL_SECONDS, report),
+            _bool(values.get("monitor.password_on_localhost", DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST), "monitor.password_on_localhost", report,
+                  DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST))
         printing = PrintingSettings(
             _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
                       "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),
@@ -912,8 +940,13 @@ class Config:
                     "boot_slip.address_grace_seconds", DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS, 0.0, report),
             _number(values.get("boot_slip.retry_seconds", DEFAULT_BOOT_SLIP_RETRY_SECONDS), "boot_slip.retry_seconds",
                     DEFAULT_BOOT_SLIP_RETRY_SECONDS, 0.0, report))
+        display = DisplaySettings(
+            _nonblank(values.get("display.browser", DEFAULT_DISPLAY_BROWSER), "display.browser", DEFAULT_DISPLAY_BROWSER, report),
+            _strings(values.get("display.browser_flags", DEFAULT_DISPLAY_BROWSER_FLAGS), "display.browser_flags", DEFAULT_DISPLAY_BROWSER_FLAGS, report),
+            _nonblank(values.get("display.browser_profile_dir", DEFAULT_DISPLAY_BROWSER_PROFILE_DIR), "display.browser_profile_dir",
+                      DEFAULT_DISPLAY_BROWSER_PROFILE_DIR, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
-                   printing, terminal, conductor, boot_slip, chart)
+                   printing, terminal, conductor, boot_slip, chart, display)
 
 
 # A portent is at most this many characters per token (4 is typical English; 5 leaves room), for the printing time worked out below.
@@ -1082,6 +1115,22 @@ def _numbers(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
             and all(isinstance(v, (int, float)) and not isinstance(v, bool) and float("-inf") < v < float("inf") for v in value)):
         return tuple(float(v) for v in value)
     report.warn(f"{label} must be a list of numbers, got {value!r}; using {list(default)}")
+    return default
+
+
+def _strings(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
+    """A list of text (it may be empty), as a tuple; anything else gives the default."""
+    if isinstance(value, (list, tuple)) and all(isinstance(v, str) for v in value):
+        return tuple(value)
+    report.warn(f"{label} must be a list of text, got {value!r}; using {list(default)}")
+    return default
+
+
+def _nonblank(value, label: str, default: str, report: FaultRecorder) -> str:
+    """Text with something in it; anything else (a number, empty text) gives the default."""
+    if isinstance(value, str) and value.strip():
+        return value
+    report.warn(f"{label} must be text with something in it, got {value!r}; using {default!r}")
     return default
 
 

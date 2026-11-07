@@ -17,7 +17,7 @@ from pom.config import Config
 
 ROOT = Path(__file__).resolve().parents[2]
 SETUP = ROOT / "scripts" / "setup"
-UNITS = ["pom-whisper", "pom-scorer", "pom-oracle", "pom"]
+UNITS = ["pom-whisper", "pom-scorer", "pom-oracle", "pom", "pom-display"]
 SERVERS = ["pom-whisper", "pom-scorer", "pom-oracle"]
 BOOLEAN_FLAGS = {"--jinja", "--vad"}
 
@@ -69,7 +69,8 @@ class TestEveryUnit:
     def test_it_runs_as_pi_from_the_checkout_and_restarts_itself(self, name):
         service = read_unit(name)["Service"]
         assert service["User"] == ["pi"] and service["WorkingDirectory"] == ["/home/pi/pom"]
-        assert service["Restart"] == ["always"] and int(service["RestartSec"][0]) >= 1
+        wanted = ["on-failure"] if name == "pom-display" else ["always"]          # the display must not loop on a clean exit (no monitor, or a setting to change)
+        assert service["Restart"] == wanted and int(service["RestartSec"][0]) >= 1
 
     def test_it_starts_at_boot(self, name):
         assert read_unit(name)["Install"]["WantedBy"] == ["multi-user.target"]
@@ -256,3 +257,145 @@ class TestTheFlagCheck:
         text = (SETUP / "check-service-flags.sh").read_text(encoding="utf-8")
         assert all(f"systemd/pom-{name}.service" in text for name in ("whisper", "scorer", "oracle"))
         assert "systemd/pom.service" not in text
+
+
+class TestTheDisplayUnit:
+    """The kiosk must never trouble the Printer, and a Pi with no monitor must not mind it."""
+
+    def unit(self):
+        return read_unit("pom-display")
+
+    def test_it_wants_the_printer_and_never_requires_it(self):
+        unit = self.unit()["Unit"]
+        assert "pom.service" in unit["Wants"][0].split() and "pom.service" in unit["After"][0].split()
+        assert not ({"Requires", "BindsTo", "PartOf", "Requisite"} & set(unit))
+
+    def test_the_printer_knows_nothing_of_it(self):
+        text = (SETUP / "systemd" / "pom.service").read_text(encoding="utf-8")
+        assert "pom-display" not in text
+
+    def test_no_monitor_is_skipped_by_a_start_condition_not_failed(self):
+        service = self.unit()["Service"]
+        assert service["ExecCondition"] == ["/home/pi/pom/scripts/setup/display-attached.sh"]
+        assert (SETUP / "display-attached.sh").is_file() and os.access(SETUP / "display-attached.sh", os.X_OK)
+
+    def test_it_does_not_start_where_cage_or_the_browser_is_not_installed(self):
+        conditions = self.unit()["Unit"]["ConditionPathExists"]
+        assert {"/usr/bin/cage", "/usr/bin/chromium", "/dev/tty0"} <= set(conditions)
+
+    def test_it_runs_cage_with_vt_switching_around_the_launcher_in_the_repo(self):
+        tokens = shlex.split(self.unit()["Service"]["ExecStart"][0])
+        assert tokens[0] == "/usr/bin/cage" and "-s" in tokens and "--" in tokens
+        assert tokens[-1] == "/home/pi/pom/scripts/setup/kiosk_browser.py"
+        assert tokens[tokens.index("--") + 1] == "/home/pi/envs/pom/bin/python"
+        launcher = SETUP / "kiosk_browser.py"
+        assert launcher.is_file() and os.access(launcher, os.X_OK)
+
+    def test_it_runs_on_a_terminal_no_login_prompt_uses_and_brings_it_forward(self):
+        service = self.unit()["Service"]
+        assert service["TTYPath"] == ["/dev/tty7"] and service["UtmpIdentifier"] == ["tty7"]
+        assert service["ExecStartPost"] == ["+/usr/bin/chvt 7"]
+        assert "Conflicts" not in self.unit()["Unit"]                       # the console login on tty1 is left alone
+
+    def test_it_has_the_session_cage_needs(self):
+        service = self.unit()["Service"]
+        assert service["PAMName"] == ["login"] and service["StandardInput"] == ["tty-fail"]
+
+    def test_it_is_not_restarted_in_a_loop(self):
+        service = self.unit()["Service"]
+        assert service["Restart"] == ["on-failure"] and int(service["RestartSec"][0]) >= 5
+
+    def test_it_reads_the_same_source_path_as_the_printer(self):
+        assert "PYTHONPATH=/home/pi/pom/src" in self.unit()["Service"]["Environment"]
+
+
+class TestTheHotplugRule:
+    RULE = SETUP / "udev" / "90-pom-display.rules"
+
+    def rule(self):
+        return [line for line in self.RULE.read_text(encoding="utf-8").splitlines() if line.strip() and not line.startswith("#")]
+
+    def test_a_display_change_with_hotplug_starts_the_unit_without_blocking_udev(self):
+        (line,) = self.rule()
+        assert 'ACTION=="change"' in line and 'SUBSYSTEM=="drm"' in line and 'ENV{HOTPLUG}=="1"' in line
+        assert "--no-block start pom-display.service" in line
+
+    def test_the_install_script_links_it_and_reloads_udev(self):
+        text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
+        assert "90-pom-display.rules" in text and "/etc/udev/rules.d/90-pom-display.rules" in text and "udevadm control --reload" in text
+
+    def test_the_install_script_links_the_rule_only_when_it_is_new_or_changed(self):
+        text = (SETUP / "install-services.sh").read_text(encoding="utf-8")
+        assert 'readlink "$UDEV_RULE"' in text and '!= "$UDEV_SOURCE"' in text
+
+
+class TestTheKioskInstaller:
+    SCRIPT = SETUP / "setup-kiosk.sh"
+
+    def test_it_is_executable_and_refuses_root(self):
+        text = self.SCRIPT.read_text(encoding="utf-8")
+        assert os.access(self.SCRIPT, os.X_OK) and 'id -u' in text and "not root" in text
+
+    def test_it_installs_the_prebuilt_packages_the_unit_needs_and_a_font(self):
+        text = self.SCRIPT.read_text(encoding="utf-8")
+        assert re.search(r"apt-get install .*\bcage\b.*\bchromium\b", text) and "fonts-" in text
+
+    def test_it_compiles_nothing(self):
+        text = self.SCRIPT.read_text(encoding="utf-8")
+        assert not re.search(r"\b(make|cmake|cargo|pip install|git clone)\b", text)
+
+    def test_it_stops_on_the_first_error(self):
+        assert "set -eu" in self.SCRIPT.read_text(encoding="utf-8")
+
+
+class TestTheMonitorAttachedCheck:
+    """display-attached.sh exits 0 if any display connector says connected, and 1 if none does."""
+
+    SCRIPT = SETUP / "display-attached.sh"
+
+    def connectors(self, tmp_path, **states):
+        for name, state in states.items():
+            folder = tmp_path / name
+            folder.mkdir()
+            (folder / "status").write_text(state + "\n", encoding="utf-8")
+        return tmp_path
+
+    def check(self, folder):
+        return subprocess.run([str(self.SCRIPT)], env={**os.environ, "POM_DRM_DIR": str(folder)}, capture_output=True, text=True, timeout=10).returncode
+
+    def test_one_connected_monitor_is_attached(self, tmp_path):
+        assert self.check(self.connectors(tmp_path, **{"card1-HDMI-A-1": "disconnected", "card1-HDMI-A-2": "connected"})) == 0
+
+    def test_the_other_port_counts_too(self, tmp_path):
+        assert self.check(self.connectors(tmp_path, **{"card1-HDMI-A-1": "connected", "card1-HDMI-A-2": "disconnected"})) == 0
+
+    def test_nothing_connected_is_not_attached(self, tmp_path):
+        assert self.check(self.connectors(tmp_path, **{"card1-HDMI-A-1": "disconnected", "card1-HDMI-A-2": "disconnected"})) == 1
+
+    def test_a_connector_that_does_not_know_is_not_attached(self, tmp_path):
+        assert self.check(self.connectors(tmp_path, **{"card1-HDMI-A-1": "unknown"})) == 1
+
+    def test_no_connectors_at_all_is_not_attached(self, tmp_path):
+        assert self.check(tmp_path) == 1
+
+    def test_a_missing_folder_is_not_attached(self, tmp_path):
+        assert self.check(tmp_path / "nowhere") == 1
+
+    def test_only_a_card_connector_counts(self, tmp_path):
+        assert self.check(self.connectors(tmp_path, **{"version": "connected", "renderD128": "connected"})) == 1
+
+    def test_the_word_must_be_exactly_connected(self, tmp_path):
+        assert self.check(self.connectors(tmp_path, **{"card1-HDMI-A-1": "notconnected", "card1-HDMI-A-2": "connected-ish"})) == 1
+
+    def test_it_says_nothing_and_changes_nothing(self, tmp_path):
+        folder = self.connectors(tmp_path, **{"card1-HDMI-A-2": "connected"})
+        result = subprocess.run([str(self.SCRIPT)], env={**os.environ, "POM_DRM_DIR": str(folder)}, capture_output=True, text=True, timeout=10)
+        assert result.stdout == "" and result.stderr == "" and (folder / "card1-HDMI-A-2" / "status").read_text() == "connected\n"
+
+    def test_it_looks_in_the_kernels_display_folder_unless_told_otherwise(self):
+        text = self.SCRIPT.read_text(encoding="utf-8")
+        assert 'DIR="${POM_DRM_DIR:-/sys/class/drm}"' in text
+
+    def test_the_real_machine_gives_a_clean_answer(self):
+        result = subprocess.run([str(self.SCRIPT)], capture_output=True, text=True, timeout=10)
+        assert result.returncode in (0, 1) and result.stderr == ""

@@ -518,6 +518,7 @@ MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's
     ("scorer", "warmup_attempts", "6", 6, 3, ["0", "-1", "1.5", '"3"', "true"]),
     ("monitor", "service_check_seconds", "40", 40.0, 15.0, ["0", "-1", '"15"', "true", "inf"]),
     ("monitor", "poll_seconds", "2.5", 2.5, 5.0, ["0", "-1", '"5"', "true", "inf"]),
+    ("monitor", "password_on_localhost", "false", False, True, ['"maybe"', '"sideways"', '""']),
     ("terminal", "max_typed_line_characters", "80", 80, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "refused_character_retry_seconds", "0.5", 0.5, 1.0, ["0", "-1", '"1"', "true", "inf"]),
     ("terminal", "wait_log_reminder_seconds", "30", 30.0, 60.0, ["0", "-1", '"60"', "true", "inf"]),
@@ -545,6 +546,50 @@ def test_the_committed_config_sets_every_moved_setting():
         document = tomllib.load(f)
     for section, key, *_ in MOVED:
         assert key in document[section], f"[{section}] {key} is not in config/pom.toml"
+
+
+# ---- the [display] section ----
+
+DISPLAY_GOOD = [("browser", '"/usr/bin/other"', "/usr/bin/other"), ("browser_flags", '["--a", "--b"]', ("--a", "--b")), ("browser_flags", "[]", ()),
+                ("browser_profile_dir", '"/var/kiosk"', "/var/kiosk")]
+DISPLAY_BAD = [("browser", '""'), ("browser", '"   "'), ("browser", "5"), ("browser", "true"), ("browser_flags", '"--kiosk"'), ("browser_flags", "[1, 2]"),
+               ("browser_flags", '["--a", 3]'), ("browser_flags", "5"), ("browser_profile_dir", '""'), ("browser_profile_dir", "[]")]
+
+
+def test_the_display_defaults_are_the_shipped_ones():
+    from pom.config import DisplaySettings
+    d = Config().display
+    assert d == DisplaySettings() and d.browser == "chromium" and d.browser_profile_dir == "~/.config/pom-kiosk"
+    assert d.browser_flags[0] == "--kiosk" and "--ozone-platform=wayland" in d.browser_flags and isinstance(d.browser_flags, tuple)
+
+
+@pytest.mark.parametrize("key, text, expected", DISPLAY_GOOD)
+def test_a_display_setting_is_read(tmp_path, key, text, expected):
+    config = Config.load(write(tmp_path, f"[display]\n{key} = {text}\n"), environ={})
+    assert getattr(config.display, key) == expected and config.report.ok
+
+
+@pytest.mark.parametrize("key, value", DISPLAY_BAD)
+def test_a_bad_display_setting_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import DisplaySettings
+    config = Config.load(write(tmp_path, f"[display]\n{key} = {value}\n"), environ={})
+    assert config.display == DisplaySettings()
+    assert len(config.report.warnings) == 1 and f"display.{key}" in config.report.warnings[0]
+
+
+def test_an_unknown_display_key_is_a_warning(tmp_path):
+    config = Config.load(write(tmp_path, "[display]\nbrowsr = 1\n"), environ={})
+    assert any("display.browsr" in w for w in config.report.warnings)
+
+
+def test_the_committed_config_sets_every_display_key_to_the_default():
+    import tomllib
+    from dataclasses import fields
+    from pom.config import DisplaySettings
+    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
+        section = tomllib.load(f)["display"]
+    assert set(section) == {field.name for field in fields(DisplaySettings)}
+    assert Config.load(Path(__file__).resolve().parents[1] / "config" / "pom.toml", environ={}).display == DisplaySettings()
 
 
 # ---- the [chart] section ----
@@ -1396,3 +1441,14 @@ def test_the_committed_config_sets_every_boot_slip_key_and_the_slip_is_the_defau
     assert config.report.ok
     assert config.boot_slip.text.strip() == BootSlipSettings().text         # the code's default and the shipped words agree
     assert "{address}" in config.boot_slip.text
+
+
+def test_the_committed_config_lets_the_printers_own_display_in():
+    import tomllib
+    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
+        assert tomllib.load(f)["monitor"]["password_on_localhost"] is False
+
+
+def test_the_code_default_asks_everyone_for_the_password():
+    from pom.config import MonitorSettings
+    assert Config().monitor.password_on_localhost is True and MonitorSettings().password_on_localhost is True

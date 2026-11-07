@@ -29,6 +29,7 @@ Design decisions, and why:
   * This module never reads Config; the entry point passes the settings in.
 """
 import hmac
+import ipaddress
 import math
 import threading
 import time
@@ -241,7 +242,8 @@ class MonitorSite:
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
                  clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None, chart=None,
                  poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
-                 ticks_source: Optional[Callable[[float, float], list]] = None, stream_began_at: Optional[float] = None):
+                 ticks_source: Optional[Callable[[float, float], list]] = None, stream_began_at: Optional[float] = None,
+                 password_on_localhost: bool = True):
         """Args:
             history: Where the turns are read from.
             password: The site's password; the site does not run without one.
@@ -253,6 +255,8 @@ class MonitorSite:
             chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
             poll_seconds: How often the open page asks for news and redraws (`[monitor] poll_seconds`), above 0; a bad value is the fallback, with a warning.
             stream_now: Returns the stream time now, the chart's right edge, so the chart moves through silence; without it the edge is the newest attempt.
+            password_on_localhost: False lets a request from the Printer's own machine in without the password (see `_from_this_machine`); True, the
+                default and the fallback for anything that is not a bool, asks everyone.
             stream_began_at: The stream time at which listening began; a quiet start (no attempt for longer than the longest silence) is drawn as a
                 silence too, as long as the trace still holds every attempt since then.
             ticks_source: Called with (start, end) in stream time; returns the anchor's ticks between them, each as (time, anchor score, bar then).
@@ -267,6 +271,10 @@ class MonitorSite:
         self._stream_now = stream_now
         self._ticks_source = ticks_source
         self._stream_began_at = stream_began_at
+        if not isinstance(password_on_localhost, bool):
+            self.report.warn(f"password_on_localhost must be true or false, not {password_on_localhost!r}; asking everyone for the password")
+            password_on_localhost = True
+        self._password_on_localhost = password_on_localhost
         self._poll_seconds = poll_seconds
         if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
             self.report.warn(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
@@ -392,8 +400,27 @@ class MonitorSite:
 
     # --- The application ------------------------------------------------------------
 
+    @staticmethod
+    def _from_this_machine() -> bool:
+        """True if the request came from the Printer's own machine: the connection's own address is loopback (127.0.0.1, ::1, or an IPv4 address
+        in IPv6 dress) and nothing says it was passed on by a proxy (`X-Forwarded-For`, `Forwarded`, `X-Real-IP`). A proxy running on the Printer
+        would make every request look local, so a request that names one is treated as coming from elsewhere. The address is the connection's, which a
+        client cannot choose; a header is only ever used to say no."""
+        if any(name in request.headers for name in ("X-Forwarded-For", "Forwarded", "X-Real-IP")):
+            return False
+        try:
+            address = ipaddress.ip_address(request.remote_addr or "")
+        except ValueError:
+            return False
+        if address.version == 6 and address.ipv4_mapped is not None:
+            address = address.ipv4_mapped
+        return address.is_loopback
+
     def _authorized(self) -> bool:
-        """True if the request carries the right password (any user name), compared in constant time."""
+        """True if the request carries the right password (any user name), compared in constant time, or comes from this machine and
+        `password_on_localhost` is off."""
+        if not self._password_on_localhost and self._from_this_machine():
+            return True
         auth = request.authorization
         given = (auth.password or "").encode("utf-8") if auth is not None and auth.type == "basic" else b""
         return hmac.compare_digest(given, self._password)

@@ -369,6 +369,11 @@ service_check_seconds = 15
 # Above 0. Shorter makes the graph and tiles move more smoothly and costs the Pi a little more work for each open page; longer makes them lag.
 poll_seconds = 5
 
+# Whether a request from the Printer's own machine (its own display, the kiosk) needs the password too. true asks everyone; false lets the
+# Printer's own screen in without one, so no password has to be kept in the kiosk's settings. Everyone else on the network still needs it, and so does
+# anything that arrives through a proxy on the Printer (which would otherwise look like the Printer itself). A missing or bad value means true.
+password_on_localhost = false
+
 
 # ================================================
 # CHART: the monitoring page's picture of the room's scores and the bar
@@ -416,6 +421,28 @@ margin_bottom = 18
 attempt_dot_radius = 1.8
 qualifier_dot_radius = 4
 bar_line_width = 1.6
+
+
+# ================================================
+# DISPLAY: the kiosk, the monitoring page on a monitor plugged into the Printer
+# ================================================
+
+# When a monitor is plugged into the Pi, pom-display.service (scripts/setup/systemd/) shows the monitoring page on it full-screen, in a browser run
+# by cage, a one-window compositor. With no monitor it does nothing, and the Printer never notices either way. The page is the same one served on
+# the network, asked for from the Printer itself, so [monitor] enabled must be true and [monitor] password_on_localhost false (the screen has no keyboard to
+# type a password with). Install what it needs with scripts/setup/setup-kiosk.sh.
+[display]
+
+# The browser's command, a name on the path or a full path.
+browser = "chromium"
+
+# The flags it is started with, one text each. --kiosk is full-screen with no window frame or address bar; the others keep it from showing error
+# bubbles or first-run pages, run it on Wayland (the compositor's own display system), and stop it asking for a keyring password. The browser's profile
+# folder and the page's address are added after these.
+browser_flags = ["--kiosk", "--noerrdialogs", "--disable-infobars", "--disable-session-crashed-bubble", "--no-first-run", "--ozone-platform=wayland", "--password-store=basic"]
+
+# Where the browser keeps its own settings and cache: a folder of its own, so the kiosk is never mixed up with another use. ~ is the home directory.
+browser_profile_dir = "~/.config/pom-kiosk"
 
 
 # ================================================

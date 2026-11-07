@@ -194,6 +194,11 @@ class TestTheMonitorMovesWithTheStream:
         p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\npoll_seconds = 2.5\n')
         assert p.site._poll_seconds == 2.5
 
+    def test_the_password_on_localhost_setting_reaches_the_site(self, tmp_path):
+        off = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\npassword_on_localhost = false\n')
+        assert off.site._password_on_localhost is False
+        assert build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n').site._password_on_localhost is True
+
     def test_the_chart_is_given_the_bars_ticks(self, tmp_path):
         p = build(tmp_path, self.CONFIG)
         assert p.site._ticks_source == p.parts["bar_keeper"].ticks_between

@@ -25,6 +25,8 @@ and is **linked** into place (`systemctl link`), not copied: the file systemd re
 - `networkmanager/90-pom-wifi.conf`: Wi-Fi power saving off, so the Pi's radio does not sleep through broadcasts and multicast.
 - `check-service-flags.sh`: checks that every flag in the server units is one the installed server lists in its own `--help` (a flag the Pi's build does not know makes the service crash-loop); the install script runs it first.
 - `install-services.sh`: link the units and the log setting, reload systemd, enable them, and restart only the services whose unit file changed (so the models stay loaded). `--start` also starts any that are not running. Run it as the `pi` user.
+- `systemd/pom-display.service`: the display, a kiosk that shows the monitoring page full-screen on a monitor plugged into the Pi (cage, a one-window Wayland compositor, running `kiosk_browser.py`). It only wants the Printer, never requires it; with no monitor it is skipped, not failed (`display-attached.sh`, its `ExecCondition=`).
+- `kiosk_browser.py`: the kiosk's launcher: waits for the page to answer, then becomes the browser named in `[display]`. `udev/90-pom-display.rules`: starts the display when a monitor is plugged in. `setup-kiosk.sh`: installs cage, Chromium and a font from apt (nothing is compiled); run it once on the Pi.
 - `update-pi.sh`: `git pull`, refresh the Python packages, run the install script, and restart the Printer only if code, settings or the library changed.
 
 The units name `/home/pi/pom` and `/home/pi/envs/pom`, because a linked file cannot be filled in per machine. The ports and flags are pinned by `tests/scripts/test_services.py` against `config/pom.toml` and the bench script.

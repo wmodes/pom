@@ -409,6 +409,14 @@ The machine, its settings, how it keeps going, and how it is watched.
   answers, **DOWN** (red) if it does not, **none** (grey) if there is nothing to ask (no terminal is configured). The terminal's light is up if its port is open
   or opens now, and up while a portent is being typed on it: the page asks `online(wait=False)` and never waits behind the typing. Example: `ServiceWatch`,
   `online()`
+- **kiosk**: The Printer's own screen: when a monitor is plugged into the Pi, a browser run by *cage* (a one-window Wayland compositor) shows the monitoring
+  page full-screen on it, from `http://127.0.0.1:<port>/`. With no monitor it does nothing, and the Printer never notices either way. Example:
+  `pom-display.service`, `scripts/setup/kiosk_browser.py`, `display-attached.sh`, `setup-kiosk.sh`
+- **display**: The `[display]` section: the kiosk's browser (`browser`), the flags it starts with (`browser_flags`) and the folder it keeps its own
+  settings in (`browser_profile_dir`). Example: `DisplaySettings`
+- **password on localhost**: Whether a request from the Printer's own machine (the kiosk) needs the monitoring page's password too. With
+  `password_on_localhost = false` the Printer's own screen gets in without one, because it has no keyboard to type it on; everyone else on the network still
+  needs it, and so does anything that arrives through a proxy on the Printer. Example: `password_on_localhost`, `MonitorSite._from_this_machine()`
 - **intervals note**: The one left-justified line under the chart, "Intervals at approximately 5 min" (the `gridline_every_minutes`), which says what the
   faint vertical lines are; approximately, because silences are drawn short. It replaced the "-30 min", "-20 min" and "-10 min" labels. Example: `gridline_every_minutes`
 

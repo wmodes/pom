@@ -1,0 +1,44 @@
+# The display: a kiosk that shows the monitoring page full-screen on the monitor plugged into the Pi. Linked into /etc/systemd/system by
+# scripts/setup/install-services.sh; the packages it needs (cage, chromium) are installed by scripts/setup/setup-kiosk.sh.
+#
+# It must never trouble the Printer. pom.service knows nothing of it, and this unit only Wants= pom.service (never Requires=): the Printer runs the same
+# with the screen unplugged, off, or this unit failed.
+#
+# NO MONITOR IS NOT AN ERROR. ExecCondition= asks display-attached.sh whether any display connector reports a monitor; if none does, systemd skips the
+# unit (not "failed", no restart loop). Cage exits by itself when its last monitor is unplugged, and the udev rule (scripts/setup/udev/) starts this
+# unit again when one is plugged in.
+#
+# Cage is a one-window Wayland compositor; it runs the launcher, which waits for the monitoring page to answer and then becomes Chromium in kiosk mode
+# (scripts/setup/kiosk_browser.py, and the `[display]` settings in config/pom.toml). It runs on virtual terminal 7, which no login prompt uses, and
+# `-s` lets a keyboard switch away (ctrl-alt-F1 is the console login). PAMName=login gives it the logind session it needs for the screen and the mouse.
+# The log is journald's: `journalctl -u pom-display -f`.
+[Unit]
+Description=Printer of Mysteries: the display (a kiosk showing the monitoring page)
+After=systemd-user-sessions.service systemd-logind.service pom.service
+Wants=pom.service dbus.socket systemd-logind.service
+ConditionPathExists=/dev/tty0
+ConditionPathExists=/usr/bin/cage
+ConditionPathExists=/usr/bin/chromium
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/pom
+Environment=PYTHONPATH=/home/pi/pom/src
+Environment=PYTHONUNBUFFERED=1
+ExecCondition=/home/pi/pom/scripts/setup/display-attached.sh
+ExecStart=/usr/bin/cage -s -- /home/pi/envs/pom/bin/python /home/pi/pom/scripts/setup/kiosk_browser.py
+ExecStartPost=+/usr/bin/chvt 7
+Restart=on-failure
+RestartSec=10
+UtmpIdentifier=tty7
+UtmpMode=user
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+PAMName=login
+
+[Install]
+WantedBy=multi-user.target

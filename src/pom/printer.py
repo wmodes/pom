@@ -278,7 +278,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         else:
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, chart=config.chart,
                                poll_seconds=monitor.poll_seconds, stream_now=stream_now, ticks_source=bar_keeper.ticks_between,
-                               stream_began_at=stream_started_at,
+                               stream_began_at=stream_started_at, password_on_localhost=monitor.password_on_localhost,
                                status_source=status_now)
 
     def turned(attempt, result) -> None:

@@ -12,7 +12,7 @@
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-UNITS="pom-whisper pom-scorer pom-oracle pom"
+UNITS="pom-whisper pom-scorer pom-oracle pom pom-display"
 DROPIN_SOURCE="$ROOT/scripts/setup/journald/90-pom.conf"
 DROPIN="/etc/systemd/journald.conf.d/90-pom.conf"
 WIFI_SOURCE="$ROOT/scripts/setup/networkmanager/90-pom-wifi.conf"
@@ -55,6 +55,15 @@ if [ "$(readlink "$WIFI_DROPIN" 2>/dev/null || true)" != "$WIFI_SOURCE" ]; then
     sudo nmcli general reload conf
     sudo nmcli device reapply wlan0 > /dev/null 2>&1 || true
     echo "wifi: power saving set off (scripts/setup/networkmanager/90-pom-wifi.conf)"
+fi
+
+# The display's hotplug rule (start the kiosk when a monitor is plugged in), linked the same way and reloaded only when the link is new or changed.
+UDEV_SOURCE="$ROOT/scripts/setup/udev/90-pom-display.rules"
+UDEV_RULE="/etc/udev/rules.d/90-pom-display.rules"
+if [ "$(readlink "$UDEV_RULE" 2>/dev/null || true)" != "$UDEV_SOURCE" ]; then
+    sudo ln -sfn "$UDEV_SOURCE" "$UDEV_RULE"
+    sudo udevadm control --reload
+    echo "display: hotplug rule linked (scripts/setup/udev/90-pom-display.rules)"
 fi
 
 sudo systemctl daemon-reload

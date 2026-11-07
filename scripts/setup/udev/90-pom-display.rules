@@ -1,0 +1,6 @@
+# Start the display (the kiosk) when a monitor is plugged into the Pi. Linked into /etc/udev/rules.d by scripts/setup/install-services.sh.
+#
+# The kernel announces a monitor being plugged in or out as a "change" event on its display device, with HOTPLUG=1. Starting is harmless in every case:
+# a unit that is already running is left alone, and with no monitor pom-display.service's own start condition skips it (not a failure). --no-block so
+# udev is not kept waiting for the screen to come up.
+ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", RUN+="/usr/bin/systemctl --no-block start pom-display.service"

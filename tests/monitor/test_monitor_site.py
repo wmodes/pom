@@ -996,3 +996,101 @@ class TestTheTilesAreReadOnEveryPoll:
     def test_the_page_sets_the_tiles_from_every_poll(self):
         page = get(make()[2], "/").get_data(as_text=True)
         assert "set('bar', s.bar_text)" in page and "set('window', s.window_size)" in page
+
+
+class TestThePasswordOnLocalhost:
+    """With `password_on_localhost` off, a request from the Printer's own machine (its display) needs no password; everyone else still does."""
+
+    PATHS = ["/", "/chart.svg", "/api/turns", "/turn/1"]
+
+    @staticmethod
+    def site(**options):
+        history = TurnHistory()
+        add(history)
+        trace = ScoreTrace()
+        trace.add(3.0, 5.0, 10.0)
+        _, _, client, _ = make(history=history, trace=trace, **options)
+        return client
+
+    @staticmethod
+    def ask(client, path="/", address="127.0.0.1", headers=None):
+        return client.get(path, headers=headers or {}, environ_overrides={"REMOTE_ADDR": address})
+
+    @pytest.mark.parametrize("path", PATHS)
+    def test_this_machine_gets_every_page_without_a_password(self, path):
+        assert self.ask(self.site(password_on_localhost=False), path).status_code == 200
+
+    @pytest.mark.parametrize("address", ["127.0.0.1", "127.0.0.2", "127.255.255.254", "::1", "::ffff:127.0.0.1"])
+    def test_every_form_of_this_machine_counts(self, address):
+        assert self.ask(self.site(password_on_localhost=False), address=address).status_code == 200
+
+    def test_an_ipv4_address_in_ipv6_dress_counts_even_where_python_does_not_say_so(self, monkeypatch):
+        """Older Pythons (the Pi's 3.11.2) do not call ::ffff:127.0.0.1 loopback; the site looks through the dress itself."""
+        import ipaddress
+        monkeypatch.setattr(ipaddress.IPv6Address, "is_loopback", property(lambda self: self._ip == 1))
+        client = self.site(password_on_localhost=False)
+        assert self.ask(client, address="::ffff:127.0.0.1").status_code == 200 and self.ask(client, address="::1").status_code == 200
+        assert self.ask(client, address="::ffff:192.168.1.5").status_code == 401
+
+    @pytest.mark.parametrize("address", ["192.168.1.5", "10.0.0.2", "100.64.12.7", "172.16.0.9", "8.8.8.8", "0.0.0.0", "fe80::1", "2001:db8::1",
+                                         "::ffff:192.168.1.5", "128.0.0.1"])
+    def test_everyone_else_still_needs_the_password(self, address):
+        response = self.ask(self.site(password_on_localhost=False), address=address)
+        assert response.status_code == 401 and "Basic" in response.headers["WWW-Authenticate"]
+
+    @pytest.mark.parametrize("address", ["192.168.1.5", "100.64.12.7", "::ffff:192.168.1.5"])
+    def test_and_the_password_still_works_for_them(self, address):
+        assert self.ask(self.site(password_on_localhost=False), address=address, headers=basic()).status_code == 200
+
+    @pytest.mark.parametrize("address", ["192.168.1.5", "100.64.12.7"])
+    def test_and_a_wrong_password_still_does_not(self, address):
+        assert self.ask(self.site(password_on_localhost=False), address=address, headers=basic(password="wrong")).status_code == 401
+
+    @pytest.mark.parametrize("header", ["X-Forwarded-For", "Forwarded", "X-Real-IP", "x-forwarded-for"])
+    def test_a_request_that_names_a_proxy_is_not_treated_as_this_machine(self, header):
+        assert self.ask(self.site(password_on_localhost=False), headers={header: "203.0.113.9"}).status_code == 401
+
+    def test_such_a_request_still_gets_in_with_the_password(self):
+        assert self.ask(self.site(password_on_localhost=False), headers={**basic(), "X-Forwarded-For": "203.0.113.9"}).status_code == 200
+
+    @pytest.mark.parametrize("address", ["", "not-an-address", "localhost", "127.0.0.1.5", "1"])
+    def test_an_address_that_is_not_one_is_not_this_machine(self, address):
+        assert self.ask(self.site(password_on_localhost=False), address=address).status_code == 401
+
+    def test_by_default_this_machine_needs_the_password_too(self):
+        assert self.ask(self.site()).status_code == 401 and self.ask(self.site(), headers=basic()).status_code == 200
+
+    def test_asking_for_the_password_on_localhost_asks_everyone(self):
+        assert self.ask(self.site(password_on_localhost=True)).status_code == 401
+
+    @pytest.mark.parametrize("bad", ["no", "false", None, 0, 1, "", [False]])
+    def test_a_setting_that_is_not_a_bool_asks_everyone_with_a_warning(self, bad):
+        site, _, client, _ = make(password_on_localhost=bad)
+        assert self.ask(client).status_code == 401 and any("password_on_localhost" in w for w in site.report.warnings)
+
+    def test_a_good_setting_says_nothing(self):
+        site, _, _, _ = make(password_on_localhost=False)
+        assert not site.report.warnings
+
+    def test_the_refusal_is_unchanged(self):
+        response = self.ask(self.site(password_on_localhost=False), address="192.168.1.5")
+        assert response.get_data(as_text=True) == "A password is needed." and response.headers["WWW-Authenticate"].startswith('Basic realm="Printer of Mysteries"')
+
+    def test_over_a_real_socket_the_machines_own_connection_is_let_in(self):
+        site = MonitorSite(TurnHistory(), PASSWORD, password_on_localhost=False)
+        assert site.start("127.0.0.1", 0) is True
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{site.port}/api/turns", timeout=5) as response:
+                assert response.status == 200
+        finally:
+            site.stop()
+
+    def test_over_a_real_socket_by_default_it_is_refused(self):
+        site = MonitorSite(TurnHistory(), PASSWORD)
+        assert site.start("127.0.0.1", 0) is True
+        try:
+            with pytest.raises(urllib.error.HTTPError) as refused:
+                urllib.request.urlopen(f"http://127.0.0.1:{site.port}/api/turns", timeout=5)
+            assert refused.value.code == 401
+        finally:
+            site.stop()

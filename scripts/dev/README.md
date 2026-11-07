@@ -23,6 +23,8 @@ into one built part of the Printer and see what it does, using the real modules 
 - `qualifying/`: `replay_scores_through_bar.py` replays a recorded stream of scores (by default the first hour of the live room, 2026-10-26, numbers only) through the real BarKeeper at
   several `qualifier_bar_influence` values and prints the qualifiers an hour, the share of scores above the bar, and the bar's level. `--offset-hours 30` makes the first score
   come 30 hours after the Printer started, so the bar's starting line has faded. It needs no models and no servers.
+  `report_score_percentiles.py` reports a percentile (the 90th unless `--percentile` says otherwise) of the scores each recording already earned, the four meetings and the live room, and of all of them pooled, from the numbers-only score files in
+  `data/recordings/work/zoom-scores/`, over every score and over the model's alone. It does not re-score or replay anything; re-score into new files when the scorer's prompt or model changes and run it again (the files' dates are shown). `--scores FILE` reads other files.
 - `printing/`: `format_text_for_typewriter.py` shows how the PortentFormatter sets text for the typewriter: type or pipe text in (quote the
   heredoc, `<<'EOT'`, or the shell runs anything in backticks) and see it between rulers, with the quote indented. `--cpi 12`, `--width`,
   `--indent`, `--feeds`, `--keep` and `--ascii-wheel` change what `[printing]` in the config sets.

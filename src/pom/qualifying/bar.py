@@ -42,6 +42,11 @@ class Bar(ABC):
     def describe(self) -> str:
         """One line saying how the bar works and how it is set, for a testbench or a log."""
 
+    def ticks_between(self, start: float, end: float) -> list:
+        """The anchor's ticks from `start` to `end`, each as (time, anchor score, the bar as it stood then), oldest first, for a chart to draw.
+        A bar with no anchor has none (the default)."""
+        return []
+
     def ignores(self, score: float) -> bool:
         """True if this score should be left out of everything (default: no score is)."""
         return False

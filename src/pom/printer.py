@@ -245,14 +245,25 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         keyboard = KeyboardWatcher(terminal, typed)
 
     # what the monitoring site is told: numbers only, from every attempt
-    snapshot = {"heard": 0, "scored": 0, "bar": None, "window": 0}
+    snapshot = {"heard": 0, "scored": 0}
+
+    def stream_now() -> float:
+        """The stream time right now: the listening side's clock, which runs through silence (before the first room is built, the stream's start)."""
+        ears = last_room["ears"]
+        return ears.stream_time_at(time.monotonic()) if ears is not None else stream_started_at
 
     def note(attempt) -> None:
         snapshot["heard"] += 1
         snapshot["scored"] += attempt.score is not None
-        snapshot["bar"], snapshot["window"] = bar_keeper.bar_at(attempt.heard_at), bar_keeper.window_size_at(attempt.heard_at)
         if attempt.score is not None:
             trace.add(attempt.score, attempt.bar, attempt.heard_at, attempt.is_hinge)
+
+    def status_now() -> MonitorStatus:
+        """The numbers on the page's tiles as of this moment: the bar is read at the stream's clock, so it keeps moving through silence."""
+        now = stream_now()
+        return MonitorStatus(bar=bar_keeper.bar_at(now), window_size=bar_keeper.window_size_at(now),
+                             attempts_heard=snapshot["heard"], attempts_scored=snapshot["scored"],
+                             services=services(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe())
 
     services = ServiceWatch({"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: answers(scoring.url),
                              "oracle": lambda: answers(oracle.url)}, every=monitor.service_check_seconds)
@@ -262,10 +273,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
             _log.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, chart=config.chart,
-                               status_source=lambda: MonitorStatus(bar=snapshot["bar"], window_size=snapshot["window"],
-                                                                   sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
-                                                                   services=services(), algorithm=qualifying.algorithm,
-                                                                   bar_description=bar_keeper.describe()))
+                               poll_seconds=monitor.poll_seconds, stream_now=stream_now, ticks_source=bar_keeper.ticks_between,
+                               status_source=status_now)
 
     def turned(attempt, result) -> None:
         _log.info("turn over: %s", result.outcome.value)

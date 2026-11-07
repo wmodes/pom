@@ -52,7 +52,7 @@ class TurnRecord:
         id: A number that only goes up, from 1, unique for as long as the history lives.
         at: When it was recorded, in seconds since the epoch.
         heard_at: Where in the audio stream the hinge ended, in seconds from the start of listening.
-        hinge: The sentence that qualified, word for word.
+        hinge: The clip that qualified, word for word.
         score: The hinge's score, 0 to 9.
         bar: The score it had to be above, as it stood before it joined the window (None if there was none yet).
         window_size: How many scores the window held when it arrived.

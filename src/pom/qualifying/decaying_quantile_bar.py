@@ -128,9 +128,27 @@ class DecayingQuantileBar(Bar):
 
     def level_at(self, now: float) -> Optional[float]:
         """The weighted, interpolated percentile of the real scores and the ticks, blended with the fading starting line, at `now`."""
+        return self._level(now, future=True)
+
+    def level_as_of(self, then: float) -> Optional[float]:
+        """The bar as it stood at `then`, a time already past: the same as `level_at`, but a score heard after `then` has no say."""
+        return self._level(then, future=False)
+
+    def ticks_between(self, start: float, end: float) -> list:
+        """Each tick from `start` to `end`, as (time, anchor score, the bar as it stood at that tick), oldest first. It is how a chart shows the
+        bar sliding down through a silence: the ticks fall on the grid whether or not anyone spoke."""
+        if not (_is_number(start) and _is_number(end)):
+            return []
+        first = max(1, math.ceil((start - self._started_at) / self._anchor_interval))
+        last = math.floor((end - self._started_at) / self._anchor_interval)
+        times = [self._started_at + k * self._anchor_interval for k in range(first, last + 1)]
+        return [(at, self._anchor_score, self.level_as_of(at)) for at in times]
+
+    def _level(self, now: float, future: bool) -> Optional[float]:
+        """The bar at `now`; `future` says whether a score heard after `now` still counts (as a stepped-back clock would have it) or not."""
         if not _is_number(now):
             return None
-        entries = self._weighted_scores(now)
+        entries = self._weighted_scores(now, future)
         if not entries:
             return self._starting_bar
         line = self._starting_bar_weight * self._weight(now - self._started_at)
@@ -170,10 +188,10 @@ class DecayingQuantileBar(Bar):
         while self._memory and self._memory[0][0] < cutoff:
             self._memory.popleft()
 
-    def _weighted_scores(self, now: float) -> list:
+    def _weighted_scores(self, now: float, future: bool = True) -> list:
         """What the bar is read from at `now`, each as (score, weight): the real scores still remembered and the ticks, with no starting line in it."""
         self._forget_old(now)
-        entries = [(score, self._weight(now - heard)) for heard, score in self._memory] + self._ticks_at(now)
+        entries = [(score, self._weight(now - heard)) for heard, score in self._memory if future or heard <= now] + self._ticks_at(now)
         return [(score, weight) for score, weight in entries if weight > 0.0]          # a weight faded to nothing has no say, and must not be divided by
 
     def _ticks_at(self, now: float) -> list:

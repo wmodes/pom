@@ -517,6 +517,7 @@ MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's
     ("scorer", "warmup_poll_seconds", "2.5", 2.5, 5.0, ["0", "-1", '"5"', "true", "inf"]),
     ("scorer", "warmup_attempts", "6", 6, 3, ["0", "-1", "1.5", '"3"', "true"]),
     ("monitor", "service_check_seconds", "40", 40.0, 15.0, ["0", "-1", '"15"', "true", "inf"]),
+    ("monitor", "poll_seconds", "2.5", 2.5, 5.0, ["0", "-1", '"5"', "true", "inf"]),
     ("terminal", "max_typed_line_characters", "80", 80, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "refused_character_retry_seconds", "0.5", 0.5, 1.0, ["0", "-1", '"1"', "true", "inf"]),
     ("terminal", "wait_log_reminder_seconds", "30", 30.0, 60.0, ["0", "-1", '"60"', "true", "inf"]),
@@ -548,23 +549,28 @@ def test_the_committed_config_sets_every_moved_setting():
 
 # ---- the [chart] section ----
 
-CHART_GOOD = [("window_minutes", "12", 12.0), ("label_every_minutes", "4", 4.0), ("gridline_every_minutes", "2", 2.0), ("score_max", "10", 10.0),
+CHART_GOOD = [("window_minutes", "12", 12.0), ("gridline_every_minutes", "2", 2.0), ("score_max", "10", 10.0),
               ("score_gridlines", "[0, 5, 10]", (0.0, 5.0, 10.0)), ("drawing_width", "600", 600.0), ("drawing_height", "120", 120.0),
               ("margin_left", "30", 30.0), ("margin_right", "0", 0.0), ("margin_top", "0", 0.0), ("margin_bottom", "20", 20.0),
-              ("attempt_dot_radius", "2.5", 2.5), ("qualifier_dot_radius", "6", 6.0), ("bar_line_width", "2", 2.0)]
-CHART_BAD = [("window_minutes", "0"), ("window_minutes", '"30"'), ("window_minutes", "true"), ("label_every_minutes", "-1"), ("gridline_every_minutes", "0"),
+              ("attempt_dot_radius", "2.5", 2.5), ("qualifier_dot_radius", "6", 6.0), ("bar_line_width", "2", 2.0),
+              ("longest_silence_minutes", "8", 8.0), ("break_mark_size", "9", 9.0), ("break_gap_width", "80", 80.0)]
+CHART_BAD = [("window_minutes", "0"), ("window_minutes", '"30"'), ("window_minutes", "true"), ("gridline_every_minutes", "0"),
              ("score_max", "0"), ("score_max", "nan"), ("score_gridlines", "[]"), ("score_gridlines", '["a"]'), ("score_gridlines", "[1, true]"),
              ("score_gridlines", "5"), ("drawing_width", "0"), ("drawing_height", "-5"), ("margin_left", "-1"), ("margin_right", '"6"'),
-             ("margin_top", "true"), ("margin_top", "-1"), ("margin_right", "-1"), ("margin_bottom", "-1"), ("margin_bottom", "inf"), ("attempt_dot_radius", "0"), ("qualifier_dot_radius", "-2"), ("bar_line_width", '"1.6"')]
+             ("margin_top", "true"), ("margin_top", "-1"), ("margin_right", "-1"), ("margin_bottom", "-1"), ("margin_bottom", "inf"), ("attempt_dot_radius", "0"), ("qualifier_dot_radius", "-2"), ("bar_line_width", '"1.6"'),
+             ("longest_silence_minutes", "0"), ("longest_silence_minutes", "-5"), ("longest_silence_minutes", '"5"'), ("longest_silence_minutes", "inf"),
+             ("break_mark_size", "0"), ("break_mark_size", "-1"), ("break_mark_size", "true"), ("break_gap_width", "0"), ("break_gap_width", '"64"'),
+             ("break_gap_width", "nan")]
 
 
 def test_the_chart_starts_at_the_old_hard_coded_numbers():
     from pom.config import ChartSettings
     c = Config().chart
-    assert c == ChartSettings() and (c.window_minutes, c.label_every_minutes, c.gridline_every_minutes, c.score_max) == (30.0, 10.0, 5.0, 9.0)
+    assert c == ChartSettings() and (c.window_minutes, c.gridline_every_minutes, c.score_max) == (30.0, 5.0, 9.0)
     assert c.score_gridlines == (0.0, 3.0, 6.0, 9.0) and (c.drawing_width, c.drawing_height) == (720.0, 150.0)
     assert (c.margin_left, c.margin_right, c.margin_top, c.margin_bottom) == (24.0, 6.0, 8.0, 18.0)
     assert (c.attempt_dot_radius, c.qualifier_dot_radius, c.bar_line_width) == (1.8, 4.0, 1.6)
+    assert (c.longest_silence_minutes, c.break_mark_size, c.break_gap_width) == (5.0, 6.0, 64.0)
 
 
 @pytest.mark.parametrize("key, text, expected", CHART_GOOD)
@@ -583,8 +589,10 @@ def test_a_bad_chart_setting_means_the_default_with_a_warning(tmp_path, key, val
 
 def test_margins_that_leave_no_room_for_the_plot_mean_the_default_size_and_margins(tmp_path):
     from pom.config import ChartSettings
-    config = Config.load(write(tmp_path, "[chart]\ndrawing_width = 100\nmargin_left = 60\nmargin_right = 40\nbar_line_width = 3\n"), environ={})
+    config = Config.load(write(tmp_path, "[chart]\ndrawing_width = 100\nmargin_left = 60\nmargin_right = 40\nbar_line_width = 3\n"
+                                         "longest_silence_minutes = 9\nbreak_mark_size = 4\nbreak_gap_width = 50\n"), environ={})
     assert config.chart.drawing_width == 720.0 and config.chart.margin_left == 24.0 and config.chart.bar_line_width == 3.0
+    assert (config.chart.longest_silence_minutes, config.chart.break_mark_size, config.chart.break_gap_width) == (9.0, 4.0, 50.0)       # the rest is kept
     assert any("no room for the plot" in w for w in config.report.warnings)
     assert Config.load(write(tmp_path, "[chart]\ndrawing_height = 20\nmargin_top = 10\nmargin_bottom = 10\n"), environ={}).chart.drawing_height == 150.0
 

@@ -179,6 +179,81 @@ class TestTheMovedSettingsReachTheirParts:
         assert (p.site._look.window_minutes, p.site._look.bar_line_width) == (12.0, 2.0)
 
 
+class TestTheMonitorMovesWithTheStream:
+    """The page's beat, its chart's right edge, its ticks and its tiles all come from the stream's clock and the bar, not from the last attempt."""
+
+    CONFIG = '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\n[qualifying]\nalgorithm = "decaying_quantile"\n'
+
+    @staticmethod
+    def clock(monkeypatch, start=100.0):
+        now = [start]
+        monkeypatch.setattr(printer_module.time, "monotonic", lambda: now[0])
+        return now
+
+    def test_the_poll_beat_is_the_setting(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\npoll_seconds = 2.5\n')
+        assert p.site._poll_seconds == 2.5
+
+    def test_the_chart_is_given_the_bars_ticks(self, tmp_path):
+        p = build(tmp_path, self.CONFIG)
+        assert p.site._ticks_source == p.parts["bar_keeper"].ticks_between
+
+    def test_before_any_room_the_stream_time_is_the_streams_start(self, tmp_path, monkeypatch):
+        self.clock(monkeypatch)
+        assert build(tmp_path, self.CONFIG).site._stream_now() == 0.0
+
+    def test_once_a_room_is_listening_the_stream_time_runs_with_the_wall_clock_through_silence(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        p.conductor._room_factory()
+        assert p.site._stream_now() == pytest.approx(0.0)
+        now[0] += 120.0
+        assert p.site._stream_now() == pytest.approx(120.0)
+
+    def test_the_stream_time_goes_on_through_a_room_built_again(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        p.conductor._room_factory()
+        now[0] += 300.0
+        p.conductor._room_factory()
+        now[0] += 30.0
+        assert p.site._stream_now() == pytest.approx(330.0, abs=0.5)
+
+    def test_the_tiles_read_the_live_bar_so_it_falls_in_a_silence_with_no_attempt(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        p.conductor._room_factory()
+        start = p.site._status_source().bar
+        now[0] += 300.0
+        later = p.site._status_source().bar
+        assert start == pytest.approx(6.8) and later == pytest.approx(6.535, abs=0.01) and p.parts["bar_keeper"].counted == 0
+
+    def test_the_window_size_is_read_live_too(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        p.conductor._room_factory()
+        keeper = p.parts["bar_keeper"]
+        keeper.rule(7.0, 0.0)
+        assert p.site._status_source().window_size == 1
+        now[0] += 300.0 * 8
+        assert p.site._status_source().window_size == 0                                   # eight half-lives on, its weight is under half a score
+
+    def test_the_counts_come_from_the_attempts_noted(self, tmp_path):
+        from pom.qualifying import Attempt, Ruling
+        from pom.scoring import ScoredBy
+        p = build(tmp_path, self.CONFIG)
+        status = p.site._status_source()
+        assert (status.attempts_heard, status.attempts_scored) == (0, 0)
+        p.conductor._on_attempt(Attempt("Hello.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
+        p.conductor._on_attempt(Attempt("Room tone.", "room_tone", None, ScoredBy.MODEL, None, 13.0, None, 3, 1))
+        status = p.site._status_source()
+        assert (status.attempts_heard, status.attempts_scored) == (2, 1)
+
+    def test_the_status_also_carries_the_services_and_the_bar_description(self, tmp_path):
+        status = build(tmp_path, self.CONFIG).site._status_source()
+        assert status.algorithm == "decaying_quantile" and "steady tick" in status.bar_description and set(status.services) == {"whisper", "scorer", "oracle"}
+
+
 class TestTheBarStartsWithTheStream:
     """The bar's clock runs from the stream's start, not from the first attempt: a Printer that has heard nothing yet already has a moving bar."""
 

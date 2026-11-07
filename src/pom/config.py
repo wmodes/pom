@@ -96,11 +96,11 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "qualifying.average_floor_fraction", "qualifying.typed_lines_score_multiplier", "qualifying.typed_lines_bar_influence",
          "qualifying.anchor_score", "qualifying.anchor_interval_minutes", "qualifying.discard_scores_older_than_minutes",
          "qualifying.starting_bar_weight", "listening.max_clip_words", "scorer.warmup_poll_seconds", "scorer.warmup_attempts",
-         "monitor.service_check_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
+         "monitor.service_check_seconds", "monitor.poll_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
          "terminal.wait_log_reminder_seconds",
-         "chart.window_minutes", "chart.label_every_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
+         "chart.window_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
          "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
-         "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width",
+         "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width", "chart.longest_silence_minutes", "chart.break_mark_size", "chart.break_gap_width",
          "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
          "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
@@ -166,6 +166,7 @@ DEFAULT_MONITOR_PORT = 8080
 DEFAULT_MONITOR_SHOW_HINGES = True
 DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
 DEFAULT_MONITOR_SERVICE_CHECK_SECONDS = 15.0
+DEFAULT_MONITOR_POLL_SECONDS = 5.0
 DEFAULT_PRINTING_PAPER_WIDTH_INCHES = 8.5
 DEFAULT_PRINTING_MARGIN_INCHES = 1.0
 DEFAULT_PRINTING_CHARACTERS_PER_INCH = 10.0
@@ -195,7 +196,6 @@ DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS = 1.0
 DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS = 60.0
 
 DEFAULT_CHART_WINDOW_MINUTES = 30.0
-DEFAULT_CHART_LABEL_EVERY_MINUTES = 10.0
 DEFAULT_CHART_GRIDLINE_EVERY_MINUTES = 5.0
 DEFAULT_CHART_SCORE_MAX = 9.0
 DEFAULT_CHART_SCORE_GRIDLINES = (0.0, 3.0, 6.0, 9.0)
@@ -208,6 +208,9 @@ DEFAULT_CHART_MARGIN_BOTTOM = 18.0
 DEFAULT_CHART_ATTEMPT_DOT_RADIUS = 1.8
 DEFAULT_CHART_QUALIFIER_DOT_RADIUS = 4.0
 DEFAULT_CHART_BAR_LINE_WIDTH = 1.6
+DEFAULT_CHART_LONGEST_SILENCE_MINUTES = 5.0
+DEFAULT_CHART_BREAK_MARK_SIZE = 6.0
+DEFAULT_CHART_BREAK_GAP_WIDTH = 64.0
 DEFAULT_TERMINAL_MODE = "serial"
 TERMINAL_MODES = ("serial", "console", "none")
 DEFAULT_CONDUCTOR_WRITING_SECONDS = 300.0
@@ -411,6 +414,8 @@ class MonitorSettings:
         history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only.
         service_check_seconds: How often, at most, the page's service lights (whisper, scorer, oracle) are checked, above 0, so the page's
             polling does not hammer the servers.
+        poll_seconds: How often the open page asks for news and redraws itself (the chart, the status tiles and the turns), above 0. A shorter time
+            makes the page and graph move more smoothly and costs a little more work for the Pi.
     """
     enabled: bool = DEFAULT_MONITOR_ENABLED
     host: str = DEFAULT_MONITOR_HOST
@@ -419,6 +424,7 @@ class MonitorSettings:
     show_hinges: bool = DEFAULT_MONITOR_SHOW_HINGES
     history_seconds: float = DEFAULT_MONITOR_HISTORY_SECONDS
     service_check_seconds: float = DEFAULT_MONITOR_SERVICE_CHECK_SECONDS
+    poll_seconds: float = DEFAULT_MONITOR_POLL_SECONDS
 
 
 @dataclass(frozen=True)
@@ -553,9 +559,10 @@ class ChartSettings:
     Every number that shapes the chart is here. Colors are the page's own (they follow its light and dark theme).
 
     Attributes:
-        window_minutes: How much time the chart shows, back from the newest score, above 0.
-        label_every_minutes: A label on the time axis this often, above 0.
-        gridline_every_minutes: A faint vertical line this often, above 0.
+        window_minutes: How much time the chart shows, back from now, above 0. A long silence is drawn short (see `longest_silence_minutes`), so
+            the chart reaches back further in real time than this after one.
+        gridline_every_minutes: A faint vertical line this often, above 0. The time axis says so in words ("Intervals at approximately 5 min"): the
+            intervals are approximate because a silence is drawn short.
         score_max: The top of the score scale, above 0 (the bottom is 0). A score outside the scale is drawn at the edge.
         score_gridlines: The scores that get a horizontal line and a label, a list of numbers.
         drawing_width: The drawing's own width, in the units its coordinates use (it scales to the width of the page), above 0.
@@ -567,9 +574,13 @@ class ChartSettings:
         attempt_dot_radius: The radius of the dot for an attempt, above 0.
         qualifier_dot_radius: The radius of the dot for a qualifier, above 0.
         bar_line_width: The width of the line that is the bar, above 0.
+        longest_silence_minutes: A silence (a stretch with no attempt) longer than this is drawn this wide, with its real length written
+            over it, above 0. Higher shows longer silences at their true size; lower squeezes them more and fits more of the room's history in.
+        break_mark_size: The height of the zigzag on each edge of a silence, the engineer's break mark, above 0.
+        break_gap_width: The width of the clear gap between the two break marks, in the drawing's units, above 0. It holds the words, so it should be
+            wide enough for them; the rest of the silence shows on either side. A silence narrower than this is all gap.
     """
     window_minutes: float = DEFAULT_CHART_WINDOW_MINUTES
-    label_every_minutes: float = DEFAULT_CHART_LABEL_EVERY_MINUTES
     gridline_every_minutes: float = DEFAULT_CHART_GRIDLINE_EVERY_MINUTES
     score_max: float = DEFAULT_CHART_SCORE_MAX
     score_gridlines: tuple = DEFAULT_CHART_SCORE_GRIDLINES
@@ -582,6 +593,9 @@ class ChartSettings:
     attempt_dot_radius: float = DEFAULT_CHART_ATTEMPT_DOT_RADIUS
     qualifier_dot_radius: float = DEFAULT_CHART_QUALIFIER_DOT_RADIUS
     bar_line_width: float = DEFAULT_CHART_BAR_LINE_WIDTH
+    longest_silence_minutes: float = DEFAULT_CHART_LONGEST_SILENCE_MINUTES
+    break_mark_size: float = DEFAULT_CHART_BREAK_MARK_SIZE
+    break_gap_width: float = DEFAULT_CHART_BREAK_GAP_WIDTH
 
 
 class Config:
@@ -790,7 +804,9 @@ class Config:
             _positive(values.get("monitor.history_seconds", DEFAULT_MONITOR_HISTORY_SECONDS), "monitor.history_seconds",
                       DEFAULT_MONITOR_HISTORY_SECONDS, report),
             _positive(values.get("monitor.service_check_seconds", DEFAULT_MONITOR_SERVICE_CHECK_SECONDS), "monitor.service_check_seconds",
-                      DEFAULT_MONITOR_SERVICE_CHECK_SECONDS, report))
+                      DEFAULT_MONITOR_SERVICE_CHECK_SECONDS, report),
+            _positive(values.get("monitor.poll_seconds", DEFAULT_MONITOR_POLL_SECONDS), "monitor.poll_seconds",
+                      DEFAULT_MONITOR_POLL_SECONDS, report))
         printing = PrintingSettings(
             _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
                       "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),
@@ -840,8 +856,6 @@ class Config:
                       "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, report))
         chart = ChartSettings(
             _positive(values.get("chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES), "chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES, report),
-            _positive(values.get("chart.label_every_minutes", DEFAULT_CHART_LABEL_EVERY_MINUTES), "chart.label_every_minutes",
-                      DEFAULT_CHART_LABEL_EVERY_MINUTES, report),
             _positive(values.get("chart.gridline_every_minutes", DEFAULT_CHART_GRIDLINE_EVERY_MINUTES), "chart.gridline_every_minutes",
                       DEFAULT_CHART_GRIDLINE_EVERY_MINUTES, report),
             _positive(values.get("chart.score_max", DEFAULT_CHART_SCORE_MAX), "chart.score_max", DEFAULT_CHART_SCORE_MAX, report),
@@ -857,12 +871,18 @@ class Config:
                       DEFAULT_CHART_ATTEMPT_DOT_RADIUS, report),
             _positive(values.get("chart.qualifier_dot_radius", DEFAULT_CHART_QUALIFIER_DOT_RADIUS), "chart.qualifier_dot_radius",
                       DEFAULT_CHART_QUALIFIER_DOT_RADIUS, report),
-            _positive(values.get("chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH), "chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH, report))
+            _positive(values.get("chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH), "chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH, report),
+            _positive(values.get("chart.longest_silence_minutes", DEFAULT_CHART_LONGEST_SILENCE_MINUTES), "chart.longest_silence_minutes",
+                      DEFAULT_CHART_LONGEST_SILENCE_MINUTES, report),
+            _positive(values.get("chart.break_mark_size", DEFAULT_CHART_BREAK_MARK_SIZE), "chart.break_mark_size", DEFAULT_CHART_BREAK_MARK_SIZE, report),
+            _positive(values.get("chart.break_gap_width", DEFAULT_CHART_BREAK_GAP_WIDTH), "chart.break_gap_width", DEFAULT_CHART_BREAK_GAP_WIDTH, report))
         if chart.drawing_width - chart.margin_left - chart.margin_right <= 0 or chart.drawing_height - chart.margin_top - chart.margin_bottom <= 0:
             report.warn("chart: the margins leave no room for the plot; using the default drawing size and margins")
-            chart = ChartSettings(chart.window_minutes, chart.label_every_minutes, chart.gridline_every_minutes, chart.score_max,
+            chart = ChartSettings(chart.window_minutes, chart.gridline_every_minutes, chart.score_max,
                                   chart.score_gridlines, attempt_dot_radius=chart.attempt_dot_radius,
-                                  qualifier_dot_radius=chart.qualifier_dot_radius, bar_line_width=chart.bar_line_width)
+                                  qualifier_dot_radius=chart.qualifier_dot_radius, bar_line_width=chart.bar_line_width,
+                                  longest_silence_minutes=chart.longest_silence_minutes, break_mark_size=chart.break_mark_size,
+                                  break_gap_width=chart.break_gap_width)
         conductor = ConductorSettings(
             _positive(values.get("conductor.writing_seconds", DEFAULT_CONDUCTOR_WRITING_SECONDS), "conductor.writing_seconds",
                       DEFAULT_CONDUCTOR_WRITING_SECONDS, report),

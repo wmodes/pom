@@ -571,3 +571,108 @@ class TestLogging:
             feed(b, [1.0, 2.0, 9.0])
             b.level_at(3.0)
         assert "secret" not in caplog.text
+
+
+class TestTheBarAsItStood:
+    """`level_as_of(then)` is the bar at a time already past: a score heard after `then` has no say."""
+
+    def test_a_score_heard_later_does_not_count(self):
+        b = ticking(bar_percentile=50, anchor_interval_minutes=1e12)
+        b.add(2.0, 0.0)
+        b.add(9.0, 100.0)
+        assert b.level_as_of(50.0) == pytest.approx(2.0, abs=0.01)           # at 50 s only the first score had been heard
+
+    def test_it_matches_level_at_for_a_time_no_later_score_is_after(self):
+        b = ticking(bar_percentile=50)
+        b.add(2.0, 0.0)
+        b.add(9.0, 100.0)
+        assert b.level_as_of(100.0) == pytest.approx(b.level_at(100.0))
+
+    def test_level_at_still_counts_a_score_from_the_future(self):
+        """A clock that stepped back is not the same as a past read: `level_at` keeps counting the later score at full weight."""
+        b = ticking(bar_percentile=50, anchor_interval_minutes=1e12)
+        b.add(2.0, 0.0)
+        b.add(9.0, 100.0)
+        assert b.level_at(50.0) > b.level_as_of(50.0)
+
+    def test_the_ticks_up_to_then_count_and_those_after_do_not(self):
+        b = ticking(bar_percentile=50, starting_bar=9.0)
+        assert b.level_as_of(0.0) == 9.0                                     # before the first tick: only the starting line
+        assert b.level_as_of(600.0) < b.level_as_of(60.0)                    # the ticks have pulled it down since
+
+    def test_a_time_that_is_not_a_number_is_none(self):
+        assert ticking().level_as_of("soon") is None and ticking().level_as_of(None) is None
+
+    def test_reading_the_past_does_not_change_the_present(self):
+        b = ticking(bar_percentile=90)
+        for second in range(0, 600, 10):
+            b.add(7.0, float(second))
+        now = b.level_at(600.0)
+        for then in (0.0, 100.0, 300.0, 599.0):
+            b.level_as_of(then)
+        assert b.level_at(600.0) == pytest.approx(now)
+
+
+class TestTheTicksListed:
+    """`ticks_between(start, end)` is for a chart: each tick on the grid in the range, with the anchor score and the bar as it stood at that tick."""
+
+    def test_each_tick_in_the_range_with_the_anchor_score(self):
+        b = ticking(started_at=1000.0, anchor_score=5.0)
+        ticks = b.ticks_between(1000.0, 1200.0)
+        assert [(at, score) for at, score, _ in ticks] == [(1060.0, 5.0), (1120.0, 5.0), (1180.0, 5.0)]
+
+    def test_each_carries_the_bar_as_it_stood_at_that_tick(self):
+        b = ticking(started_at=0.0, starting_bar=9.0, starting_bar_weight=20.0)
+        for at, _, bar in b.ticks_between(0.0, 600.0):
+            assert bar == pytest.approx(b.level_as_of(at))
+
+    def test_the_bar_slides_down_tick_by_tick_in_a_silence(self):
+        bars = [bar for _, _, bar in ticking(started_at=0.0, starting_bar=9.0, starting_bar_weight=20.0).ticks_between(0.0, 1800.0)]
+        assert len(bars) == 30 and all(a > b for a, b in zip(bars, bars[1:]))
+
+    def test_a_start_between_ticks_begins_at_the_next_one(self):
+        assert [at for at, _, _ in ticking(started_at=0.0).ticks_between(90.0, 200.0)] == [120.0, 180.0]
+
+    def test_a_tick_carries_the_bar_as_it_stood_then_not_as_it_is_now(self):
+        b = ticking(bar_percentile=90, anchor_interval_minutes=1.0)
+        b.add(9.0, 100.0)                                                    # heard after the tick at 60 s
+        (at, _, bar), = b.ticks_between(60.0, 60.0)
+        assert at == 60.0 and bar == pytest.approx(b.level_as_of(60.0)) and bar != pytest.approx(b.level_at(60.0))
+
+    def test_the_range_is_inclusive_at_both_ends(self):
+        b = ticking(started_at=0.0)
+        assert [at for at, _, _ in b.ticks_between(60.0, 180.0)] == [60.0, 120.0, 180.0]
+
+    def test_nothing_before_the_first_interval(self):
+        assert ticking(started_at=0.0).ticks_between(0.0, 59.0) == [] and ticking().ticks_between(-500.0, -10.0) == []
+
+    def test_it_follows_the_interval_in_minutes(self):
+        assert [at for at, _, _ in ticking(anchor_interval_minutes=2.5).ticks_between(0.0, 400.0)] == [150.0, 300.0]
+
+    def test_a_range_that_is_not_numbers_gives_none(self):
+        assert ticking().ticks_between("a", 10.0) == [] and ticking().ticks_between(0.0, None) == []
+
+    def test_a_backwards_range_gives_none(self):
+        assert ticking().ticks_between(600.0, 60.0) == []
+
+    def test_it_does_not_change_what_the_bar_says_later(self):
+        b = ticking()
+        b.add(7.0, 30.0)
+        before = b.level_at(300.0)
+        b.ticks_between(0.0, 300.0)
+        assert b.level_at(300.0) == pytest.approx(before)
+
+
+class TestABarWithNoAnchorHasNoTicks:
+    def test_the_default_is_none(self):
+        class Plain(Bar):
+            level_at = lambda self, now: 5.0
+            window_size_at = lambda self, now: 0
+            add = lambda self, score, now: None
+            describe = lambda self: "plain"
+        assert Plain().ticks_between(0.0, 1000.0) == []
+
+    def test_the_percentile_and_moving_average_bars_have_none(self):
+        from pom.qualifying.moving_average_bar import MovingAverageBar
+        from pom.qualifying.percentile_bar import PercentileBar
+        assert PercentileBar().ticks_between(0.0, 1000.0) == [] and MovingAverageBar().ticks_between(0.0, 1000.0) == []

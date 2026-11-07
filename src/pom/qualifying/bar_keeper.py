@@ -157,6 +157,11 @@ class BarKeeper:
                 return None
             return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
 
+    def ticks_between(self, start: float, end: float) -> list:
+        """The anchor's ticks from `start` to `end`, each as (time, anchor score, the bar as it stood then); empty if the bar has no anchor."""
+        with self._held("ticks_between") as got:
+            return self._bar.ticks_between(start, end) if got else []
+
     def window_size_at(self, now: float) -> int:
         """How many scores the bar is built from at time `now` (what that means depends on the bar; it is for display)."""
         with self._held("window_size_at") as got:

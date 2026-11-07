@@ -365,6 +365,10 @@ history_seconds = 3600
 # while it is open; this keeps that from hammering the servers. A longer time makes a server's going down show later.
 service_check_seconds = 15
 
+# How often, in seconds, the open page asks for news and redraws itself: the chart, the status tiles and the turns all move together on this beat.
+# Above 0. Shorter makes the graph and tiles move more smoothly and costs the Pi a little more work for each open page; longer makes them lag.
+poll_seconds = 5
+
 
 # ================================================
 # CHART: the monitoring page's picture of the room's scores and the bar
@@ -375,11 +379,23 @@ service_check_seconds = 15
 # coordinate space (drawing_width by drawing_height); it is scaled to the width of the page, so these are proportions, not pixels.
 [chart]
 
-# How much time the chart shows, back from the newest score, in minutes (above 0). The page's caption says it.
+# How much time the chart shows, back from now, in minutes (above 0). The page's caption says it. A long silence is drawn short (below), so after one the
+# chart reaches back further in real time than this.
 window_minutes = 30
 
-# A label on the time axis this often, and a faint vertical line this often, both in minutes (above 0).
-label_every_minutes = 10
+# A silence (a stretch with no attempt) longer than this many minutes is drawn this wide, with its real length written over it (above 0).
+# Higher shows long silences closer to their true size; lower squeezes them more and fits more of the room's history into the same chart.
+longest_silence_minutes = 5
+
+# A silence is drawn like a broken part in an engineering drawing: a clear gap with a zigzag on each edge. This is the zigzag's height, above 0.
+break_mark_size = 6
+
+# The width of the clear gap between the two break marks, in the drawing's units (above 0). The words sit in it, so keep it wide enough for them; the rest
+# of a silence shows on either side, the bar sliding down through it. A silence narrower than this is all gap.
+break_gap_width = 64
+
+# A faint vertical line this often, in minutes (above 0). The time axis says so in words, "Intervals at approximately 5 min", approximately because a silence
+# is drawn short.
 gridline_every_minutes = 5
 
 # The top of the score scale (the bottom is 0): the scorer answers 0 to 9. A score outside the scale is drawn at the edge. And which scores get a

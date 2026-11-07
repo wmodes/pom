@@ -1,6 +1,6 @@
 """The ScoreTrace: every attempt's score and the bar it was judged against, for the chart on the monitoring site.
 
-The TurnHistory keeps the words of the sentences that qualified. This keeps something lighter for all the others: just numbers, one
+The TurnHistory keeps the words of the hinges (the attempts that qualified). This keeps something lighter for all the others: just numbers, one
 point per attempt (when it was heard, its score, the bar it had to beat, and whether it qualified), so the page can draw the
 room's scores and the bar riding above them. No words from the room are kept here, so it is safe to show even when hinges are hidden.
 
@@ -9,7 +9,7 @@ Design decisions, and why:
   * The time of a point is the place in the audio (seconds from the start of listening), not the wall clock, so a recording replayed
     faster than real time draws exactly as a live run would. Retention is measured the same way: points older than `max_age_seconds`
     before the newest point are dropped, so no clock is needed.
-  * Bounded twice, by age and by `max_points`, so a flood of sentences cannot grow the memory.
+  * Bounded twice, by age and by `max_points`, so a flood of attempts cannot grow the memory.
   * Thread-safe. The pipeline adds from its thread and the web server reads from its own, so every change and read takes one lock, and
     `recent()` returns a copy.
   * Nothing here may stop the oracle (see pom/__init__.py). A point that cannot be made (a score or time that is not a number) is
@@ -42,7 +42,7 @@ class TracePoint:
     """One attempt, as numbers.
 
     Attributes:
-        at: Where in the audio stream the sentence ended, in seconds from the start of listening.
+        at: Where in the audio stream the attempt ended, in seconds from the start of listening.
         score: Its score, 0 to 9.
         bar: The score it had to be above, as the bar stood before it joined (None if there was none).
         qualified: True if it qualified.

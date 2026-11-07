@@ -706,3 +706,41 @@ class TestAHeldScoreAndQualifierBarInfluence:
 
     def test_with_full_influence_a_held_score_joins_the_bar(self):
         assert self.level_after_a_held_nine(1.0) == 9.0
+
+
+class TestTheTicksForAChart:
+    """The BarKeeper hands on the bar's ticks, under its lock, for the monitoring page's chart."""
+
+    def test_it_hands_on_what_the_bar_lists(self):
+        class Listing(FakeBar):
+            def ticks_between(self, start, end):
+                return [(start, 5.0, 6.0), (end, 5.0, 5.5)]
+        assert BarKeeper(Listing(), cooldown_seconds=0).ticks_between(10.0, 70.0) == [(10.0, 5.0, 6.0), (70.0, 5.0, 5.5)]
+
+    def test_a_bar_with_no_anchor_gives_none(self):
+        t, _ = bar_keeper()
+        assert t.ticks_between(0.0, 1000.0) == []
+
+    def test_over_a_real_bar_they_are_the_ticks_with_the_bar_at_each(self):
+        t = BarKeeper(TickingDecayingQuantileBar(half_life_seconds=300.0, starting_bar_weight=20.0, starting_bar=7.0, anchor_score=5.0,
+                                                 anchor_interval_minutes=1.0, started_at=0.0), cooldown_seconds=0)
+        ticks = t.ticks_between(0.0, 180.0)
+        assert [at for at, _, _ in ticks] == [60.0, 120.0, 180.0] and ticks[0][2] > ticks[1][2] > ticks[2][2]
+
+    def test_listing_the_ticks_does_not_count_an_attempt_or_start_a_cooldown(self):
+        t = BarKeeper(TickingDecayingQuantileBar(), cooldown_seconds=60)
+        t.ticks_between(0.0, 3600.0)
+        assert t.counted == 0 and t.rule(9.0, 3601.0) is Ruling.QUALIFIED
+
+    def test_a_stuck_lock_gives_none_and_a_critical_fault(self, monkeypatch):
+        monkeypatch.setattr("pom.qualifying.bar_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
+        class Listing(FakeBar):
+            def ticks_between(self, start, end):
+                return [(start, 5.0, 6.0)]
+        t = BarKeeper(Listing(), cooldown_seconds=0)
+        t._lock.acquire()
+        try:
+            assert t.ticks_between(0.0, 1000.0) == []                       # not the bar's list: it was not asked
+        finally:
+            t._lock.release()
+        assert len(t.report.criticals) == 1 and "ticks_between" in t.report.criticals[0]

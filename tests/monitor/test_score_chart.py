@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from pom.monitor.score_chart import ChartLook, render_score_chart
+from pom.monitor.score_chart import ChartLook, SilenceCompressor, _silence_lines, render_score_chart
 from pom.monitor.score_trace import TracePoint
 
 NS = "{http://www.w3.org/2000/svg}"
@@ -13,18 +13,21 @@ WIDTH, HEIGHT = LOOK.drawing_width, LOOK.drawing_height
 LEFT, RIGHT, TOP, BOTTOM = LOOK.margin_left, LOOK.margin_right, LOOK.margin_top, LOOK.margin_bottom
 DEFAULT_SECONDS = LOOK.window_minutes * 60.0
 PLOT_W, PLOT_H = WIDTH - LEFT - RIGHT, HEIGHT - TOP - BOTTOM
+NEVER = 1e9                                              # a silence this long (in minutes) never happens: the chart is drawn in plain time
 
 
-def render(points, qualifier_ids=None, seconds=None, width=None, height=None, **look):
-    """The chart with the default look, changed by keyword: `seconds` is the window in seconds, `width` and `height` the drawing's size, and any
-    other keyword is a `[chart]` setting."""
+def render(points, qualifier_ids=None, seconds=None, width=None, height=None, ticks=(), now=None, bar_now=None, **look):
+    """The chart with the default look, changed by keyword: `seconds` is the window in seconds, `width` and `height` the drawing's size, `ticks`,
+    `now` and `bar_now` are what the monitor gives the chart, and any other keyword is a `[chart]` setting. Unless a test says otherwise no silence is
+    long enough to be drawn short, so the first tests are about plain time."""
+    look.setdefault("longest_silence_minutes", NEVER)
     if seconds is not None:
         look["window_minutes"] = seconds / 60.0
     if width is not None:
         look["drawing_width"] = width
     if height is not None:
         look["drawing_height"] = height
-    return render_score_chart(points, qualifier_ids, ChartLook(**look))
+    return render_score_chart(points, qualifier_ids, ChartLook(**look), ticks=ticks, now=now, bar_now=bar_now)
 
 
 def parse(svg):
@@ -62,7 +65,7 @@ class TestTheFrame:
 
     def test_there_is_a_title_for_screen_readers_with_the_counts(self):
         title = parse(render([point(0), point(10, qualified=True), point(20)])).find(NS + "title").text
-        assert title == "Scores and the bar over the last 30 minutes: 3 sentences, 1 qualifiers."
+        assert title == "Scores and the bar over the last 30 minutes: 3 attempts, 1 qualifiers."
 
     def test_the_gridlines_are_at_zero_three_six_and_nine(self):
         root = parse(render([point(0)]))
@@ -109,10 +112,10 @@ class TestTheVerticalGrid:
     def test_a_shorter_window_has_fewer_lines(self):
         assert len(self.lines(900)) == 4 and len(self.lines(300)) == 2
 
-    def test_there_are_twice_as_many_lines_as_time_labels(self):
+    def test_the_time_axis_does_not_label_each_line(self):
         root = parse(render([point(0), point(1800)]))
-        labels = [t for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")]
-        assert len(find(root, "line", "vgrid")) == 7 and len(labels) == 4
+        labels = [t.text for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")]
+        assert len(find(root, "line", "vgrid")) == 7 and labels == ["Intervals at approximately 5 min", "now"]
 
     def test_the_horizontal_grid_is_still_the_four_lines(self):
         assert len(find(parse(render([point(0), point(1800)])), "line", "grid")) == 4
@@ -122,7 +125,7 @@ class TestTheVerticalGrid:
 
 
 class TestTheDots:
-    def test_each_sentence_is_a_dot_at_its_score_and_time(self):
+    def test_each_attempt_is_a_dot_at_its_score_and_time(self):
         root = parse(render([point(0, score=6.0), point(900, score=2.0)]))
         dots = find(root, "circle", "dot")
         assert len(dots) == 2
@@ -226,34 +229,294 @@ class TestTheQualifiers:
 
 
 class TestTheTimeAxis:
-    def labels(self, seconds=1800):
-        root = parse(render([point(0), point(seconds)], seconds=seconds))
-        return [t.text for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")]
+    """One note at the left says what the vertical lines are, and "now" sits at the right edge."""
 
-    def test_it_runs_back_from_now_every_ten_minutes(self):
-        assert self.labels(1800) == ["now", "-10 min", "-20 min", "-30 min"]
+    def texts(self, **kw):
+        return {t.text: t for t in find(parse(render([point(0), point(1800)], **kw)), "text", "key") if t.text and ("min" in t.text or t.text == "now")}
 
-    def test_a_shorter_window_has_fewer_labels(self):
-        assert self.labels(900) == ["now", "-10 min"]
+    def test_it_is_one_note_and_now(self):
+        assert list(self.texts()) == ["Intervals at approximately 5 min", "now"]
 
-    def test_the_labels_sit_where_their_times_are(self):
-        root = parse(render([point(0), point(1800)]))
-        texts = {t.text: float(t.get("x")) for t in find(root, "text", "key") if t.text in {"now", "-30 min"}}
-        assert texts["now"] == pytest.approx(WIDTH - RIGHT, abs=0.06) and texts["-30 min"] == pytest.approx(LEFT, abs=0.06)
+    def test_the_old_minute_labels_are_gone(self):
+        assert not [t for t in self.texts() if re.fullmatch(r"-\d+ min", t)]
 
-    def test_now_is_right_aligned_and_the_others_centred(self):
-        root = parse(render([point(0), point(1800)]))
-        anchors = {t.text: t.get("text-anchor") for t in find(root, "text", "key") if t.text in {"now", "-10 min"}}
-        assert anchors == {"now": "end", "-10 min": "middle"}
+    def test_the_note_is_left_justified_at_the_plot(self):
+        note = self.texts()["Intervals at approximately 5 min"]
+        assert note.get("text-anchor") == "start" and float(note.get("x")) == LEFT
+
+    def test_now_is_right_aligned_at_the_right_edge(self):
+        now = self.texts()["now"]
+        assert now.get("text-anchor") == "end" and float(now.get("x")) == WIDTH - RIGHT
+
+    def test_both_sit_in_the_bottom_margin(self):
+        for text in self.texts().values():
+            assert float(text.get("y")) > TOP + PLOT_H
+
+    @pytest.mark.parametrize("every, said", [(10, "10"), (2.5, "2.5"), (1, "1")])
+    def test_the_note_says_the_gridline_spacing_from_the_config(self, every, said):
+        assert f"Intervals at approximately {said} min" in self.texts(gridline_every_minutes=every)
+
+    def test_the_note_is_there_with_no_scores_yet_only_when_the_chart_moves(self):
+        assert "Intervals at approximately 5 min" not in [t.text for t in parse(render([])).iter(NS + "text")]
+        assert "Intervals at approximately 5 min" in [t.text for t in parse(render([], now=100)).iter(NS + "text")]
+
+
+class TestTheTicks:
+    """The anchor's ticks are grey dots at the anchor score, and the bar line passes through the bar each one carries."""
+
+    def ticked(self, **kw):
+        return parse(render([point(0, bar=6.5)], ticks=[(60.0, 5.85, 6.4), (120.0, 5.85, 6.3)], now=180.0, bar_now=6.2, **kw))
+
+    def test_each_tick_is_a_dot_of_its_own_class_at_the_anchor_score_and_its_time(self):
+        ticks = find(self.ticked(), "circle", "tick")
+        assert [float(t.get("cx")) for t in ticks] == pytest.approx([x_of(60, 180), x_of(120, 180)], abs=0.06)
+        assert [float(t.get("cy")) for t in ticks] == pytest.approx([y_of(5.85)] * 2, abs=0.06)
+
+    def test_a_tick_is_not_an_attempt(self):
+        root = self.ticked()
+        assert len(find(root, "circle", "dot")) == 1 and "1 attempts" in root.find(NS + "title").text
+
+    def test_a_tick_is_drawn_the_size_of_an_attempt_dot(self):
+        assert all(t.get("r") == "2.5" for t in find(self.ticked(attempt_dot_radius=2.5), "circle", "tick"))
+
+    def test_the_bar_line_runs_through_the_bar_at_each_tick_to_the_bar_now(self):
+        d = find(self.ticked(), "path", "bar")[0].get("d")
+        xs = [x_of(t, 180) for t in (0, 60, 120, 180)]
+        expected = f"M{xs[0]:.1f} {y_of(6.5):.1f} V{y_of(6.4):.1f} H{xs[1]:.1f} V{y_of(6.3):.1f} H{xs[2]:.1f} V{y_of(6.2):.1f} H{xs[3]:.1f}"
+        assert d == expected
+
+    def test_without_a_bar_now_the_line_ends_at_the_last_sample(self):
+        d = find(parse(render([point(0, bar=6.5)], ticks=[(60.0, 5.85, 6.4)], now=180.0)), "path", "bar")[0].get("d")
+        assert d == f"M{x_of(0, 180):.1f} {y_of(6.5):.1f} V{y_of(6.4):.1f} H{x_of(60, 180):.1f}"
+
+    def test_an_attempt_and_a_tick_are_joined_in_time_order(self):
+        d = find(parse(render([point(30, bar=6.0)], ticks=[(60.0, 5.85, 5.9), (0.0, 5.85, 6.1)], now=60.0)), "path", "bar")[0].get("d")
+        assert [float(part[1:]) for part in d.split() if part[0] == "H"] == pytest.approx([x_of(30, 60), x_of(60, 60)], abs=0.06)
+
+    def test_a_bar_now_with_no_now_is_ignored(self):
+        with_it = render([point(0, bar=6.5)], bar_now=3.0)
+        assert with_it == render([point(0, bar=6.5)])
+
+    def test_a_now_with_no_bar_now_leaves_the_line_at_the_last_sample(self):
+        d = find(parse(render([point(0, bar=6.5)], now=100.0)), "path", "bar")[0].get("d")
+        assert d == f"M{x_of(0, 100):.1f} {y_of(6.5):.1f}"
+
+    def test_a_tick_with_no_bar_breaks_the_line(self):
+        d = find(parse(render([point(0, bar=6.5)], ticks=[(60.0, 5.85, None), (120.0, 5.85, 6.3)], now=180.0)), "path", "bar")[0].get("d")
+        assert d.count("M") == 2
+
+    def test_ticks_outside_the_window_are_left_out(self):
+        root = parse(render([point(1900)], ticks=[(100.0, 5.85, 6.0), (1900.0, 5.85, 6.0), (2000.0, 5.85, 6.0)], now=2000.0))
+        assert len(find(root, "circle", "tick")) == 2
+
+    def test_a_tick_after_now_is_left_out(self):
+        assert not find(parse(render([point(0)], ticks=[(500.0, 5.85, 6.0)], now=100.0)), "circle", "tick")
+
+    def test_with_no_ticks_given_there_are_none(self):
+        assert not find(parse(render([point(0), point(60)])), "circle", "tick")
+
+
+class TestTheChartMovesInSilence:
+    """`now` is the right edge, so the picture slides left as time passes with no attempt."""
+
+    def test_the_right_edge_is_now_and_not_the_newest_attempt(self):
+        dot = find(parse(render([point(100)], now=400.0)), "circle", "dot")[0]
+        assert float(dot.get("cx")) == pytest.approx(x_of(100, 400), abs=0.06) and float(dot.get("cx")) < WIDTH - RIGHT
+
+    def test_the_same_attempt_is_further_left_a_minute_later(self):
+        before = float(find(parse(render([point(100)], now=400.0)), "circle", "dot")[0].get("cx"))
+        after = float(find(parse(render([point(100)], now=460.0)), "circle", "dot")[0].get("cx"))
+        assert after < before
+
+    def test_an_attempt_slides_off_the_left_once_it_is_older_than_the_window(self):
+        assert not find(parse(render([point(100)], now=100.0 + 1801.0)), "circle", "dot")
+
+    def test_the_vertical_lines_slide_with_now(self):
+        xs = lambda now: sorted(float(l.get("x1")) for l in find(parse(render([point(0)], now=now)), "line", "vgrid"))
+        assert xs(1800.0)[-1] == pytest.approx(WIDTH - RIGHT, abs=0.06) and xs(1800.0) == xs(1800.0 + 300)      # a whole interval later it is the same grid
+
+    def test_with_no_attempts_at_all_it_still_draws_the_ticks_and_the_bar(self):
+        root = parse(render([], ticks=[(60.0, 5.85, 6.7), (120.0, 5.85, 6.6)], now=150.0, bar_now=6.55))
+        assert root.find(NS + "title").text != "No scores yet." and len(find(root, "circle", "tick")) == 2 and find(root, "path", "bar")
+
+    def test_with_nothing_given_and_no_now_it_is_still_the_empty_chart(self):
+        assert parse(render([])).find(NS + "title").text == "No scores yet."
+
+
+class TestTheSilenceCompressor:
+    def test_a_gap_between_attempts_longer_than_the_limit_is_a_silence(self):
+        assert SilenceCompressor([0, 3000], 3000, 300).silences == [(0, 3000)]
+
+    def test_a_gap_exactly_the_limit_is_not(self):
+        assert SilenceCompressor([0, 300], 300, 300).silences == []
+
+    def test_the_stretch_up_to_now_counts(self):
+        assert SilenceCompressor([0, 60], 3660, 300).silences == [(60, 3660)]
+
+    def test_no_attempts_means_no_silence(self):
+        assert SilenceCompressor([], 5000, 300).silences == []
+
+    def test_time_inside_a_silence_is_squeezed_evenly(self):
+        c = SilenceCompressor([0, 3000], 3000, 300)
+        assert (c.drawn(0), c.drawn(1500), c.drawn(3000)) == pytest.approx((0, 150, 300))
+
+    def test_time_after_a_silence_is_shifted_by_what_was_cut(self):
+        c = SilenceCompressor([0, 3000, 3100], 3100, 300)
+        assert c.drawn(3100) == pytest.approx(400)
+
+    def test_each_silence_is_cut_in_turn(self):
+        c = SilenceCompressor([0, 1000, 3000], 3000, 300)
+        assert (c.drawn(1000), c.drawn(3000)) == pytest.approx((300, 600))
+
+    def test_time_before_a_silence_is_not_moved(self):
+        c = SilenceCompressor([0, 100, 3100], 3100, 300)
+        assert (c.drawn(0), c.drawn(50), c.drawn(100)) == (0, 50, 100)
+
+    def test_within_is_true_only_strictly_inside_a_drawn_silence(self):
+        c = SilenceCompressor([0, 3000], 3000, 300)
+        assert c.within(150) and not c.within(0) and not c.within(300) and not c.within(450)
+
+    def test_a_clock_before_the_newest_attempt_makes_no_silence_of_it(self):
+        assert SilenceCompressor([0, 100], 50, 300).silences == []
+
+
+class TestHowLongASilenceWas:
+    @pytest.mark.parametrize("seconds, lines", [
+        (601, ("10 min", "silence")), (330, ("6 min", "silence")), (3569, ("59 min", "silence")), (3570, ("1 hr 0 min", "silence")),
+        (3600, ("1 hr 0 min", "silence")), (3900, ("1 hr 5 min", "silence")), (7500, ("2 hrs 5 min", "silence")), (36000, ("10 hrs 0 min", "silence"))])
+    def test_it_reads_in_minutes_then_hours_and_minutes(self, seconds, lines):
+        assert _silence_lines(seconds) == lines
+
+
+class TestASilenceIsDrawnShort:
+    """A silence longer than the limit is five minutes wide, with a clear gap between two break marks and its length written in the gap."""
+
+    def drawn(self, points=None, **kw):
+        kw.setdefault("longest_silence_minutes", 5)
+        return parse(render(points if points is not None else [point(0), point(3000)], **kw))
+
+    def test_the_silence_is_drawn_the_limit_wide(self):
+        dots = find(self.drawn(), "circle", "dot")
+        assert [float(d.get("cx")) for d in dots] == pytest.approx([x_of(0, 300), x_of(300, 300)], abs=0.06)
+
+    def test_a_gap_that_is_not_longer_than_the_limit_is_left_alone(self):
+        root = self.drawn([point(0), point(300)])
+        assert not find(root, "rect", "gap") and not find(root, "path", "break")
+
+    def test_the_gap_is_a_page_colored_rectangle_the_height_of_the_plot_centred_in_the_silence(self):
+        gap = find(self.drawn(), "rect", "gap")[0]
+        silence_left, silence_right = x_of(0, 300), x_of(300, 300)
+        assert float(gap.get("y")) == TOP and float(gap.get("height")) == pytest.approx(PLOT_H, abs=0.06)
+        assert float(gap.get("x")) + float(gap.get("width")) / 2 == pytest.approx((silence_left + silence_right) / 2, abs=0.06)
+        assert float(gap.get("width")) == pytest.approx(LOOK.break_gap_width, abs=0.06)
+
+    def test_the_gap_comes_after_the_bar_so_it_breaks_it(self):
+        svg = render([point(0), point(3000)], longest_silence_minutes=5)
+        assert svg.index('class="bar"') < svg.index('class="gap"') < svg.index('class="break"')
+
+    def test_a_silence_narrower_than_the_gap_is_all_gap(self):
+        gap = find(self.drawn(seconds=36000), "rect", "gap")[0]
+        assert float(gap.get("width")) == pytest.approx(PLOT_W * 300 / 36000, abs=0.1)
+        assert float(gap.get("width")) < LOOK.break_gap_width
+
+    def test_there_is_a_break_mark_on_each_edge_of_the_gap_the_height_of_the_plot(self):
+        root = self.drawn()
+        gap = find(root, "rect", "gap")[0]
+        marks = find(root, "path", "break")
+        assert len(marks) == 2
+        left, right = float(gap.get("x")), float(gap.get("x")) + float(gap.get("width"))
+        assert [float(m.get("d").split()[0][1:]) for m in marks] == pytest.approx([left, right], abs=0.06)
+        for mark in marks:
+            d = mark.get("d")
+            assert d.startswith(f"M{float(d.split()[0][1:]):.1f} {TOP:g} V") and d.endswith(f"V{TOP + PLOT_H:.1f}")
+
+    def test_the_break_mark_zigzags_across_its_line(self):
+        d = find(self.drawn(), "path", "break")[0].get("d")
+        xs = [float(part[1:]) for part in d.replace("L", " L").split() if part[0] in "ML"]
+        assert xs[1] > xs[0] > xs[2] and xs[3] == pytest.approx(xs[0], abs=0.06)
+
+    def test_the_zigzag_is_exactly_the_shape_of_the_break_mark(self):
+        root = self.drawn()
+        gap = find(root, "rect", "gap")[0]
+        left, size, middle = float(gap.get("x")), LOOK.break_mark_size, TOP + PLOT_H / 2
+        expected = (f"M{left:.1f} {TOP:g} V{middle - size:.1f} L{left + size / 2:.1f} {middle - size / 2:.1f} "
+                    f"L{left - size / 2:.1f} {middle + size / 2:.1f} L{left:.1f} {middle + size:.1f} V{TOP + PLOT_H:.1f}")
+        assert find(root, "path", "break")[0].get("d") == expected
+
+    def test_the_length_is_written_in_two_centred_lines_in_the_gap(self):
+        root = self.drawn()
+        text = find(root, "text", "key silence")[0]
+        gap = find(root, "rect", "gap")[0]
+        spans = list(text.iter(NS + "tspan"))
+        assert [s.text for s in spans] == ["50 min", "silence"] and text.get("text-anchor") == "middle"
+        centre = float(gap.get("x")) + float(gap.get("width")) / 2
+        assert [float(s.get("x")) for s in spans] == pytest.approx([centre, centre], abs=0.06)
+        assert float(spans[0].get("y")) == float(spans[1].get("y")) == pytest.approx(TOP + PLOT_H / 2, abs=0.06)
+        assert [s.get("dy") for s in spans] == ["-0.2em", "1.0em"]                  # the first line just above the middle, the second below it
+
+    def test_a_long_silence_says_hours_and_minutes(self):
+        texts = [s.text for s in find(self.drawn([point(0), point(3900 + 300)]), "text", "key silence")[0].iter(NS + "tspan")]
+        assert texts == ["1 hr 10 min", "silence"]
+
+    def test_the_bar_line_runs_on_through_the_silence_on_both_sides_of_the_gap(self):
+        d = find(self.drawn([point(0, bar=6.5), point(3000, bar=5.0)]), "path", "bar")[0].get("d")
+        assert d == f"M{x_of(0, 300):.1f} {y_of(6.5):.1f} V{y_of(5.0):.1f} H{x_of(300, 300):.1f}"
+
+    def test_the_silence_up_to_now_is_drawn_too(self):
+        root = self.drawn([point(0), point(60)], now=3660.0)
+        assert [s.text for s in find(root, "text", "key silence")[0].iter(NS + "tspan")] == ["1 hr 0 min", "silence"]
+        gap = find(root, "rect", "gap")[0]
+        assert float(gap.get("x")) + float(gap.get("width")) < WIDTH - RIGHT
+
+    def test_ticks_inside_a_silence_are_still_drawn_squeezed(self):
+        root = self.drawn([point(0), point(60)], ticks=[(1000.0, 5.85, 6.0), (2000.0, 5.85, 6.0)], now=3660.0)
+        xs = [float(t.get("cx")) for t in find(root, "circle", "tick")]
+        assert len(xs) == 2 and xs[0] == pytest.approx(x_of(60 + 940 * 300 / 3600, 360), abs=0.06)
+
+    def test_no_vertical_line_falls_inside_a_silence(self):
+        root = self.drawn(longest_silence_minutes=10)                                       # drawn 600 s wide: the line 300 s back from the edge is inside
+        xs = [float(l.get("x1")) for l in find(root, "line", "vgrid")]
+        assert len(xs) == 6 and not any(abs(x - x_of(300, 600)) < 0.06 for x in xs)
+        assert sorted(xs) == pytest.approx(sorted(x_of(d, 600) for d in (600, 0, -300, -600, -900, -1200)), abs=0.06)     # counted back from the drawn edge
+
+    def test_a_chart_with_a_silence_reaches_back_further_than_the_window(self):
+        pts = [point(0), point(120), point(240), point(3840)]                               # 64 minutes in all, in a 30 minute window
+        assert len(find(self.drawn(pts), "circle", "dot")) == 4
+        assert len(find(parse(render(pts)), "circle", "dot")) == 1                          # in plain time only the newest is within 30 minutes
+
+    def test_a_silence_cut_by_the_window_keeps_its_gap_with_a_mark_on_each_side(self):
+        root = self.drawn(seconds=350, points=[point(0), point(3000), point(3100)])             # the silence is drawn 0 to 300, the window starts at 50
+        assert len(find(root, "rect", "gap")) == 1 and len(find(root, "path", "break")) == 2
+
+    def test_a_silence_cut_so_that_only_a_sliver_shows_has_only_its_right_mark(self):
+        root = self.drawn(seconds=55, points=[point(0), point(3000), point(3050)])
+        assert len(find(root, "rect", "gap")) == 1 and len(find(root, "path", "break")) == 1
+
+    def test_a_silence_wholly_before_the_window_is_not_drawn(self):
+        root = self.drawn(seconds=40, points=[point(0), point(3000), point(3050)])
+        assert not find(root, "rect", "gap") and not find(root, "text", "key silence")
+
+    def test_a_window_that_starts_just_where_a_silence_ends_shows_none_of_it(self):
+        root = self.drawn(seconds=50, points=[point(0), point(3000), point(3050)])             # the silence is drawn 0 to 300, the window starts at 300
+        assert not find(root, "rect", "gap")
+
+    def test_two_silences_are_each_written_up(self):
+        root = self.drawn([point(0), point(1000), point(2000)])
+        assert [[s.text for s in t.iter(NS + "tspan")][0] for t in find(root, "text", "key silence")] == ["17 min", "17 min"]
+
+    def test_the_words_and_numbers_are_the_chart_s_own(self):
+        root = self.drawn([point(0, qualified=True), point(3000), point(3100)], qualifier_ids={0.0: 1})
+        words = [t.text for t in root.iter(NS + "tspan")]
+        assert words and all(re.fullmatch(r"\d+ (hrs?|min)( \d+ min)?|silence", word) for word in words)
 
 
 class TestItIsNumbersOnly:
     def test_the_only_words_in_it_are_the_chart_s_own(self):
         root = parse(render([point(0, qualified=True), point(5), point(1500)], {0.0: 3}))
         texts = [t.text for t in root.iter(NS + "text")]
-        assert texts and all(re.fullmatch(r"\d|now|-\d+ min", text) for text in texts)
+        assert texts and all(re.fullmatch(r"\d|now|Intervals at approximately [\d.]+ min", text) for text in texts)
         titles = [t.text for t in root.iter(NS + "title")]
-        assert all(re.fullmatch(r"(Scores and the bar over the last \d+ minutes: \d+ sentences, \d+ qualifiers\.|score [\d.]+(, bar [\d.]+)?)", title)
+        assert all(re.fullmatch(r"(Scores and the bar over the last \d+ minutes: \d+ attempts, \d+ qualifiers\.|score [\d.]+(, bar [\d.]+)?)", title)
                    for title in titles)
 
     def test_the_output_is_stable(self):
@@ -272,10 +535,6 @@ class TestEveryNumberIsASetting:
         svg = render([point(0), point(1200), point(1800)], window_minutes=10)
         root = parse(svg)
         assert len(find(root, "circle", "dot")) == 2 and "last 10 minutes" in root.find(NS + "title").text
-
-    def test_the_label_spacing_sets_the_time_labels(self):
-        root = parse(render([point(0), point(1800)], label_every_minutes=15))
-        assert [t.text for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")] == ["now", "-15 min", "-30 min"]
 
     def test_the_gridline_spacing_sets_the_vertical_lines(self):
         assert len(find(parse(render([point(0), point(1800)], gridline_every_minutes=10)), "line", "vgrid")) == 4
@@ -310,3 +569,24 @@ class TestEveryNumberIsASetting:
 
     def test_with_no_look_the_fallbacks_are_the_shipped_numbers(self):
         assert render_score_chart([point(0)]) == render_score_chart([point(0)], None, ChartLook())
+
+    def test_the_longest_silence_sets_which_gaps_are_drawn_short(self):
+        pts = [point(0), point(500)]                                                        # 500 s: a silence at 5 minutes, not at 10
+        assert find(parse(render(pts, longest_silence_minutes=5)), "rect", "gap") and not find(parse(render(pts, longest_silence_minutes=10)), "rect", "gap")
+
+    def test_the_longest_silence_sets_how_wide_one_is_drawn(self):
+        pts = [point(0), point(3000)]
+        for minutes in (5, 10):
+            dots = find(parse(render(pts, longest_silence_minutes=minutes)), "circle", "dot")
+            assert float(dots[1].get("cx")) - float(dots[0].get("cx")) == pytest.approx(PLOT_W * minutes * 60 / 1800, abs=0.1)
+
+    def test_the_break_mark_size_sets_the_zigzag_height(self):
+        for size in (6, 12):
+            path = find(parse(render([point(0), point(3000)], longest_silence_minutes=5, break_mark_size=size)), "path", "break")[0].get("d")
+            middle = TOP + PLOT_H / 2
+            assert f"V{middle - size:.1f} " in path and f" {middle + size:.1f} V{TOP + PLOT_H:.1f}" in path
+
+    def test_the_break_gap_width_sets_the_clear_gap(self):
+        for width in (30, 64, 100):
+            gap = find(parse(render([point(0), point(3000)], longest_silence_minutes=5, break_gap_width=width)), "rect", "gap")[0]
+            assert float(gap.get("width")) == pytest.approx(width, abs=0.1)

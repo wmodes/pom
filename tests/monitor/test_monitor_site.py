@@ -216,12 +216,12 @@ class TestTheStats:
         assert get(client, "/api/turns").get_json()["stats"]["uptime"] == "just started"
 
     def test_the_state_comes_from_the_status_function(self):
-        status = MonitorStatus(bar=6.789, window_size=84, sentences_heard=900, sentences_scored=870,
+        status = MonitorStatus(bar=6.789, window_size=84, attempts_heard=900, attempts_scored=870,
                                services={"whisper": True, "oracle": False})
         _, _, client, _ = make(status=lambda: status)
         stats = get(client, "/api/turns").get_json()["stats"]
         assert (stats["bar"], stats["bar_text"], stats["window_size"]) == (6.789, "6.79", 84)
-        assert (stats["sentences_heard"], stats["sentences_scored"]) == (900, 870)
+        assert (stats["attempts_heard"], stats["attempts_scored"]) == (900, 870)
         assert stats["services"] == {"whisper": True, "oracle": False}
         page = get(client, "/").get_data(as_text=True)
         assert "6.79" in page and "900" in page and "870" in page
@@ -751,3 +751,170 @@ class TestNothingSaidInTheRoomIsLogged:
         get(client, "/api/turns")
         text = caplog.text + "\n".join(site.report.lines())
         assert "secret" not in text and "neighbour" not in text
+
+
+class TestTheChartMovesWithTheStream:
+    """With the stream's clock and the bar's ticks the chart is drawn up to now, so it moves in a quiet room."""
+
+    @staticmethod
+    def moving(now=1000.0, ticks=None, status=None, **options):
+        calls = []
+        stream = [now]
+        trace = ScoreTrace()
+
+        def source(start, end):
+            calls.append((start, end))
+            return list(ticks or [])
+        site, history, client, clock = make(trace=trace, stream_now=lambda: stream[0], ticks_source=source, status=status, **options)
+        return trace, client, calls, stream
+
+    def test_the_chart_is_drawn_up_to_the_stream_time_not_the_newest_attempt(self):
+        trace, client, _, stream = self.moving(now=1000.0)
+        trace.add(3.0, 5.0, 900.0)
+        near = get(client, "/chart.svg").get_data(as_text=True)
+        stream[0] = 1200.0
+        later = get(client, "/chart.svg").get_data(as_text=True)
+        assert near != later and later.count('class="dot"') == 1                    # the same attempt, drawn further left
+
+    def test_the_chart_moves_with_no_attempt_at_all(self):
+        _, client, _, stream = self.moving(now=1000.0, ticks=[(960.0, 5.85, 6.5)])
+        first = get(client, "/chart.svg").get_data(as_text=True)
+        stream[0] = 1030.0
+        assert first.count('class="tick"') == 1 and get(client, "/chart.svg").get_data(as_text=True) != first
+
+    def test_the_ticks_given_by_the_source_are_drawn(self):
+        _, client, _, _ = self.moving(ticks=[(900.0, 5.85, 6.0), (960.0, 5.85, 5.9)])
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="tick"') == 2
+
+    def test_the_source_is_asked_for_the_ticks_back_to_the_start_of_the_window_and_up_to_now(self):
+        _, client, calls, _ = self.moving(now=5000.0)
+        get(client, "/chart.svg")
+        assert calls == [(5000.0 - 30 * 60.0, 5000.0)]
+
+    def test_a_wider_window_asks_for_ticks_further_back(self):
+        from pom.monitor import ChartLook
+        _, client, calls, _ = self.moving(now=5000.0, chart=ChartLook(window_minutes=50))
+        get(client, "/chart.svg")
+        assert calls == [(5000.0 - 50 * 60.0, 5000.0)]
+
+    def test_it_asks_back_as_far_as_the_oldest_attempt_kept_so_a_silence_is_covered(self):
+        trace, client, calls, _ = self.moving(now=5000.0)
+        trace.add(3.0, 5.0, 2000.0)                                                 # older than the 30 minute window
+        get(client, "/chart.svg")
+        assert calls == [(2000.0, 5000.0)]
+
+    def test_but_never_further_back_than_the_page_remembers(self):
+        trace, client, calls, _ = self.moving(now=50_000.0)
+        trace.add(3.0, 5.0, 100.0)                                                  # hours old: the page keeps an hour
+        get(client, "/chart.svg")
+        assert calls == [(50_000.0 - 3600.0, 50_000.0)]
+
+    def test_the_bar_line_runs_to_the_right_edge_at_the_bar_now(self):
+        trace, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
+        trace.add(3.0, 5.0, 900.0)
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        import re
+        assert re.search(r'class="bar"[^>]* d="[^"]*H714\.0"', svg)                    # the right edge is 720 - 6
+
+    def test_the_bar_line_is_where_the_bar_now_is(self):
+        trace, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
+        trace.add(3.0, 5.0, 900.0)
+        high = get(client, "/chart.svg").get_data(as_text=True)
+        _, client2, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=2.0))
+        assert high != get(client2, "/chart.svg").get_data(as_text=True)
+
+    def test_with_no_ticks_source_the_chart_still_moves(self):
+        trace = ScoreTrace()
+        site, _, client, _ = make(trace=trace, stream_now=lambda: 1000.0)
+        trace.add(3.0, 5.0, 900.0)
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        assert svg.count('class="dot"') == 1 and 'class="tick"' not in svg
+
+    def test_without_the_stream_clock_the_chart_stands_still_at_the_newest_attempt(self):
+        trace = ScoreTrace()
+        _, _, client, _ = make(trace=trace)
+        trace.add(3.0, 5.0, 900.0)
+        assert 'cx="714.0"' in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_a_silence_is_drawn_short_through_the_page(self):
+        from pom.monitor import ChartLook
+        trace, client, _, _ = self.moving(now=4000.0, chart=ChartLook(longest_silence_minutes=5))
+        trace.add(3.0, 5.0, 100.0)
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        assert 'class="gap"' in svg and ">silence<" in svg and ">1 hr 5 min<" in svg
+
+    def test_the_page_draws_the_moving_chart_too(self):
+        _, client, _, _ = self.moving(ticks=[(900.0, 5.85, 6.0)])
+        assert 'class="tick"' in get(client, "/").get_data(as_text=True)
+
+    def test_the_stream_clock_is_read_afresh_for_every_drawing(self):
+        reads = []
+        _, _, client, _ = make(trace=ScoreTrace(), stream_now=lambda: reads.append(1) or 1000.0)
+        get(client, "/chart.svg")
+        get(client, "/chart.svg")
+        assert len(reads) == 2
+
+
+class TestTheStyleOfTheNewMarks:
+    def test_ticks_are_the_grid_s_grey_and_the_gap_is_the_card_s_color(self):
+        page = get(make(trace=ScoreTrace())[2], "/").get_data(as_text=True)
+        assert ".chart .tick { fill:var(--line); }" in page and ".chart .gap { fill:var(--card); }" in page
+        assert ".chart .break { stroke:var(--muted); fill:none; stroke-width:1; }" in page
+
+    def test_the_grid_and_the_ticks_use_the_same_variable(self):
+        page = get(make(trace=ScoreTrace())[2], "/").get_data(as_text=True)
+        assert ".chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }" in page and "fill:var(--line)" in page
+
+
+class TestThePollBeat:
+    """How often the open page asks for news is `[monitor] poll_seconds`."""
+
+    def beat(self, **options):
+        _, history, client, _ = make(**options)
+        return get(client, "/").get_data(as_text=True)
+
+    def test_the_default_is_five_seconds(self):
+        assert "setInterval(poll, 5 * 1000)" in self.beat()
+
+    def test_the_setting_is_the_beat(self):
+        assert "setInterval(poll, 2 * 1000)" in self.beat(poll_seconds=2) and "setInterval(poll, 30 * 1000)" in self.beat(poll_seconds=30)
+
+    def test_a_part_of_a_second_is_kept(self):
+        assert "setInterval(poll, 2.5 * 1000)" in self.beat(poll_seconds=2.5)
+
+    @pytest.mark.parametrize("bad", [0, -1, "5", None, True, float("inf"), float("nan")])
+    def test_a_bad_beat_is_the_fallback_with_a_warning(self, bad):
+        site, _, client, _ = make(poll_seconds=bad)
+        assert "setInterval(poll, 5 * 1000)" in get(client, "/").get_data(as_text=True)
+        assert any("poll_seconds" in w for w in site.report.warnings)
+
+    def test_a_good_beat_says_nothing(self):
+        site, _, _, _ = make(poll_seconds=7)
+        assert not site.report.warnings
+
+    def test_the_beat_is_the_same_for_everything_the_page_asks_for(self):
+        page = self.beat(poll_seconds=9)
+        assert page.count("setInterval") == 1 and "drawChart();" in page and "fetch('/api/turns'" in page
+
+
+class TestTheTilesAreReadOnEveryPoll:
+    """The status tiles come from the status function on each request, so they move on the page's beat, with no attempt needed."""
+
+    def test_the_bar_on_the_feed_follows_the_status_function(self):
+        bar = [6.80]
+        _, _, client, _ = make(status=lambda: MonitorStatus(bar=bar[0], window_size=10))
+        first = get(client, "/api/turns").get_json()["stats"]
+        bar[0] = 6.75
+        second = get(client, "/api/turns").get_json()["stats"]
+        assert (first["bar_text"], second["bar_text"]) == ("6.80", "6.75")
+
+    def test_the_window_size_follows_it_too(self):
+        size = [10]
+        _, _, client, _ = make(status=lambda: MonitorStatus(bar=6.0, window_size=size[0]))
+        first = get(client, "/api/turns").get_json()["stats"]["window_size"]
+        size[0] = 9
+        assert (first, get(client, "/api/turns").get_json()["stats"]["window_size"]) == (10, 9)
+
+    def test_the_page_sets_the_tiles_from_every_poll(self):
+        page = get(make()[2], "/").get_data(as_text=True)
+        assert "set('bar', s.bar_text)" in page and "set('window', s.window_size)" in page

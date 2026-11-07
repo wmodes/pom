@@ -23,12 +23,13 @@ Design decisions, and why:
   * The server is werkzeug's own, in a thread of its own, one request at a time per connection and several connections at
     once. It is the server Flask ships for development, meant for a single reader on a trusted network behind a password,
     which is what this is. Start and stop are the only places that know about it, so it can be swapped.
-  * What the page says about the Printer's state (the bar now, how many sentences were heard, which servers are up) is not
+  * What the page says about the Printer's state (the bar now, how many attempts were heard, which servers are up) is not
     known here: the caller passes a function that returns a MonitorStatus. Without one the page says only what the history
     knows.
   * This module never reads Config; the entry point passes the settings in.
 """
 import hmac
+import math
 import threading
 import time
 from dataclasses import dataclass, field
@@ -60,7 +61,7 @@ class _PollingRequestHandler(WSGIRequestHandler):
         _log.debug('%s "%s" %s', self.address_string(), self.requestline, code)
 
 REALM = "Printer of Mysteries"
-POLL_SECONDS = 5
+DEFAULT_POLL_SECONDS = 5.0      # the fallback for a missing or bad `[monitor] poll_seconds`; the setting is the one that counts
 SNIPPET_CHARS = 90
 SECURITY_HEADERS = {
     "Cache-Control": "no-store",
@@ -82,16 +83,16 @@ class MonitorStatus:
     Attributes:
         bar: The score a new score must be above to qualify now, or None until there is one.
         window_size: How many scores the window holds now.
-        sentences_heard: How many sentences have been heard since the Printer started.
-        sentences_scored: How many of them were scored.
+        attempts_heard: How many attempts have been heard since the Printer started.
+        attempts_scored: How many of them were scored.
         services: Whether each thing the Printer depends on is answering, by name, for example {"whisper": True}.
         algorithm: The name of the bar type in use, for example "decaying_quantile" ("" if not known).
         bar_description: One line saying how the BarKeeper works and how it is set (numbers only), shown beside the algorithm.
     """
     bar: Optional[float] = None
     window_size: int = 0
-    sentences_heard: int = 0
-    sentences_scored: int = 0
+    attempts_heard: int = 0
+    attempts_scored: int = 0
     services: Mapping[str, bool] = field(default_factory=dict)
     algorithm: str = ""
     bar_description: str = ""
@@ -137,7 +138,7 @@ th { color:var(--muted); font-weight:600; font-size:.85rem; } td.num { text-alig
 pre { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.7rem .9rem; white-space: pre-wrap; word-wrap: break-word; font: inherit; }
 .chartbox { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.4rem .5rem; margin:.6rem 0 .2rem; }
 .chart { width:100%; height:auto; display:block; } .chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }
-.chart .key { fill:var(--muted); font:10px system-ui, sans-serif; } .chart .dot { fill:var(--dot); }
+.chart .key { fill:var(--muted); font:10px system-ui, sans-serif; } .chart .dot { fill:var(--dot); } .chart .tick { fill:var(--line); } .chart .gap { fill:var(--card); } .chart .break { stroke:var(--muted); fill:none; stroke-width:1; }
 .chart .bar { stroke:var(--bar); fill:none; } .chart .hit { fill:#e8872f; stroke:var(--bg); stroke-width:1; }
 .small { font-size:.8rem; }
 .muted { color: var(--muted); } .facts td:first-child { color:var(--muted); width:11rem; }
@@ -157,14 +158,14 @@ _SCRIPT = """
     fetch('/api/turns', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (data) {
       var s = data.stats;
       set('in_history', s.turns_in_history); set('per_hour', s.turns_per_hour); set('since_start', s.turns_since_start);
-      set('last_ago', s.last_turn_ago); set('bar', s.bar_text); set('window', s.window_size); set('heard', s.sentences_heard);
-      set('scored', s.sentences_scored); set('uptime', s.uptime);
+      set('last_ago', s.last_turn_ago); set('bar', s.bar_text); set('window', s.window_size); set('heard', s.attempts_heard);
+      set('scored', s.attempts_scored); set('uptime', s.uptime);
       var latest = data.turns.length ? data.turns[0].id : null;
       if (latest !== newest) { location.reload(); }
       set('connection', '');
     }).catch(function () { set('connection', 'connection lost, retrying'); });
   }
-  setInterval(poll, %(every)d * 1000);
+  setInterval(poll, %(every)g * 1000);
 })();
 """
 
@@ -179,7 +180,7 @@ _INDEX = """<!doctype html>
   <div class="tile"><b data-stat="last_ago">{{ s.last_turn_ago }}</b><span>last turn</span></div>
   <div class="tile"><b data-stat="bar">{{ s.bar_text }}</b><span>bar to beat now</span></div>
   <div class="tile"><b data-stat="window">{{ s.window_size }}</b><span>scores in the window</span></div>
-  <div class="tile"><b><span data-stat="scored" style="font-size:inherit;color:inherit">{{ s.sentences_scored }}</span> / <span data-stat="heard" style="font-size:inherit;color:inherit">{{ s.sentences_heard }}</span></b><span>sentences scored / heard</span></div>
+  <div class="tile"><b><span data-stat="scored" style="font-size:inherit;color:inherit">{{ s.attempts_scored }}</span> / <span data-stat="heard" style="font-size:inherit;color:inherit">{{ s.attempts_heard }}</span></b><span>attempts scored / heard</span></div>
   <div class="tile"><b data-stat="since_start">{{ s.turns_since_start }}</b><span>turns since start</span></div>
   <div class="tile"><b data-stat="uptime">{{ s.uptime }}</b><span>up</span></div>
 </div>
@@ -237,7 +238,9 @@ class MonitorSite:
 
     def __init__(self, history: TurnHistory, password: str, show_hinges: bool = True,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
-                 clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None, chart=None):
+                 clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None, chart=None,
+                 poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
+                 ticks_source: Optional[Callable[[float, float], list]] = None):
         """Args:
             history: Where the turns are read from.
             password: The site's password; the site does not run without one.
@@ -247,6 +250,9 @@ class MonitorSite:
             strict: Raise MonitorSiteError on any problem instead of recording it.
             trace: A ScoreTrace to draw the chart from; without one the page has no chart.
             chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
+            poll_seconds: How often the open page asks for news and redraws (`[monitor] poll_seconds`), above 0; a bad value is the fallback, with a warning.
+            stream_now: Returns the stream time now, the chart's right edge, so the chart moves through silence; without it the edge is the newest attempt.
+            ticks_source: Called with (start, end) in stream time; returns the anchor's ticks between them, each as (time, anchor score, bar then).
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
@@ -255,6 +261,12 @@ class MonitorSite:
         self._trace = trace
         self._look = chart if chart is not None else ChartLook()
         self._clock = clock
+        self._stream_now = stream_now
+        self._ticks_source = ticks_source
+        self._poll_seconds = poll_seconds
+        if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
+            self.report.warn(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
+            self._poll_seconds = DEFAULT_POLL_SECONDS
         self._started_at = clock()
         self._server = None
         self._thread: Optional[threading.Thread] = None
@@ -328,8 +340,8 @@ class MonitorSite:
             "bar": status.bar,
             "bar_text": f"{status.bar:.2f}" if isinstance(status.bar, (int, float)) else "none yet",
             "window_size": status.window_size,
-            "sentences_heard": status.sentences_heard,
-            "sentences_scored": status.sentences_scored,
+            "attempts_heard": status.attempts_heard,
+            "attempts_scored": status.attempts_scored,
             "uptime": "just started" if uptime == "just now" else uptime,
             "services": {str(name): bool(up) for name, up in dict(status.services).items()},
             "algorithm": str(status.algorithm or ""),
@@ -358,7 +370,15 @@ class MonitorSite:
         if self._trace is None:
             return ""
         links = {record.heard_at: record.id for record in self._history.recent()}
-        return render_score_chart(self._trace.recent(self._look.window_minutes * 60.0), links, self._look)
+        if self._stream_now is None:
+            return render_score_chart(self._trace.recent(self._look.window_minutes * 60.0), links, self._look)
+        now = self._stream_now()
+        points = self._trace.recent()
+        # the chart is in drawn minutes (a long silence is shortened), so it can reach back past `window_minutes` of real time: ask for the ticks
+        # as far back as the oldest attempt kept, and no further back than the page remembers
+        oldest = max(min(points[0].at if points else now, now - self._look.window_minutes * 60.0), now - self._history.max_age_seconds)
+        ticks = self._ticks_source(oldest, now) if self._ticks_source is not None else []
+        return render_score_chart(points, links, self._look, ticks=ticks, now=now, bar_now=self._status().bar)
 
     def _row(self, record: TurnRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),
@@ -392,7 +412,7 @@ class MonitorSite:
             records = self._history.recent()
             stats = self._stats(records)
             now = self._clock()
-            script = _SCRIPT % {"newest": records[0].id if records else "null", "every": POLL_SECONDS}
+            script = _SCRIPT % {"newest": records[0].id if records else "null", "every": self._poll_seconds}
             return render_template_string(_INDEX, style=_STYLE, script=script, s=stats, chart=self._chart(), chart_minutes=f"{self._look.window_minutes:g}",
                                           services=list(stats["services"].items()),
                                           rows=[self._row(record, now) for record in records])

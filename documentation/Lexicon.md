@@ -384,13 +384,28 @@ The machine, its settings, how it keeps going, and how it is watched.
 **Watching**
 
 - **monitoring site**: The password-protected web page of the last hour of turns, with a detail page for each: the hinge, the
-  exemplars, the portent, the score and the bar. Open it from another machine on the Printer's network. Example: `MonitorSite`,
-  `[monitor]` (was/still)
+  exemplars, the portent, the score and the bar. Open it from another machine on the Printer's network. Its status tiles, its chart and its turns
+  all refresh together, every poll seconds. Example: `MonitorSite`, `[monitor]` (was/still)
+- **poll seconds**: How often the open monitoring page asks for news and redraws itself: the chart, the status tiles (the bar to beat now, the scores
+  in the window, the attempts scored / heard) and the turns. A turn appears on the first poll after its portent is written. Example: `poll_seconds`
 - **turn record**: One turn and what came of it: the hinge, its score, the bar it beat, the window, the exemplars shown and the
   portent. **Turn history** is the last hour of them, newest first, in memory only and never written down. Example: `TurnRecord`,
   `TurnHistory` (was: trigger record, `TriggerRecord`, `TriggerHistory`)
-- **score chart**: On the monitoring site, every attempt's score against the bar over the last hour, with each qualifier marked.
-  Numbers only, never words. Example: `ScoreTrace`, `render_score_chart` (was/still)
+- **score chart**: On the monitoring site, every attempt's score against the bar, with each qualifier marked and the anchor's ticks as grey dots.
+  Its right edge is now, on the stream clock, so it keeps moving through silence, and the bar line slides down through it. The only words on it are
+  its own (the scale, "now", "Intervals at approximately 5 min", and a silence's length), never anything said in the room. Example: `ScoreTrace`,
+  `render_score_chart` (was/still)
+- **drawn minutes**: The chart's time, counted after silences have been shortened: `window_minutes` (30) is the width of the chart in drawn minutes,
+  so after a long silence it reaches further back in real time. Example: `window_minutes`, `SilenceCompressor`
+- **silence**: A stretch with no attempt, between two attempts or between the newest attempt and now, longer than the longest silence. The chart draws it
+  short. (Not the same as quiet in general: a room can be quiet for less than the longest silence and nothing is drawn.) Example: `SilenceCompressor`
+- **longest silence**: How many minutes of silence the chart draws at their true size: a longer silence is drawn this wide, with its real length written
+  in it. Higher shows silences nearer their true size; lower fits more of the room's history into the chart. Example: `longest_silence_minutes`
+- **break mark**, **gap**: How the chart draws a silence, like a broken part in an engineering drawing: a clear *gap* in the card's own color, which
+  breaks the bar line, between two *break marks* (a vertical line with a zigzag). "14 min" over "silence" is written in the gap; the rest of the silence
+  shows on either side of it, the bar sliding down and the ticks squeezed together. Example: `break_gap_width`, `break_mark_size`
+- **intervals note**: The one left-justified line under the chart, "Intervals at approximately 5 min" (the `gridline_every_minutes`), which says what the
+  faint vertical lines are; approximately, because silences are drawn short. It replaced the "-30 min", "-20 min" and "-10 min" labels. Example: `gridline_every_minutes`
 
 ## Workshop: how we build it
 

@@ -264,6 +264,23 @@ internet and no router or firewall changes are needed, which matters behind a ve
 - **Undo:** `sudo tailscale down`, `sudo apt remove tailscale`, and remove the Pi from the admin console.
 - **Another Pi in the lab (`lpfm`, not part of this repo)** was put on the same tailnet the same way the same day, so from `pom1` it is reachable as `ssh pi@lpfm` too.
 
+## The display (kiosk)
+
+*Installed 2026-11-07.* A monitor on the Pi's HDMI port (HDMI-A-2, 1920x1080) shows the monitoring page full-screen. The Pi is headless (Bookworm Lite, boots to `multi-user.target`),
+so this is `cage` (a one-window Wayland compositor) running Chromium in kiosk mode, as its own service, `pom-display.service`. Design: see the Design Document, "The Printer's own screen is a kiosk".
+
+- **Installed by:** `scripts/setup/setup-kiosk.sh` (apt: `cage` 0.2.0, `chromium` 156 from Raspberry Pi's repository, a font; nothing compiled), then `update-pi.sh` links the unit and the udev rule. About 300 MB of RAM
+  while it runs (available memory 2.3 GB before, 2.0 GB after, with all three models loaded); the models are not touched.
+- **What it shows:** `http://127.0.0.1:8080/` with no password, because `[monitor] password_on_localhost = false` lets the Pi's own machine in. Checked 2026-11-07: `curl http://127.0.0.1:8080/` is 200, and the same page by the Pi's LAN address
+  from the Pi is 401 (the password is still asked of everyone else).
+- **No monitor is not an error:** its start condition (`display-attached.sh`) skips the unit when no display connector says `connected`. Cage exits when its last monitor is unplugged, and the udev rule starts the unit when one is plugged in.
+  *Not yet tested on the real machine:* unplugging the monitor while it runs and plugging it back in.
+- **A mouse** works as in any browser (qualifier dots and turn rows are links; "all turns" goes back). **A keyboard:** ctrl-alt-F1 is the console login (cage runs with `-s`, which allows switching).
+- **Look:** `systemctl status pom-display`; `journalctl -u pom-display -f`; `ps -eo pid,rss,args | grep -E 'cage|chromium'`. A blank screen with the unit active: check `journalctl -u pom-display` and that the page answers (`curl http://127.0.0.1:8080/`).
+- **Settings** are in `[display]` in `config/pom.toml` (browser, flags, profile folder). Not yet needed: a zoom, if the page is too small at 1920x1080 on the real screen.
+- **A trap found on the first install:** the cage wiki's unit has `TTYVHangup=yes`; with the `chvt 7` that runs after cage starts, the hang-up fired again and killed cage with SIGHUP (the service "succeeded" and ended at once, with nothing in the log).
+  Found with throwaway units (`systemd-run`) that each differed in one thing; the unit now has no `TTYVHangup`, and a test pins it.
+
 ## Fan check
 
 The Active Cooler is firmware-controlled over the Pi 5's fan header and stays **off at idle**, ramping from roughly 50 C. A still fan is not a fault.

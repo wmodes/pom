@@ -85,7 +85,8 @@ class MonitorStatus:
         window_size: How many scores the window holds now.
         attempts_heard: How many attempts have been heard since the Printer started.
         attempts_scored: How many of them were scored.
-        services: Whether each thing the Printer depends on is answering, by name, for example {"whisper": True}.
+        services: Whether each thing the Printer depends on is answering, by name, for example {"whisper": True}: True is up, False is down,
+            None is none (there is no such thing to answer, for example no terminal is configured).
         algorithm: The name of the bar type in use, for example "decaying_quantile" ("" if not known).
         bar_description: One line saying how the BarKeeper works and how it is set (numbers only), shown beside the algorithm.
     """
@@ -93,7 +94,7 @@ class MonitorStatus:
     window_size: int = 0
     attempts_heard: int = 0
     attempts_scored: int = 0
-    services: Mapping[str, bool] = field(default_factory=dict)
+    services: Mapping[str, Optional[bool]] = field(default_factory=dict)
     algorithm: str = ""
     bar_description: str = ""
 
@@ -184,7 +185,7 @@ _INDEX = """<!doctype html>
   <div class="tile"><b data-stat="since_start">{{ s.turns_since_start }}</b><span>turns since start</span></div>
   <div class="tile"><b data-stat="uptime">{{ s.uptime }}</b><span>up</span></div>
 </div>
-{% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
+{% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: {% if up is none %}<b class="muted">none</b>{% else %}<b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b>{% endif %}</span>{% endfor %}</p>{% endif %}
 {% if s.algorithm or s.bar_description %}<p class="rule"><span class="muted">Bar type:</span> <b>{{ s.algorithm }}</b>{% if s.bar_description %} <span class="muted">&mdash; a score above {{ s.bar_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
 <p class="muted small">Black dots: attempts. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last {{ chart_minutes }} minutes.</p>{% endif %}
@@ -240,7 +241,7 @@ class MonitorSite:
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
                  clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None, chart=None,
                  poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
-                 ticks_source: Optional[Callable[[float, float], list]] = None):
+                 ticks_source: Optional[Callable[[float, float], list]] = None, stream_began_at: Optional[float] = None):
         """Args:
             history: Where the turns are read from.
             password: The site's password; the site does not run without one.
@@ -252,6 +253,8 @@ class MonitorSite:
             chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
             poll_seconds: How often the open page asks for news and redraws (`[monitor] poll_seconds`), above 0; a bad value is the fallback, with a warning.
             stream_now: Returns the stream time now, the chart's right edge, so the chart moves through silence; without it the edge is the newest attempt.
+            stream_began_at: The stream time at which listening began; a quiet start (no attempt for longer than the longest silence) is drawn as a
+                silence too, as long as the trace still holds every attempt since then.
             ticks_source: Called with (start, end) in stream time; returns the anchor's ticks between them, each as (time, anchor score, bar then).
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
@@ -263,6 +266,7 @@ class MonitorSite:
         self._clock = clock
         self._stream_now = stream_now
         self._ticks_source = ticks_source
+        self._stream_began_at = stream_began_at
         self._poll_seconds = poll_seconds
         if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
             self.report.warn(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
@@ -343,7 +347,7 @@ class MonitorSite:
             "attempts_heard": status.attempts_heard,
             "attempts_scored": status.attempts_scored,
             "uptime": "just started" if uptime == "just now" else uptime,
-            "services": {str(name): bool(up) for name, up in dict(status.services).items()},
+            "services": {str(name): (None if up is None else bool(up)) for name, up in dict(status.services).items()},
             "algorithm": str(status.algorithm or ""),
             "bar_description": str(status.bar_description or ""),
         }
@@ -378,7 +382,8 @@ class MonitorSite:
         # as far back as the oldest attempt kept, and no further back than the page remembers
         oldest = max(min(points[0].at if points else now, now - self._look.window_minutes * 60.0), now - self._history.max_age_seconds)
         ticks = self._ticks_source(oldest, now) if self._ticks_source is not None else []
-        return render_score_chart(points, links, self._look, ticks=ticks, now=now, bar_now=self._status().bar)
+        began_at = self._stream_began_at if self._trace.holds_everything else None                  # else the start is no longer in what is drawn
+        return render_score_chart(points, links, self._look, ticks=ticks, now=now, bar_now=self._status().bar, began_at=began_at)
 
     def _row(self, record: TurnRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),

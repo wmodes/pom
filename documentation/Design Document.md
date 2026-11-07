@@ -90,7 +90,7 @@ typewriter
 | Keyboard: `TypedLineScorer`, `KeyboardWatcher` | Built |
 | Printing: `PortentFormatter`, `TerminalPort` | Built; tried on stand-ins, not yet on the real CadetWriter |
 | Conducting: `FloorKeeper`, `TurnTaker`, `Conductor`, entry point (`python -m pom`) | Built; burn-tested on the Mac, running as services on the Pi |
-| Monitoring site | Built; the printer status line is not |
+| Monitoring site | Built, with a terminal light (up, DOWN, none); a richer printer status line (on hold, out of paper) is not |
 | Start-up duties | Runner built; the duties are placeholders (the scorer warm-up is done elsewhere) |
 
 ### How it runs
@@ -486,7 +486,9 @@ What the burn test could not show: the real CadetWriter's flow-control behavior 
 - **A long silence is drawn short, like a broken part in an engineering drawing.** A silence (no attempt, between two attempts or from the newest to now) longer than `[chart] longest_silence_minutes` (5) is drawn that wide (`SilenceCompressor` turns stream time into drawn time, squeezing each silence evenly), so a quiet hour does not push everything else off the chart. `window_minutes` are *drawn* minutes, so after a silence the chart reaches back further in real time; the caption still says the last 30 minutes. Over the silence is a clear gap in the card's color (`break_gap_width`, or the whole silence if narrower), centered, with a zigzag break mark on each edge (`break_mark_size`; none on a left edge the window cuts off) and "14 min" over "silence" written in it ("1 hr 5 min" over "silence" past an hour). The rest of the silence shows either side of the gap: the bar sliding down and the ticks squeezed together. No vertical gridlines are drawn inside a silence, since their spacing would mean nothing there.
 - **The time axis is one note.** The "-30 min" style labels are gone: one left-justified line, "Intervals at approximately 5 min" (`gridline_every_minutes`; approximately, because silences are drawn short), and "now" at the right edge.
 - The site is off by default (`[monitor] enabled`), and the real password lives only in the gitignored `config/pom.local.toml`.
-- Not built: a printer status line and the per-turn outcome on the page. They wait on a preview and a decision.
+- **The terminal has a light, with the servers'**: `terminal: up`, `DOWN` or `none`. *none* (grey) means no terminal is configured (`[terminal] mode = "none"`), so there is nothing to ask; *up* means the port is open or opens now (`TerminalPort.online()`), and while a portent is being typed on it; *DOWN* means it will not open. The page asks with `online(wait=False)`: typing holds the port's lock for minutes, and a waiting question would freeze the page's polling. It cannot see a stall in the middle of a print (the turn's own outcome, "waiting for the printer", does), nor "on hold" or "out of paper" (not visible to software, see above). The light is drawn when the page loads.
+- **A quiet start is a silence too.** The stretch from the stream's start (`stream_began_at`, the same start the bar's `started_at` is) to the first attempt, or to now if none has come, is drawn like any other silence, so a Printer that has heard nothing since it started shows its break. The chart uses the start only while the `ScoreTrace` still holds every attempt since it (`holds_everything`); after the page has forgotten older attempts the first remaining attempt is not far from a start that nothing shows any more.
+- Not built: the per-turn outcome on the page. It waits on a preview and a decision.
 
 ## Software architecture
 

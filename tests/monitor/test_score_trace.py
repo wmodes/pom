@@ -240,3 +240,51 @@ class TestNothingIsLogged:
         t.add("secret", 1.0, 1.0)
         assert "7.123456" not in caplog.text + "\n".join(t.report.lines())
         assert "secret" not in caplog.text + "\n".join(t.report.lines())
+
+
+class TestHoldsEverything:
+    """`holds_everything` is True while no attempt has been forgotten, so the chart knows the trace reaches back to the stream's start."""
+
+    def test_an_empty_trace_holds_everything(self):
+        assert trace().holds_everything is True
+
+    def test_after_some_attempts_it_still_does(self):
+        t = trace()
+        feed(t, [1, 2, 3])
+        assert t.holds_everything is True
+
+    def test_an_attempt_forgotten_for_age_ends_it(self):
+        t = trace(max_age_seconds=60)
+        feed(t, [1, 2, 3], start=0.0)
+        t.add(4.0, 5.0, 100.0)
+        assert t.holds_everything is False
+
+    def test_an_attempt_forgotten_for_room_ends_it(self):
+        t = trace(max_points=3)
+        feed(t, [1, 2, 3])
+        assert t.holds_everything is True
+        t.add(4.0, 5.0, 10.0)
+        assert t.holds_everything is False
+
+    def test_it_stays_false(self):
+        t = trace(max_points=2)
+        feed(t, [1, 2, 3, 4])
+        feed(t, [5], start=100.0)
+        assert t.holds_everything is False
+
+    def test_a_point_that_could_not_be_kept_does_not_count_as_forgotten(self):
+        t = trace()
+        t.add("x", 5.0, 1.0)
+        assert t.holds_everything is True and t.recent() == []
+
+    def test_it_takes_the_lock(self):
+        t = trace()
+        t._lock.acquire()
+        asker = threading.Thread(target=lambda: t.holds_everything)
+        try:
+            asker.start()
+            asker.join(0.2)
+            assert asker.is_alive()
+        finally:
+            t._lock.release()
+            asker.join(2)

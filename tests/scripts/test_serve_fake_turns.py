@@ -22,8 +22,9 @@ def script():
     return module
 
 
-def room(script, seed=7, speed=30.0, head_start_minutes=35.0):
-    return script.InventedRoom(Config.load(ROOT / "config" / "pom.toml"), TurnHistory(), random.Random(seed), speed, head_start_minutes)
+def room(script, seed=7, speed=30.0, head_start_minutes=35.0, quiet_start_minutes=0.0):
+    return script.InventedRoom(Config.load(ROOT / "config" / "pom.toml"), TurnHistory(), random.Random(seed), speed, head_start_minutes,
+                               quiet_start_minutes)
 
 
 def test_the_chart_flag_serves_the_feed_and_exits():
@@ -76,3 +77,34 @@ def test_a_qualifier_gets_a_turn_in_the_history(script):
 def test_the_bar_it_uses_is_the_one_in_the_config_with_its_anchor(script):
     r = room(script)
     assert r.keeper.ticks_between(0.0, 600.0) and "steady tick" in r.keeper.describe()
+
+
+def test_with_no_quiet_start_the_first_attempt_comes_at_twenty_seconds(script):
+    assert room(script).trace.recent()[0].at == 20.0
+
+
+def test_a_quiet_start_hears_nothing_until_then(script):
+    r = room(script, head_start_minutes=60.0, quiet_start_minutes=20.0)
+    assert r.trace.recent()[0].at >= 20 * 60.0 and room(script, head_start_minutes=60.0).trace.recent()[0].at < 20 * 60.0
+
+
+def test_the_terminal_light_can_be_set():
+    for light in ("up", "down", "none"):
+        result = subprocess.run([sys.executable, str(SCRIPT), "--terminal", light, "--check"], capture_output=True, text=True, timeout=60, cwd=ROOT)
+        assert result.returncode == 0 and f"terminal light {light}" in result.stdout, result.stderr
+
+
+def test_the_default_light_is_none():
+    result = subprocess.run([sys.executable, str(SCRIPT), "--check"], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    assert "terminal light none" in result.stdout
+
+
+def test_the_chart_flag_with_a_long_quiet_start_hears_nothing_and_without_one_hears_something():
+    quiet = subprocess.run([sys.executable, str(SCRIPT), "--chart", "--quiet-start", "600", "--check"], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    busy = subprocess.run([sys.executable, str(SCRIPT), "--chart", "--check"], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    assert " 0 attempts heard" in quiet.stdout and " 0 attempts heard" not in busy.stdout and "attempts heard" in busy.stdout
+
+
+def test_a_light_that_is_not_one_of_the_three_is_refused():
+    result = subprocess.run([sys.executable, str(SCRIPT), "--terminal", "sideways", "--check"], capture_output=True, text=True, timeout=60, cwd=ROOT)
+    assert result.returncode != 0 and "--terminal" in result.stderr

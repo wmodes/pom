@@ -251,7 +251,72 @@ class TestTheMonitorMovesWithTheStream:
 
     def test_the_status_also_carries_the_services_and_the_bar_description(self, tmp_path):
         status = build(tmp_path, self.CONFIG).site._status_source()
-        assert status.algorithm == "decaying_quantile" and "steady tick" in status.bar_description and set(status.services) == {"whisper", "scorer", "oracle"}
+        assert status.algorithm == "decaying_quantile" and "steady tick" in status.bar_description and set(status.services) == {"whisper", "scorer", "oracle", "terminal"}
+
+
+class TestTheTerminalLight:
+    """`terminal` among the service lights: up if the terminal answers, DOWN if it does not, none if there is no terminal."""
+
+    @staticmethod
+    def light(tmp_path, mode_text):
+        p = build(tmp_path, f'[monitor]\nenabled = true\npassword = "pw"\n[terminal]\n{mode_text}\n')
+        return p, p.site._status_source().services["terminal"]
+
+    def test_no_terminal_is_none(self, tmp_path):
+        assert self.light(tmp_path, 'mode = "none"')[1] is None
+
+    def test_the_console_stand_in_is_up(self, tmp_path):
+        assert self.light(tmp_path, 'mode = "console"')[1] is True
+
+    def test_a_serial_port_that_is_not_there_is_down(self, tmp_path):
+        assert self.light(tmp_path, 'mode = "serial"\nport = "/dev/no-such-terminal-device"')[1] is False
+
+    def test_a_terminal_being_typed_on_is_up_and_the_page_does_not_wait(self, tmp_path):
+        import threading
+        import time
+        p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n[terminal]\nmode = "serial"\nport = "/dev/no-such-terminal-device"\n')
+        held, release = threading.Event(), threading.Event()
+
+        def hold():
+            with p.terminal._lock:
+                held.set()
+                release.wait(5)
+        thread = threading.Thread(target=hold)
+        thread.start()
+        assert held.wait(2)
+        try:
+            started = time.monotonic()
+            assert p.site._status_source().services["terminal"] is True and time.monotonic() - started < 1.0
+        finally:
+            release.set()
+            thread.join(2)
+
+    def test_the_lights_are_the_servers_and_the_terminal(self, tmp_path):
+        assert set(self.light(tmp_path, 'mode = "none"')[0].site._status_source().services) == {"whisper", "scorer", "oracle", "terminal"}
+
+    def test_the_page_says_none(self, tmp_path):
+        import base64
+        p, _ = self.light(tmp_path, 'mode = "none"')
+        headers = {"Authorization": "Basic " + base64.b64encode(b"x:pw").decode()}
+        assert 'terminal: <b class="muted">none</b>' in p.site.app.test_client().get("/", headers=headers).get_data(as_text=True)
+
+    def test_the_site_is_told_when_listening_began(self, tmp_path):
+        assert build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n').site._stream_began_at == 0.0
+
+
+class TestAServiceLightMayBeNone:
+    def test_a_check_that_says_none_stays_none(self):
+        assert ServiceWatch({"a": lambda: None})() == {"a": None}
+
+    def test_the_others_are_still_up_or_down(self):
+        lights = ServiceWatch({"a": lambda: 1, "b": lambda: 0, "c": lambda: True, "d": lambda: False, "e": lambda: "yes"})()
+        assert lights == {"a": True, "b": False, "c": True, "d": False, "e": True}
+        assert all(light is True or light is False for light in lights.values())          # real booleans, not 1 and 0
+
+    def test_a_check_that_fails_is_down_not_none(self):
+        def boom():
+            raise RuntimeError("x")
+        assert ServiceWatch({"a": boom})() == {"a": False}
 
 
 class TestTheBarStartsWithTheStream:

@@ -99,7 +99,9 @@ def reachable(url: str) -> bool:
 
 
 class ServiceWatch:
-    """Which servers answer, checked at most every `every` seconds so the monitoring page's polling does not hammer them."""
+    """Which servers answer, checked at most every `every` seconds so the monitoring page's polling does not hammer them.
+
+    Each check says True (up), False (down), or None (there is nothing to check: no terminal is configured)."""
 
     def __init__(self, checks: dict, every: float = DEFAULT_SERVICE_CHECK_SECONDS, clock=time.monotonic):
         self._checks, self._every, self._clock, self._at, self._last = checks, every, clock, None, {}
@@ -113,7 +115,8 @@ class ServiceWatch:
 
 def _safely(check) -> bool:
     try:
-        return bool(check())
+        answer = check()
+        return None if answer is None else bool(answer)
     except Exception:                                    # a check that fails is a server that does not answer
         return False
 
@@ -266,7 +269,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                              services=services(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe())
 
     services = ServiceWatch({"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: answers(scoring.url),
-                             "oracle": lambda: answers(oracle.url)}, every=monitor.service_check_seconds)
+                             "oracle": lambda: answers(oracle.url),
+                             "terminal": lambda: None if terminal is None else terminal.online(wait=False)}, every=monitor.service_check_seconds)
     site = None
     if monitor.enabled:
         if not monitor.password:
@@ -274,6 +278,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         else:
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, chart=config.chart,
                                poll_seconds=monitor.poll_seconds, stream_now=stream_now, ticks_source=bar_keeper.ticks_between,
+                               stream_began_at=stream_started_at,
                                status_source=status_now)
 
     def turned(attempt, result) -> None:

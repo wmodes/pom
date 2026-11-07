@@ -8,9 +8,11 @@ name and the password you gave (the default is `demo`).
 Usage:
     serve_fake_turns.py                    # serve on port 8080 with the password "demo"
     serve_fake_turns.py --live 15          # add a new invented turn every 15 seconds, to watch the page update itself
+    serve_fake_turns.py --terminal down    # the terminal's light: up, down or none (the default)
     serve_fake_turns.py --hide-hinges      # the page with the hinge text hidden (numbers only)
     serve_fake_turns.py --port 9000 --password hunter2
     serve_fake_turns.py --chart            # also draw the chart: the real BarKeeper and anchor (from config/pom.toml) over invented attempts
+    serve_fake_turns.py --chart --quiet-start 12  # ...and nothing is heard for the first 12 stream minutes
     serve_fake_turns.py --chart --speed 60 # ...with the stream clock running 60 times faster than the wall clock (default 30)
     serve_fake_turns.py --check            # serve on a free port, read the page's JSON feed once, and exit
 
@@ -71,12 +73,13 @@ class InventedRoom:
     `head_start_minutes` of stream time are played at once, so the chart is not empty when the page is opened.
     """
 
-    def __init__(self, config: Config, history: TurnHistory, rng: random.Random, speed: float, head_start_minutes: float = 35.0):
+    def __init__(self, config: Config, history: TurnHistory, rng: random.Random, speed: float, head_start_minutes: float = 35.0,
+                 quiet_start_minutes: float = 0.0):
         self.keeper = bar_keeper_from_settings(config.qualifying, 0.0)
         self.trace = ScoreTrace(config.monitor.history_seconds)
         self.history, self.rng, self.speed = history, rng, speed
         self.window_minutes = config.chart.window_minutes
-        self._next_at, self._quiet_until, self._turns = 20.0, 0.0, 0
+        self._next_at, self._quiet_until, self._turns = max(20.0, quiet_start_minutes * 60.0), 0.0, 0         # the room is quiet until the first attempt
         self._begun = time.monotonic() - head_start_minutes * 60.0 / speed
         self.heard = self.scored = 0
         self.advance_to(self.now())
@@ -116,7 +119,9 @@ def main() -> None:
     parser.add_argument("--password", default="demo", help="the password for the page")
     parser.add_argument("--hide-hinges", action="store_true", help="hide the hinge text, as show_hinges = false does")
     parser.add_argument("--live", type=float, default=0.0, metavar="SECONDS", help="add a new invented turn this often")
+    parser.add_argument("--terminal", choices=["up", "down", "none"], default="none", help="what the terminal's light says on the page")
     parser.add_argument("--chart", action="store_true", help="draw the chart from the real BarKeeper over invented attempts")
+    parser.add_argument("--quiet-start", type=float, default=0.0, metavar="MINUTES", help="with --chart, nothing is heard for this many stream minutes")
     parser.add_argument("--speed", type=float, default=30.0, help="with --chart, how many times faster than the wall clock the stream runs")
     parser.add_argument("--check", action="store_true", help="serve on a free port, read the JSON feed once, and exit")
     args = parser.parse_args()
@@ -126,13 +131,13 @@ def main() -> None:
     started = time.time()
     for n in range(5):
         fake_turn(history, rng, n)
-    services = {"whisper": True, "scorer": True, "oracle": True, "typewriter": False}
+    services = {"whisper": True, "scorer": True, "oracle": True, "terminal": {"up": True, "down": False, "none": None}[args.terminal]}
     if args.chart:
         config = Config.load(ROOT / "config" / "pom.toml")
-        room = InventedRoom(config, history, rng, args.speed)
+        room = InventedRoom(config, history, rng, args.speed, quiet_start_minutes=args.quiet_start)
         threading.Thread(target=room.run, daemon=True).start()
         site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges, trace=room.trace, chart=config.chart,
-                           poll_seconds=config.monitor.poll_seconds, stream_now=room.now, ticks_source=room.keeper.ticks_between,
+                           poll_seconds=config.monitor.poll_seconds, stream_now=room.now, ticks_source=room.keeper.ticks_between, stream_began_at=0.0,
                            status_source=lambda: MonitorStatus(bar=room.keeper.bar_at(room.now()), window_size=room.keeper.window_size_at(room.now()),
                                                                attempts_heard=room.heard, attempts_scored=room.scored, services=services,
                                                                algorithm=config.qualifying.algorithm, bar_description=room.keeper.describe()))
@@ -147,7 +152,9 @@ def main() -> None:
             "Authorization": "Basic " + base64.b64encode(f"x:{args.password}".encode()).decode()})
         with urllib.request.urlopen(request, timeout=10) as response:
             feed = json.load(response)
-        print(f"the site answered: {len(feed['turns'])} turns, bar {feed['stats']['bar_text']}")
+        light = {True: "up", False: "down", None: "none"}[feed["stats"]["services"]["terminal"]]
+        print(f"the site answered: {len(feed['turns'])} turns, bar {feed['stats']['bar_text']}, "
+              f"{feed['stats']['attempts_heard']} attempts heard, terminal light {light}")
         site.stop()
         return
 

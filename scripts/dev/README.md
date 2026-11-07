@@ -22,7 +22,8 @@ into one built part of the Printer and see what it does, using the real modules 
   `--hide-hinges` shows the numbers-only page) so you can open it, click a turn and watch it update. Password: `demo`. `--chart` also draws the chart:
   the real BarKeeper and anchor (from `config/pom.toml`) over invented attempts, on a stream clock that runs `--speed` times faster than the wall clock
   (default 30, so a one-minute tick comes every two seconds). It plays 35 stream minutes at once so the chart is not empty, and the invented room goes quiet
-  fairly often, so you can watch the bar slide down and the silences drawn short.
+  fairly often, so you can watch the bar slide down and the silences drawn short. `--quiet-start 12` hears nothing for the first 12 stream minutes (a quiet
+  start, drawn as a silence). `--terminal up|down|none` sets the terminal's light (default none).
 - `qualifying/`: `replay_scores_through_bar.py` replays a recorded stream of scores (by default the first hour of the live room, 2026-10-26, numbers only) through the real BarKeeper at
   several `qualifier_bar_influence` values and prints the qualifiers an hour, the share of scores above the bar, and the bar's level. `--offset-hours 30` makes the first score
   come 30 hours after the Printer started, so the bar's starting line has faded. It needs no models and no servers.

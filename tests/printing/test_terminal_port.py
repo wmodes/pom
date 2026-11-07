@@ -984,6 +984,89 @@ class TestOnline:
         assert port.online() is False
 
 
+class TestOnlineWithoutWaiting:
+    """The monitoring page asks `online(wait=False)`: typing holds the port for minutes, and the page must not stall behind it."""
+
+    @staticmethod
+    def busy(port):
+        """Holds the port's lock from another thread, as a portent being typed does; returns a function that lets go."""
+        held, release = threading.Event(), threading.Event()
+
+        def hold():
+            with port._lock:
+                held.set()
+                release.wait(5)
+        thread = threading.Thread(target=hold)
+        thread.start()
+        assert held.wait(2)
+        return lambda: (release.set(), thread.join(2))
+
+    def test_while_a_portent_is_being_typed_it_answers_true_at_once(self):
+        port, _, _, opened = make()
+        let_go = self.busy(port)
+        try:
+            started = time.monotonic()
+            assert port.online(wait=False) is True and time.monotonic() - started < 0.5
+            assert opened == []                                        # it did not touch the port
+        finally:
+            let_go()
+
+    def test_while_typing_it_answers_true_even_for_a_port_that_could_never_open(self):
+        port = TerminalPort("", opener=lambda *a: FakeSerial(), finish_wait_seconds=0)
+        let_go = self.busy(port)
+        try:
+            assert port.online(wait=False) is True
+        finally:
+            let_go()
+
+    def test_with_the_wait_it_waits_for_the_typing_to_finish(self):
+        port, _, _, _ = make()
+        let_go = self.busy(port)
+        answers = []
+        asker = threading.Thread(target=lambda: answers.append(port.online()))
+        asker.start()
+        asker.join(0.3)
+        still_waiting = asker.is_alive() and answers == []
+        let_go()
+        asker.join(2)
+        assert still_waiting and answers == [True]
+
+    def test_when_nothing_is_typing_it_asks_the_port_like_online(self):
+        port, fake, _, opened = make()
+        assert port.online(wait=False) is True and len(opened) == 1 and fake.written == b""
+
+    def test_a_port_that_will_not_open_is_offline_when_nothing_is_typing(self):
+        def opener(*a):
+            raise OSError("not plugged in")
+        port = TerminalPort("/dev/x", opener=opener, finish_wait_seconds=0)
+        assert port.online(wait=False) is False and port.report.ok
+
+    def test_a_port_name_that_cannot_be_used_is_offline_when_nothing_is_typing(self):
+        assert TerminalPort("", opener=lambda *a: FakeSerial(), finish_wait_seconds=0).online(wait=False) is False
+
+    @pytest.mark.parametrize("wait", [True, False])
+    def test_it_never_leaves_the_port_locked(self, wait):
+        port, _, _, _ = make()
+        port.online(wait=wait)
+        assert port._lock.acquire(timeout=0.5)
+        port._lock.release()
+
+    def test_it_never_leaves_the_port_locked_when_the_opener_raises_something_odd(self):
+        class Odd(Exception):
+            pass
+
+        def opener(*a):
+            raise Odd("odd")
+        port = TerminalPort("/dev/x", opener=opener, finish_wait_seconds=0)
+        assert port.online(wait=False) is False
+        assert port._lock.acquire(timeout=0.5)
+        port._lock.release()
+
+    def test_the_default_waits(self):
+        import inspect
+        assert inspect.signature(TerminalPort.online).parameters["wait"].default is True
+
+
 @pytest.mark.parametrize("setting", ["stall_patience_seconds", "reconnect_seconds"])
 @pytest.mark.parametrize("bad", [0, -1, "x", None, True, float("nan")])
 def test_a_bad_patience_or_reconnect_is_the_default_with_a_warning(setting, bad):

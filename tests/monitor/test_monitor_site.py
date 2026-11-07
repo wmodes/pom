@@ -855,6 +855,84 @@ class TestTheChartMovesWithTheStream:
         assert len(reads) == 2
 
 
+class TestTheQuietStart:
+    """The page tells the chart when listening began, but only while the trace still holds every attempt since then."""
+
+    @staticmethod
+    def site(began_at=0.0, now=3960.0, trace=None, **options):
+        trace = trace if trace is not None else ScoreTrace()
+        _, _, client, _ = make(trace=trace, stream_now=lambda: now, stream_began_at=began_at, **options)
+        return trace, client
+
+    def test_a_room_quiet_since_the_start_has_its_silence_drawn(self):
+        _, client = self.site()
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        assert 'class="gap"' in svg and ">1 hr 6 min<" in svg
+
+    def test_so_does_a_quiet_start_before_the_first_attempt(self):
+        trace, client = self.site(now=1000.0)
+        trace.add(3.0, 5.0, 900.0)
+        assert ">15 min<" in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_with_no_start_given_it_is_not(self):
+        _, client = self.site(began_at=None)
+        assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_once_the_trace_has_forgotten_an_attempt_the_start_is_not_used(self):
+        trace = ScoreTrace(max_points=2)
+        for at in (3000.0, 3010.0, 3020.0):
+            trace.add(3.0, 5.0, at)
+        trace, client = self.site(now=3030.0, trace=trace)
+        assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_a_start_inside_the_longest_silence_draws_nothing(self):
+        _, client = self.site(began_at=0.0, now=200.0)
+        assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_the_start_can_be_any_stream_time(self):
+        _, client = self.site(began_at=3000.0, now=3100.0)
+        assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
+
+
+class TestTheServiceLights:
+    """Each light says up, DOWN or none: True, False, or None (there is nothing to check)."""
+
+    @staticmethod
+    def lights(**services):
+        _, _, client, _ = make(status=lambda: MonitorStatus(services=services))
+        page = get(client, "/").get_data(as_text=True)
+        return page, get(client, "/api/turns").get_json()["stats"]["services"]
+
+    def test_true_is_up_in_green(self):
+        page, _ = self.lights(terminal=True)
+        assert 'terminal: <b class="up">up</b>' in page
+
+    def test_false_is_down_in_red(self):
+        page, _ = self.lights(terminal=False)
+        assert 'terminal: <b class="down">DOWN</b>' in page
+
+    def test_none_is_none_in_grey(self):
+        page, _ = self.lights(terminal=None)
+        assert 'terminal: <b class="muted">none</b>' in page and 'terminal: <b class="down"' not in page
+
+    def test_the_feed_keeps_the_three_apart(self):
+        _, feed = self.lights(a=True, b=False, c=None)
+        assert feed == {"a": True, "b": False, "c": None}
+
+    @pytest.mark.parametrize("value", [1, 0, "yes", ""])
+    def test_anything_else_is_up_or_down_as_it_would_be_as_a_bool(self, value):
+        _, feed = self.lights(x=value)
+        assert feed == {"x": bool(value)}
+
+    def test_each_light_is_its_own_span_in_order(self):
+        page, _ = self.lights(whisper=True, scorer=True, oracle=False, terminal=None)
+        assert page.index("whisper:") < page.index("scorer:") < page.index("oracle:") < page.index("terminal:")
+
+    def test_no_lights_no_line(self):
+        _, _, client, _ = make(status=lambda: MonitorStatus())
+        assert 'class="services"' not in get(client, "/").get_data(as_text=True)
+
+
 class TestTheStyleOfTheNewMarks:
     def test_ticks_are_the_grid_s_grey_and_the_gap_is_the_card_s_color(self):
         page = get(make(trace=ScoreTrace())[2], "/").get_data(as_text=True)

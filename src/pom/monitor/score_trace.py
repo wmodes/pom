@@ -80,6 +80,7 @@ class ScoreTrace:
         self._max_age = float(max_age_seconds)
         self._points: Deque[TracePoint] = deque(maxlen=max_points)
         self._lock = threading.Lock()
+        self._total_added = 0
 
     def add(self, score: float, bar: Optional[float], at: float, qualified: bool = False) -> bool:
         """Adds an attempt. True if it was kept; False (see `report`) if the score or the time was not a number."""
@@ -89,6 +90,7 @@ class ScoreTrace:
         point = TracePoint(float(at), float(score), float(bar) if _is_number(bar) else None, bool(qualified))
         with self._lock:
             self._points.append(point)
+            self._total_added += 1
             self._forget_old()
         return True
 
@@ -100,6 +102,12 @@ class ScoreTrace:
             cutoff = points[-1].at - seconds
             points = [point for point in points if point.at >= cutoff]
         return points
+
+    @property
+    def holds_everything(self) -> bool:
+        """True while no attempt has been forgotten, for age or for room: the trace then reaches back to the start of the stream."""
+        with self._lock:
+            return self._total_added == len(self._points)
 
     @property
     def latest_at(self) -> Optional[float]:

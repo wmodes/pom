@@ -56,12 +56,13 @@ class ChartLook:
 class SilenceCompressor:
     """Draws long silences short: it turns a stream time into a drawn time, in which each silence is `longest` wide at most.
 
-    A silence is a stretch with no attempt longer than `longest`: between two attempts, or between the newest attempt and now. Inside one,
+    A silence is a stretch with no attempt longer than `longest`: between two attempts, between the newest attempt and now, and, when the stream's
+    start is known (`began_at`), between the start and the first attempt (or now, if there has been none). Inside one,
     time is squeezed evenly, so everything before it is shifted and the bar line runs through it at a steeper slope.
     """
 
-    def __init__(self, attempt_times: Sequence[float], now: float, longest: float):
-        edges = sorted(attempt_times) + [now]
+    def __init__(self, attempt_times: Sequence[float], now: float, longest: float, began_at: Optional[float] = None):
+        edges = ([] if began_at is None else [began_at]) + sorted(attempt_times) + [now]          # the stream's start, if known, begins the first silence
         self.longest = longest
         self.silences = [(a, b) for a, b in zip(edges, edges[1:]) if b - a > longest]
 
@@ -95,7 +96,7 @@ def _y(score: float, plot_height: float, top: float, score_max: float) -> float:
 
 
 def render_score_chart(points: Sequence[TracePoint], qualifier_ids: Optional[Mapping[float, int]] = None, look=None,
-                       ticks: Sequence = (), now: Optional[float] = None, bar_now: Optional[float] = None) -> str:
+                       ticks: Sequence = (), now: Optional[float] = None, bar_now: Optional[float] = None, began_at: Optional[float] = None) -> str:
     """The chart for these points as an `<svg>` string.
 
     Args:
@@ -107,6 +108,8 @@ def render_score_chart(points: Sequence[TracePoint], qualifier_ids: Optional[Map
             passes through the bar they carry, so it slides down through a silence.
         now: The stream time at the chart's right edge. Without it the edge is the newest attempt, and the chart stands still in silence.
         bar_now: The bar at `now`, so the line reaches the right edge.
+        began_at: The stream time at which listening began, if the points reach back that far: a quiet start is a silence too. None (the default)
+            means silences are counted only between attempts and from the newest one to now.
     """
     look = look if look is not None else ChartLook()
     qualifier_ids = qualifier_ids or {}
@@ -119,7 +122,7 @@ def render_score_chart(points: Sequence[TracePoint], qualifier_ids: Optional[Map
         return (f'{head}<title>No scores yet.</title><text class="key" x="{width / 2:.1f}" y="{height / 2:.1f}" '
                 f'text-anchor="middle">No scores yet.</text></svg>')
     t_end = now if now is not None else points[-1].at
-    squeeze = SilenceCompressor([point.at for point in points], t_end, look.longest_silence_minutes * 60.0)
+    squeeze = SilenceCompressor([point.at for point in points], t_end, look.longest_silence_minutes * 60.0, began_at)
     edge = squeeze.drawn(t_end)                                                    # the right edge, in drawn time
     def drawn_x(at: float) -> float:
         return _x(squeeze.drawn(at), edge, seconds, plot_width, left)

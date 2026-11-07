@@ -16,7 +16,7 @@ PLOT_W, PLOT_H = WIDTH - LEFT - RIGHT, HEIGHT - TOP - BOTTOM
 NEVER = 1e9                                              # a silence this long (in minutes) never happens: the chart is drawn in plain time
 
 
-def render(points, qualifier_ids=None, seconds=None, width=None, height=None, ticks=(), now=None, bar_now=None, **look):
+def render(points, qualifier_ids=None, seconds=None, width=None, height=None, ticks=(), now=None, bar_now=None, began_at=None, **look):
     """The chart with the default look, changed by keyword: `seconds` is the window in seconds, `width` and `height` the drawing's size, `ticks`,
     `now` and `bar_now` are what the monitor gives the chart, and any other keyword is a `[chart]` setting. Unless a test says otherwise no silence is
     long enough to be drawn short, so the first tests are about plain time."""
@@ -27,7 +27,7 @@ def render(points, qualifier_ids=None, seconds=None, width=None, height=None, ti
         look["drawing_width"] = width
     if height is not None:
         look["drawing_height"] = height
-    return render_score_chart(points, qualifier_ids, ChartLook(**look), ticks=ticks, now=now, bar_now=bar_now)
+    return render_score_chart(points, qualifier_ids, ChartLook(**look), ticks=ticks, now=now, bar_now=bar_now, began_at=began_at)
 
 
 def parse(svg):
@@ -378,6 +378,50 @@ class TestTheSilenceCompressor:
 
     def test_a_clock_before_the_newest_attempt_makes_no_silence_of_it(self):
         assert SilenceCompressor([0, 100], 50, 300).silences == []
+
+
+class TestAQuietStartIsASilenceToo:
+    """With the stream's start known, the stretch from the start to the first attempt (or to now, if none has come) is a silence."""
+
+    def test_the_start_is_an_edge_of_the_first_silence(self):
+        assert SilenceCompressor([3000], 3000, 300, began_at=0.0).silences == [(0.0, 3000)]
+
+    def test_without_a_start_the_first_attempt_has_no_silence_before_it(self):
+        assert SilenceCompressor([3000], 3000, 300).silences == []
+
+    def test_with_no_attempts_the_whole_stretch_to_now_is_one(self):
+        assert SilenceCompressor([], 3000, 300, began_at=0.0).silences == [(0.0, 3000)]
+
+    def test_a_quiet_start_no_longer_than_the_limit_is_none(self):
+        assert SilenceCompressor([300], 300, 300, began_at=0.0).silences == []
+
+    def test_a_start_after_which_attempts_come_at_once_has_none(self):
+        assert SilenceCompressor([10, 20], 30, 300, began_at=0.0).silences == []
+
+    def test_it_is_squeezed_like_any_other(self):
+        c = SilenceCompressor([3000], 3000, 300, began_at=0.0)
+        assert (c.drawn(0), c.drawn(3000)) == pytest.approx((0, 300))
+
+    def test_a_quiet_start_is_drawn_with_the_gap_and_its_words(self):
+        root = parse(render([point(3000)], longest_silence_minutes=5, began_at=0.0))
+        assert len(find(root, "rect", "gap")) == 1
+        assert [s.text for s in find(root, "text", "key silence")[0].iter(NS + "tspan")] == ["50 min", "silence"]
+
+    def test_with_no_attempt_at_all_the_quiet_since_the_start_is_drawn(self):
+        root = parse(render([], longest_silence_minutes=5, began_at=0.0, now=3000.0, ticks=[(60.0, 5.85, 6.7), (2940.0, 5.85, 6.0)], bar_now=5.9))
+        assert len(find(root, "rect", "gap")) == 1 and len(find(root, "path", "break")) == 2
+        assert [s.text for s in find(root, "text", "key silence")[0].iter(NS + "tspan")] == ["50 min", "silence"]
+
+    def test_the_ticks_and_the_bar_show_on_either_side_of_the_gap(self):
+        root = parse(render([], longest_silence_minutes=5, began_at=0.0, now=3000.0, ticks=[(60.0, 5.85, 6.7), (2940.0, 5.85, 6.0)], bar_now=5.9))
+        assert len(find(root, "circle", "tick")) == 2 and find(root, "path", "bar")
+
+    def test_a_start_that_is_not_given_leaves_the_chart_as_it_was(self):
+        assert render([point(3000)], longest_silence_minutes=5) == render([point(3000)], longest_silence_minutes=5, began_at=None)
+        assert not find(parse(render([point(3000)], longest_silence_minutes=5)), "rect", "gap")
+
+    def test_a_short_quiet_start_draws_no_gap(self):
+        assert not find(parse(render([point(200)], longest_silence_minutes=5, began_at=0.0)), "rect", "gap")
 
 
 class TestHowLongASilenceWas:

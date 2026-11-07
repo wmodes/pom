@@ -207,10 +207,18 @@ class TerminalPort:
         """False if the port name was unusable, so nothing will ever be typed."""
         return self._usable
 
-    def online(self) -> bool:
-        """True if the typewriter's port is open, or opens now. Asks quietly (no warning, nothing typed), so it can be asked again and again."""
-        with self._lock:
+    def online(self, wait: bool = True) -> bool:
+        """True if the typewriter's port is open, or opens now. Asks quietly (no warning, nothing typed), so it can be asked again and again.
+
+        `wait` says what to do while a portent is being typed (typing holds the port for minutes): True waits for it to finish; False does not
+        wait and answers True, since a terminal that is being typed on is there. The monitoring page asks with False so its polling never stalls.
+        """
+        if not self._lock.acquire(blocking=wait):
+            return True
+        try:
             return self._usable and self._connect(quiet=True)
+        finally:
+            self._lock.release()
 
     def transmit(self, text: str, still_alive: Optional[Callable[[], object]] = None) -> PrintResult:
         """Types the text and returns when the typewriter has had time to finish. Never raises (except in strict mode).

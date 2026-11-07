@@ -11,6 +11,8 @@
 # Cage is a one-window Wayland compositor; it runs the launcher, which waits for the monitoring page to answer and then becomes Chromium in kiosk mode
 # (scripts/setup/kiosk_browser.py, and the `[display]` settings in config/pom.toml). It runs on virtual terminal 7, which no login prompt uses, and
 # `-s` lets a keyboard switch away (ctrl-alt-F1 is the console login). PAMName=login gives it the logind session it needs for the screen and the mouse.
+# There is deliberately no TTYVHangup=: it hangs the terminal up for every command of the unit, so the chvt that runs after cage starts killed cage with
+# SIGHUP (found on the Pi, 2026-11-07, with one-difference test units: plain, with the start condition, and without TTYVHangup all ran; with chvt and TTYVHangup it died).
 # The log is journald's: `journalctl -u pom-display -f`.
 [Unit]
 Description=Printer of Mysteries: the display (a kiosk showing the monitoring page)
@@ -35,7 +37,6 @@ UtmpIdentifier=tty7
 UtmpMode=user
 TTYPath=/dev/tty7
 TTYReset=yes
-TTYVHangup=yes
 TTYVTDisallocate=yes
 StandardInput=tty-fail
 PAMName=login

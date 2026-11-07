@@ -297,6 +297,10 @@ class TestTheDisplayUnit:
         assert service["ExecStartPost"] == ["+/usr/bin/chvt 7"]
         assert "Conflicts" not in self.unit()["Unit"]                       # the console login on tty1 is left alone
 
+    def test_it_does_not_hang_the_terminal_up_which_killed_cage_when_the_vt_was_switched(self):
+        service = self.unit()["Service"]
+        assert "TTYVHangup" not in service and service["ExecStartPost"] == ["+/usr/bin/chvt 7"]
+
     def test_it_has_the_session_cage_needs(self):
         service = self.unit()["Service"]
         assert service["PAMName"] == ["login"] and service["StandardInput"] == ["tty-fail"]

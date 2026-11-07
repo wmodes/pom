@@ -16,7 +16,7 @@ from the starting line to what the room really does as real scores arrive, one e
 when every real score has faded, it returns to the starting line.
 
 THE ANCHOR (TICKS). Silence has no scores, so by itself it cannot lower the bar: every weight fades by the same factor and their shares do not change.
-So a steady tick runs under the room the whole time, one every `anchor_interval_minutes` on a fixed grid from the bar's first use. A tick is a stand-in score
+So a steady tick runs under the room the whole time, one every `anchor_interval_minutes` on a fixed grid from `started_at`, when the stream began. A tick is a stand-in score
 of `anchor_score` that sits in the bar's memory like any score and fades on the same half-life. While people talk, the real scores bury the ticks; when the
 room goes quiet nothing buries them any more, and the bar settles toward the anchor. There is no silence detection and no cutoff. Ticks only ever shape the
 quantile: they are never judged, never qualify, never start a cooldown, and are not counted as scores (`window_size_at` leaves them out).
@@ -31,7 +31,7 @@ Design decisions, and why:
     is dropped too, so a very long memory can never divide by zero.
   * The quantile and the starting line are separate. `_quantile(entries, percentile)` takes its percentile as an argument and knows nothing of the
     starting line; the blend is applied only in `level_at`, around the reading at `bar_percentile`.
-  * Ticks are never stored. They are a pure function of the clock (the grid from first use), so there is no ticker to run and nothing to flush, a read at any
+  * Ticks are never stored. They are a pure function of the clock (the grid from `started_at`), so there is no ticker to run and nothing to flush, a read at any
     time gives the same answer, and a recording replayed fast gives what a live run would. `_ticks_at(now)` lists the grid times still within memory, each
     as an entry at the anchor score weighted by its age, exactly as if every tick had been added when its time came.
   * The starting line is a blend, not an extra score in the list: a stand-in score with almost no weight would still anchor the
@@ -57,6 +57,7 @@ DEFAULT_STARTING_BAR_WEIGHT = 20.0
 DEFAULT_ANCHOR_SCORE = 5.85
 DEFAULT_ANCHOR_INTERVAL_MINUTES = 1.0
 DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES = 120.0
+DEFAULT_STARTED_AT = 0.0
 
 
 class DecayingQuantileBarError(ValueError):
@@ -77,7 +78,8 @@ class DecayingQuantileBar(Bar):
     def __init__(self, bar_percentile: float = DEFAULT_BAR_PERCENTILE, half_life_seconds: float = DEFAULT_HALF_LIFE_SECONDS,
                  starting_bar: float = DEFAULT_STARTING_BAR, starting_bar_weight: float = DEFAULT_STARTING_BAR_WEIGHT,
                  anchor_score: float = DEFAULT_ANCHOR_SCORE, anchor_interval_minutes: float = DEFAULT_ANCHOR_INTERVAL_MINUTES,
-                 discard_scores_older_than_minutes: float = DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES, strict: bool = False):
+                 discard_scores_older_than_minutes: float = DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES, started_at: float = DEFAULT_STARTED_AT,
+                 strict: bool = False):
         """Args:
             bar_percentile: How much of the weighted scores the bar sits above, above 0 and at most 100.
             half_life_seconds: Seconds for a score's weight to halve, above 0.
@@ -86,6 +88,8 @@ class DecayingQuantileBar(Bar):
             anchor_score: The value of each tick, the level the bar settles toward in silence. Any number.
             anchor_interval_minutes: Minutes between ticks, above 0. Shorter pulls the bar down faster in silence, and a little lower during talk.
             discard_scores_older_than_minutes: Minutes after which a score, or a tick, is dropped from the bar's memory, above 0.
+            started_at: The stream time at which the bar begins, in the same seconds as the times it is given: the tick grid and the starting bar's fade both run
+                from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
             strict: Raise DecayingQuantileBarError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=DecayingQuantileBarError, logger=_log)
@@ -102,16 +106,16 @@ class DecayingQuantileBar(Bar):
         self._discard_seconds = 60.0 * self._valid(discard_scores_older_than_minutes, "discard_scores_older_than_minutes",
                                                    DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES, lambda v: _is_number(v) and v > 0, "a number above 0")
         self._memory: Deque[Tuple[float, float]] = deque()          # (time heard, score), oldest first; the real scores only, never the ticks
-        self._started_at: Optional[float] = None                    # when the starting line was "heard"
+        self._started_at = self._valid(started_at, "started_at", DEFAULT_STARTED_AT, _is_number, "a number")
 
     @classmethod
-    def from_settings(cls, settings, strict: bool = False) -> "DecayingQuantileBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False) -> "DecayingQuantileBar":
         """Builds the bar from an object with `bar_percentile`, `half_life_seconds`, `starting_bar`, `anchor_score`, `anchor_interval_minutes`,
         `discard_scores_older_than_minutes` and `starting_bar_weight`."""
         return cls(settings.bar_percentile, settings.half_life_seconds, settings.starting_bar, anchor_score=settings.anchor_score,
                    anchor_interval_minutes=settings.anchor_interval_minutes,
                    discard_scores_older_than_minutes=settings.discard_scores_older_than_minutes,
-                   starting_bar_weight=settings.starting_bar_weight, strict=strict)
+                   starting_bar_weight=settings.starting_bar_weight, started_at=started_at, strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -126,7 +130,6 @@ class DecayingQuantileBar(Bar):
         """The weighted, interpolated percentile of the real scores and the ticks, blended with the fading starting line, at `now`."""
         if not _is_number(now):
             return None
-        self._start(now)
         entries = self._weighted_scores(now)
         if not entries:
             return self._starting_bar
@@ -147,7 +150,6 @@ class DecayingQuantileBar(Bar):
         """Takes in a judged score."""
         if not (_is_number(score) and _is_number(now)):
             return
-        self._start(now)
         self._memory.append((now, float(score)))
         self._forget_old(now)
 
@@ -157,11 +159,6 @@ class DecayingQuantileBar(Bar):
                 f"starting at {self._starting_bar:g}, with a steady tick of {self._anchor_score:g} every {self._anchor_interval / 60.0:g} min")
 
     # --- The arithmetic -------------------------------------------------------------
-
-    def _start(self, now: float) -> None:
-        """The starting line is 'heard' at the first time the bar is used."""
-        if self._started_at is None:
-            self._started_at = now
 
     def _weight(self, age: float) -> float:
         """2 ** (-age / half_life); a negative age (a clock that stepped back) counts as 0."""
@@ -180,10 +177,8 @@ class DecayingQuantileBar(Bar):
         return [(score, weight) for score, weight in entries if weight > 0.0]          # a weight faded to nothing has no say, and must not be divided by
 
     def _ticks_at(self, now: float) -> list:
-        """The ticks within memory at `now`, each as (anchor score, weight by its age). Tick k is heard at first use plus k intervals (k from 1), and
-        is kept while it is no older than a score would be; none exist before the bar's first use or before the first interval has gone by."""
-        if self._started_at is None:
-            return []
+        """The ticks within memory at `now`, each as (anchor score, weight by its age). Tick k is heard at `started_at` plus k intervals (k from 1), and
+        is kept while it is no older than a score would be; none exist before the first interval after `started_at` has gone by."""
         last = math.floor((now - self._started_at) / self._anchor_interval)
         first = max(1, math.ceil((now - self._discard_seconds - self._started_at) / self._anchor_interval))
         return [(self._anchor_score, self._weight(now - (self._started_at + k * self._anchor_interval))) for k in range(first, last + 1)]

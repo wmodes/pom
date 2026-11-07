@@ -148,7 +148,7 @@ def main() -> None:
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
-    bar_keeper = bar_keeper_from_settings(qualifying)
+    bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the stream begins at 0
     finder = HingeFinder(eavesdropper, TakeCutter(), scorer, bar_keeper, listening.score_room_tone)
 
     rng = random.Random()

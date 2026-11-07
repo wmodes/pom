@@ -274,17 +274,17 @@ class TestBadSettings:
 class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
         settings = SimpleNamespace(bar_percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, other="x")
-        b = PercentileBar.from_settings(settings)
+        b = PercentileBar.from_settings(settings, started_at=0.0)
         assert (b._bar_percentile, b._window_seconds, b._min_scores, b._starting_bar) == (95.0, 120.0, 8, 5.5)
         assert b.report.ok
 
     def test_bad_settings_are_replaced_as_usual(self):
-        b = PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5))
+        b = PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5), started_at=0.0)
         assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(PercentileBarError):
-            PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=1.0, min_scores=8, starting_bar=1.0), strict=True)
+            PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=1.0, min_scores=8, starting_bar=1.0), started_at=0.0, strict=True)
 
 
 class TestLogging:

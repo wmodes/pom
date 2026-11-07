@@ -30,6 +30,7 @@ from pom.qualifying import Ruling, bar_keeper_from_settings  # noqa: E402
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
 DEFAULT_SCORES = os.path.join(ROOT, "data", "recordings", "work", "zoom-scores", "live-oct26-first-hour.csv")
 DEFAULT_INFLUENCES = (0.0, 0.25, 0.5, 0.75, 1.0)
+STREAM_STARTED_AT = 0.0                 # the replayed stream begins at time 0, as the Printer's does when listening starts; `--offset-hours` moves the scores later, not the start
 
 
 def read_scores(path: str) -> list:
@@ -47,9 +48,7 @@ def read_scores(path: str) -> list:
 def replay(settings, pairs: list, offset_seconds: float, silence_minutes: tuple = ()) -> dict:
     """Runs the scores through a fresh BarKeeper built from `settings`; the counts and the bar's level, and where the bar sits
     each of `silence_minutes` minutes after the last score (the room gone quiet)."""
-    keeper = bar_keeper_from_settings(settings)
-    if offset_seconds:
-        keeper.bar_at(0.0)                  # the Printer first uses the bar when it starts, long before the first sentence: that is when the starting line begins to fade
+    keeper = bar_keeper_from_settings(settings, STREAM_STARTED_AT)
     counts = {Ruling.QUALIFIED: 0, Ruling.HELD: 0, Ruling.DID_NOT_QUALIFY: 0}
     bars = []
     for seconds, score in pairs:
@@ -75,7 +74,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--scores", default=DEFAULT_SCORES, help="a CSV with seconds_into_recording and score columns")
     parser.add_argument("--influence", type=float, action="append", help="a qualifier_bar_influence to try (repeat for more)")
-    parser.add_argument("--offset-hours", type=float, default=0.0, help="the first score comes this many hours after the bar was first used (the Printer's start), so the starting line has faded")
+    parser.add_argument("--offset-hours", type=float, default=0.0, help="the first score comes this many hours after the stream began (the Printer's start), so the starting line has faded")
     parser.add_argument("--bar-percentile", type=float, default=None, help="the bar's percentile (default: the config's)")
     parser.add_argument("--half-life", type=float, default=None, help="the half-life in seconds (default: the config's)")
     parser.add_argument("--after-silence-minutes", type=float, action="append",

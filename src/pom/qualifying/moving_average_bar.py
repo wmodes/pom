@@ -81,9 +81,10 @@ class MovingAverageBar(Bar):
         self.counted = 0
 
     @classmethod
-    def from_settings(cls, settings, strict: bool = False) -> "MovingAverageBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False) -> "MovingAverageBar":
         """Builds the bar from an object with `average_fraction`, `average_half_life_scores`, `average_floor_fraction`
-        and `starting_bar`."""
+        and `starting_bar`.
+        `started_at` is the stream time the bar begins; this bar has no clock to start, and takes it so the factory can build any bar the same way."""
         return cls(settings.average_fraction, settings.average_half_life_scores, settings.average_floor_fraction,
                    settings.starting_bar, strict=strict)
 

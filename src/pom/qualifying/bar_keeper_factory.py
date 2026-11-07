@@ -28,16 +28,17 @@ ALGORITHMS: Dict[str, Type[Bar]] = {
 }
 
 
-def bar_from_settings(settings, strict: bool = False) -> Bar:
-    """The bar the settings name (`settings.algorithm`), built from the settings. An unknown name gives the default with a warning."""
+def bar_from_settings(settings, started_at: float, strict: bool = False) -> Bar:
+    """The bar the settings name (`settings.algorithm`), built from the settings, to begin at stream time `started_at`. An unknown name gives the default
+    with a warning."""
     name = getattr(settings, "algorithm", DEFAULT_ALGORITHM)
     known = name in ALGORITHMS if isinstance(name, str) else False
-    bar = ALGORITHMS[name if known else DEFAULT_ALGORITHM].from_settings(settings, strict=strict)
+    bar = ALGORITHMS[name if known else DEFAULT_ALGORITHM].from_settings(settings, started_at, strict=strict)
     if not known:
         bar.report.warn(f"the qualifying algorithm must be one of {', '.join(ALGORITHMS)}, got {name!r}; using {DEFAULT_ALGORITHM}")
     return bar
 
 
-def bar_keeper_from_settings(settings, strict: bool = False) -> BarKeeper:
-    """A BarKeeper with the bar the settings name, `settings.cooldown_seconds` and `settings.qualifier_bar_influence`."""
-    return BarKeeper(bar_from_settings(settings, strict=strict), settings.cooldown_seconds, settings.qualifier_bar_influence, strict=strict)
+def bar_keeper_from_settings(settings, started_at: float, strict: bool = False) -> BarKeeper:
+    """A BarKeeper with the bar the settings name (beginning at stream time `started_at`), `settings.cooldown_seconds` and `settings.qualifier_bar_influence`."""
+    return BarKeeper(bar_from_settings(settings, started_at, strict=strict), settings.cooldown_seconds, settings.qualifier_bar_influence, strict=strict)

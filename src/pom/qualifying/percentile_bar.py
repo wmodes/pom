@@ -74,8 +74,9 @@ class PercentileBar(Bar):
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
-    def from_settings(cls, settings, strict: bool = False) -> "PercentileBar":
-        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores` and `starting_bar`."""
+    def from_settings(cls, settings, started_at: float, strict: bool = False) -> "PercentileBar":
+        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores` and `starting_bar`.
+        `started_at` is the stream time the bar begins; this bar has no clock to start, and takes it so the factory can build any bar the same way."""
         return cls(settings.bar_percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str, convert):

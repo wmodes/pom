@@ -666,7 +666,7 @@ def test_the_qualifying_settings_plug_straight_into_the_bar_keeper(tmp_path):
     from pom.qualifying import bar_keeper_from_settings, Ruling
     text = "[qualifying]\nbar_percentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
     settings = Config.load(write(tmp_path, text), environ={}).qualifying
-    bar_keeper = bar_keeper_from_settings(settings)
+    bar_keeper = bar_keeper_from_settings(settings, started_at=0.0)
     assert bar_keeper.report.ok
     assert [bar_keeper.rule(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [Ruling.DID_NOT_QUALIFY] * 5
     assert bar_keeper.bar_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
@@ -677,7 +677,7 @@ def test_the_qualifying_settings_plug_straight_into_the_bar_keeper(tmp_path):
 def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm):
     from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     settings = Config.load(write(tmp_path, f'[qualifying]\nalgorithm = "{algorithm}"\n'), environ={}).qualifying
-    bar_keeper = bar_keeper_from_settings(settings)
+    bar_keeper = bar_keeper_from_settings(settings, started_at=0.0)
     assert isinstance(bar_keeper._bar, ALGORITHMS[algorithm]) and bar_keeper.report.ok and bar_keeper._bar.report.ok
 
 
@@ -689,7 +689,7 @@ def test_the_shipped_config_loads_cleanly_with_usable_qualifying_values():
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
     assert shipped.report.ok
     for algorithm in ALGORITHMS:
-        bar_keeper = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm))
+        bar_keeper = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm), started_at=0.0)
         assert bar_keeper.report.ok and bar_keeper._bar.report.ok
 
 

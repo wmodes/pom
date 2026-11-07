@@ -297,7 +297,7 @@ Wes's names, in the order they came up. What is built and what is open:
   (`MEMORY_HALF_LIVES = 8`, never approved); it is now `discard_scores_older_than_minutes` in the config.
 - **Problem 2: the bar updates with no attempts. Open, not designed.** Silence has no scores, so by itself it could not lower the bar. The *bar* now settles in silence (the anchor: `anchor_score` every `anchor_interval_minutes`, see the Design Document), but what the *monitor* shows does not:
   the "bar to beat now" tile is a snapshot taken only when an attempt arrives (`printer.py`, `note()`), the chart's right edge ("now") is the last scored attempt and not the present, the first attempt after a long quiet wipes the chart (the trace drops points older than `[monitor] history_seconds`),
-  and the bar is first used when the first attempt arrives, so in a silent room its ticks have not started. Wes parked the fixes.
+  (The bar's clock used to start at the first attempt, so in a silent room its ticks had not started; it now starts with the stream, `started_at`: fixed 2026-11-07.) Wes parked the fixes for the rest.
 - **Problem 3 (the number is provisional: Wes did not number it): the listening side's restart clock. Fixed, 2026-11-07.** A listening side rebuilt after a failure began its stream clock at 0 while the BarKeeper held time at the latest it had seen, so the cooldown could not end for about as long as the old clock had run
   (two hours in: at most one qualifier in two hours). A new Eavesdropper now carries the old clock on, plus the real seconds since sound last arrived (`Eavesdropper.stream_time_at`).
 

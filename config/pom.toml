@@ -190,7 +190,7 @@ min_scores = 20
 half_life_seconds = 300
 
 # How much weight the starting bar (starting_bar, above) carries when the bar first begins, counted in scores' worth: 20 is like a minute or
-# two of talk. It fades on the same half-life as any score, counted from the bar's first use, so the bar slides from the starting bar to what
+# two of talk. It fades on the same half-life as any score, counted from the start of the stream (when the Printer begins listening), so the bar slides from the starting bar to what
 # the room really does as the room speaks. A bigger number keeps the bar near the starting bar for longer; a smaller one lets the first few
 # scores set it sooner. Above 0.
 starting_bar_weight = 20

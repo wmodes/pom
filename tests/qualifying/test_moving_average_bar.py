@@ -194,19 +194,19 @@ class TestBadSettings:
 class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
         settings = SimpleNamespace(average_fraction=0.5, average_half_life_scores=4.0, average_floor_fraction=0.1, starting_bar=5.0, other="x")
-        b = MovingAverageBar.from_settings(settings)
+        b = MovingAverageBar.from_settings(settings, started_at=0.0)
         assert (b._fraction, b._floor) == (0.5, pytest.approx(0.9))
         assert b.level_at(0.0) == pytest.approx(5.0) and b._weight == pytest.approx(1 - 0.5 ** 0.25) and b.report.ok
 
     def test_bad_settings_are_replaced_as_usual(self):
         b = MovingAverageBar.from_settings(SimpleNamespace(average_fraction=-3, average_half_life_scores=4.0, average_floor_fraction=0.1,
-                                                           starting_bar=5.0))
+                                                           starting_bar=5.0), started_at=0.0)
         assert b._fraction == DEFAULT_FRACTION and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(MovingAverageBarError):
             MovingAverageBar.from_settings(SimpleNamespace(average_fraction=-3, average_half_life_scores=4.0, average_floor_fraction=0.1,
-                                                           starting_bar=5.0), strict=True)
+                                                           starting_bar=5.0), started_at=0.0, strict=True)
 
 
 class TestLogging:

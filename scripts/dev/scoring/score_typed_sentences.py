@@ -40,7 +40,7 @@ def build(config: Config, min_scores: int):
                     min_content_words=settings.min_content_words, failure_limit=settings.failure_limit,
                     retry_seconds=settings.retry_seconds)
     qualifying = dataclasses.replace(config.qualifying, min_scores=min_scores) if min_scores else config.qualifying
-    return scorer, bar_keeper_from_settings(qualifying), client
+    return scorer, bar_keeper_from_settings(qualifying, started_at=0.0), client
 
 
 def standing(ruling: Ruling, bar, held: int) -> str:

@@ -180,11 +180,12 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
 - **anchor**: A steady background of ticks under the room, so that silence lowers the bar: when the room goes quiet the bar settles toward the anchor score. Example: `anchor_score`,
   `anchor_interval_minutes`, `[qualifying]`
 - **tick**: One of the anchor's stand-in scores: it has the anchor score for its value, sits in the bar's memory like an attempt and fades on the same half-life, but is never judged, never
-  qualifies, never starts a cooldown and is never counted as an attempt. Ticks fall on a fixed grid, one every anchor interval, from the bar's first use. Example: `DecayingQuantileBar._ticks_at()`
+  qualifies, never starts a cooldown and is never counted as an attempt. Ticks fall on a fixed grid, one every anchor interval, from the stream's start (`started_at`). Example: `DecayingQuantileBar._ticks_at()`
 - **anchor score**: The value of each tick, the level the bar settles toward in silence (the pooled 90th percentile of the recordings' scores to begin with). Example: `anchor_score`
 - **anchor interval**: The minutes between ticks; shorter pulls the bar down faster in silence. Example: `anchor_interval_minutes`
 - **discard age**: How many minutes the bar remembers a score, or a tick; older ones are dropped from its memory. Once every real score is dropped the bar is made of the ticks alone. Example:
   `discard_scores_older_than_minutes`, `[qualifying]` (was: a constant, `MEMORY_HALF_LIVES`, 8 half-lives)
+- **started at**: The stream time at which the bar begins, given to the bar and not found by it: the tick grid and the starting bar's fade both run from it. The Printer gives it the time at which listening starts, so the bar is already moving before the first attempt. Example: `started_at`, `DecayingQuantileBar`, `bar_keeper_from_settings()`
 - **bar**: The score an attempt must be above to qualify. Example: `Bar`, `bar_at()` (was: bar, `TriggerBar`, `trigger_level_at()`)
 - **bar types**: How the bar is set (`algorithm`): `percentile` of the window; `decaying_quantile`, a percentile in which a score counts
   half as much every `half_life_seconds` (the shipped choice); or `moving_average`, a decaying average plus a margin. Example:

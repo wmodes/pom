@@ -119,10 +119,42 @@ class TestTheStartingLine:
             feed(b, [2.0] * 50)
         assert light.level_at(50.0) < 2.5 and heavy.level_at(50.0) > 8.0
 
-    def test_the_line_counts_from_the_first_time_the_bar_is_used(self):
+    def test_the_line_fades_from_the_start_the_bar_was_given(self):
+        options = dict(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
+        late, early = DecayingQuantileBar(started_at=5000.0, **options), DecayingQuantileBar(started_at=0.0, **options)
+        for b in (late, early):
+            b.add(2.0, 5000.0)
+        assert late.level_at(5000.0) > 5.0                                     # a bar that began at 5000 s: the line is fresh then
+        assert early.level_at(5000.0) == pytest.approx(2.0, abs=0.01)          # one that began at 0: the line is 5000 s old, and gone
+
+    def test_reading_the_bar_does_not_start_it(self):
+        """The start is given, not found: a bar first read at 5000 s has been fading its line since 0, not since the read."""
+        b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20, started_at=0.0)
+        b.level_at(5000.0)                                                     # the first read, long after the start
+        b.add(2.0, 5000.0)
+        assert b.level_at(5000.0) == pytest.approx(2.0, abs=0.01)
+
+    def test_a_bar_with_no_start_given_starts_at_zero(self):
         b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
-        b.add(2.0, 5000.0)                            # the bar's first use, at 5000 s
-        assert b.level_at(5000.0) > 5.0                      # the line is fresh then, not 5000 s old
+        assert b._started_at == 0.0 and b.report.ok
+
+    @pytest.mark.parametrize("good", [0, 0.0, 12.5, -3, 1e6])
+    def test_a_start_can_be_any_number(self, good):
+        assert DecayingQuantileBar(started_at=good).report.ok and DecayingQuantileBar(started_at=good)._started_at == float(good)
+
+    @pytest.mark.parametrize("bad", ["0", None, True, [0], float("nan"), float("inf")])
+    def test_a_bad_start_is_zero_with_a_warning(self, bad):
+        b = DecayingQuantileBar(started_at=bad)
+        assert b._started_at == 0.0 and len(b.report.warnings) == 1 and "started_at" in b.report.warnings[0]
+
+    def test_strict_raises_on_a_bad_start(self):
+        with pytest.raises(DecayingQuantileBarError):
+            DecayingQuantileBar(started_at="soon", strict=True)
+
+    def test_from_settings_passes_the_start_on(self):
+        settings = SimpleNamespace(bar_percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
+                                   discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5)
+        assert DecayingQuantileBar.from_settings(settings, started_at=42.0)._started_at == 42.0
 
 
 class TestTheWeightedQuantile:
@@ -220,28 +252,35 @@ def ticking(**options):
 class TestTheAnchor:
     """Ticks: a steady stand-in score on a fixed grid from first use, so that silence lowers the bar."""
 
-    def test_there_are_no_ticks_before_the_bar_is_first_used_or_before_the_first_interval_has_gone_by(self):
-        b = ticking()
-        assert b._ticks_at(1000.0) == []                              # not used yet
-        b.level_at(0.0)                                               # first use
-        assert b._ticks_at(59.9) == [] and len(b._ticks_at(60.0)) == 1
+    def test_there_are_no_ticks_before_the_start_or_before_the_first_interval_after_it(self):
+        b = ticking(started_at=1000.0)
+        assert b._ticks_at(500.0) == [] and b._ticks_at(1000.0) == []        # before the start, and at it
+        assert b._ticks_at(1059.9) == [] and len(b._ticks_at(1060.0)) == 1
 
-    def test_ticks_fall_on_a_fixed_grid_from_first_use_each_weighted_by_its_age(self):
-        b = ticking()
-        b.level_at(1000.0)
+    def test_ticks_fall_on_a_fixed_grid_from_the_start_each_weighted_by_its_age(self):
+        b = ticking(started_at=1000.0)
         entries = b._ticks_at(1190.0)                                 # ticks at 1060, 1120 and 1180
         assert [score for score, _ in entries] == [5.0, 5.0, 5.0]
         assert [weight for _, weight in entries] == [pytest.approx(2 ** (-130 / 300)), pytest.approx(2 ** (-70 / 300)), pytest.approx(2 ** (-10 / 300))]
 
+    def test_ticks_run_whether_or_not_anything_has_asked_the_bar_a_thing(self):
+        """The ticks do not wait for a first score or a first read: ten minutes after the start there are ten ticks, and the bar has already moved."""
+        b = ticking(starting_bar=6.8, starting_bar_weight=20.0)
+        assert len(b._ticks_at(600.0)) == 10 and b.window_size_at(600.0) == 0
+        assert b.level_at(0.0) == pytest.approx(6.8) and b.level_at(300.0) < 6.6          # before any score: sliding from the starting bar toward the anchor
+
     def test_the_interval_is_in_minutes(self):
         b = ticking(anchor_interval_minutes=2.5)
-        b.level_at(0.0)
         assert len(b._ticks_at(149.9)) == 0 and len(b._ticks_at(150.0)) == 1 and len(b._ticks_at(300.0)) == 2
 
     def test_ticks_are_forgotten_on_the_same_horizon_as_scores(self):
         b = ticking(discard_scores_older_than_minutes=80 / 60)        # scores, and so ticks, are remembered for 80 s
         b.level_at(0.0)
         assert len(b._ticks_at(300.0)) == 2                           # of those at 60, 120, ... 300, only 240 and 300 are within 80 s of now
+
+    def test_ticks_are_forgotten_on_the_same_horizon_whatever_the_start(self):
+        b = ticking(started_at=1000.0, discard_scores_older_than_minutes=80 / 60)        # remembered for 80 s
+        assert len(b._ticks_at(1300.0)) == 2                          # ticks at 1060, 1120, ... 1300: only 1240 and 1300 are within 80 s of now
 
     def test_ticks_are_not_counted_as_scores(self):
         b = ticking()
@@ -508,7 +547,7 @@ class TestBuildingFromSettings:
     def test_it_reads_the_settings_it_needs(self):
         settings = SimpleNamespace(bar_percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
                                    discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5, unrelated="x")
-        b = DecayingQuantileBar.from_settings(settings)
+        b = DecayingQuantileBar.from_settings(settings, started_at=0.0)
         assert (b._bar_percentile, b._half_life, b._starting_bar, b._anchor_score, b._anchor_interval, b._discard_seconds,
                 b._starting_bar_weight) == (95.0, 120.0, 5.5, 4.5, 150.0, 5400.0, 7.5)
         assert b.report.ok
@@ -516,13 +555,13 @@ class TestBuildingFromSettings:
     def test_bad_settings_are_replaced_as_usual(self):
         settings = SimpleNamespace(bar_percentile=500, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
                                    discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5)
-        b = DecayingQuantileBar.from_settings(settings)
+        b = DecayingQuantileBar.from_settings(settings, started_at=0.0)
         assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(b.report.warnings) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(DecayingQuantileBarError):
             DecayingQuantileBar.from_settings(SimpleNamespace(bar_percentile=500, half_life_seconds=1.0, starting_bar=1.0, anchor_score=5.0,
-                                                              anchor_interval_minutes=1.0, discard_scores_older_than_minutes=1.0, starting_bar_weight=7.5), strict=True)
+                                                              anchor_interval_minutes=1.0, discard_scores_older_than_minutes=1.0, starting_bar_weight=7.5), started_at=0.0, strict=True)
 
 
 class TestLogging:

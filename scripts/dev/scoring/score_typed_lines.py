@@ -43,7 +43,7 @@ def build(config: Config, args):
     qualifying = config.qualifying
     if args.bar is not None:
         qualifying = dataclasses.replace(qualifying, starting_bar=args.bar)
-    bar_keeper = bar_keeper_from_settings(qualifying)
+    bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the clock below begins at 0
     multiplier = qualifying.typed_lines_score_multiplier if args.multiplier is None else args.multiplier
     bar_influence = qualifying.typed_lines_bar_influence if args.bar_influence is None else args.bar_influence
     started = time.monotonic()

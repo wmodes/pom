@@ -179,6 +179,33 @@ class TestTheMovedSettingsReachTheirParts:
         assert (p.site._look.window_minutes, p.site._look.bar_line_width) == (12.0, 2.0)
 
 
+class TestTheBarStartsWithTheStream:
+    """The bar's clock runs from the stream's start, not from the first attempt: a Printer that has heard nothing yet already has a moving bar."""
+
+    @staticmethod
+    def fresh_bar(tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\n')
+        return p.parts["bar_keeper"]
+
+    def test_a_fresh_printers_bar_has_moved_before_any_attempt_arrives(self, tmp_path):
+        keeper = self.fresh_bar(tmp_path)
+        assert keeper.counted == 0                                           # no attempt has been ruled on
+        assert keeper.bar_at(0.0) == pytest.approx(6.8)                      # it starts at the starting bar
+        assert keeper.bar_at(60.0) == pytest.approx(6.748, abs=0.005)        # a minute in, the first tick has come
+        assert keeper.bar_at(300.0) == pytest.approx(6.535, abs=0.005)       # five minutes in, sliding toward the anchor
+        assert keeper.bar_at(1800.0) < 5.95                                  # half an hour in, nearly there
+
+    def test_the_first_attempt_after_a_long_quiet_start_faces_a_bar_that_has_already_settled(self, tmp_path):
+        keeper = self.fresh_bar(tmp_path)
+        assert keeper.bar_at(7200.0) == pytest.approx(5.85, abs=0.01)        # two hours of quiet: the anchor, not the starting bar
+
+    def test_the_bar_and_the_first_room_begin_at_the_same_stream_time(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(printer_module.time, "monotonic", lambda: 100.0)
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\n')
+        _, first = p.conductor._room_factory()
+        assert first.stream_time_at(100.0) == 0.0 and p.parts["bar_keeper"]._bar._started_at == 0.0
+
+
 class TestARoomBuiltAgain:
     """The Conductor builds the listening side again if it fails; the new one's stream clock carries on from the old one's."""
 

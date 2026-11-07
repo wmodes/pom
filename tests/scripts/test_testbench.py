@@ -177,3 +177,15 @@ def test_the_replay_testbench_can_ask_where_the_bar_sits_after_the_room_goes_qui
     on, off = after_an_hour("1"), after_an_hour("1000000")
     assert on[0] == pytest.approx(off[0], abs=0.15) and 7.5 < off[0] < 8.1                                    # right after the room, ticks have changed the bar hardly at all
     assert on[1] == pytest.approx(5.0, abs=0.05) and off[1] == pytest.approx(off[0], abs=0.01)              # an hour on: settled at the anchor, or frozen where it was
+
+
+def test_the_replay_testbench_begins_its_stream_at_zero(tmp_path):
+    """Dull scores from ten seconds in: with the ticks running from time 0 the bar has settled toward the anchor by the end of half an hour."""
+    scores = tmp_path / "scores.csv"
+    scores.write_text("seconds_into_recording,score\n" + "".join(f"{10 + i * 10},3\n" for i in range(180)), encoding="utf-8")
+    result = run("scripts/dev/qualifying/replay_scores_through_bar.py", "--scores", str(scores), "--influence", "1", "--anchor-score", "5",
+                 "--anchor-interval-minutes", "1")
+    assert result.returncode == 0, result.stderr
+    row = result.stdout.strip().splitlines()[-1].split()
+    first, last = float(row[5]), float(row[7])                                       # the "bar first" and "bar last" columns
+    assert first == pytest.approx(6.8, abs=0.05) and last < 5.4

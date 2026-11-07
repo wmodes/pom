@@ -186,7 +186,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                         failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), poll_seconds=scoring.warmup_poll_seconds,
                           attempts=scoring.warmup_attempts)     # sends the scorer one throwaway request once its server is up
-    bar_keeper = bar_keeper_from_settings(qualifying)
+    stream_started_at = 0.0           # the stream time at which listening starts: the first room's clock begins here, and the bar begins here too
+    bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at)
     take_cutter = TakeCutter(max_words=listening.max_clip_words)
 
     def make_deck():
@@ -204,7 +205,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         old = last_room["ears"]
         ears = Eavesdropper(make_deck(), whisper, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
                             listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
-                            listening.room_tone_memory, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else 0.0, wall=time.monotonic)
+                            listening.room_tone_memory, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at, wall=time.monotonic)
         last_room["ears"] = ears
         return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening.score_room_tone), ears
 

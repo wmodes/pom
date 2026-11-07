@@ -23,7 +23,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   - **Scorer model:** Qwen3-4B, one sentence per request, no context, a 0 to 9 score. Its timeout is 30 s (the first score after a server starts took 15.7 s on the Pi).
   - **Qualifying:** `algorithm = "decaying_quantile"` (EWMQ): the bar is the 99.5th percentile of all recent scores, each counting for less the older it is (half-life 300 s),
     starting at 6.8 until the room has said enough. 60 s cooldown, no floor. `qualifier_bar_influence` (2026-11-06, replacing the on/off `exclude_qualifiers`): a qualifier or a score held by the cooldown goes into the bar as the bar plus that much of the way up to the score
-    (1 is the score itself, 0 the bar itself; the held-score half was fixed 2026-11-04). `percentile` and `moving_average` stay selectable. The goal is about six qualifiers an hour. Replays gave about 7 an hour, but a
+    (1 is the score itself, 0 the bar itself; the held-score half was fixed 2026-11-04). The anchor (2026-11-07): a steady tick under the room (`anchor_score`, `anchor_interval_minutes`) lets silence lower the bar toward a fixed level instead of freezing at the last crowd's high; measured, the ticks release a crowd's high smoothly (a tick a minute: below 7 after 31 to 68 minutes, from a crowd of three scores to three hundred). The bar's memory limit is now a setting, `discard_scores_older_than_minutes`. `percentile` and `moving_average` stay selectable. The goal is about six qualifiers an hour. Replays gave about 7 an hour, but a
     later measurement gave 13.5 (a busy room) and 11.1 (a quiet one), taken before the held-score fix; **re-measure it.** Tukey's fence was tried first and replaced
     (2026-10-29): it sat above the window's best score in two windows out of three.
   - **Hinge:** the sentence that qualified (Wes, 2026-10-27). No separate hinge picker.
@@ -63,9 +63,11 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
-  (for example `BarKeeper(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`). Anything a
-  person might tune (system messages, thresholds, counts, times) goes in config, so all the user-serviceable parts are
-  in one place.
+  (for example `BarKeeper(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`).
+  **No hardcoded, user-inaccessible values in code; they belong in the config** (a standing rule, set by Wes 2026-11-07). Every number, threshold, count,
+  age or size limit, duration, interval, window, message or name that can change what the Printer does, or that a person might want to see or change, lives in `config/pom.toml` with a comment saying what
+  it does and what changes if it goes up or down. Never a module constant, a default argument or a magic number that only a code edit can change; a default in code is only the fallback for a missing or bad config value. A hidden value is a hidden
+  design decision, so anything that changes behavior is proposed and approved first. The case that made the rule: `MEMORY_HALF_LIVES = 8`, which reset the bar after 40 minutes of quiet, invisibly.
 - Config layers, highest priority first: environment variables (`POM_STRICT`, `POM_DEBUG`,
   `POM_LOCAL_LOGS`, `POM_LOG_LEVEL`, `POM_EXEMPLARS_MIN/MAX`, `POM_SCORER_URL`), the gitignored `config/pom.local.toml`
   (this machine only), the committed `config/pom.toml` (the quiet defaults the Pi runs with), built-in defaults. Every
@@ -287,6 +289,20 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   in `requirements.txt`; `scripts/setup/setup-nltk-data.sh` fetches the NLTK data into `data/nltk/` (set
   `NLTK_DATA=<repo>/data/nltk`).
 
+## The bar and the monitor: named problems (2026-11-07)
+
+Wes's names, in the order they came up. What is built and what is open:
+
+- **Problem 1: time influence on the bar. Solved.** Each score's weight decays continuously with its age (`half_life_seconds`), so time is already in the bar calculation with no cliffs. The one hard edge was a hidden 40-minute memory rule
+  (`MEMORY_HALF_LIVES = 8`, never approved); it is now `discard_scores_older_than_minutes` in the config.
+- **Problem 2: the bar updates with no attempts. Open, not designed.** Silence has no scores, so by itself it could not lower the bar. The *bar* now settles in silence (the anchor: `anchor_score` every `anchor_interval_minutes`, see the Design Document), but what the *monitor* shows does not:
+  the "bar to beat now" tile is a snapshot taken only when an attempt arrives (`printer.py`, `note()`), the chart's right edge ("now") is the last scored attempt and not the present, the first attempt after a long quiet wipes the chart (the trace drops points older than `[monitor] history_seconds`),
+  and the bar is first used when the first attempt arrives, so in a silent room its ticks have not started. Wes parked the fixes.
+- **Problem 3 (the number is provisional: Wes did not number it): the listening side's restart clock. Fixed, 2026-11-07.** A listening side rebuilt after a failure began its stream clock at 0 while the BarKeeper held time at the latest it had seen, so the cooldown could not end for about as long as the old clock had run
+  (two hours in: at most one qualifier in two hours). A new Eavesdropper now carries the old clock on, plus the real seconds since sound last arrived (`Eavesdropper.stream_time_at`).
+
+Open around them: the unmoved hard-coded values (next step 6); the monitor tile and chart above; and that the ticks only shape the bar, so the chart draws no tick dots (Wes: "we may end up having them charted").
+
 ## Next steps, in order
 
 1. **The typewriter.** Connect the CadetWriter to the Pi and switch `[terminal] mode` on the Pi from `none` to `serial`. Test on the real machine what has so far been tested on fakes:
@@ -301,8 +317,15 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    and 60 a day; proposed values) and **"failing loudly"** (Wes, 2026-10-24): if the scorer model or the oracle model is
    down, the Printer can never respond, and a log line is not loud when someone is switching a printer on. Decide what loud
    means (a beep, an email to Wes, something at the venue).
-6. Later: the curated hinge pairs, Track B if wanted.
-7. Open and small:
+6. **Move the hard-coded values into config** (the rule above, 2026-11-07). Done: `MEMORY_HALF_LIVES` is `discard_scores_older_than_minutes`; and, on Wes's list of 2026-11-07, `starting_bar_weight`, `max_clip_words`, the scorer warm-up (`warmup_poll_seconds`, `warmup_attempts`), `service_check_seconds`, `max_typed_line_characters`, `refused_character_retry_seconds`, `wait_log_reminder_seconds` and the whole `[chart]` section. Wes said to leave the rest for now. Still hard-coded, from the same audit of `src/pom` (the modules' constants were all read; inline literals were checked in the behavior modules, so there may be more):
+   - *Affects what the Printer does:* the clip filter's filler-word list (`WordTagger.DEFAULT_FILLERS`); the fallback scorer's whole heuristic (`fallback_scorer.py`: base, 0.35 per content word, 0.8 per name, 0.4 per number, 0.4 question bonus, a ceiling of 5, with counts); the scorer request's `temperature 0`, `top_logprobs 20`, `max_tokens 1`; the turn taker's `WRITE_FAILURES_THAT_ALARM = 3` and `DEFAULT_WRITE_ATTEMPT_SECONDS = 240` (a copy of `[oracle] timeout`, so they can drift apart); the `+ 1.0` second added to `check_seconds` for the boot slip's ears-shut wait; the whisper client's `PING_TIMEOUT = 5`; log rotation (`log_setup.py`: 1,000,000 bytes, 3 backups).
+   - *Monitor, not on the list:* the trace's `DEFAULT_MAX_POINTS = 5000`, the turn history's `DEFAULT_MAX_RECORDS = 500`, the page's `POLL_SECONDS = 5` and `SNIPPET_CHARS = 90`.
+   - *Internal safety timeouts and structure, to decide:* the BarKeeper's and FloorKeeper's `LOCK_TIMEOUT_SECONDS = 5`, `JOIN_SECONDS = 5`, the turn taker's `BEAT_SECONDS = 5`, `PRINT_TRIES_BETWEEN_LOG_LINES = 6`, the keyboard watcher's polls, the terminal port's 0.1 s read slice; `MINIMUM_MIN_SCORES = 2`; the audio format (16 kHz, 16-bit, 30 ms frames, which whisper fixes); the 0 to 9 score scale, which is repeated in the moving-average bar and the scorer's prompt (and now has its own `[chart] score_max`).
+   - *Not built yet, must be config when it is:* the microphone gain the start-up runner is to set (24 of 30 on the ATR4697-USB is only in a description string so far).
+   Not yet decided: the monitor's "bar to beat now" tile is a snapshot taken when an attempt arrives, so between attempts it is not live, and the chart's right edge ("now") is the last scored attempt, not the present.
+
+7. Later: the curated hinge pairs, Track B if wanted.
+8. Open and small:
    - Wes's spot-check of about 20 bake-off ratings; a prompt tuned for the top two oracle models; defining "interesting" ourselves before asking the model (Wes, 2026-10-22, deferred);
      `ratings/report.md` still says Stheno 4.72 (it is 4.73); a "silence" tic that repeats across portents would not show up in the one-at-a-time ratings.
    - `Pi Setup Notes.md` lacks the latest on the Mac's failed `.local` lookups (a looping network extension in the Cisco VPN client is the strong, unproven lead; Cisco was removed 2026-11-04 and the Mac may need a restart) and says
@@ -310,6 +333,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
    - The cataloguer's `--oversize 1.5` question: keep a passage of up to 225 words whole instead of dropping the few over 150.
 
 ## Gotchas
+
 
 - **Mutation checking** (editing a module to break it and confirming a test fails): run with
   `PYTHONDONTWRITEBYTECODE=1`, `python -B` and `-p no:cacheprovider`, clear `__pycache__` first, and

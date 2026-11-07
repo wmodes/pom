@@ -82,9 +82,9 @@ DEFAULT_CHARACTERS_PER_SECOND = 16.0
 DEFAULT_FINISH_WAIT_SECONDS = 2.0
 DEFAULT_STALL_PATIENCE_SECONDS = 600.0   # how long a portent under way is waited for if the machine stops or goes away
 DEFAULT_RECONNECT_SECONDS = 2.0          # how often a lost port is tried again
-STALL_RETRY_SECONDS = 1.0                # the pause before sending a character the machine refused (the write itself waits too)
-REMINDER_SECONDS = 60.0                  # a long wait is mentioned in the log this often
-MAX_TYPED_LINE = 500        # a typed line this long is ended there, so a stuck key cannot grow it without limit
+DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS = 1.0   # the pause before sending a character the machine refused (the write itself waits too)
+DEFAULT_WAIT_LOG_REMINDER_SECONDS = 60.0        # a long wait is mentioned in the log this often
+DEFAULT_MAX_TYPED_LINE_CHARACTERS = 500         # a typed line this long is ended there, so a stuck key cannot grow it without limit
 _READ_SLICE_SECONDS = 0.1   # one look at the port; the lock is free between looks, so a portent can start
 
 
@@ -125,6 +125,9 @@ class TerminalPort:
                  finish_wait_seconds: float = DEFAULT_FINISH_WAIT_SECONDS,
                  echoplex: bool = True, type_during_printing: bool = False,
                  stall_patience_seconds: float = DEFAULT_STALL_PATIENCE_SECONDS, reconnect_seconds: float = DEFAULT_RECONNECT_SECONDS,
+                 max_typed_line_characters: int = DEFAULT_MAX_TYPED_LINE_CHARACTERS,
+                 refused_character_retry_seconds: float = DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS,
+                 wait_log_reminder_seconds: float = DEFAULT_WAIT_LOG_REMINDER_SECONDS,
                  opener: Optional[Callable[[str, int, str], object]] = None, clock: Callable[[], float] = time.monotonic,
                  sleep: Callable[[float], None] = time.sleep, lister: Callable[[str], list] = glob.glob, strict: bool = False):
         """Args:
@@ -138,6 +141,9 @@ class TerminalPort:
             type_during_printing: False to throw away keys typed while a portent is being typed; True keeps them for the next read.
             stall_patience_seconds: How long to wait, once typing has begun, for a machine that stopped or went away, above 0.
             reconnect_seconds: How often to try a lost port again, above 0.
+            max_typed_line_characters: A line typed on the keyboard is ended at this many characters, a whole number of at least 1.
+            refused_character_retry_seconds: The pause before a character the machine refused is sent again, above 0.
+            wait_log_reminder_seconds: A long wait for the machine is mentioned in the log this often, above 0.
             lister: A function pattern -> list of matching device names. Default: glob.glob. Tests give a fake.
             opener: A function (port, baud, flow_control) -> an object with write(bytes), flush(), close(), read(size)
                 and reset_input_buffer(). Default: the real serial port.
@@ -163,6 +169,15 @@ class TerminalPort:
             lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
         self._reconnect = self._valid(
             reconnect_seconds, "reconnect_seconds", DEFAULT_RECONNECT_SECONDS,
+            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
+        self._max_typed_line = self._valid(
+            max_typed_line_characters, "max_typed_line_characters", DEFAULT_MAX_TYPED_LINE_CHARACTERS,
+            lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 1, "a whole number of at least 1")
+        self._refused_retry = self._valid(
+            refused_character_retry_seconds, "refused_character_retry_seconds", DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS,
+            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
+        self._wait_reminder = self._valid(
+            wait_log_reminder_seconds, "wait_log_reminder_seconds", DEFAULT_WAIT_LOG_REMINDER_SECONDS,
             lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
         self._lister = lister
         self._connect_failing = False            # the port has been unavailable since a warning was given
@@ -275,11 +290,11 @@ class TerminalPort:
                     still_alive()
                 except Exception:                    # a failing heartbeat must not end the wait
                     pass
-            if now - trouble.reminded >= REMINDER_SECONDS:
+            if now - trouble.reminded >= self._wait_reminder:
                 trouble.reminded = now
                 _log.warning("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
             if stalled:
-                self._sleep(STALL_RETRY_SECONDS)
+                self._sleep(self._refused_retry)
                 return True                          # the port is open: send the same character again
             # the port was lost: close it and open it again, every few seconds
             self.close()
@@ -346,7 +361,7 @@ class TerminalPort:
         if 32 <= code <= 126:
             self._line.append(chr(code))
             self._echo(chr(code))
-            if len(self._line) >= MAX_TYPED_LINE:
+            if len(self._line) >= self._max_typed_line:
                 line, self._line = "".join(self._line), []
                 self._echo(self._end_of_line)
                 return line

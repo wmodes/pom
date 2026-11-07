@@ -39,7 +39,7 @@ from werkzeug.serving import WSGIRequestHandler, make_server
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
-from pom.monitor.score_chart import DEFAULT_SECONDS as CHART_SECONDS, render_score_chart
+from pom.monitor.score_chart import ChartLook, render_score_chart
 from pom.monitor.score_trace import ScoreTrace
 from pom.monitor.turn_history import TurnHistory, TurnRecord
 
@@ -138,7 +138,7 @@ pre { background:var(--card); border:1px solid var(--line); border-radius:8px; p
 .chartbox { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.4rem .5rem; margin:.6rem 0 .2rem; }
 .chart { width:100%; height:auto; display:block; } .chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }
 .chart .key { fill:var(--muted); font:10px system-ui, sans-serif; } .chart .dot { fill:var(--dot); }
-.chart .bar { stroke:var(--bar); stroke-width:1.6; fill:none; } .chart .hit { fill:#e8872f; stroke:var(--bg); stroke-width:1; }
+.chart .bar { stroke:var(--bar); fill:none; } .chart .hit { fill:#e8872f; stroke:var(--bg); stroke-width:1; }
 .small { font-size:.8rem; }
 .muted { color: var(--muted); } .facts td:first-child { color:var(--muted); width:11rem; }
 @media (max-width: 40rem) { .hide-narrow { display:none; } }
@@ -186,7 +186,7 @@ _INDEX = """<!doctype html>
 {% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: <b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b></span>{% endfor %}</p>{% endif %}
 {% if s.algorithm or s.bar_description %}<p class="rule"><span class="muted">Bar type:</span> <b>{{ s.algorithm }}</b>{% if s.bar_description %} <span class="muted">&mdash; a score above {{ s.bar_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
-<p class="muted small">Black dots: attempts. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last 30 minutes.</p>{% endif %}
+<p class="muted small">Black dots: attempts. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last {{ chart_minutes }} minutes.</p>{% endif %}
 <h2>Turns, newest first</h2>
 {% if rows %}
 <table><thead><tr><th>Time</th><th class="num">Score</th><th class="num">Bar</th><th class="hide-narrow num">Window</th><th>Hinge</th></tr></thead><tbody>
@@ -237,7 +237,7 @@ class MonitorSite:
 
     def __init__(self, history: TurnHistory, password: str, show_hinges: bool = True,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
-                 clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None):
+                 clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None, chart=None):
         """Args:
             history: Where the turns are read from.
             password: The site's password; the site does not run without one.
@@ -246,12 +246,14 @@ class MonitorSite:
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise MonitorSiteError on any problem instead of recording it.
             trace: A ScoreTrace to draw the chart from; without one the page has no chart.
+            chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
         self._show_hinges = bool(show_hinges)
         self._status_source = status_source
         self._trace = trace
+        self._look = chart if chart is not None else ChartLook()
         self._clock = clock
         self._started_at = clock()
         self._server = None
@@ -356,7 +358,7 @@ class MonitorSite:
         if self._trace is None:
             return ""
         links = {record.heard_at: record.id for record in self._history.recent()}
-        return render_score_chart(self._trace.recent(CHART_SECONDS), links, CHART_SECONDS)
+        return render_score_chart(self._trace.recent(self._look.window_minutes * 60.0), links, self._look)
 
     def _row(self, record: TurnRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),
@@ -391,7 +393,7 @@ class MonitorSite:
             stats = self._stats(records)
             now = self._clock()
             script = _SCRIPT % {"newest": records[0].id if records else "null", "every": POLL_SECONDS}
-            return render_template_string(_INDEX, style=_STYLE, script=script, s=stats, chart=self._chart(),
+            return render_template_string(_INDEX, style=_STYLE, script=script, s=stats, chart=self._chart(), chart_minutes=f"{self._look.window_minutes:g}",
                                           services=list(stats["services"].items()),
                                           rows=[self._row(record, now) for record in records])
 

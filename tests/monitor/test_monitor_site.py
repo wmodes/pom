@@ -357,6 +357,29 @@ class TestTheChart:
         assert "Black dots: attempts." in page and "Red line: the bar each one had to beat." in page
         assert "Orange: qualifiers (click one)." in page and "The last 30 minutes." in page
 
+    def test_the_caption_and_the_chart_follow_the_configured_look(self):
+        from pom.monitor import ChartLook
+        trace, _, client = self.with_trace(chart=ChartLook(window_minutes=12, bar_line_width=2.5, qualifier_dot_radius=7))
+        trace.add(3.0, 5.0, 10.0, True)
+        page = get(client, "/").get_data(as_text=True)
+        assert "The last 12 minutes." in page and "The last 30 minutes." not in page
+        assert 'stroke-width="2.5"' in page and 'r="7"' in page
+        assert "last 12 minutes" in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_the_chart_window_also_picks_which_points_are_drawn(self):
+        from pom.monitor import ChartLook
+        trace, _, client = self.with_trace(chart=ChartLook(window_minutes=5))
+        trace.add(3.0, 5.0, 0.0)
+        trace.add(3.0, 5.0, 1000.0)                      # 1000 s after the first: outside a five-minute window
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 1
+
+    def test_a_window_longer_than_the_old_thirty_minutes_draws_all_of_it(self):
+        from pom.monitor import ChartLook
+        trace, _, client = self.with_trace(chart=ChartLook(window_minutes=60))
+        trace.add(3.0, 5.0, 0.0)
+        trace.add(3.0, 5.0, 2400.0)                      # forty minutes after the first: inside an hour, outside half an hour
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 2
+
     def test_without_a_trace_there_is_no_chart_and_no_route(self):
         _, history, client, _ = make()
         page = get(client, "/").get_data(as_text=True)

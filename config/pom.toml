@@ -58,6 +58,13 @@ clip_filter_score = 1.0
 failure_limit = 3
 retry_seconds = 30
 
+# Warming up: the first request to a model that was just loaded is slow, so once the scorer's server answers, the Printer sends it one
+# throwaway request, and the first real score is quick. While the server is not up yet, the Printer asks whether it is every
+# warmup_poll_seconds (above 0; it is also the pause between failed warm-up requests), and gives up warming after warmup_attempts failed
+# requests with the server up (a whole number of at least 1). The Printer works without the warm-up; it only makes the first score slower.
+warmup_poll_seconds = 5
+warmup_attempts = 3
+
 # What the model is told. This text defines what "interesting" means and what the numbers mean, so
 # it is the main thing to adjust. The model must answer with a single number; only the digit it
 # starts with is read, from its probabilities. Keep it free of anything specific to one room.
@@ -159,9 +166,9 @@ typed_lines_bar_influence = 0.1
 
 # --- percentile and decaying_quantile ---
 
-# How much of the room's recent scores a score must beat. 100 means beating the best score; 99.5 lets about one score in 200
+# The percentile the bar sits at: how much of the room's recent scores a score must beat. 100 means beating the best score; 99.5 lets about one score in 200
 # stand above the bar; 90 means the top tenth. Above 0 and at most 100. A lower number qualifies more often.
-percentile = 99.5
+bar_percentile = 99.5
 
 # --- percentile ---
 
@@ -181,6 +188,34 @@ min_scores = 20
 # time, so a quiet room and a busy one both remember "the last few minutes". Above 0. In replays, 300 gave about 7 qualifiers
 # an hour at percentile 99.5.
 half_life_seconds = 300
+
+# How much weight the starting bar (starting_bar, above) carries when the bar first begins, counted in scores' worth: 20 is like a minute or
+# two of talk. It fades on the same half-life as any score, counted from the bar's first use, so the bar slides from the starting bar to what
+# the room really does as the room speaks. A bigger number keeps the bar near the starting bar for longer; a smaller one lets the first few
+# scores set it sooner. Above 0.
+starting_bar_weight = 20
+
+# The anchor: how silence lowers the bar. Think of a click track, a steady tick that runs under the room the whole time. Each tick is a
+# stand-in score that goes into the bar's memory like an attempt and fades on the same half-life. While people talk, the real scores bury
+# the ticks; when the room goes quiet nothing buries them any more, and the bar settles toward this level instead of freezing at the last
+# crowd's high. There is no silence detection and no cutoff: the ticks always run. Ticks never qualify, never start a cooldown, and are
+# never counted as attempts.
+#
+# anchor_score is the value of each tick, calculated from the recordings' scores (their pooled 90th percentile). Rerun
+# scripts/dev/qualifying/report_score_percentiles.py after any scorer prompt or model change. Any number.
+anchor_score = 5.85
+
+# The time between ticks, in minutes. Shorter means silence pulls the bar down faster, and talk pulls it down slightly more, since ticks add weight
+# below the top. A very short interval makes every read of the bar slower, because it holds a tick for each interval across its memory. Above 0.
+# Tune on replays (scripts/dev/qualifying/replay_scores_through_bar.py).
+anchor_interval_minutes = 1
+
+# How long, in minutes, the decaying_quantile bar remembers a score (or a tick). Anything older is dropped from its memory. Scores already fade with the half-life, so a
+# dropped score had almost no weight; what this really decides is the end of a long quiet. Once every real score has been dropped, the bar is made of the ticks alone, so it
+# is the anchor (or the starting bar, if no tick has come yet). A busy crowd's high is held until its top scores have faded to about half a percent of the weight of the ticks,
+# or until this many minutes have passed, whichever comes first. Above 0. A very long memory with a very short anchor interval makes every read of the bar slower, since it
+# holds a tick for each interval across the memory.
+discard_scores_older_than_minutes = 120
 
 # --- moving_average ---
 
@@ -221,6 +256,11 @@ cut_every_seconds = 5
 hold_back_seconds = 2
 rewind_seconds = 0
 max_cut_seconds = 30
+
+# The most words one clip may have, a whole number of at least 1. Whisper's punctuation is what cuts speech into sentences, clauses and
+# phrases to be scored. A run of words with no punctuation at all is cut into consecutive windows of this many words, so a hinge is always a
+# bounded size. 40 was the first guess, and nothing since has tested it: in the recordings about one clip in eighty came out at exactly 40.
+max_clip_words = 40
 
 # The voice detector treats singing and most sounds as not speech. After this many runs in a row with no speech, whisper
 # is asked once, without it, about the last `room_tone_pass_seconds` of sound, and only lyrics and room tone like "(dog barks)"
@@ -321,6 +361,46 @@ show_hinges = true
 # How many seconds a turn stays on the page. It is kept in memory only, so a restart empties it. Above 0.
 history_seconds = 3600
 
+# How often, at most, the page's service lights (whisper, scorer, oracle) are checked, in seconds, above 0. The page polls every few seconds
+# while it is open; this keeps that from hammering the servers. A longer time makes a server's going down show later.
+service_check_seconds = 15
+
+
+# ================================================
+# CHART: the monitoring page's picture of the room's scores and the bar
+# ================================================
+
+# The page draws the last stretch of attempts as dots, the bar each one had to beat as a line, and the qualifiers as larger dots. Everything
+# that shapes the drawing is here. Colors are not: they belong to the page and follow its light and dark theme. The drawing is a picture with its own
+# coordinate space (drawing_width by drawing_height); it is scaled to the width of the page, so these are proportions, not pixels.
+[chart]
+
+# How much time the chart shows, back from the newest score, in minutes (above 0). The page's caption says it.
+window_minutes = 30
+
+# A label on the time axis this often, and a faint vertical line this often, both in minutes (above 0).
+label_every_minutes = 10
+gridline_every_minutes = 5
+
+# The top of the score scale (the bottom is 0): the scorer answers 0 to 9. A score outside the scale is drawn at the edge. And which scores get a
+# horizontal line and a label, as a list.
+score_max = 9
+score_gridlines = [0, 3, 6, 9]
+
+# The drawing's own size, and the room left around the plot for the labels (0 or more). The left margin holds the score labels and the bottom
+# margin the time labels; the margins must leave some room for the plot.
+drawing_width = 720
+drawing_height = 150
+margin_left = 24
+margin_right = 6
+margin_top = 8
+margin_bottom = 18
+
+# The radius of the dot for an attempt, of the larger dot for a qualifier, and the width of the line that is the bar (all above 0).
+attempt_dot_radius = 1.8
+qualifier_dot_radius = 4
+bar_line_width = 1.6
+
 
 # ================================================
 # PRINTING: how a portent is set on the page
@@ -410,6 +490,17 @@ stall_patience_seconds = 600
 
 # How often (in seconds, above 0) a lost port is tried again while waiting.
 reconnect_seconds = 2
+
+# A line typed on the typewriter's keyboard is ended at this many characters, so a stuck key cannot grow it without limit. A whole number of at
+# least 1. Far longer than any line anyone types.
+max_typed_line_characters = 500
+
+# The pause, in seconds (above 0), before a character the machine refused (its buffer is full, or it is held) is sent again.
+refused_character_retry_seconds = 1
+
+# While the Printer waits for a machine that has stalled, been held, run out of paper or gone away, it mentions the wait in the log this
+# often, in seconds (above 0). It only sets how chatty the log is.
+wait_log_reminder_seconds = 60
 
 # What the Printer prints on. "serial" is the real typewriter (the port above). "console" types on the screen at the same
 # pace, for development. "none" means no printer at all: a turn is write the portent, show it on the monitoring site, done,

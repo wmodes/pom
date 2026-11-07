@@ -177,6 +177,14 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
   `TRIGGERED`, `[trigger]`)
 - **qualifier bar influence**: How much a score that stood above the bar (a qualifier, or one held by the cooldown) influences the bar. It goes in as
   the bar plus this much of the way up to the score: 1 is the score itself, 0 the bar itself, 0.5 half way. A plain number, not limited to 0 to 1. Example: `qualifier_bar_influence`, `[qualifying]` (was: `exclude_qualifiers`, on or off)
+- **anchor**: A steady background of ticks under the room, so that silence lowers the bar: when the room goes quiet the bar settles toward the anchor score. Example: `anchor_score`,
+  `anchor_interval_minutes`, `[qualifying]`
+- **tick**: One of the anchor's stand-in scores: it has the anchor score for its value, sits in the bar's memory like an attempt and fades on the same half-life, but is never judged, never
+  qualifies, never starts a cooldown and is never counted as an attempt. Ticks fall on a fixed grid, one every anchor interval, from the bar's first use. Example: `DecayingQuantileBar._ticks_at()`
+- **anchor score**: The value of each tick, the level the bar settles toward in silence (the pooled 90th percentile of the recordings' scores to begin with). Example: `anchor_score`
+- **anchor interval**: The minutes between ticks; shorter pulls the bar down faster in silence. Example: `anchor_interval_minutes`
+- **discard age**: How many minutes the bar remembers a score, or a tick; older ones are dropped from its memory. Once every real score is dropped the bar is made of the ticks alone. Example:
+  `discard_scores_older_than_minutes`, `[qualifying]` (was: a constant, `MEMORY_HALF_LIVES`, 8 half-lives)
 - **bar**: The score an attempt must be above to qualify. Example: `Bar`, `bar_at()` (was: bar, `TriggerBar`, `trigger_level_at()`)
 - **bar types**: How the bar is set (`algorithm`): `percentile` of the window; `decaying_quantile`, a percentile in which a score counts
   half as much every `half_life_seconds` (the shipped choice); or `moving_average`, a decaying average plus a margin. Example:
@@ -184,10 +192,12 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
 - **window**: The field an attempt is placed against: the scores of the last `window_seconds` (300), or the last `min_scores` (20) if
   the room is quiet. A length of time, not a count. Every score joins it, the lowest too; a qualifier joins part of the way up
   from the bar to its score (see *qualifier bar influence*), so one zinger does not hold the bar up. Example: `window_seconds` (was/still: window)
-- **percentile**: How much of the window an attempt must beat (99.5 to begin with; 100 is the window's best). Example: `percentile`
-  (was/still)
+- **bar percentile**: How much of the room's recent scores an attempt must beat to qualify (99.5 to begin with; 100 is the best). The percentile the bar sits at. Example:
+  `bar_percentile`, `[qualifying]` (was: `percentile`; the *bar type* `percentile` keeps its name)
 - **starting bar**: Where the bar begins before the room has said enough to set one; it fades as the room speaks. Example:
   `starting_bar` (was/still)
+- **starting bar weight**: How many scores' worth of weight the starting bar carries when the bar first begins; it fades on the same half-life as any score. Example:
+  `starting_bar_weight`, `[qualifying]` (was: `starting_weight`, an argument the config never set)
 - **cooldown**: How long after a qualifier the next may come (`cooldown_seconds`, 60; 0 for none). Example: `cooldown_seconds`
   (was/still)
 - **hinge**: The clip (or typed line) that qualified; the basis for the portent. The bridge to Writing. Example: `hinge` (was/still)

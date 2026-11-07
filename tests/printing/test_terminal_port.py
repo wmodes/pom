@@ -392,11 +392,32 @@ def test_it_reads_everything_waiting_at_once():
     assert fake.read_sizes[0] == 6
 
 
-def test_a_line_that_goes_on_for_ever_is_ended_at_500_characters():
+def test_a_line_that_goes_on_for_ever_is_ended_at_the_limit():
     port, fake, _, _ = make(echoplex=False)
     fake.incoming += b"x" * 503 + b"\r"
     first, second = port.read_line(1), port.read_line(1)
-    assert len(first) == 500 and second == "xxx" and terminal_port.MAX_TYPED_LINE == 500
+    assert len(first) == terminal_port.DEFAULT_MAX_TYPED_LINE_CHARACTERS == 500 and second == "xxx"
+
+
+def test_the_typed_line_limit_is_a_setting():
+    port, fake, _, _ = make(echoplex=False, max_typed_line_characters=10)
+    fake.incoming += b"y" * 25 + b"\r"
+    assert [len(port.read_line(1)) for _ in range(3)] == [10, 10, 5]
+
+
+@pytest.mark.parametrize("option,bad", [("max_typed_line_characters", 0), ("max_typed_line_characters", 2.5), ("max_typed_line_characters", True),
+                                        ("max_typed_line_characters", "500"), ("refused_character_retry_seconds", 0),
+                                        ("refused_character_retry_seconds", -1), ("refused_character_retry_seconds", "1"),
+                                        ("wait_log_reminder_seconds", 0), ("wait_log_reminder_seconds", None), ("wait_log_reminder_seconds", True)])
+def test_a_bad_limit_means_the_default_with_a_warning(option, bad):
+    port = TerminalPort("/dev/x", **{option: bad})
+    assert len(port.report.warnings) == 1 and option in port.report.warnings[0]
+
+
+@pytest.mark.parametrize("option", ["max_typed_line_characters", "refused_character_retry_seconds", "wait_log_reminder_seconds"])
+def test_strict_mode_raises_on_a_bad_limit(option):
+    with pytest.raises(TerminalPortError):
+        TerminalPort("/dev/x", strict=True, **{option: 0})
 
 
 def test_a_line_ended_by_the_limit_is_echoed_a_line_ending_like_any_other():
@@ -684,6 +705,21 @@ class TestAHeldMachine:
             port.transmit("abcdef")
         reminders = [r.getMessage() for r in caplog.records if "still not typing" in r.getMessage()]
         assert len(reminders) == 2 and "2 of 6 characters" in reminders[0]
+
+    def test_the_reminder_interval_is_a_setting(self, caplog):
+        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 140)}, wait_log_reminder_seconds=30)
+        with caplog.at_level(logging.WARNING, logger="pom.printing.terminal_port"):
+            port.transmit("abcdef")
+        assert len([r for r in caplog.records if "still not typing" in r.getMessage()]) == 4          # 138 s of stall, a reminder every 30
+
+    def test_the_pause_before_a_refused_character_is_sent_again_is_a_setting(self):
+        failures = {n: SerialTimeoutException("held") for n in range(2, 12)}                           # ten refusals in a row
+        slow, slow_serial, _, _ = stalled_port(dict(failures), refused_character_retry_seconds=5)
+        quick, quick_serial, _, _ = stalled_port(dict(failures))
+        for port in (slow, quick):
+            port.transmit("abcd")
+        wait = lambda s: s.write_times[2] - s.write_times[1]
+        assert wait(slow_serial) > 45 and wait(quick_serial) < 15
 
     def test_the_heartbeat_is_called_while_waiting(self):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(1, 8)})

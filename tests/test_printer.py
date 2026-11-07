@@ -152,6 +152,33 @@ class TestWhatItPrintsOn:
         assert p.parts["turn_taker"]._terminal is p.terminal
 
 
+class TestTheMovedSettingsReachTheirParts:
+    """Each of these was a constant in a module; now the config says it and the entry point passes it in."""
+
+    def test_the_starting_bar_weight(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\nstarting_bar_weight = 9\n')
+        assert p.parts["bar_keeper"]._bar._starting_bar_weight == 9.0
+
+    def test_the_longest_clip(self, tmp_path):
+        assert build(tmp_path, "[listening]\nmax_clip_words = 12\n").parts["take_cutter"].max_words == 12
+
+    def test_the_scorer_warm_up(self, tmp_path):
+        p = build(tmp_path, "[scorer]\nwarmup_poll_seconds = 2.5\nwarmup_attempts = 7\n")
+        assert (p._warmer._poll_seconds, p._warmer._attempts) == (2.5, 7)
+
+    def test_the_service_check_interval(self, tmp_path):
+        assert build(tmp_path, "[monitor]\nservice_check_seconds = 40\n")._services._every == 40.0
+
+    def test_the_terminal_limits(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "serial"\nmax_typed_line_characters = 80\nrefused_character_retry_seconds = 0.5\n'
+                            "wait_log_reminder_seconds = 30\n")
+        assert (p.terminal._max_typed_line, p.terminal._refused_retry, p.terminal._wait_reminder) == (80, 0.5, 30.0)
+
+    def test_the_chart(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "x"\n[chart]\nwindow_minutes = 12\nbar_line_width = 2\n')
+        assert (p.site._look.window_minutes, p.site._look.bar_line_width) == (12.0, 2.0)
+
+
 class TestARoomBuiltAgain:
     """The Conductor builds the listening side again if it fails; the new one's stream clock carries on from the old one's."""
 

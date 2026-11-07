@@ -25,7 +25,8 @@ of being threaded through by hand. Today there are five:
                its own settings), `starting_bar` is where the bar begins, `cooldown_seconds` how long after a qualifier the next
                may come (60; 0 for none), `qualifier_bar_influence` how far up toward the score a score that stood above the bar goes into the
                bar, `typed_lines_score_multiplier` what a typed line's score is multiplied by (1.5) and `typed_lines_bar_influence` the same
-               dial for a typed line. The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
+               dial for a typed line, `anchor_score` and `anchor_interval_minutes` the steady tick that lets silence lower the bar, and `discard_scores_older_than_minutes` how long the
+               bar remembers a score, and `starting_bar_weight` how much the starting bar counts at first. The entry point builds the BarKeeper with `bar_keeper_from_settings(config.qualifying)`.
     [listening] A section (see ListeningSettings): how the Printer hears the room. The address and timeout of the
                whisper-server, the microphone's capture device and buffer, and the RollingCutter's `cut_every_seconds`, `hold_back_seconds`,
                `rewind_seconds` and `max_cut_seconds`, and the Eavesdropper's room-tone pass and room-tone memory. The defaults are the
@@ -45,6 +46,8 @@ of being threaded through by hand. Today there are five:
                online, telling whoever is there the Pi's address. Whether it types, its words (`{address}` and `{hostname}` are
                filled in), how long to wait for an address, and how often to ask whether the typewriter is there. The entry
                point builds the BootSlipper from `config.boot_slip`.
+    [chart]    A section (see ChartSettings): the monitoring page's chart of the room's scores and the bar: how much time it shows, its
+               axes and gridlines, the size of the drawing and its margins, and the dot sizes and line width. Colors are the page's own.
     [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
                baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
                (`echoplex`, `type_during_printing`). The entry point builds the
@@ -87,10 +90,17 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.clip_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
-         "oracle.temperature", "oracle.exemplar_redraws", "qualifying.min_scores", "qualifying.window_seconds", "qualifying.percentile",
+         "oracle.temperature", "oracle.exemplar_redraws", "qualifying.min_scores", "qualifying.window_seconds", "qualifying.bar_percentile",
          "qualifying.cooldown_seconds", "qualifying.algorithm", "qualifying.starting_bar", "qualifying.qualifier_bar_influence",
          "qualifying.half_life_seconds", "qualifying.average_fraction", "qualifying.average_half_life_scores",
          "qualifying.average_floor_fraction", "qualifying.typed_lines_score_multiplier", "qualifying.typed_lines_bar_influence",
+         "qualifying.anchor_score", "qualifying.anchor_interval_minutes", "qualifying.discard_scores_older_than_minutes",
+         "qualifying.starting_bar_weight", "listening.max_clip_words", "scorer.warmup_poll_seconds", "scorer.warmup_attempts",
+         "monitor.service_check_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
+         "terminal.wait_log_reminder_seconds",
+         "chart.window_minutes", "chart.label_every_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
+         "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
+         "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width",
          "listening.whisper_url", "listening.whisper_timeout", "listening.device",
          "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
          "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
@@ -112,12 +122,14 @@ DEFAULT_SCORER_CLIP_FILTER_SCORE = 1.0
 DEFAULT_SCORER_MIN_CONTENT_WORDS = 1
 DEFAULT_SCORER_FAILURE_LIMIT = 3
 DEFAULT_SCORER_RETRY_SECONDS = 30.0
+DEFAULT_SCORER_WARMUP_POLL_SECONDS = 5.0
+DEFAULT_SCORER_WARMUP_ATTEMPTS = 3
 DEFAULT_ORACLE_URL = "http://127.0.0.1:8099/v1/chat/completions"
 DEFAULT_ORACLE_TIMEOUT = 240.0
 DEFAULT_ORACLE_MAX_TOKENS = 300
 DEFAULT_ORACLE_EXEMPLAR_REDRAWS = 50
 DEFAULT_ORACLE_TEMPERATURE = 0.8
-DEFAULT_QUALIFYING_PERCENTILE = 99.5
+DEFAULT_QUALIFYING_BAR_PERCENTILE = 99.5
 DEFAULT_QUALIFYING_WINDOW_SECONDS = 300.0
 DEFAULT_QUALIFYING_MIN_SCORES = 20
 DEFAULT_QUALIFYING_COOLDOWN_SECONDS = 60.0
@@ -125,6 +137,10 @@ DEFAULT_QUALIFYING_ALGORITHM = "percentile"
 BAR_ALGORITHMS = ("percentile", "decaying_quantile", "moving_average")
 DEFAULT_QUALIFYING_STARTING_BAR = 6.8
 DEFAULT_QUALIFYING_HALF_LIFE_SECONDS = 300.0
+DEFAULT_QUALIFYING_ANCHOR_SCORE = 5.85
+DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES = 1.0
+DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES = 120.0
+DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT = 20.0
 DEFAULT_QUALIFYING_AVERAGE_FRACTION = 0.25
 DEFAULT_QUALIFYING_AVERAGE_HALF_LIFE_SCORES = 10.0
 DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION = 0.05
@@ -143,11 +159,13 @@ DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY = 3
 DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS = 10.0
 DEFAULT_LISTENING_ROOM_TONE_MEMORY = 6
 DEFAULT_LISTENING_SCORE_ROOM_TONE = False
+DEFAULT_LISTENING_MAX_CLIP_WORDS = 40
 DEFAULT_MONITOR_ENABLED = False
 DEFAULT_MONITOR_HOST = "0.0.0.0"
 DEFAULT_MONITOR_PORT = 8080
 DEFAULT_MONITOR_SHOW_HINGES = True
 DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
+DEFAULT_MONITOR_SERVICE_CHECK_SECONDS = 15.0
 DEFAULT_PRINTING_PAPER_WIDTH_INCHES = 8.5
 DEFAULT_PRINTING_MARGIN_INCHES = 1.0
 DEFAULT_PRINTING_CHARACTERS_PER_INCH = 10.0
@@ -172,6 +190,24 @@ DEFAULT_TERMINAL_ECHOPLEX = True
 DEFAULT_TERMINAL_TYPE_DURING_PRINTING = False
 DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS = 600.0
 DEFAULT_TERMINAL_RECONNECT_SECONDS = 2.0
+DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS = 500
+DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS = 1.0
+DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS = 60.0
+
+DEFAULT_CHART_WINDOW_MINUTES = 30.0
+DEFAULT_CHART_LABEL_EVERY_MINUTES = 10.0
+DEFAULT_CHART_GRIDLINE_EVERY_MINUTES = 5.0
+DEFAULT_CHART_SCORE_MAX = 9.0
+DEFAULT_CHART_SCORE_GRIDLINES = (0.0, 3.0, 6.0, 9.0)
+DEFAULT_CHART_DRAWING_WIDTH = 720.0
+DEFAULT_CHART_DRAWING_HEIGHT = 150.0
+DEFAULT_CHART_MARGIN_LEFT = 24.0
+DEFAULT_CHART_MARGIN_RIGHT = 6.0
+DEFAULT_CHART_MARGIN_TOP = 8.0
+DEFAULT_CHART_MARGIN_BOTTOM = 18.0
+DEFAULT_CHART_ATTEMPT_DOT_RADIUS = 1.8
+DEFAULT_CHART_QUALIFIER_DOT_RADIUS = 4.0
+DEFAULT_CHART_BAR_LINE_WIDTH = 1.6
 DEFAULT_TERMINAL_MODE = "serial"
 TERMINAL_MODES = ("serial", "console", "none")
 DEFAULT_CONDUCTOR_WRITING_SECONDS = 300.0
@@ -206,6 +242,9 @@ class ScorerSettings:
         min_content_words: Clips with fewer content words skip the model (0 = never skip).
         failure_limit: Model failures in a row that make the Scorer leave the model alone.
         retry_seconds: How long it leaves the model alone before trying again.
+        warmup_poll_seconds: While the scorer's server is not up yet, how often to ask whether it is (and the pause between failed warm-up requests),
+            above 0. At start-up the Printer sends the model one throwaway request once its server answers, so the first real score is fast.
+        warmup_attempts: How many warm-up requests may fail, with the server up, before the warm-up gives up, a whole number of at least 1.
         prompt_output: How the model is told to reply when it is scoring (a bare number).
         prompt_output_debug: How it is told to reply when explaining a score (the number and what
             content earned it). Only the debug view uses this.
@@ -223,6 +262,8 @@ class ScorerSettings:
     retry_seconds: float = DEFAULT_SCORER_RETRY_SECONDS
     prompt_output: str = ""
     prompt_output_debug: str = ""
+    warmup_poll_seconds: float = DEFAULT_SCORER_WARMUP_POLL_SECONDS
+    warmup_attempts: int = DEFAULT_SCORER_WARMUP_ATTEMPTS
 
     @property
     def prompt(self) -> str:
@@ -265,7 +306,7 @@ class QualifyingSettings:
     switching is one line.
 
     Attributes:
-        percentile: How much of the room's recent scores a score must beat to qualify, above 0 and at most 100. 100 means beating
+        bar_percentile: How much of the room's recent scores a score must beat to qualify, above 0 and at most 100. 100 means beating
             the best score; 99.5 beating all but about one in two hundred; 90 being in the top tenth. (percentile and decaying_quantile)
         window_seconds: How many seconds of recent scores the bar is drawn from, above 0 (300 is the last five minutes). Measured in
             time, not in scores, so it means the same in a busy room and a quiet one. (percentile)
@@ -288,8 +329,16 @@ class QualifyingSettings:
             line is someone speaking to the Printer directly, so its score is multiplied; the product is not capped at 9. (all)
         typed_lines_bar_influence: The same dial for a typed line, above the bar or below it: it goes in as the bar plus this much of the way up
             to its (multiplied) score. Any number, not limited to 0 to 1. A typed line never has a cooldown. (all)
+        anchor_score: The value of each tick, the steady stand-in score that runs under the room so that silence lowers the bar: when the room goes quiet,
+            the bar settles toward this level. Any number. (decaying_quantile)
+        anchor_interval_minutes: Minutes between ticks, above 0. Shorter pulls the bar down faster in silence, and a little lower during talk.
+            (decaying_quantile)
+        discard_scores_older_than_minutes: Minutes after which the bar drops a score, or a tick, from its memory, above 0. Once every real score is
+            dropped the bar is made of the ticks alone, so this is how long a crowd's high can be held at most. (decaying_quantile)
+        starting_bar_weight: How many scores' worth of weight the starting bar carries when the bar first begins, above 0. It fades on the same half-life
+            as any score, so the bar slides from the starting bar to what the room really does. (decaying_quantile)
     """
-    percentile: float = DEFAULT_QUALIFYING_PERCENTILE
+    bar_percentile: float = DEFAULT_QUALIFYING_BAR_PERCENTILE
     window_seconds: float = DEFAULT_QUALIFYING_WINDOW_SECONDS
     min_scores: int = DEFAULT_QUALIFYING_MIN_SCORES
     cooldown_seconds: float = DEFAULT_QUALIFYING_COOLDOWN_SECONDS
@@ -302,6 +351,10 @@ class QualifyingSettings:
     algorithm: str = DEFAULT_QUALIFYING_ALGORITHM
     typed_lines_score_multiplier: float = DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER
     typed_lines_bar_influence: float = DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE
+    anchor_score: float = DEFAULT_QUALIFYING_ANCHOR_SCORE
+    anchor_interval_minutes: float = DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES
+    discard_scores_older_than_minutes: float = DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES
+    starting_bar_weight: float = DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT
 
 
 @dataclass(frozen=True)
@@ -326,6 +379,8 @@ class ListeningSettings:
         room_tone_memory: How many recent bits of room tone to remember, a whole number of at least 1.
         score_room_tone: True lets room tone like "(dog barks)" be scored and become hinges, as
             speech does. False (the default) leaves them unscored.
+        max_clip_words: The most words one clip may have, a whole number of at least 1. Whisper's punctuation is what cuts speech into sentences,
+            clauses and phrases; a run of words with none is cut into consecutive windows of this many words, so a hinge is always a bounded size.
     """
     whisper_url: str = DEFAULT_LISTENING_WHISPER_URL
     whisper_timeout: float = DEFAULT_LISTENING_WHISPER_TIMEOUT
@@ -339,6 +394,7 @@ class ListeningSettings:
     room_tone_pass_seconds: float = DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS
     room_tone_memory: int = DEFAULT_LISTENING_ROOM_TONE_MEMORY
     score_room_tone: bool = DEFAULT_LISTENING_SCORE_ROOM_TONE
+    max_clip_words: int = DEFAULT_LISTENING_MAX_CLIP_WORDS
 
 
 @dataclass(frozen=True)
@@ -353,6 +409,8 @@ class MonitorSettings:
             which git ignores, never in pom.toml.
         show_hinges: True shows the hinge (what was said in the room) on the page; False shows numbers only.
         history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only.
+        service_check_seconds: How often, at most, the page's service lights (whisper, scorer, oracle) are checked, above 0, so the page's
+            polling does not hammer the servers.
     """
     enabled: bool = DEFAULT_MONITOR_ENABLED
     host: str = DEFAULT_MONITOR_HOST
@@ -360,6 +418,7 @@ class MonitorSettings:
     password: str = ""
     show_hinges: bool = DEFAULT_MONITOR_SHOW_HINGES
     history_seconds: float = DEFAULT_MONITOR_HISTORY_SECONDS
+    service_check_seconds: float = DEFAULT_MONITOR_SERVICE_CHECK_SECONDS
 
 
 @dataclass(frozen=True)
@@ -417,6 +476,10 @@ class TerminalSettings:
         stall_patience_seconds: Once a portent is being typed, how long to wait for a typewriter that stopped taking characters
             (held, out of paper) or went away (unplugged), above 0. It goes on where it stopped when it comes back.
         reconnect_seconds: How often a lost port is tried again, above 0.
+        max_typed_line_characters: A line typed on the typewriter's keyboard is ended at this many characters, so a stuck key cannot grow it
+            without limit. A whole number of at least 1.
+        refused_character_retry_seconds: The pause before a character the machine refused (a full buffer, a held machine) is sent again, above 0.
+        wait_log_reminder_seconds: A long wait for the machine (stalled, held, out of paper, gone) is mentioned in the log this often, above 0.
         mode: "serial" (the real typewriter, the default), "console" (types on the screen at the same pace, for development) or
             "none" (no printer: a turn is write, record, done, so the Printer can be watched with nothing attached).
     """
@@ -431,6 +494,9 @@ class TerminalSettings:
     stall_patience_seconds: float = DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS
     reconnect_seconds: float = DEFAULT_TERMINAL_RECONNECT_SECONDS
     mode: str = DEFAULT_TERMINAL_MODE
+    max_typed_line_characters: int = DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS
+    refused_character_retry_seconds: float = DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS
+    wait_log_reminder_seconds: float = DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS
 
 
 @dataclass(frozen=True)
@@ -480,6 +546,44 @@ class BootSlipSettings:
     retry_seconds: float = DEFAULT_BOOT_SLIP_RETRY_SECONDS
 
 
+@dataclass(frozen=True)
+class ChartSettings:
+    """The `[chart]` section: the monitoring page's chart of the room's scores and the bar.
+
+    Every number that shapes the chart is here. Colors are the page's own (they follow its light and dark theme).
+
+    Attributes:
+        window_minutes: How much time the chart shows, back from the newest score, above 0.
+        label_every_minutes: A label on the time axis this often, above 0.
+        gridline_every_minutes: A faint vertical line this often, above 0.
+        score_max: The top of the score scale, above 0 (the bottom is 0). A score outside the scale is drawn at the edge.
+        score_gridlines: The scores that get a horizontal line and a label, a list of numbers.
+        drawing_width: The drawing's own width, in the units its coordinates use (it scales to the width of the page), above 0.
+        drawing_height: The drawing's own height, above 0.
+        margin_left: The space left of the plot, 0 or more (the score labels sit there).
+        margin_right: The space right of the plot, 0 or more.
+        margin_top: The space above the plot, 0 or more.
+        margin_bottom: The space below the plot, 0 or more (the time labels sit there).
+        attempt_dot_radius: The radius of the dot for an attempt, above 0.
+        qualifier_dot_radius: The radius of the dot for a qualifier, above 0.
+        bar_line_width: The width of the line that is the bar, above 0.
+    """
+    window_minutes: float = DEFAULT_CHART_WINDOW_MINUTES
+    label_every_minutes: float = DEFAULT_CHART_LABEL_EVERY_MINUTES
+    gridline_every_minutes: float = DEFAULT_CHART_GRIDLINE_EVERY_MINUTES
+    score_max: float = DEFAULT_CHART_SCORE_MAX
+    score_gridlines: tuple = DEFAULT_CHART_SCORE_GRIDLINES
+    drawing_width: float = DEFAULT_CHART_DRAWING_WIDTH
+    drawing_height: float = DEFAULT_CHART_DRAWING_HEIGHT
+    margin_left: float = DEFAULT_CHART_MARGIN_LEFT
+    margin_right: float = DEFAULT_CHART_MARGIN_RIGHT
+    margin_top: float = DEFAULT_CHART_MARGIN_TOP
+    margin_bottom: float = DEFAULT_CHART_MARGIN_BOTTOM
+    attempt_dot_radius: float = DEFAULT_CHART_ATTEMPT_DOT_RADIUS
+    qualifier_dot_radius: float = DEFAULT_CHART_QUALIFIER_DOT_RADIUS
+    bar_line_width: float = DEFAULT_CHART_BAR_LINE_WIDTH
+
+
 class Config:
     """The project's shared settings, plus a report of anything that had to be recovered from.
 
@@ -498,6 +602,7 @@ class Config:
         terminal: The `[terminal]` section, as a TerminalSettings.
         conductor: The `[conductor]` section, as a ConductorSettings.
         boot_slip: The `[boot_slip]` section, as a BootSlipSettings.
+        chart: The `[chart]` section, as a ChartSettings.
         report: Problems found while loading (bad file, unknown key, wrong type).
     """
 
@@ -507,7 +612,8 @@ class Config:
                  qualifying: Optional[QualifyingSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
                  printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
-                 conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None):
+                 conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None,
+                 chart: Optional["ChartSettings"] = None):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
@@ -518,6 +624,7 @@ class Config:
         self.terminal = terminal if terminal is not None else TerminalSettings()
         self.conductor = conductor if conductor is not None else ConductorSettings()
         self.boot_slip = boot_slip if boot_slip is not None else BootSlipSettings()
+        self.chart = chart if chart is not None else ChartSettings()
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
@@ -571,6 +678,10 @@ class Config:
                                       "scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT, 1, report)
         scorer_retry = _number(values.get("scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS),
                                "scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS, 0.0, report)
+        scorer_warmup_poll = _positive(values.get("scorer.warmup_poll_seconds", DEFAULT_SCORER_WARMUP_POLL_SECONDS),
+                                       "scorer.warmup_poll_seconds", DEFAULT_SCORER_WARMUP_POLL_SECONDS, report)
+        scorer_warmup_attempts = _whole(values.get("scorer.warmup_attempts", DEFAULT_SCORER_WARMUP_ATTEMPTS),
+                                        "scorer.warmup_attempts", DEFAULT_SCORER_WARMUP_ATTEMPTS, 1, report)
 
         if "POM_STRICT" in environ:
             strict = _bool(environ["POM_STRICT"], "POM_STRICT", report)
@@ -593,7 +704,7 @@ class Config:
             scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, report)
         scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_clip_filter_score,
                                 scorer_min_content, scorer_failure_limit, scorer_retry, scorer_output,
-                                scorer_output_debug)
+                                scorer_output_debug, scorer_warmup_poll, scorer_warmup_attempts)
         oracle = OracleSettings(
             _text(values.get("oracle.url", DEFAULT_ORACLE_URL), "oracle.url", DEFAULT_ORACLE_URL, report),
             _number(values.get("oracle.timeout", DEFAULT_ORACLE_TIMEOUT), "oracle.timeout",
@@ -606,8 +717,8 @@ class Config:
             _whole(values.get("oracle.exemplar_redraws", DEFAULT_ORACLE_EXEMPLAR_REDRAWS), "oracle.exemplar_redraws",
                    DEFAULT_ORACLE_EXEMPLAR_REDRAWS, 0, report))
         qualifying = QualifyingSettings(
-            _percent(values.get("qualifying.percentile", DEFAULT_QUALIFYING_PERCENTILE),
-                     "qualifying.percentile", DEFAULT_QUALIFYING_PERCENTILE, report),
+            _percent(values.get("qualifying.bar_percentile", DEFAULT_QUALIFYING_BAR_PERCENTILE),
+                     "qualifying.bar_percentile", DEFAULT_QUALIFYING_BAR_PERCENTILE, report),
             _positive(values.get("qualifying.window_seconds", DEFAULT_QUALIFYING_WINDOW_SECONDS),
                       "qualifying.window_seconds", DEFAULT_QUALIFYING_WINDOW_SECONDS, report),
             _whole(values.get("qualifying.min_scores", DEFAULT_QUALIFYING_MIN_SCORES),
@@ -631,7 +742,15 @@ class Config:
             _number(values.get("qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER),
                     "qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER, 0.0, report),
             _finite(values.get("qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE),
-                    "qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE, report))
+                    "qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE, report),
+            _finite(values.get("qualifying.anchor_score", DEFAULT_QUALIFYING_ANCHOR_SCORE), "qualifying.anchor_score",
+                    DEFAULT_QUALIFYING_ANCHOR_SCORE, report),
+            _positive(values.get("qualifying.anchor_interval_minutes", DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES),
+                      "qualifying.anchor_interval_minutes", DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES, report),
+            _positive(values.get("qualifying.discard_scores_older_than_minutes", DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES),
+                      "qualifying.discard_scores_older_than_minutes", DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES, report),
+            _positive(values.get("qualifying.starting_bar_weight", DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT),
+                      "qualifying.starting_bar_weight", DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT, report))
         whisper_url = _text(values.get("listening.whisper_url", DEFAULT_LISTENING_WHISPER_URL), "listening.whisper_url",
                             DEFAULT_LISTENING_WHISPER_URL, report)
         if "POM_WHISPER_URL" in environ:
@@ -659,7 +778,9 @@ class Config:
             _whole(values.get("listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY),
                    "listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY, 1, report),
             _bool(values.get("listening.score_room_tone", DEFAULT_LISTENING_SCORE_ROOM_TONE),
-                  "listening.score_room_tone", report))
+                  "listening.score_room_tone", report),
+            _whole(values.get("listening.max_clip_words", DEFAULT_LISTENING_MAX_CLIP_WORDS), "listening.max_clip_words",
+                   DEFAULT_LISTENING_MAX_CLIP_WORDS, 1, report))
         monitor = MonitorSettings(
             _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report),
             _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, report),
@@ -667,7 +788,9 @@ class Config:
             _text(values.get("monitor.password", ""), "monitor.password", "", report),
             _bool(values.get("monitor.show_hinges", DEFAULT_MONITOR_SHOW_HINGES), "monitor.show_hinges", report),
             _positive(values.get("monitor.history_seconds", DEFAULT_MONITOR_HISTORY_SECONDS), "monitor.history_seconds",
-                      DEFAULT_MONITOR_HISTORY_SECONDS, report))
+                      DEFAULT_MONITOR_HISTORY_SECONDS, report),
+            _positive(values.get("monitor.service_check_seconds", DEFAULT_MONITOR_SERVICE_CHECK_SECONDS), "monitor.service_check_seconds",
+                      DEFAULT_MONITOR_SERVICE_CHECK_SECONDS, report))
         printing = PrintingSettings(
             _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
                       "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),
@@ -708,7 +831,38 @@ class Config:
                       "terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, report),
             _positive(values.get("terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS),
                       "terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS, report),
-            _choice(values.get("terminal.mode", DEFAULT_TERMINAL_MODE), "terminal.mode", DEFAULT_TERMINAL_MODE, TERMINAL_MODES, report))
+            _choice(values.get("terminal.mode", DEFAULT_TERMINAL_MODE), "terminal.mode", DEFAULT_TERMINAL_MODE, TERMINAL_MODES, report),
+            _whole(values.get("terminal.max_typed_line_characters", DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS),
+                   "terminal.max_typed_line_characters", DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS, 1, report),
+            _positive(values.get("terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS),
+                      "terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS, report),
+            _positive(values.get("terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS),
+                      "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, report))
+        chart = ChartSettings(
+            _positive(values.get("chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES), "chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES, report),
+            _positive(values.get("chart.label_every_minutes", DEFAULT_CHART_LABEL_EVERY_MINUTES), "chart.label_every_minutes",
+                      DEFAULT_CHART_LABEL_EVERY_MINUTES, report),
+            _positive(values.get("chart.gridline_every_minutes", DEFAULT_CHART_GRIDLINE_EVERY_MINUTES), "chart.gridline_every_minutes",
+                      DEFAULT_CHART_GRIDLINE_EVERY_MINUTES, report),
+            _positive(values.get("chart.score_max", DEFAULT_CHART_SCORE_MAX), "chart.score_max", DEFAULT_CHART_SCORE_MAX, report),
+            _numbers(values.get("chart.score_gridlines", DEFAULT_CHART_SCORE_GRIDLINES), "chart.score_gridlines",
+                     DEFAULT_CHART_SCORE_GRIDLINES, report),
+            _positive(values.get("chart.drawing_width", DEFAULT_CHART_DRAWING_WIDTH), "chart.drawing_width", DEFAULT_CHART_DRAWING_WIDTH, report),
+            _positive(values.get("chart.drawing_height", DEFAULT_CHART_DRAWING_HEIGHT), "chart.drawing_height", DEFAULT_CHART_DRAWING_HEIGHT, report),
+            _not_negative(values.get("chart.margin_left", DEFAULT_CHART_MARGIN_LEFT), "chart.margin_left", DEFAULT_CHART_MARGIN_LEFT, report),
+            _not_negative(values.get("chart.margin_right", DEFAULT_CHART_MARGIN_RIGHT), "chart.margin_right", DEFAULT_CHART_MARGIN_RIGHT, report),
+            _not_negative(values.get("chart.margin_top", DEFAULT_CHART_MARGIN_TOP), "chart.margin_top", DEFAULT_CHART_MARGIN_TOP, report),
+            _not_negative(values.get("chart.margin_bottom", DEFAULT_CHART_MARGIN_BOTTOM), "chart.margin_bottom", DEFAULT_CHART_MARGIN_BOTTOM, report),
+            _positive(values.get("chart.attempt_dot_radius", DEFAULT_CHART_ATTEMPT_DOT_RADIUS), "chart.attempt_dot_radius",
+                      DEFAULT_CHART_ATTEMPT_DOT_RADIUS, report),
+            _positive(values.get("chart.qualifier_dot_radius", DEFAULT_CHART_QUALIFIER_DOT_RADIUS), "chart.qualifier_dot_radius",
+                      DEFAULT_CHART_QUALIFIER_DOT_RADIUS, report),
+            _positive(values.get("chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH), "chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH, report))
+        if chart.drawing_width - chart.margin_left - chart.margin_right <= 0 or chart.drawing_height - chart.margin_top - chart.margin_bottom <= 0:
+            report.warn("chart: the margins leave no room for the plot; using the default drawing size and margins")
+            chart = ChartSettings(chart.window_minutes, chart.label_every_minutes, chart.gridline_every_minutes, chart.score_max,
+                                  chart.score_gridlines, attempt_dot_radius=chart.attempt_dot_radius,
+                                  qualifier_dot_radius=chart.qualifier_dot_radius, bar_line_width=chart.bar_line_width)
         conductor = ConductorSettings(
             _positive(values.get("conductor.writing_seconds", DEFAULT_CONDUCTOR_WRITING_SECONDS), "conductor.writing_seconds",
                       DEFAULT_CONDUCTOR_WRITING_SECONDS, report),
@@ -739,7 +893,7 @@ class Config:
             _number(values.get("boot_slip.retry_seconds", DEFAULT_BOOT_SLIP_RETRY_SECONDS), "boot_slip.retry_seconds",
                     DEFAULT_BOOT_SLIP_RETRY_SECONDS, 0.0, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
-                   printing, terminal, conductor, boot_slip)
+                   printing, terminal, conductor, boot_slip, chart)
 
 
 # A portent is at most this many characters per token (4 is typical English; 5 leaves room), for the printing time worked out below.
@@ -862,6 +1016,14 @@ def _finite(value, label: str, default: float, report: FaultRecorder) -> float:
     return default
 
 
+def _not_negative(value, label: str, default: float, report: FaultRecorder) -> float:
+    """A finite number of 0 or more (not a boolean); otherwise the default."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value < float("inf"):
+        return float(value)
+    report.warn(f"{label} must be a number of at least 0, got {value!r}; using {default:g}")
+    return default
+
+
 def _below_one(value, label: str, default: float, report: FaultRecorder) -> float:
     """A number from 0 up to but not including 1 (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 <= value < 1.0:
@@ -891,6 +1053,15 @@ def _whole(value, label: str, default: int, minimum: int, report: FaultRecorder)
     if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
         return value
     report.warn(f"{label} must be a whole number of at least {minimum}, got {value!r}; using {default}")
+    return default
+
+
+def _numbers(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
+    """A non-empty list of finite numbers (no booleans), as a tuple; otherwise the default."""
+    if (isinstance(value, (list, tuple)) and value
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and float("-inf") < v < float("inf") for v in value)):
+        return tuple(float(v) for v in value)
+    report.warn(f"{label} must be a list of numbers, got {value!r}; using {list(default)}")
     return default
 
 

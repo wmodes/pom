@@ -12,7 +12,8 @@ TESTBENCHES = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/l
                "scripts/dev/writing/write_portent_from_hinge.py",
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_turns.py",
                "scripts/dev/printing/format_text_for_typewriter.py",
-               "scripts/dev/printing/type_text_on_typewriter.py", "scripts/dev/qualifying/replay_scores_through_bar.py"]
+               "scripts/dev/printing/type_text_on_typewriter.py", "scripts/dev/qualifying/replay_scores_through_bar.py",
+               "scripts/dev/qualifying/report_score_percentiles.py"]
 
 
 def run(script, *args, env=None):
@@ -130,3 +131,49 @@ def test_the_type_testbench_returns_a_line_typed_after_the_portent():
     time.sleep(3)                                            # the portent is typed (fast) long before this
     output, _ = process.communicate("a reply\n", timeout=60)
     assert "typed back: 'a reply'" in output
+
+
+def test_the_replay_testbench_takes_the_bar_percentile_from_its_flag(tmp_path):
+    """A low bar percentile sits the bar low, so more of the same scores stand above it than at a high one."""
+    scores = tmp_path / "scores.csv"
+    scores.write_text("seconds_into_recording,score\n" + "".join(f"{i * 10},{1 + (i * 7) % 8}\n" for i in range(120)), encoding="utf-8")
+
+    def qualified(percentile):
+        result = run("scripts/dev/qualifying/replay_scores_through_bar.py", "--scores", str(scores), "--influence", "1",
+                     "--bar-percentile", str(percentile))
+        assert result.returncode == 0, result.stderr
+        return int(result.stdout.strip().splitlines()[-1].split()[1])           # the "qualified" column of the one row
+
+    assert qualified(5) > qualified(100)
+
+
+def test_the_replay_testbench_takes_the_anchor_from_its_flags(tmp_path):
+    """Steady middling scores under ticks at 9 sit the bar near 9; under ticks at 1, or with no ticks at all, they do not."""
+    scores = tmp_path / "scores.csv"
+    scores.write_text("seconds_into_recording,score\n" + "".join(f"{i * 10},5\n" for i in range(240)), encoding="utf-8")
+
+    def mean_bar(*flags):
+        result = run("scripts/dev/qualifying/replay_scores_through_bar.py", "--scores", str(scores), "--influence", "1", *flags)
+        assert result.returncode == 0, result.stderr
+        return float(result.stdout.strip().splitlines()[-1].split()[6])          # the "bar mean" column of the one row
+
+    high = mean_bar("--anchor-score", "9", "--anchor-interval-minutes", "0.5")
+    low = mean_bar("--anchor-score", "1", "--anchor-interval-minutes", "0.5")
+    none = mean_bar("--anchor-score", "9", "--anchor-interval-minutes", "1000000")
+    assert high > low and high > none
+
+
+def test_the_replay_testbench_can_ask_where_the_bar_sits_after_the_room_goes_quiet(tmp_path):
+    """A steady room of 8s, then an hour of quiet: with ticks the bar has settled at the anchor, without them it is still at the room's level."""
+    scores = tmp_path / "scores.csv"
+    scores.write_text("seconds_into_recording,score\n" + "".join(f"{i * 10},8\n" for i in range(60)), encoding="utf-8")
+
+    def after_an_hour(interval):
+        result = run("scripts/dev/qualifying/replay_scores_through_bar.py", "--scores", str(scores), "--influence", "1", "--anchor-score", "5",
+                     "--anchor-interval-minutes", interval, "--after-silence-minutes", "0", "--after-silence-minutes", "60")
+        assert result.returncode == 0, result.stderr
+        return [float(value) for value in result.stdout.strip().splitlines()[-1].split()[1:]]       # the +0m and +60m columns
+
+    on, off = after_an_hour("1"), after_an_hour("1000000")
+    assert on[0] == pytest.approx(off[0], abs=0.15) and 7.5 < off[0] < 8.1                                    # right after the room, ticks have changed the bar hardly at all
+    assert on[1] == pytest.approx(5.0, abs=0.05) and off[1] == pytest.approx(off[0], abs=0.01)              # an hour on: settled at the anchor, or frozen where it was

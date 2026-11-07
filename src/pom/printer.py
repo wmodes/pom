@@ -56,7 +56,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "config" / "pom.toml"
 PASSAGES = ROOT / "library" / "passages"
 NLTK_DATA = ROOT / "data" / "nltk"
-SERVICE_CHECK_SECONDS = 15.0          # the monitoring page's service lights are checked at most this often
+DEFAULT_SERVICE_CHECK_SECONDS = 15.0   # the monitoring page's service lights are checked at most this often (the fallback; `[monitor] service_check_seconds`)
 
 
 @dataclass(frozen=True)
@@ -101,7 +101,7 @@ def reachable(url: str) -> bool:
 class ServiceWatch:
     """Which servers answer, checked at most every `every` seconds so the monitoring page's polling does not hammer them."""
 
-    def __init__(self, checks: dict, every: float = SERVICE_CHECK_SECONDS, clock=time.monotonic):
+    def __init__(self, checks: dict, every: float = DEFAULT_SERVICE_CHECK_SECONDS, clock=time.monotonic):
         self._checks, self._every, self._clock, self._at, self._last = checks, every, clock, None, {}
 
     def __call__(self) -> dict:
@@ -184,9 +184,10 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                         clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                         failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
-    warmer = ScorerWarmer(scorer, lambda: answers(scoring.url))     # sends the scorer one throwaway request once its server is up
+    warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), poll_seconds=scoring.warmup_poll_seconds,
+                          attempts=scoring.warmup_attempts)     # sends the scorer one throwaway request once its server is up
     bar_keeper = bar_keeper_from_settings(qualifying)
-    take_cutter = TakeCutter()
+    take_cutter = TakeCutter(max_words=listening.max_clip_words)
 
     def make_deck():
         if options.wav:
@@ -253,13 +254,13 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
             trace.add(attempt.score, attempt.bar, attempt.heard_at, attempt.is_hinge)
 
     services = ServiceWatch({"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: answers(scoring.url),
-                             "oracle": lambda: answers(oracle.url)})
+                             "oracle": lambda: answers(oracle.url)}, every=monitor.service_check_seconds)
     site = None
     if monitor.enabled:
         if not monitor.password:
             _log.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
-            site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace,
+            site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, chart=config.chart,
                                status_source=lambda: MonitorStatus(bar=snapshot["bar"], window_size=snapshot["window"],
                                                                    sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
                                                                    services=services(), algorithm=qualifying.algorithm,
@@ -271,7 +272,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
-             "turn_taker": turn_taker, "trace": trace, "monitor": monitor, "keyboard": keyboard, "mode": mode,
+             "turn_taker": turn_taker, "trace": trace, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
              "warmer": warmer, "boot_slipper": slipper}
     return Printer(conductor, history, site, terminal, floor, parts, services, warmer, slipper)
 
@@ -284,7 +285,9 @@ def _make_terminal(mode: str, settings):
         return ConsoleTerminal(characters_per_second=settings.characters_per_second)
     return TerminalPort(settings.port, settings.baud, settings.flow_control, settings.end_of_line, settings.characters_per_second,
                         settings.finish_wait_seconds, settings.echoplex, settings.type_during_printing, settings.stall_patience_seconds,
-                        settings.reconnect_seconds)
+                        settings.reconnect_seconds, max_typed_line_characters=settings.max_typed_line_characters,
+                        refused_character_retry_seconds=settings.refused_character_retry_seconds,
+                        wait_log_reminder_seconds=settings.wait_log_reminder_seconds)
 
 
 def parse_options(argv=None) -> Options:

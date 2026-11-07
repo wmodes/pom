@@ -4,11 +4,27 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from pom.monitor.score_chart import (DEFAULT_SECONDS, HEIGHT, LEFT, RIGHT, TOP, BOTTOM, WIDTH, render_score_chart)
+from pom.monitor.score_chart import ChartLook, render_score_chart
 from pom.monitor.score_trace import TracePoint
 
 NS = "{http://www.w3.org/2000/svg}"
+LOOK = ChartLook()                                       # the fallbacks, which are also what the shipped config says
+WIDTH, HEIGHT = LOOK.drawing_width, LOOK.drawing_height
+LEFT, RIGHT, TOP, BOTTOM = LOOK.margin_left, LOOK.margin_right, LOOK.margin_top, LOOK.margin_bottom
+DEFAULT_SECONDS = LOOK.window_minutes * 60.0
 PLOT_W, PLOT_H = WIDTH - LEFT - RIGHT, HEIGHT - TOP - BOTTOM
+
+
+def render(points, qualifier_ids=None, seconds=None, width=None, height=None, **look):
+    """The chart with the default look, changed by keyword: `seconds` is the window in seconds, `width` and `height` the drawing's size, and any
+    other keyword is a `[chart]` setting."""
+    if seconds is not None:
+        look["window_minutes"] = seconds / 60.0
+    if width is not None:
+        look["drawing_width"] = width
+    if height is not None:
+        look["drawing_height"] = height
+    return render_score_chart(points, qualifier_ids, ChartLook(**look))
 
 
 def parse(svg):
@@ -33,47 +49,47 @@ def y_of(value):
 
 class TestTheFrame:
     def test_it_is_one_svg_with_a_viewbox_and_a_role(self):
-        root = parse(render_score_chart([point(0)]))
-        assert root.tag == NS + "svg" and root.get("viewBox") == f"0 0 {WIDTH} {HEIGHT}" and root.get("role") == "img"
+        root = parse(render([point(0)]))
+        assert root.tag == NS + "svg" and root.get("viewBox") == f"0 0 {WIDTH:g} {HEIGHT:g}" and root.get("role") == "img"
         assert root.get("class") == "chart"
 
     def test_it_is_well_formed_xml_in_every_case(self):
         for pts in ([], [point(0)], [point(0, qualified=True), point(5, bar=None)]):
-            parse(render_score_chart(pts, {0.0: 4}))
+            parse(render(pts, {0.0: 4}))
 
     def test_a_size_can_be_given(self):
-        assert parse(render_score_chart([point(0)], width=400, height=100)).get("viewBox") == "0 0 400 100"
+        assert parse(render([point(0)], width=400, height=100)).get("viewBox") == "0 0 400 100"
 
     def test_there_is_a_title_for_screen_readers_with_the_counts(self):
-        title = parse(render_score_chart([point(0), point(10, qualified=True), point(20)])).find(NS + "title").text
+        title = parse(render([point(0), point(10, qualified=True), point(20)])).find(NS + "title").text
         assert title == "Scores and the bar over the last 30 minutes: 3 sentences, 1 qualifiers."
 
     def test_the_gridlines_are_at_zero_three_six_and_nine(self):
-        root = parse(render_score_chart([point(0)]))
+        root = parse(render([point(0)]))
         lines = find(root, "line", "grid")
         assert sorted(float(line.get("y1")) for line in lines) == pytest.approx(sorted(y_of(v) for v in (0, 3, 6, 9)), abs=0.06)
         labels = [t.text for t in find(root, "text", "key") if t.text in {"0", "3", "6", "9"}]
         assert sorted(labels) == ["0", "3", "6", "9"]
 
     def test_the_gridlines_span_the_plot(self):
-        line = find(parse(render_score_chart([point(0)])), "line", "grid")[0]
+        line = find(parse(render([point(0)])), "line", "grid")[0]
         assert (float(line.get("x1")), float(line.get("x2"))) == (LEFT, WIDTH - RIGHT)
 
 
 class TestNoScoresYet:
     def test_it_says_so(self):
-        root = parse(render_score_chart([]))
+        root = parse(render([]))
         assert root.find(NS + "title").text == "No scores yet."
         assert [t.text for t in root.iter(NS + "text")] == ["No scores yet."]
 
     def test_it_draws_no_dots_or_lines(self):
-        root = parse(render_score_chart([]))
+        root = parse(render([]))
         assert not list(root.iter(NS + "circle")) and not list(root.iter(NS + "path")) and not list(root.iter(NS + "line"))
 
 
 class TestTheVerticalGrid:
     def lines(self, seconds=1800, **kw):
-        return find(parse(render_score_chart([point(0), point(seconds)], seconds=seconds, **kw)), "line", "vgrid")
+        return find(parse(render([point(0), point(seconds)], seconds=seconds, **kw)), "line", "vgrid")
 
     def test_there_is_a_vertical_line_every_five_minutes_back_from_now(self):
         lines = self.lines(1800)
@@ -94,61 +110,61 @@ class TestTheVerticalGrid:
         assert len(self.lines(900)) == 4 and len(self.lines(300)) == 2
 
     def test_there_are_twice_as_many_lines_as_time_labels(self):
-        root = parse(render_score_chart([point(0), point(1800)]))
+        root = parse(render([point(0), point(1800)]))
         labels = [t for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")]
         assert len(find(root, "line", "vgrid")) == 7 and len(labels) == 4
 
     def test_the_horizontal_grid_is_still_the_four_lines(self):
-        assert len(find(parse(render_score_chart([point(0), point(1800)])), "line", "grid")) == 4
+        assert len(find(parse(render([point(0), point(1800)])), "line", "grid")) == 4
 
     def test_an_empty_chart_has_no_lines(self):
-        assert not find(parse(render_score_chart([])), "line", "vgrid")
+        assert not find(parse(render([])), "line", "vgrid")
 
 
 class TestTheDots:
     def test_each_sentence_is_a_dot_at_its_score_and_time(self):
-        root = parse(render_score_chart([point(0, score=6.0), point(900, score=2.0)]))
+        root = parse(render([point(0, score=6.0), point(900, score=2.0)]))
         dots = find(root, "circle", "dot")
         assert len(dots) == 2
         assert [float(d.get("cx")) for d in dots] == pytest.approx([x_of(0, 900), x_of(900, 900)], abs=0.06)
         assert [float(d.get("cy")) for d in dots] == pytest.approx([y_of(6.0), y_of(2.0)], abs=0.06)
 
     def test_the_newest_point_is_at_the_right_edge_and_the_window_start_at_the_left(self):
-        dots = find(parse(render_score_chart([point(0), point(1800)])), "circle", "dot")
+        dots = find(parse(render([point(0), point(1800)])), "circle", "dot")
         assert float(dots[0].get("cx")) == pytest.approx(LEFT, abs=0.06) and float(dots[1].get("cx")) == pytest.approx(WIDTH - RIGHT, abs=0.06)
 
     def test_a_score_of_nine_is_at_the_top_and_zero_at_the_bottom(self):
-        dots = find(parse(render_score_chart([point(0, score=9.0), point(1, score=0.0)])), "circle", "dot")
+        dots = find(parse(render([point(0, score=9.0), point(1, score=0.0)])), "circle", "dot")
         assert float(dots[0].get("cy")) == pytest.approx(TOP, abs=0.06) and float(dots[1].get("cy")) == pytest.approx(TOP + PLOT_H, abs=0.06)
 
     def test_a_score_off_the_scale_is_drawn_at_the_edge(self):
-        dots = find(parse(render_score_chart([point(0, score=12.0), point(1, score=-3.0)])), "circle", "dot")
+        dots = find(parse(render([point(0, score=12.0), point(1, score=-3.0)])), "circle", "dot")
         assert float(dots[0].get("cy")) == pytest.approx(TOP, abs=0.06) and float(dots[1].get("cy")) == pytest.approx(TOP + PLOT_H, abs=0.06)
 
     def test_points_older_than_the_window_are_left_out(self):
-        root = parse(render_score_chart([point(0), point(2000), point(2100)], seconds=1800))
+        root = parse(render([point(0), point(2000), point(2100)], seconds=1800))
         assert len(find(root, "circle", "dot")) == 2
 
     def test_a_shorter_window_stretches_the_points_out(self):
         pts = [point(0), point(300)]
-        wide = parse(render_score_chart(pts, seconds=1800))
-        narrow = parse(render_score_chart(pts, seconds=300))
+        wide = parse(render(pts, seconds=1800))
+        narrow = parse(render(pts, seconds=300))
         gap = lambda r: float(find(r, "circle", "dot")[1].get("cx")) - float(find(r, "circle", "dot")[0].get("cx"))
         assert gap(narrow) > gap(wide) * 5
 
     def test_a_plain_dot_is_small_and_a_qualifier_dot_is_clearly_bigger(self):
-        root = parse(render_score_chart([point(0), point(1, qualified=True)]))
+        root = parse(render([point(0), point(1, qualified=True)]))
         dot, hit = float(find(root, "circle", "dot")[0].get("r")), float(find(root, "circle", "hit")[0].get("r"))
         assert dot < 3 and hit >= 2 * dot
 
     def test_a_qualifier_is_not_also_drawn_as_a_plain_dot(self):
-        root = parse(render_score_chart([point(0), point(1, qualified=True)]))
+        root = parse(render([point(0), point(1, qualified=True)]))
         assert len(find(root, "circle", "dot")) == 1 and len(find(root, "circle", "hit")) == 1
 
 
 class TestTheBar:
     def path(self, pts):
-        paths = find(parse(render_score_chart(pts)), "path", "bar")
+        paths = find(parse(render(pts)), "path", "bar")
         return paths[0].get("d") if paths else None
 
     def test_it_starts_at_the_first_bar_and_steps_to_each_next_one(self):
@@ -173,45 +189,45 @@ class TestTheBar:
         assert f" {y_of(9.0):.1f}" in d
 
     def test_the_line_has_the_bar_class_and_no_fill(self):
-        assert len(find(parse(render_score_chart([point(0)])), "path", "bar")) == 1
+        assert len(find(parse(render([point(0)])), "path", "bar")) == 1
 
 
 class TestTheQualifiers:
     def test_a_qualifier_is_a_larger_dot_at_its_score(self):
-        hit = find(parse(render_score_chart([point(0), point(900, score=7.5, qualified=True)])), "circle", "hit")[0]
+        hit = find(parse(render([point(0), point(900, score=7.5, qualified=True)])), "circle", "hit")[0]
         assert float(hit.get("r")) > 3 and float(hit.get("cy")) == pytest.approx(y_of(7.5), abs=0.06)
 
     def test_it_links_to_its_page_when_the_record_is_known(self):
-        svg = render_score_chart([point(0), point(900, qualified=True)], {900.0: 17})
+        svg = render([point(0), point(900, qualified=True)], {900.0: 17})
         links = [a for a in parse(svg).iter(NS + "a")]
         assert len(links) == 1 and links[0].get("href") == "/turn/17" and links[0].find(NS + "circle").get("class") == "hit"
 
     def test_it_has_no_link_when_the_record_is_not_known_yet(self):
-        svg = render_score_chart([point(0), point(900, qualified=True)], {})
+        svg = render([point(0), point(900, qualified=True)], {})
         root = parse(svg)
         assert not list(root.iter(NS + "a")) and len(find(root, "circle", "hit")) == 1
 
     def test_only_the_qualifier_with_a_record_is_linked(self):
         pts = [point(0, qualified=True), point(100, qualified=True)]
-        root = parse(render_score_chart(pts, {100.0: 5}))
+        root = parse(render(pts, {100.0: 5}))
         assert [a.get("href") for a in root.iter(NS + "a")] == ["/turn/5"] and len(find(root, "circle", "hit")) == 2
 
     def test_the_tooltip_has_the_score_and_the_bar(self):
-        hit = find(parse(render_score_chart([point(0, score=6.987, bar=6.5, qualified=True)])), "circle", "hit")[0]
+        hit = find(parse(render([point(0, score=6.987, bar=6.5, qualified=True)])), "circle", "hit")[0]
         assert hit.find(NS + "title").text == "score 6.99, bar 6.50"
 
     def test_the_tooltip_without_a_bar_has_only_the_score(self):
-        hit = find(parse(render_score_chart([point(0, score=6.987, bar=None, qualified=True)])), "circle", "hit")[0]
+        hit = find(parse(render([point(0, score=6.987, bar=None, qualified=True)])), "circle", "hit")[0]
         assert hit.find(NS + "title").text == "score 6.99"
 
     def test_a_qualifier_outside_the_window_is_left_out(self):
-        root = parse(render_score_chart([point(0, qualified=True), point(5000)], {0.0: 1}))
+        root = parse(render([point(0, qualified=True), point(5000)], {0.0: 1}))
         assert not find(root, "circle", "hit") and not list(root.iter(NS + "a"))
 
 
 class TestTheTimeAxis:
     def labels(self, seconds=1800):
-        root = parse(render_score_chart([point(0), point(seconds)], seconds=seconds))
+        root = parse(render([point(0), point(seconds)], seconds=seconds))
         return [t.text for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")]
 
     def test_it_runs_back_from_now_every_ten_minutes(self):
@@ -221,19 +237,19 @@ class TestTheTimeAxis:
         assert self.labels(900) == ["now", "-10 min"]
 
     def test_the_labels_sit_where_their_times_are(self):
-        root = parse(render_score_chart([point(0), point(1800)]))
+        root = parse(render([point(0), point(1800)]))
         texts = {t.text: float(t.get("x")) for t in find(root, "text", "key") if t.text in {"now", "-30 min"}}
         assert texts["now"] == pytest.approx(WIDTH - RIGHT, abs=0.06) and texts["-30 min"] == pytest.approx(LEFT, abs=0.06)
 
     def test_now_is_right_aligned_and_the_others_centred(self):
-        root = parse(render_score_chart([point(0), point(1800)]))
+        root = parse(render([point(0), point(1800)]))
         anchors = {t.text: t.get("text-anchor") for t in find(root, "text", "key") if t.text in {"now", "-10 min"}}
         assert anchors == {"now": "end", "-10 min": "middle"}
 
 
 class TestItIsNumbersOnly:
     def test_the_only_words_in_it_are_the_chart_s_own(self):
-        root = parse(render_score_chart([point(0, qualified=True), point(5), point(1500)], {0.0: 3}))
+        root = parse(render([point(0, qualified=True), point(5), point(1500)], {0.0: 3}))
         texts = [t.text for t in root.iter(NS + "text")]
         assert texts and all(re.fullmatch(r"\d|now|-\d+ min", text) for text in texts)
         titles = [t.text for t in root.iter(NS + "title")]
@@ -242,8 +258,55 @@ class TestItIsNumbersOnly:
 
     def test_the_output_is_stable(self):
         pts = [point(i * 7, score=(i % 9), bar=5 + (i % 3) / 2, qualified=(i % 11 == 0)) for i in range(60)]
-        assert render_score_chart(pts, {0.0: 1}) == render_score_chart(pts, {0.0: 1})
+        assert render(pts, {0.0: 1}) == render(pts, {0.0: 1})
 
     def test_a_busy_half_hour_draws_in_a_reasonable_size(self):
         pts = [point(i * 4, score=(i % 9), bar=6.0) for i in range(450)]
-        assert len(render_score_chart(pts)) < 90_000
+        assert len(render(pts)) < 90_000
+
+
+class TestEveryNumberIsASetting:
+    """What the `[chart]` section sets is what the drawing does; the colors are the page's."""
+
+    def test_the_window_sets_how_much_time_is_shown_and_what_the_title_says(self):
+        svg = render([point(0), point(1200), point(1800)], window_minutes=10)
+        root = parse(svg)
+        assert len(find(root, "circle", "dot")) == 2 and "last 10 minutes" in root.find(NS + "title").text
+
+    def test_the_label_spacing_sets_the_time_labels(self):
+        root = parse(render([point(0), point(1800)], label_every_minutes=15))
+        assert [t.text for t in find(root, "text", "key") if t.text and ("min" in t.text or t.text == "now")] == ["now", "-15 min", "-30 min"]
+
+    def test_the_gridline_spacing_sets_the_vertical_lines(self):
+        assert len(find(parse(render([point(0), point(1800)], gridline_every_minutes=10)), "line", "vgrid")) == 4
+
+    def test_the_score_max_sets_the_top_of_the_scale(self):
+        dots = find(parse(render([point(0, score=10.0), point(1, score=0.0)], score_max=10)), "circle", "dot")
+        assert float(dots[0].get("cy")) == pytest.approx(TOP, abs=0.06)
+
+    def test_the_gridlines_are_the_ones_asked_for_and_labelled(self):
+        root = parse(render([point(0)], score_gridlines=(0, 4.5, 9)))
+        lines = find(root, "line", "grid")
+        labels = [t.text for t in find(root, "text", "key") if t.text in ("0", "4.5", "9")]
+        assert len(lines) == 3 and labels == ["0", "4.5", "9"]
+
+    def test_the_gridlines_sit_where_the_score_max_puts_them(self):
+        """With a scale to 10, the line for 5 is half way up the plot."""
+        lines = find(parse(render([point(0)], score_max=10, score_gridlines=(0, 5, 10))), "line", "grid")
+        ys = sorted(float(line.get("y1")) for line in lines)
+        assert ys == pytest.approx([TOP, TOP + PLOT_H / 2, TOP + PLOT_H], abs=0.06)
+
+    def test_the_drawing_size_and_margins_set_the_plot(self):
+        root = parse(render([point(0), point(1800)], drawing_width=500, drawing_height=100, margin_left=40, margin_right=10, margin_top=5, margin_bottom=20))
+        assert root.get("viewBox") == "0 0 500 100"
+        xs = sorted(float(line.get("x1")) for line in find(root, "line", "vgrid"))
+        assert xs[0] == pytest.approx(40, abs=0.06) and xs[-1] == pytest.approx(490, abs=0.06)
+
+    def test_the_dot_radii_and_the_bar_width_are_in_the_drawing_not_the_page(self):
+        root = parse(render([point(0), point(1, qualified=True)], attempt_dot_radius=2.5, qualifier_dot_radius=6, bar_line_width=3))
+        assert find(root, "circle", "hit")[0].get("r") == "6" and find(root, "path", "bar")[0].get("stroke-width") == "3"
+        dot = parse(render([point(0), point(1800, qualified=True)], attempt_dot_radius=2.5))
+        assert find(dot, "circle", "dot")[0].get("r") == "2.5"
+
+    def test_with_no_look_the_fallbacks_are_the_shipped_numbers(self):
+        assert render_score_chart([point(0)]) == render_score_chart([point(0)], None, ChartLook())

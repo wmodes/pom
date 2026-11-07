@@ -30,7 +30,7 @@ from pom.qualifying.bar import Bar
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
 
-DEFAULT_PERCENTILE = 99.5
+DEFAULT_BAR_PERCENTILE = 99.5
 DEFAULT_WINDOW_SECONDS = 300.0
 DEFAULT_MIN_SCORES = 20
 DEFAULT_STARTING_BAR = 6.8
@@ -52,10 +52,10 @@ class PercentileBar(Bar):
         report: Problems met (a bad setting replaced by its default).
     """
 
-    def __init__(self, percentile: float = DEFAULT_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
+    def __init__(self, bar_percentile: float = DEFAULT_BAR_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
                  min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR, strict: bool = False):
         """Args:
-            percentile: How much of the window the bar sits above, above 0 and at most 100.
+            bar_percentile: How much of the window the bar sits above, above 0 and at most 100.
             window_seconds: How many seconds of recent scores the bar is drawn from, above 0.
             min_scores: The window always holds at least this many scores, and until this many have been heard the bar is
                 `starting_bar`; a whole number of at least 2.
@@ -63,7 +63,7 @@ class PercentileBar(Bar):
             strict: Raise PercentileBarError on any problem instead of recording it.
         """
         self.report = FaultRecorder(strict=strict, error=PercentileBarError, logger=_log)
-        self._percentile = self._valid(percentile, "percentile", DEFAULT_PERCENTILE,
+        self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE,
                                        lambda v: _is_number(v) and 0 < v <= 100, "a number above 0 and at most 100", float)
         self._window_seconds = self._valid(window_seconds, "window_seconds", DEFAULT_WINDOW_SECONDS,
                                            lambda v: _is_number(v) and v > 0, "a number above 0", float)
@@ -76,7 +76,7 @@ class PercentileBar(Bar):
     @classmethod
     def from_settings(cls, settings, strict: bool = False) -> "PercentileBar":
         """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores` and `starting_bar`."""
-        return cls(settings.percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict)
+        return cls(settings.bar_percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict)
 
     def _valid(self, value, name: str, default, is_good, wanted: str, convert):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -95,7 +95,7 @@ class PercentileBar(Bar):
         if window is None:
             return self._starting_bar
         ranked = sorted(window)
-        rank = math.ceil(round(self._percentile * len(ranked) / 100.0, 9))       # rounded: 64.4% of 250 is 161, not 161.00000000000003
+        rank = math.ceil(round(self._bar_percentile * len(ranked) / 100.0, 9))       # rounded: 64.4% of 250 is 161, not 161.00000000000003
         return ranked[rank - 1]
 
     def window_size_at(self, now: float) -> int:
@@ -112,7 +112,7 @@ class PercentileBar(Bar):
 
     def describe(self) -> str:
         """For example: the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8."""
-        return (f"the {self._percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
+        return (f"the {self._bar_percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
                 f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}")
 
     # --- The window -----------------------------------------------------------------

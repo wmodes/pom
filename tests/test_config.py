@@ -429,17 +429,17 @@ def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
 
 def test_the_qualifying_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.qualifying == QualifyingSettings() and config.qualifying.percentile == 99.5 and config.report.ok
+    assert config.qualifying == QualifyingSettings() and config.qualifying.bar_percentile == 99.5 and config.report.ok
 
 
 def test_the_qualifying_defaults_match_the_bars_defaults():
     from pom.qualifying import bar_keeper, decaying_quantile_bar, moving_average_bar, percentile_bar
     s = QualifyingSettings()
-    assert (s.percentile, s.window_seconds, s.min_scores, s.starting_bar) == (
-        pom.qualifying.percentile_bar.DEFAULT_PERCENTILE, pom.qualifying.percentile_bar.DEFAULT_WINDOW_SECONDS, pom.qualifying.percentile_bar.DEFAULT_MIN_SCORES,
+    assert (s.bar_percentile, s.window_seconds, s.min_scores, s.starting_bar) == (
+        pom.qualifying.percentile_bar.DEFAULT_BAR_PERCENTILE, pom.qualifying.percentile_bar.DEFAULT_WINDOW_SECONDS, pom.qualifying.percentile_bar.DEFAULT_MIN_SCORES,
         pom.qualifying.percentile_bar.DEFAULT_STARTING_BAR)
-    assert (s.percentile, s.half_life_seconds, s.starting_bar) == (
-        pom.qualifying.decaying_quantile_bar.DEFAULT_PERCENTILE, pom.qualifying.decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
+    assert (s.bar_percentile, s.half_life_seconds, s.starting_bar) == (
+        pom.qualifying.decaying_quantile_bar.DEFAULT_BAR_PERCENTILE, pom.qualifying.decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
         pom.qualifying.decaying_quantile_bar.DEFAULT_STARTING_BAR)
     assert (s.average_fraction, s.average_half_life_scores, s.average_floor_fraction, s.starting_bar) == (
         pom.qualifying.moving_average_bar.DEFAULT_FRACTION, pom.qualifying.moving_average_bar.DEFAULT_HALF_LIFE_SCORES, pom.qualifying.moving_average_bar.DEFAULT_FLOOR_FRACTION,
@@ -452,7 +452,7 @@ def test_the_starting_qualifying_values():
 
 
 def test_all_the_qualifying_values_are_read_from_the_section(tmp_path):
-    text = ("[qualifying]\nalgorithm = \"decaying_quantile\"\npercentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
+    text = ("[qualifying]\nalgorithm = \"decaying_quantile\"\nbar_percentile = 95\nwindow_seconds = 120\nmin_scores = 8\ncooldown_seconds = 90\n"
             "starting_bar = 5.5\nqualifier_bar_influence = 0.25\nhalf_life_seconds = 180\naverage_fraction = 0.5\n"
             "average_half_life_scores = 4\naverage_floor_fraction = 0.1\n")
     config = Config.load(write(tmp_path, text), environ={})
@@ -483,6 +483,121 @@ def test_a_bar_influence_is_any_number_and_is_not_limited_to_zero_to_one(tmp_pat
     assert getattr(config.qualifying, key) == expected and config.report.ok
 
 
+@pytest.mark.parametrize("text, expected", [("0", 0.0), ("5.85", 5.85), ("-2", -2.0), ("9", 9.0), ("12.5", 12.5)])
+def test_the_anchor_score_is_any_number(tmp_path, text, expected):
+    config = Config.load(write(tmp_path, f"[qualifying]\nanchor_score = {text}\n"), environ={})
+    assert config.qualifying.anchor_score == expected and config.report.ok
+
+
+@pytest.mark.parametrize("text, expected", [("1", 1.0), ("0.25", 0.25), ("2.5", 2.5), ("60", 60.0), ("0.001", 0.001)])
+def test_the_anchor_interval_is_any_number_of_minutes_above_zero(tmp_path, text, expected):
+    config = Config.load(write(tmp_path, f"[qualifying]\nanchor_interval_minutes = {text}\n"), environ={})
+    assert config.qualifying.anchor_interval_minutes == expected and config.report.ok
+
+
+@pytest.mark.parametrize("text, expected", [("1440", 1440.0), ("40", 40.0), ("0.5", 0.5), ("100000", 100000.0)])
+def test_the_discard_age_is_any_number_of_minutes_above_zero(tmp_path, text, expected):
+    config = Config.load(write(tmp_path, f"[qualifying]\ndiscard_scores_older_than_minutes = {text}\n"), environ={})
+    assert config.qualifying.discard_scores_older_than_minutes == expected and config.report.ok
+
+
+def test_the_anchor_and_discard_settings_fall_back_to_the_bars_own_fallbacks():
+    from pom.qualifying.decaying_quantile_bar import (DEFAULT_ANCHOR_INTERVAL_MINUTES, DEFAULT_ANCHOR_SCORE,
+                                                      DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES)
+    s = QualifyingSettings()
+    assert (s.anchor_score, s.anchor_interval_minutes, s.discard_scores_older_than_minutes) == \
+        (DEFAULT_ANCHOR_SCORE, DEFAULT_ANCHOR_INTERVAL_MINUTES, DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES)
+
+
+# ---- the settings that used to be constants in modules ----
+
+MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's default, bad values
+    ("qualifying", "starting_bar_weight", "7.5", 7.5, 20.0, ["0", "-1", '"20"', "true", "inf", "nan"]),
+    ("listening", "max_clip_words", "25", 25, 40, ["0", "-3", "2.5", '"40"', "true"]),
+    ("scorer", "warmup_poll_seconds", "2.5", 2.5, 5.0, ["0", "-1", '"5"', "true", "inf"]),
+    ("scorer", "warmup_attempts", "6", 6, 3, ["0", "-1", "1.5", '"3"', "true"]),
+    ("monitor", "service_check_seconds", "40", 40.0, 15.0, ["0", "-1", '"15"', "true", "inf"]),
+    ("terminal", "max_typed_line_characters", "80", 80, 500, ["0", "-1", "2.5", '"500"', "true"]),
+    ("terminal", "refused_character_retry_seconds", "0.5", 0.5, 1.0, ["0", "-1", '"1"', "true", "inf"]),
+    ("terminal", "wait_log_reminder_seconds", "30", 30.0, 60.0, ["0", "-1", '"60"', "true", "inf"]),
+]
+
+
+@pytest.mark.parametrize("section, key, text, expected, default, bad", MOVED)
+def test_a_moved_setting_is_read_and_starts_at_its_old_value(tmp_path, section, key, text, expected, default, bad):
+    assert getattr(getattr(Config(), section), key) == default
+    config = Config.load(write(tmp_path, f"[{section}]\n{key} = {text}\n"), environ={})
+    assert getattr(getattr(config, section), key) == expected and config.report.ok
+
+
+@pytest.mark.parametrize("section, key, text, expected, default, bad", MOVED)
+def test_a_bad_moved_setting_means_its_default_with_a_warning(tmp_path, section, key, text, expected, default, bad):
+    for value in bad:
+        config = Config.load(write(tmp_path, f"[{section}]\n{key} = {value}\n"), environ={})
+        assert getattr(getattr(config, section), key) == default
+        assert len(config.report.warnings) == 1 and f"{section}.{key}" in config.report.warnings[0]
+
+
+def test_the_committed_config_sets_every_moved_setting():
+    import tomllib
+    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
+        document = tomllib.load(f)
+    for section, key, *_ in MOVED:
+        assert key in document[section], f"[{section}] {key} is not in config/pom.toml"
+
+
+# ---- the [chart] section ----
+
+CHART_GOOD = [("window_minutes", "12", 12.0), ("label_every_minutes", "4", 4.0), ("gridline_every_minutes", "2", 2.0), ("score_max", "10", 10.0),
+              ("score_gridlines", "[0, 5, 10]", (0.0, 5.0, 10.0)), ("drawing_width", "600", 600.0), ("drawing_height", "120", 120.0),
+              ("margin_left", "30", 30.0), ("margin_right", "0", 0.0), ("margin_top", "0", 0.0), ("margin_bottom", "20", 20.0),
+              ("attempt_dot_radius", "2.5", 2.5), ("qualifier_dot_radius", "6", 6.0), ("bar_line_width", "2", 2.0)]
+CHART_BAD = [("window_minutes", "0"), ("window_minutes", '"30"'), ("window_minutes", "true"), ("label_every_minutes", "-1"), ("gridline_every_minutes", "0"),
+             ("score_max", "0"), ("score_max", "nan"), ("score_gridlines", "[]"), ("score_gridlines", '["a"]'), ("score_gridlines", "[1, true]"),
+             ("score_gridlines", "5"), ("drawing_width", "0"), ("drawing_height", "-5"), ("margin_left", "-1"), ("margin_right", '"6"'),
+             ("margin_top", "true"), ("margin_top", "-1"), ("margin_right", "-1"), ("margin_bottom", "-1"), ("margin_bottom", "inf"), ("attempt_dot_radius", "0"), ("qualifier_dot_radius", "-2"), ("bar_line_width", '"1.6"')]
+
+
+def test_the_chart_starts_at_the_old_hard_coded_numbers():
+    from pom.config import ChartSettings
+    c = Config().chart
+    assert c == ChartSettings() and (c.window_minutes, c.label_every_minutes, c.gridline_every_minutes, c.score_max) == (30.0, 10.0, 5.0, 9.0)
+    assert c.score_gridlines == (0.0, 3.0, 6.0, 9.0) and (c.drawing_width, c.drawing_height) == (720.0, 150.0)
+    assert (c.margin_left, c.margin_right, c.margin_top, c.margin_bottom) == (24.0, 6.0, 8.0, 18.0)
+    assert (c.attempt_dot_radius, c.qualifier_dot_radius, c.bar_line_width) == (1.8, 4.0, 1.6)
+
+
+@pytest.mark.parametrize("key, text, expected", CHART_GOOD)
+def test_a_chart_setting_is_read(tmp_path, key, text, expected):
+    config = Config.load(write(tmp_path, f"[chart]\n{key} = {text}\n"), environ={})
+    assert getattr(config.chart, key) == expected and config.report.ok
+
+
+@pytest.mark.parametrize("key, value", CHART_BAD)
+def test_a_bad_chart_setting_means_the_default_with_a_warning(tmp_path, key, value):
+    from pom.config import ChartSettings
+    config = Config.load(write(tmp_path, f"[chart]\n{key} = {value}\n"), environ={})
+    assert config.chart == ChartSettings()
+    assert len(config.report.warnings) == 1 and f"chart.{key}" in config.report.warnings[0]
+
+
+def test_margins_that_leave_no_room_for_the_plot_mean_the_default_size_and_margins(tmp_path):
+    from pom.config import ChartSettings
+    config = Config.load(write(tmp_path, "[chart]\ndrawing_width = 100\nmargin_left = 60\nmargin_right = 40\nbar_line_width = 3\n"), environ={})
+    assert config.chart.drawing_width == 720.0 and config.chart.margin_left == 24.0 and config.chart.bar_line_width == 3.0
+    assert any("no room for the plot" in w for w in config.report.warnings)
+    assert Config.load(write(tmp_path, "[chart]\ndrawing_height = 20\nmargin_top = 10\nmargin_bottom = 10\n"), environ={}).chart.drawing_height == 150.0
+
+
+def test_the_committed_config_sets_every_chart_key():
+    import tomllib
+    from dataclasses import fields
+    from pom.config import ChartSettings
+    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
+        section = tomllib.load(f)["chart"]
+    assert set(section) == {field.name for field in fields(ChartSettings)}
+
+
 def test_the_qualifier_bar_influence_starts_at_a_half():
     assert QualifyingSettings().qualifier_bar_influence == 0.5
 
@@ -494,15 +609,15 @@ def test_the_old_names_are_gone_and_are_warned_about_as_unknown_keys(tmp_path, k
 
 
 def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
-    text = ("[qualifying]\npercentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
+    text = ("[qualifying]\nbar_percentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
             "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
     config = Config.load(write(tmp_path, text), environ={})
     assert config.qualifying == QualifyingSettings(0.001, 0.5, 2, 0.0, -3.0, 0.5, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
 
 
 @pytest.mark.parametrize("key,value", [
-    ("percentile", "0"), ("percentile", "-1"), ("percentile", "100.1"), ("percentile", '"99"'), ("percentile", "true"),
-    ("percentile", "[99]"), ("percentile", "inf"), ("percentile", "nan"),
+    ("bar_percentile", "0"), ("bar_percentile", "-1"), ("bar_percentile", "100.1"), ("bar_percentile", '"99"'), ("bar_percentile", "true"),
+    ("bar_percentile", "[99]"), ("bar_percentile", "inf"), ("bar_percentile", "nan"),
     ("window_seconds", "0"), ("window_seconds", "-1"), ("window_seconds", '"300"'), ("window_seconds", "true"),
     ("window_seconds", "inf"), ("window_seconds", "nan"),
     ("min_scores", "1"), ("min_scores", "0"), ("min_scores", "-1"), ("min_scores", "2.5"), ("min_scores", '"5"'),
@@ -523,7 +638,12 @@ def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
     ("typed_lines_score_multiplier", "-0.1"), ("typed_lines_score_multiplier", '"1.5"'), ("typed_lines_score_multiplier", "true"),
     ("typed_lines_score_multiplier", "[1.5]"),
     ("typed_lines_bar_influence", '"maybe"'), ("typed_lines_bar_influence", "true"), ("typed_lines_bar_influence", "[1]"),
-    ("typed_lines_bar_influence", "inf"), ("typed_lines_bar_influence", "nan")])
+    ("typed_lines_bar_influence", "inf"), ("typed_lines_bar_influence", "nan"),
+    ("anchor_score", '"5.85"'), ("anchor_score", "true"), ("anchor_score", "[5.85]"), ("anchor_score", "inf"), ("anchor_score", "nan"),
+    ("anchor_interval_minutes", "0"), ("anchor_interval_minutes", "-1"), ("anchor_interval_minutes", '"1"'), ("anchor_interval_minutes", "true"),
+    ("anchor_interval_minutes", "inf"), ("anchor_interval_minutes", "nan"),
+    ("discard_scores_older_than_minutes", "0"), ("discard_scores_older_than_minutes", "-5"), ("discard_scores_older_than_minutes", '"1440"'),
+    ("discard_scores_older_than_minutes", "true"), ("discard_scores_older_than_minutes", "inf"), ("discard_scores_older_than_minutes", "nan")])
 def test_a_bad_qualifying_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {value}\n"), environ={})
     assert config.qualifying == QualifyingSettings()
@@ -537,14 +657,14 @@ def test_an_unknown_or_removed_qualifying_key_is_warned_about(tmp_path, key):
 
 
 def test_the_qualifying_section_merges_key_by_key_with_the_local_file(tmp_path):
-    main = write(tmp_path, "[qualifying]\npercentile = 95\nmin_scores = 8\n")
-    (tmp_path / "pom.local.toml").write_text("[qualifying]\npercentile = 90\nalgorithm = \"moving_average\"\n", encoding="utf-8")
-    assert Config.load(main, environ={}).qualifying == QualifyingSettings(percentile=90.0, min_scores=8, algorithm="moving_average")
+    main = write(tmp_path, "[qualifying]\nbar_percentile = 95\nmin_scores = 8\n")
+    (tmp_path / "pom.local.toml").write_text("[qualifying]\nbar_percentile = 90\nalgorithm = \"moving_average\"\n", encoding="utf-8")
+    assert Config.load(main, environ={}).qualifying == QualifyingSettings(bar_percentile=90.0, min_scores=8, algorithm="moving_average")
 
 
 def test_the_qualifying_settings_plug_straight_into_the_bar_keeper(tmp_path):
     from pom.qualifying import bar_keeper_from_settings, Ruling
-    text = "[qualifying]\npercentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
+    text = "[qualifying]\nbar_percentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
     settings = Config.load(write(tmp_path, text), environ={}).qualifying
     bar_keeper = bar_keeper_from_settings(settings)
     assert bar_keeper.report.ok
@@ -1026,7 +1146,8 @@ def test_the_committed_config_sets_every_terminal_key():
     with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
         section = tomllib.load(f)["terminal"]
     assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
-                            "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds", "mode"}
+                            "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds", "mode",
+                            "max_typed_line_characters", "refused_character_retry_seconds", "wait_log_reminder_seconds"}
 
 
 def test_a_config_built_without_terminal_settings_has_the_defaults():

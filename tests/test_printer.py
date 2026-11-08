@@ -437,6 +437,37 @@ class TestTheMonitoringSite:
         assert len(p.parts["notebook"].recent()) == 1                  # only the scored one is a point on the chart
         assert p.parts["notebook"].report.ok                           # and the unscored one was never offered to it
 
+    @staticmethod
+    def attempt(at):
+        from pom.qualifying import Attempt, Ruling
+        from pom.scoring import ScoredBy
+        return Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, at, 5.0, 3, 1)
+
+    def test_the_notebook_writes_down_the_anchors_ticks_between_close_attempts(self, tmp_path):
+        p = build(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n')
+        p.conductor._on_attempt(self.attempt(30.0))
+        p.conductor._on_attempt(self.attempt(200.0))
+        ticks = p.parts["notebook"].ticks()
+        assert [tick.at for tick in ticks] == [60.0, 120.0, 180.0] and all(tick.bar is not None for tick in ticks)   # one a minute, from the bar's own start
+
+    def test_before_the_first_attempt_the_ticks_run_from_the_streams_start(self, tmp_path):
+        p = build(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n')
+        p.conductor._on_attempt(self.attempt(150.0))
+        assert [tick.at for tick in p.parts["notebook"].ticks()] == [60.0, 120.0]
+
+    def test_but_none_across_a_silence_as_long_as_the_chart_draws_as_a_break(self, tmp_path):
+        # (the same two attempts as above, with the break set short enough that 170 s is one)
+        p = build(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n[chart]\nlongest_silence_minutes = 2\n')
+        p.conductor._on_attempt(self.attempt(30.0))
+        p.conductor._on_attempt(self.attempt(200.0))                    # 170 s later: more than the 2 minutes
+        assert p.parts["notebook"].ticks() == []
+
+    def test_the_notebooks_size_limit_is_the_configured_one(self, tmp_path):
+        p = build(tmp_path, "[monitor]\nchart_notebook_max_entries = 2\n")
+        for at in (10.0, 20.0, 30.0):
+            p.conductor._on_attempt(self.attempt(at))
+        assert len(p.parts["notebook"].recent()) == 2
+
 
 class TestOptions:
     def test_the_defaults(self):

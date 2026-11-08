@@ -757,10 +757,10 @@ class TestTheChartMovesWithTheStream:
     """With the stream's clock and the bar's ticks the chart is drawn up to now, so it moves in a quiet room."""
 
     @staticmethod
-    def moving(now=1000.0, ticks=None, status=None, **options):
+    def moving(now=1000.0, ticks=None, status=None, notebook=None, **options):
         calls = []
         stream = [now]
-        notebook = ChartNotebook()
+        notebook = notebook if notebook is not None else ChartNotebook()
 
         def source(start, end):
             calls.append((start, end))
@@ -797,17 +797,54 @@ class TestTheChartMovesWithTheStream:
         get(client, "/chart.svg")
         assert calls == [(5000.0 - 50 * 60.0, 5000.0)]
 
-    def test_it_asks_back_as_far_as_the_oldest_attempt_kept_so_a_silence_is_covered(self):
+    def test_it_asks_only_for_the_live_stretch_since_the_newest_attempt(self):
         notebook, client, calls, _ = self.moving(now=5000.0)
-        notebook.add(3.0, 5.0, 2000.0)                                                 # older than the 30 minute window
+        notebook.add(3.0, 5.0, 4900.0)                                              # 100 s ago: still short of a silence
         get(client, "/chart.svg")
-        assert calls == [(2000.0, 5000.0)]
+        assert calls == [(4900.0, 5000.0)]
 
-    def test_but_never_further_back_than_the_page_remembers(self):
+    def test_in_a_silence_the_source_is_not_asked_at_all(self):
         notebook, client, calls, _ = self.moving(now=50_000.0)
-        notebook.add(3.0, 5.0, 100.0)                                                  # hours old: the page keeps an hour
+        notebook.add(3.0, 5.0, 100.0)                                               # hours ago: the chart draws that as a break, hiding what is inside
         get(client, "/chart.svg")
-        assert calls == [(50_000.0 - 3600.0, 50_000.0)]
+        assert calls == []
+
+    def test_exactly_the_longest_silence_is_still_live(self):
+        notebook, client, calls, _ = self.moving(now=1000.0)
+        notebook.add(3.0, 5.0, 700.0)                                               # exactly 5 minutes ago
+        get(client, "/chart.svg")
+        assert calls == [(700.0, 1000.0)]
+
+    def test_a_longer_longest_silence_keeps_the_live_stretch_longer(self):
+        from pom.monitor import ChartLook
+        notebook, client, calls, _ = self.moving(now=1000.0, chart=ChartLook(longest_silence_minutes=20))
+        notebook.add(3.0, 5.0, 100.0)
+        get(client, "/chart.svg")
+        assert calls == [(100.0, 1000.0)]
+
+    def test_the_ticks_the_notebook_wrote_are_drawn(self):
+        notebook, client, _, _ = self.moving(now=1000.0, notebook=ChartNotebook(ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0, 180.0)
+                                                                                                       if a < t <= b], began_at=0.0))
+        notebook.add(3.0, 6.0, 200.0)
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="tick"') == 3
+
+    def test_the_saved_ticks_and_the_live_ones_are_both_drawn(self):
+        notebook = ChartNotebook(ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0) if a < t <= b], began_at=0.0)
+        notebook.add(3.0, 6.0, 150.0)                                               # writes ticks 60 and 120
+        _, client, calls, _ = self.moving(now=330.0, notebook=notebook, ticks=[(240.0, 5.85, 5.9), (300.0, 5.85, 5.8)])
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="tick"') == 4
+
+    def test_a_saved_tick_from_before_a_long_silence_is_still_drawn(self):
+        notebook = ChartNotebook(ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0) if a < t <= b], began_at=0.0)
+        notebook.add(3.0, 6.0, 150.0)
+        _, client, _, _ = self.moving(now=150.0 + 14 * 3600.0, notebook=notebook)           # fifteen hours of nothing, and the ticks are still in the notebook
+        svg = get(client, "/chart.svg").get_data(as_text=True)
+        assert svg.count('class="tick"') == 2 and ">silence<" in svg
+
+    def test_the_start_of_the_live_stretch_is_not_drawn_twice(self):
+        notebook, client, _, _ = self.moving(now=1000.0, ticks=[(900.0, 5.85, 6.0), (960.0, 5.85, 5.9)])
+        notebook.add(3.0, 6.0, 900.0)
+        assert get(client, "/chart.svg").get_data(as_text=True).count('class="tick"') == 1          # the tick at 900 belongs to the attempt at 900
 
     def test_the_bar_line_runs_to_the_right_edge_at_the_bar_now(self):
         notebook, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
@@ -879,7 +916,7 @@ class TestTheQuietStart:
         assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_once_the_notebook_has_forgotten_an_attempt_the_start_is_not_used(self):
-        notebook = ChartNotebook(max_points=2)
+        notebook = ChartNotebook(max_entries=2)
         for at in (3000.0, 3010.0, 3020.0):
             notebook.add(3.0, 5.0, at)
         notebook, client = self.site(now=3030.0, notebook=notebook)

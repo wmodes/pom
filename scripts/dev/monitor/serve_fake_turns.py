@@ -76,7 +76,8 @@ class InventedRoom:
     def __init__(self, config: Config, history: TurnHistory, rng: random.Random, speed: float, head_start_minutes: float = 35.0,
                  quiet_start_minutes: float = 0.0):
         self.keeper = bar_keeper_from_settings(config.qualifying, 0.0)
-        self.notebook = ChartNotebook(config.monitor.history_seconds)
+        self.notebook = ChartNotebook(config.monitor.history_seconds, config.monitor.chart_notebook_max_entries, ticks_source=self.keeper.ticks_between,
+                                      longest_silence_seconds=config.chart.longest_silence_minutes * 60.0, began_at=0.0)
         self.history, self.rng, self.speed = history, rng, speed
         self.window_minutes = config.chart.window_minutes
         self._next_at, self._quiet_until, self._turns = max(20.0, quiet_start_minutes * 60.0), 0.0, 0         # the room is quiet until the first attempt

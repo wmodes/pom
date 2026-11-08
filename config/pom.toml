@@ -374,6 +374,11 @@ poll_seconds = 5
 # anything that arrives through a proxy on the Printer (which would otherwise look like the Printer itself). A missing or bad value means true.
 password_on_localhost = false
 
+# The most entries the chart's notebook keeps, a whole number of at least 1. The notebook holds one entry for every attempt and every tick, and drops the
+# old ones by age (history_seconds, above) first; this is only the safety limit, so a flood of attempts cannot fill the Pi's memory. If it is too
+# low, a busy room's chart is cut short on the left (an hour of a room scored every 15 seconds is about 240 attempts plus 60 ticks); too high only lets the notebook grow.
+chart_notebook_max_entries = 5000
+
 
 # ================================================
 # CHART: the monitoring page's picture of the room's scores and the bar
@@ -390,7 +395,7 @@ window_minutes = 30
 
 # A silence (a stretch with no attempt) longer than this many minutes is drawn this wide, with its real length written over it (above 0).
 # Higher shows long silences closer to their true size; lower squeezes them more and fits more of the room's history into the same chart.
-longest_silence_minutes = 5
+longest_silence_minutes = 10
 
 # A silence is drawn like a broken part in an engineering drawing: a clear gap with a zigzag on each edge. This is the zigzag's height, above 0.
 break_mark_size = 6

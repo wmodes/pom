@@ -396,8 +396,10 @@ The machine, its settings, how it keeps going, and how it is watched.
   its own (the scale, "now", "Intervals at approximately 5 min", and a silence's length), never anything said in the room. Example: `render_score_chart`
   (was/still)
 - **chart notebook**: What the chart keeps to draw itself later: one entry per attempt (when it was heard, its score, the bar it was judged against, whether it
-  qualified), numbers only, in memory only. An entry is dropped when a newer one arrives and it is more than `[monitor] history_seconds` older than that one, so in a long
-  silence nothing is dropped and the chart still shows the last hour before it. Only the chart reads it. Example: `ChartNotebook`, `NotebookEntry`
+  qualified) and one per tick (when it fell, the anchor's score, the bar at that tick), numbers only, in memory only. The ticks since the previous attempt are written down
+  when the next attempt arrives, except across a silence (the chart hides what is inside a break). An entry is dropped when a newer one arrives and it is more than
+  `[monitor] history_seconds` older than that one, so in a long silence nothing is dropped and the chart still shows the last hour before it; at most
+  `[monitor] chart_notebook_max_entries` are kept. Only the chart reads it. Example: `ChartNotebook`, `NotebookEntry`
   (was: score trace, `ScoreTrace`, `TracePoint`)
 - **drawn minutes**: The chart's time, counted after silences have been shortened: `window_minutes` (30) is the width of the chart in drawn minutes,
   so after a long silence it reaches further back in real time. Example: `window_minutes`, `SilenceCompressor`

@@ -199,9 +199,16 @@ class TestTheMonitorMovesWithTheStream:
         assert off.site._password_on_localhost is False
         assert build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n').site._password_on_localhost is True
 
-    def test_the_chart_is_given_the_bars_ticks(self, tmp_path):
+    def test_the_notebook_is_given_the_bars_ticks_and_the_site_only_the_notebook(self, tmp_path):
         p = build(tmp_path, self.CONFIG)
-        assert p.site._ticks_source == p.parts["bar_keeper"].ticks_between
+        assert p.parts["notebook"]._ticks_source == p.parts["bar_keeper"].ticks_between
+        assert not hasattr(p.site, "_ticks_source")                                         # the page never sees the bar
+
+    def test_the_notebook_is_told_how_much_of_a_silence_is_drawn_at_true_scale(self, tmp_path):
+        from pom.monitor import silence_edge_seconds
+        text = self.CONFIG + "\n[chart]\nlongest_silence_minutes = 12\n"
+        p = build(tmp_path, text)
+        assert p.parts["notebook"]._head_seconds == silence_edge_seconds(config_from(tmp_path, text).chart) > 0
 
     def test_before_any_room_the_stream_time_is_the_streams_start(self, tmp_path, monkeypatch):
         self.clock(monkeypatch)
@@ -461,6 +468,10 @@ class TestTheMonitoringSite:
         p.conductor._on_attempt(self.attempt(30.0))
         p.conductor._on_attempt(self.attempt(200.0))                    # 170 s later: more than the 2 minutes
         assert p.parts["notebook"].ticks() == []
+
+    def test_the_notebook_keeps_what_the_chart_can_show_not_an_hour(self, tmp_path):
+        p = build(tmp_path, "[chart]\nwindow_minutes = 45\n")
+        assert p.parts["notebook"]._max_age == 45 * 60.0
 
     def test_the_notebooks_size_limit_is_the_configured_one(self, tmp_path):
         p = build(tmp_path, "[monitor]\nchart_notebook_max_entries = 2\n")

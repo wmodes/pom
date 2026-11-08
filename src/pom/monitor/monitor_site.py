@@ -242,7 +242,7 @@ class MonitorSite:
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
                  clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None, chart=None,
                  poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
-                 ticks_source: Optional[Callable[[float, float], list]] = None, stream_began_at: Optional[float] = None,
+                 stream_began_at: Optional[float] = None,
                  password_on_localhost: bool = True):
         """Args:
             history: Where the turns are read from.
@@ -259,8 +259,6 @@ class MonitorSite:
                 default and the fallback for anything that is not a bool, asks everyone.
             stream_began_at: The stream time at which listening began; a quiet start (no attempt for longer than the longest silence) is drawn as a
                 silence too, as long as the notebook still holds every attempt since then.
-            ticks_source: Called with (start, end) in stream time; returns the anchor's ticks between them, each as (time, anchor score, bar then). The page asks it only for the live stretch since the newest attempt;
-                the ticks before that are in the notebook.
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
@@ -270,7 +268,6 @@ class MonitorSite:
         self._look = chart if chart is not None else ChartLook()
         self._clock = clock
         self._stream_now = stream_now
-        self._ticks_source = ticks_source
         self._stream_began_at = stream_began_at
         if not isinstance(password_on_localhost, bool):
             self.report.warn(f"password_on_localhost must be true or false, not {password_on_localhost!r}; asking everyone for the password")
@@ -387,24 +384,10 @@ class MonitorSite:
             return render_score_chart(self._notebook.recent(self._look.window_minutes * 60.0), links, self._look)
         now = self._stream_now()
         points = self._notebook.recent()
-        # the ticks across the whole chart: those the notebook wrote down (with the bar at each, worked out while the bar still held the scores), then the
-        # live stretch since the newest attempt, which only now can be asked
-        ticks = [(tick.at, tick.score, tick.bar) for tick in self._notebook.ticks()] + self._live_ticks(points, now)
+        # the ticks across the whole chart come from the notebook alone: the page never sees the bar, only what the notebook was given to keep
+        ticks = [(tick.at, tick.score, tick.bar) for tick in self._notebook.ticks_up_to(now)]
         began_at = self._stream_began_at if self._notebook.holds_everything else None                  # else the start is no longer in what is drawn
         return render_score_chart(points, links, self._look, ticks=ticks, now=now, bar_now=self._status().bar, began_at=began_at)
-
-    def _live_ticks(self, points, now: float) -> list:
-        """The ticks since the newest attempt, up to now: the ones the notebook has not written down yet. Once that stretch is longer than the longest
-        silence the chart draws it as a break and hides what is inside, so none are asked for. With no attempt at all, the chart's own width is asked for."""
-        if self._ticks_source is None:
-            return []
-        if points:
-            start = points[-1].at
-            if now - start > self._look.longest_silence_minutes * 60.0:
-                return []
-        else:
-            start = now - self._look.window_minutes * 60.0
-        return [tick for tick in self._ticks_source(start, now) if tick[0] > start]                  # the start's own tick is the attempt's, already written
 
     def _row(self, record: TurnRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),

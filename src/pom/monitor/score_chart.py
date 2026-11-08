@@ -10,8 +10,10 @@
     to that qualifier's page, with the score and the bar as its tooltip.
   * the time axis runs back from now over the last `window_minutes`: "now" at the right, and on the left one note, "Intervals at approximately
     5 min" (the `gridline_every_minutes`), for the vertical lines;
-  * a silence longer than `longest_silence_minutes` is drawn that wide, with its real length written up the middle ("12 min silence"), so a
-    quiet hour does not push everything else off the chart. The `window_minutes` are drawn minutes, silences already shortened.
+  * a silence longer than `longest_silence_minutes` is drawn that wide, like a broken part in an engineering drawing: its first minutes at true
+    scale, then a cut (the white gap, with its real length written in it: "12 min silence"), then its latest minutes at true scale. What is cut
+    out is not drawn at all, so a quiet hour does not push everything else off the chart, and what is drawn on either side is real, never a squeeze.
+    The `window_minutes` are drawn minutes, silences already shortened.
 
 Design decisions, and why:
   * EVERY NUMBER THAT SHAPES THE CHART IS A SETTING. They are the `[chart]` section of the config, passed in as `look` (anything with the attributes
@@ -30,6 +32,7 @@ from dataclasses import dataclass
 from typing import Mapping, Optional, Sequence
 
 from pom.monitor.chart_notebook import NotebookEntry
+from pom.monitor.silence_compressor import SilenceCompressor
 
 
 @dataclass(frozen=True)
@@ -53,31 +56,16 @@ class ChartLook:
     break_gap_width: float = 64.0
 
 
-class SilenceCompressor:
-    """Draws long silences short: it turns a stream time into a drawn time, in which each silence is `longest` wide at most.
+def gap_seconds(look) -> float:
+    """How wide the cut is in the chart's drawn seconds: `break_gap_width` (drawing units) at the chart's scale, and no wider than a whole silence."""
+    plot_width = look.drawing_width - look.margin_left - look.margin_right
+    return min(look.break_gap_width / plot_width * look.window_minutes * 60.0, look.longest_silence_minutes * 60.0)
 
-    A silence is a stretch with no attempt longer than `longest`: between two attempts, between the newest attempt and now, and, when the stream's
-    start is known (`began_at`), between the start and the first attempt (or now, if there has been none). Inside one,
-    time is squeezed evenly, so everything before it is shifted and the bar line runs through it at a steeper slope.
-    """
 
-    def __init__(self, attempt_times: Sequence[float], now: float, longest: float, began_at: Optional[float] = None):
-        edges = ([] if began_at is None else [began_at]) + sorted(attempt_times) + [now]          # the stream's start, if known, begins the first silence
-        self.longest = longest
-        self.silences = [(a, b) for a, b in zip(edges, edges[1:]) if b - a > longest]
-
-    def drawn(self, at: float) -> float:
-        """`at` as a drawn time: the stream time with every silence before it shortened."""
-        cut = 0.0
-        for start, end in self.silences:
-            if at <= start:
-                break
-            cut += (min(at, end) - start) * (1.0 - self.longest / (end - start))
-        return at - cut
-
-    def within(self, drawn: float) -> bool:
-        """True if this drawn time falls inside a (shortened) silence."""
-        return any(self.drawn(start) < drawn < self.drawn(start) + self.longest for start, _ in self.silences)
+def silence_edge_seconds(look) -> float:
+    """How much of a silence is drawn at true scale on each side of its cut: half of `longest_silence_minutes` once the cut has taken its share. Also
+    what the notebook records at the start of a silence and the page works out at its end."""
+    return (look.longest_silence_minutes * 60.0 - gap_seconds(look)) / 2.0
 
 
 def _silence_lines(seconds: float) -> tuple:
@@ -122,7 +110,7 @@ def render_score_chart(points: Sequence[NotebookEntry], qualifier_ids: Optional[
         return (f'{head}<title>No scores yet.</title><text class="key" x="{width / 2:.1f}" y="{height / 2:.1f}" '
                 f'text-anchor="middle">No scores yet.</text></svg>')
     t_end = now if now is not None else points[-1].at
-    squeeze = SilenceCompressor([point.at for point in points], t_end, look.longest_silence_minutes * 60.0, began_at)
+    squeeze = SilenceCompressor([point.at for point in points], t_end, look.longest_silence_minutes * 60.0, began_at, gap_seconds(look))
     edge = squeeze.drawn(t_end)                                                    # the right edge, in drawn time
     def drawn_x(at: float) -> float:
         return _x(squeeze.drawn(at), edge, seconds, plot_width, left)
@@ -175,20 +163,20 @@ def render_score_chart(points: Sequence[NotebookEntry], qualifier_ids: Optional[
         record = qualifier_ids.get(point.at)
         parts.append(f'<a href="/turn/{int(record)}">{circle}</a>' if record is not None else circle)
     for start, end in squeeze.silences:
-        first, last = max(squeeze.drawn(start), edge - seconds), min(squeeze.drawn(end), edge)
+        gap_from, gap_to = squeeze.gap_drawn(start)                                # the cut: what is left of the silence is drawn at true scale either side
+        first, last = max(gap_from, edge - seconds), min(gap_to, edge)
         if first >= last:
-            continue                                                               # a silence wholly off the chart
+            continue                                                               # a cut wholly off the chart
         x0, x1 = _x(first, edge, seconds, plot_width, left), _x(last, edge, seconds, plot_width, left)
         middle, size = top + plot_height / 2.0, look.break_mark_size
-        centre, half = (x0 + x1) / 2.0, min(look.break_gap_width, x1 - x0) / 2.0               # the gap is centred in the silence, the rest shows either side
+        centre = (x0 + x1) / 2.0
         # the gap is the page's own color, so it really breaks the bar line and anything else under it
-        parts.append(f'<rect class="gap" x="{centre - half:.1f}" y="{top:g}" width="{2 * half:.1f}" height="{plot_height:.1f}"/>')
-        cut_off = squeeze.drawn(start) < edge - seconds                                          # a silence cut off by the window has no left edge
-        for x, on_chart in ((centre - half, not (cut_off and centre - half <= x0)), (centre + half, True)):
+        parts.append(f'<rect class="gap" x="{x0:.1f}" y="{top:g}" width="{x1 - x0:.1f}" height="{plot_height:.1f}"/>')
+        for x, on_chart in ((x0, gap_from >= edge - seconds), (x1, gap_to <= edge)):          # a mark only on an edge of the cut that the window has not cut off
             if on_chart:
                 parts.append(f'<path class="break" d="M{x:.1f} {top:g} V{middle - size:.1f} L{x + size / 2:.1f} {middle - size / 2:.1f} '
                              f'L{x - size / 2:.1f} {middle + size / 2:.1f} L{x:.1f} {middle + size:.1f} V{top + plot_height:.1f}"/>')
-        first_line, second_line = _silence_lines(end - start)                      # centred in the part of the silence that is on the chart
+        first_line, second_line = _silence_lines(end - start)                      # centred in the part of the cut that is on the chart
         parts.append(f'<text class="key silence" text-anchor="middle"><tspan x="{centre:.1f}" y="{middle:.1f}" dy="-0.2em">{first_line}</tspan>'
                      f'<tspan x="{centre:.1f}" y="{middle:.1f}" dy="1.0em">{second_line}</tspan></text>')
     parts.append("</svg>")

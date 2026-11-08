@@ -397,20 +397,21 @@ The machine, its settings, how it keeps going, and how it is watched.
   (was/still)
 - **chart notebook**: What the chart keeps to draw itself later: one entry per attempt (when it was heard, its score, the bar it was judged against, whether it
   qualified) and one per tick (when it fell, the anchor's score, the bar at that tick), numbers only, in memory only. The ticks since the previous attempt are written down
-  when the next attempt arrives, except across a silence (the chart hides what is inside a break). An entry is dropped when a newer one arrives and it is more than
-  `[monitor] history_seconds` older than that one, so in a long silence nothing is dropped and the chart still shows the last hour before it; at most
-  `[monitor] chart_notebook_max_entries` are kept. Only the chart reads it. Example: `ChartNotebook`, `NotebookEntry`
+  when the next attempt arrives; across a silence only its first and last minutes are (the cut between is never drawn). It keeps what the chart can show, `[chart] window_minutes`
+  of drawn time, no more, so a long silence does not push the history before it out and the notebook stays about 30 minutes of data; at most
+  `[monitor] chart_notebook_max_entries` are kept. The page reads only the notebook, never the bar. Example: `ChartNotebook`, `NotebookEntry`
   (was: score trace, `ScoreTrace`, `TracePoint`)
 - **drawn minutes**: The chart's time, counted after silences have been shortened: `window_minutes` (30) is the width of the chart in drawn minutes,
   so after a long silence it reaches further back in real time. Example: `window_minutes`, `SilenceCompressor`
 - **silence**: A stretch with no attempt, between two attempts, between the newest attempt and now, or (a *quiet start*) between the stream's start and the
-  first attempt, or now if there has been none, longer than the longest silence. The chart draws it short. (A quiet start counts only while the chart still
+  first attempt, or now if there has been none, longer than the longest silence. The chart draws it as its first minutes, a cut and its last minutes. (A quiet start counts only while the chart still
   holds every attempt since the start; once the page has forgotten older attempts it does not claim a silence that was not one.) (Not the same as quiet in general: a room can be quiet for less than the longest silence and nothing is drawn.) Example: `SilenceCompressor`
 - **longest silence**: How many minutes of silence the chart draws at their true size: a longer silence is drawn this wide, with its real length written
   in it. Higher shows silences nearer their true size; lower fits more of the room's history into the chart. Example: `longest_silence_minutes`
-- **break mark**, **gap**: How the chart draws a silence, like a broken part in an engineering drawing: a clear *gap* in the card's own color, which
-  breaks the bar line, between two *break marks* (a vertical line with a zigzag). "14 min" over "silence" is written in the gap; the rest of the silence
-  shows on either side of it, the bar sliding down and the ticks squeezed together. Example: `break_gap_width`, `break_mark_size`
+- **break mark**, **gap**, **cut**: How the chart draws a silence, like a broken part in an engineering drawing: its first minutes at true scale, then a clear *gap* in the card's own color
+  (the *cut*: what is left out of the middle, of any length), which breaks the bar line, between two *break marks* (a vertical line with a zigzag), then its last minutes at true
+  scale. "14 min" over "silence" is written in the gap. Each side is half of what `longest_silence_minutes` has left after the gap. Example: `break_gap_width`, `break_mark_size`,
+  `SilenceCompressor`, `silence_edge_seconds`
 - **service light**: One word on the monitoring page for each thing the Printer depends on: whisper, scorer, oracle and the terminal. **up** (green) if it
   answers, **DOWN** (red) if it does not, **none** (grey) if there is nothing to ask (no terminal is configured). The terminal's light is up if its port is open
   or opens now, and up while a portent is being typed on it: the page asks `online(wait=False)` and never waits behind the typing. Example: `ServiceWatch`,

@@ -205,7 +205,7 @@ class TestTheLockAndTheMemory:
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, "3600", None, True, [60], float("nan"), float("inf")])
     def test_a_bad_age_means_the_default_with_a_warning(self, bad):
-        t = notebook(max_age_seconds=bad)
+        t = notebook(max_age_seconds=bad, longest_silence_seconds=10 ** 9)                  # no silence is ever drawn short, so drawn time is plain time
         assert len(t.report.warnings) == 1 and "max_age_seconds" in t.report.warnings[0]
         t.add(1, 1, 0.0)
         t.add(2, 1, 3599.0)
@@ -522,3 +522,175 @@ class TestWhenTheBarCannotBeAsked:
         t.add(3.0, 5.0, 310.0)
         t.add(3.0, 5.0, 700.0)
         assert [tick.at for tick in t.ticks()][-1] == 300.0 and 360.0 not in [tick.at for tick in t.ticks()]
+
+
+class TestTheFirstMinutesOfASilence:
+    """An attempt works out the ticks for the first `head_seconds` after it while the bar holds its scores; they are written only if a silence follows."""
+
+    def test_an_attempt_holds_the_ticks_for_its_first_minutes(self):
+        t = with_ticks(head_seconds=150.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert [tick.at for tick in t.head_ticks()] == [60.0, 120.0] and all(tick.kind == "tick" for tick in t.head_ticks())
+
+    def test_they_are_not_written_yet(self):
+        t = with_ticks(head_seconds=150.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert t.ticks() == []
+
+    def test_with_no_head_there_are_none(self):
+        t = with_ticks(head_seconds=0.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert t.head_ticks() == []
+
+    def test_the_next_attempt_replaces_them_with_its_own(self):
+        t = with_ticks(head_seconds=150.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        t.add(3.0, 5.0, 100.0)
+        assert [tick.at for tick in t.head_ticks()] == [120.0, 180.0, 240.0]                  # 100 to 250
+
+    def test_a_silence_writes_only_the_first_minutes(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        t.add(3.0, 5.0, 50_000.0)
+        assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 49_860.0, 49_920.0, 49_980.0]       # its first 150 s and its last 150 s: nothing between
+
+    def test_and_the_bar_is_not_asked_for_the_cut(self):
+        asked = []
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, ticks_source=grid(asked=asked), began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        t.add(3.0, 5.0, 50_000.0)
+        assert asked == [(10.0, 160.0), (49_850.0, 50_000.0), (50_000.0, 50_150.0)]            # the first attempt's first minutes, the silence's last, the next's first
+
+    def test_a_gap_that_is_not_a_silence_writes_every_tick_between_instead(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        t.add(3.0, 5.0, 250.0)
+        assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 180.0, 240.0]
+
+    def test_after_a_quiet_start_the_first_minutes_run_from_the_streams_start(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=0.0)
+        t.add(3.0, 5.0, 4000.0)
+        assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 3900.0, 3960.0]                    # the start's first 150 s and the 150 s before the attempt
+
+    def test_a_bad_head_is_a_warning_and_none(self):
+        for bad in (-1, "x", None, float("nan")):
+            t = with_ticks(head_seconds=bad)
+            assert len(t.report.warnings) == 1 and "head_seconds" in t.report.warnings[0]
+            t.add(3.0, 5.0, 10.0)
+            assert t.head_ticks() == []
+
+
+class TestReadingTheTicksAsOfNow:
+    """`ticks_up_to` is all the page asks: the ones written, the first minutes of a silence under way, and the last minutes before now, worked out fresh."""
+
+    def test_a_short_quiet_stretch_is_every_tick_since_the_attempt(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert [tick.at for tick in t.ticks_up_to(200.0)] == [60.0, 120.0, 180.0]
+
+    def test_a_silence_is_its_first_minutes_and_its_last_and_nothing_between(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert [tick.at for tick in t.ticks_up_to(10_010.0)] == [60.0, 120.0, 9900.0, 9960.0]
+
+    def test_the_ticks_written_before_are_first(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=0.0)
+        t.add(3.0, 5.0, 130.0)
+        t.add(3.0, 5.0, 30_000.0)
+        got = [tick.at for tick in t.ticks_up_to(30_100.0)]
+        assert got[:2] == [60.0, 120.0] and got == sorted(got) and got[-1] == 30_060.0
+
+    def test_looking_writes_nothing(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        t.ticks_up_to(10_010.0)
+        assert t.ticks() == [] and len(t._entries) == 1
+
+    def test_a_quiet_start_that_is_short_is_every_tick_since_the_start(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=0.0)
+        assert [tick.at for tick in t.ticks_up_to(200.0)] == [60.0, 120.0, 180.0]
+
+    def test_a_quiet_start_that_is_long_is_its_first_and_last_minutes(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=0.0)
+        assert [tick.at for tick in t.ticks_up_to(10_010.0)] == [60.0, 120.0, 9900.0, 9960.0]
+
+    def test_with_no_start_known_and_no_attempt_there_is_nothing(self):
+        t = with_ticks(began_at=None)
+        assert t.ticks_up_to(500.0) == []
+
+    def test_without_a_ticks_source_only_what_was_written(self):
+        t = ChartNotebook(began_at=0.0)
+        t.add(3.0, 5.0, 10.0)
+        assert t.ticks_up_to(500.0) == []
+
+    @pytest.mark.parametrize("now", ["x", None, float("nan")])
+    def test_a_time_that_is_not_a_number_gives_what_was_written(self, now):
+        t = with_ticks(head_seconds=150.0, began_at=0.0)
+        t.add(3.0, 5.0, 130.0)
+        assert [tick.at for tick in t.ticks_up_to(now)] == [60.0, 120.0]
+
+    def test_a_clock_before_the_newest_attempt_gives_what_was_written(self):
+        t = with_ticks(began_at=0.0)
+        t.add(3.0, 5.0, 130.0)
+        assert [tick.at for tick in t.ticks_up_to(50.0)] == [60.0, 120.0]
+
+    def test_with_no_head_a_silence_has_only_what_was_written(self):
+        t = with_ticks(head_seconds=0.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert t.ticks_up_to(10_010.0) == []
+
+    def test_a_silence_just_over_the_limit_does_not_draw_a_tick_twice(self):
+        t = with_ticks(head_seconds=100.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        got = [tick.at for tick in t.ticks_up_to(320.0)]
+        assert got == sorted(set(got)) and got == [60.0, 240.0, 300.0]
+
+    def test_a_failing_source_is_a_warning_and_what_was_written(self):
+        calls = []
+
+        def source(start, end):
+            calls.append(1)
+            if len(calls) > 1:
+                raise RuntimeError("the secret in the room")
+            return []
+        t = with_ticks(ticks_source=source, began_at=None, head_seconds=100.0)
+        t.add(3.0, 5.0, 10.0)
+        assert t.ticks_up_to(200.0) == [] and t.report.warnings and "secret" not in " ".join(t.report.warnings)
+
+
+class TestWhatTheNotebookKeeps:
+    """Retention is in drawn time: a silence counts as the width the chart draws it, however long it was."""
+
+    def test_reading_exactly_the_longest_silence_after_an_attempt_is_still_every_tick(self):
+        t = with_ticks(head_seconds=100.0, longest_silence_seconds=300.0, began_at=None)
+        t.add(3.0, 5.0, 10.0)
+        assert [tick.at for tick in t.ticks_up_to(310.0)] == [60.0, 120.0, 180.0, 240.0, 300.0]
+
+    def test_an_attempt_before_the_cutoff_stays_while_the_silence_after_it_reaches_into_the_chart(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, max_age_seconds=150.0, began_at=None)
+        t.add(3.0, 5.0, 0.0)
+        t.add(3.0, 5.0, 5000.0)                                    # a silence: drawn 300 wide, so the first attempt is 300 back, over the 150 kept
+        t.add(3.0, 5.0, 5100.0)
+        assert 0.0 in [entry.at for entry in t.recent()]           # but its silence reaches into the chart, so the chart needs it to draw the break
+
+    def test_but_not_when_the_silence_is_wholly_off_the_chart(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, max_age_seconds=150.0, began_at=None)
+        t.add(3.0, 5.0, 0.0)
+        t.add(3.0, 5.0, 5000.0)
+        for at in (5100.0, 5200.0, 5300.0, 5400.0):                 # 400 s more: the silence ended more than 150 drawn seconds ago
+            t.add(3.0, 5.0, at)
+        assert 0.0 not in [entry.at for entry in t.recent()]
+
+    def test_the_first_minutes_of_a_silence_stay_with_the_attempt_that_begins_it(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, max_age_seconds=290.0, began_at=None)
+        t.add(3.0, 5.0, 0.0)
+        t.add(3.0, 5.0, 5000.0)
+        t.add(3.0, 5.0, 5100.0)                                    # drawn 400: the cutoff is 110, past the tick at 60, but the silence reaches in
+        assert [tick.at for tick in t.ticks() if tick.at < 1000.0] == [60.0, 120.0]
+
+    def test_a_long_silence_does_not_push_the_history_before_it_out(self):
+        t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, max_age_seconds=1800.0, began_at=None)
+        for at in (0.0, 100.0, 200.0):
+            t.add(3.0, 5.0, at)
+        t.add(3.0, 5.0, 15 * 3600.0)                               # fifteen hours of quiet, and the attempts before it are still there
+        assert [entry.at for entry in t.recent()][:3] == [0.0, 100.0, 200.0]

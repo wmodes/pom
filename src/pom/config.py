@@ -425,7 +425,7 @@ class MonitorSettings:
         poll_seconds: How often the open page asks for news and redraws itself (the chart, the status tiles and the turns), above 0. A shorter time
             makes the page and graph move more smoothly and costs a little more work for the Pi.
         chart_notebook_max_entries: The most entries (attempts and ticks) the chart's notebook keeps, a whole number of at least 1. It is a safety limit: age
-            (`history_seconds`) normally ends an entry first. Too low and the left of the chart is cut short in a busy room; too high only lets the
+            (the chart's own `window_minutes` of drawn time) normally ends an entry first. Too low and the left of the chart is cut short in a busy room; too high only lets the
             notebook grow larger.
     """
     enabled: bool = DEFAULT_MONITOR_ENABLED

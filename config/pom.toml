@@ -375,8 +375,9 @@ poll_seconds = 5
 password_on_localhost = false
 
 # The most entries the chart's notebook keeps, a whole number of at least 1. The notebook holds one entry for every attempt and every tick, and drops the
-# old ones by age (history_seconds, above) first; this is only the safety limit, so a flood of attempts cannot fill the Pi's memory. If it is too
-# low, a busy room's chart is cut short on the left (an hour of a room scored every 15 seconds is about 240 attempts plus 60 ticks); too high only lets the notebook grow.
+# old ones by age first (it keeps what the chart can show, window_minutes in [chart] below, about 30 minutes of data); this is only the safety limit, so a flood of
+# attempts cannot fill the Pi's memory. If it is too low, a busy room's chart is cut short on the left (30 minutes of a room scored every 15 seconds is about
+# 120 attempts plus 30 ticks); too high only lets the notebook grow.
 chart_notebook_max_entries = 5000
 
 

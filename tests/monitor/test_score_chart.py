@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from pom.monitor.score_chart import ChartLook, SilenceCompressor, _silence_lines, render_score_chart
+from pom.monitor.score_chart import ChartLook, SilenceCompressor, _silence_lines, gap_seconds, render_score_chart, silence_edge_seconds
 from pom.monitor.chart_notebook import NotebookEntry
 
 NS = "{http://www.w3.org/2000/svg}"
@@ -376,6 +376,45 @@ class TestTheSilenceCompressor:
         c = SilenceCompressor([0, 3000], 3000, 300)
         assert c.within(150) and not c.within(0) and not c.within(300) and not c.within(450)
 
+    def test_with_a_cut_the_first_and_last_minutes_are_at_true_scale(self):
+        c = SilenceCompressor([0, 3000], 3000, 300, gap=100)                         # drawn: 100 of silence, a cut 100 wide, 100 of silence
+        assert (c.drawn(0), c.drawn(50), c.drawn(100)) == pytest.approx((0, 50, 100))
+        assert (c.drawn(2900), c.drawn(2950), c.drawn(3000)) == pytest.approx((200, 250, 300))
+
+    def test_with_a_cut_what_is_between_is_squeezed_into_the_cut(self):
+        c = SilenceCompressor([0, 3000], 3000, 300, gap=100)
+        assert c.drawn(1550) == pytest.approx(100 + 1450 * 100 / 2800)
+        assert 100 < c.drawn(101) < c.drawn(2899) < 200
+
+    def test_the_cut_is_where_the_first_minutes_end_and_as_wide_as_asked(self):
+        c = SilenceCompressor([0, 3000], 3000, 300, gap=100)
+        assert c.gap_drawn(0) == pytest.approx((100, 200)) and c.edge == pytest.approx(100)
+
+    def test_the_cut_of_a_later_silence_is_after_what_the_earlier_one_cut(self):
+        c = SilenceCompressor([0, 3000, 3100, 7000], 7000, 300, gap=100)
+        assert c.gap_drawn(3100) == pytest.approx((c.drawn(3100) + 100, c.drawn(3100) + 200))
+
+    def test_time_after_a_silence_with_a_cut_is_shifted_by_what_was_cut(self):
+        c = SilenceCompressor([0, 3000, 3100], 3100, 300, gap=100)
+        assert c.drawn(3100) == pytest.approx(400)
+
+    def test_with_no_gap_given_the_whole_silence_is_the_cut(self):
+        c = SilenceCompressor([0, 3000], 3000, 300)
+        assert c.gap == 300 and c.edge == 0
+
+    @pytest.mark.parametrize("gap", [300, 500, 1e9])
+    def test_a_gap_as_wide_as_the_limit_or_wider_leaves_no_true_scale_sides(self, gap):
+        c = SilenceCompressor([0, 3000], 3000, 300, gap=gap)
+        assert c.edge == 0 and c.drawn(1500) == pytest.approx(150)
+
+    def test_a_negative_gap_is_none_at_all(self):
+        c = SilenceCompressor([0, 3000], 3000, 300, gap=-5)
+        assert c.gap == 0 and c.edge == 150 and c.drawn(3000) == pytest.approx(300)
+
+    def test_a_silence_just_over_the_limit_has_a_small_cut(self):
+        c = SilenceCompressor([0, 310], 310, 300, gap=100)
+        assert c.drawn(310) == pytest.approx(300) and c.drawn(100) == pytest.approx(100) and c.drawn(210) == pytest.approx(200)
+
     def test_a_clock_before_the_newest_attempt_makes_no_silence_of_it(self):
         assert SilenceCompressor([0, 100], 50, 300).silences == []
 
@@ -430,6 +469,9 @@ class TestHowLongASilenceWas:
         (3600, ("1 hr 0 min", "silence")), (3900, ("1 hr 5 min", "silence")), (7500, ("2 hrs 5 min", "silence")), (36000, ("10 hrs 0 min", "silence"))])
     def test_it_reads_in_minutes_then_hours_and_minutes(self, seconds, lines):
         assert _silence_lines(seconds) == lines
+
+
+LOOK_5 = ChartLook(longest_silence_minutes=5)
 
 
 class TestASilenceIsDrawnShort:
@@ -512,10 +554,25 @@ class TestASilenceIsDrawnShort:
         gap = find(root, "rect", "gap")[0]
         assert float(gap.get("x")) + float(gap.get("width")) < WIDTH - RIGHT
 
-    def test_ticks_inside_a_silence_are_still_drawn_squeezed(self):
-        root = self.drawn([point(0), point(60)], ticks=[(1000.0, 5.85, 6.0), (2000.0, 5.85, 6.0)], now=3660.0)
+    def test_ticks_in_the_first_and_last_minutes_of_a_silence_are_drawn_at_true_scale(self):
+        root = self.drawn([point(0), point(3000)], ticks=[(30.0, 5.85, 6.0), (2970.0, 5.85, 5.9)])
         xs = [float(t.get("cx")) for t in find(root, "circle", "tick")]
-        assert len(xs) == 2 and xs[0] == pytest.approx(x_of(60 + 940 * 300 / 3600, 360), abs=0.06)
+        assert xs == pytest.approx([x_of(30, 300), x_of(270, 300)], abs=0.06)              # 30 s after the start, and 30 s before the end
+
+    def test_a_tick_in_the_cut_is_drawn_under_the_gap(self):
+        root = self.drawn([point(0), point(3000)], ticks=[(1500.0, 5.85, 6.0)])
+        gap = find(root, "rect", "gap")[0]
+        x = float(find(root, "circle", "tick")[0].get("cx"))
+        assert float(gap.get("x")) <= x <= float(gap.get("x")) + float(gap.get("width"))
+
+    def test_the_gap_sits_where_the_first_minutes_end(self):
+        gap = find(self.drawn([point(0), point(3000)]), "rect", "gap")[0]
+        assert float(gap.get("x")) == pytest.approx(x_of(silence_edge_seconds(LOOK_5), 300), abs=0.06)
+
+    def test_a_long_silence_draws_the_same_width_of_it_whatever_its_length(self):
+        short = self.drawn([point(0), point(3000)], ticks=[(30.0, 5.85, 6.0)])
+        long = self.drawn([point(0), point(30000)], ticks=[(30.0, 5.85, 6.0)])
+        assert float(find(short, "circle", "tick")[0].get("cx")) == pytest.approx(float(find(long, "circle", "tick")[0].get("cx")), abs=0.06)
 
     def test_no_vertical_line_falls_inside_a_silence(self):
         root = self.drawn(longest_silence_minutes=10)                                       # drawn 600 s wide: the line 300 s back from the edge is inside
@@ -532,8 +589,12 @@ class TestASilenceIsDrawnShort:
         root = self.drawn(seconds=350, points=[point(0), point(3000), point(3100)])             # the silence is drawn 0 to 300, the window starts at 50
         assert len(find(root, "rect", "gap")) == 1 and len(find(root, "path", "break")) == 2
 
-    def test_a_silence_cut_so_that_only_a_sliver_shows_has_only_its_right_mark(self):
+    def test_a_window_that_shows_only_the_end_of_a_silence_has_no_gap_because_the_cut_is_off_the_chart(self):
         root = self.drawn(seconds=55, points=[point(0), point(3000), point(3050)])
+        assert not find(root, "rect", "gap") and not find(root, "path", "break")
+
+    def test_a_window_that_cuts_through_the_gap_keeps_only_its_right_mark(self):
+        root = self.drawn(seconds=200, points=[point(0), point(3000), point(3050)])             # the window starts inside the cut, which is drawn 141 to 159
         assert len(find(root, "rect", "gap")) == 1 and len(find(root, "path", "break")) == 1
 
     def test_a_silence_wholly_before_the_window_is_not_drawn(self):
@@ -634,3 +695,21 @@ class TestEveryNumberIsASetting:
         for width in (30, 64, 100):
             gap = find(parse(render([point(0), point(3000)], longest_silence_minutes=5, break_gap_width=width)), "rect", "gap")[0]
             assert float(gap.get("width")) == pytest.approx(width, abs=0.1)
+
+
+class TestTheSizesOfASilence:
+    def test_the_cut_is_the_break_gap_width_at_the_charts_scale(self):
+        assert gap_seconds(LOOK) == pytest.approx(64.0 / PLOT_W * 1800.0)
+
+    def test_the_cut_is_no_wider_than_a_whole_silence(self):
+        assert gap_seconds(ChartLook(break_gap_width=10_000.0)) == 300.0
+
+    def test_the_true_scale_sides_share_what_the_cut_leaves(self):
+        look = ChartLook(longest_silence_minutes=10)
+        assert silence_edge_seconds(look) == pytest.approx((600.0 - gap_seconds(look)) / 2.0)
+
+    def test_a_cut_as_wide_as_the_silence_leaves_no_sides(self):
+        assert silence_edge_seconds(ChartLook(break_gap_width=10_000.0)) == 0.0
+
+    def test_a_longer_window_makes_the_cut_cover_more_time(self):
+        assert gap_seconds(ChartLook(window_minutes=60, longest_silence_minutes=30)) == pytest.approx(2 * gap_seconds(ChartLook(window_minutes=30, longest_silence_minutes=30)))

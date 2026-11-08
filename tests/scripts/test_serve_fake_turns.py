@@ -85,7 +85,7 @@ def test_with_no_quiet_start_the_first_attempt_comes_at_twenty_seconds(script):
 
 def test_a_quiet_start_hears_nothing_until_then(script):
     r = room(script, head_start_minutes=60.0, quiet_start_minutes=20.0)
-    assert r.notebook.recent()[0].at >= 20 * 60.0 and room(script, head_start_minutes=60.0).notebook.recent()[0].at < 20 * 60.0
+    assert r.notebook.recent()[0].at >= 20 * 60.0 and room(script, head_start_minutes=25.0).notebook.recent()[0].at < 20 * 60.0          # (the notebook keeps what the chart can show, 30 drawn minutes)
 
 
 def test_the_terminal_light_can_be_set():

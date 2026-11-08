@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                     # noqa: E402
 from pom.library import Passage                                                  # noqa: E402
-from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TurnHistory  # noqa: E402
+from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory  # noqa: E402
 from pom.qualifying import Ruling, bar_keeper_from_settings               # noqa: E402
 from pom.writing import Portent                                                 # noqa: E402
 
@@ -76,7 +76,7 @@ class InventedRoom:
     def __init__(self, config: Config, history: TurnHistory, rng: random.Random, speed: float, head_start_minutes: float = 35.0,
                  quiet_start_minutes: float = 0.0):
         self.keeper = bar_keeper_from_settings(config.qualifying, 0.0)
-        self.trace = ScoreTrace(config.monitor.history_seconds)
+        self.notebook = ChartNotebook(config.monitor.history_seconds)
         self.history, self.rng, self.speed = history, rng, speed
         self.window_minutes = config.chart.window_minutes
         self._next_at, self._quiet_until, self._turns = max(20.0, quiet_start_minutes * 60.0), 0.0, 0         # the room is quiet until the first attempt
@@ -97,7 +97,7 @@ class InventedRoom:
             self.heard += 1
             self.scored += 1
             qualified = ruling is Ruling.QUALIFIED
-            self.trace.add(score, bar, at, qualified)
+            self.notebook.add(score, bar, at, qualified)
             if qualified:
                 self.history.add(HINGES[self._turns % len(HINGES)], round(score, 2), round(bar, 2) if bar is not None else None,
                                  self.keeper.window_size_at(at), at, None)
@@ -136,7 +136,7 @@ def main() -> None:
         config = Config.load(ROOT / "config" / "pom.toml")
         room = InventedRoom(config, history, rng, args.speed, quiet_start_minutes=args.quiet_start)
         threading.Thread(target=room.run, daemon=True).start()
-        site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges, trace=room.trace, chart=config.chart,
+        site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges, notebook=room.notebook, chart=config.chart,
                            poll_seconds=config.monitor.poll_seconds, stream_now=room.now, ticks_source=room.keeper.ticks_between, stream_began_at=0.0,
                            status_source=lambda: MonitorStatus(bar=room.keeper.bar_at(room.now()), window_size=room.keeper.window_size_at(room.now()),
                                                                attempts_heard=room.heard, attempts_scored=room.scored, services=services,

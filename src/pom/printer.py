@@ -43,7 +43,7 @@ from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
 from pom.log_setup import configure_logging, get_logger
-from pom.monitor import MonitorSite, MonitorStatus, ScoreTrace, TurnHistory
+from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
@@ -226,7 +226,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
 
     # the turn
     history = TurnHistory(monitor.history_seconds)
-    trace = ScoreTrace(monitor.history_seconds)
+    notebook = ChartNotebook(monitor.history_seconds)
     floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds)
     turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
                            write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,
@@ -259,7 +259,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         snapshot["heard"] += 1
         snapshot["scored"] += attempt.score is not None
         if attempt.score is not None:
-            trace.add(attempt.score, attempt.bar, attempt.heard_at, attempt.is_hinge)
+            notebook.add(attempt.score, attempt.bar, attempt.heard_at, attempt.is_hinge)
 
     def status_now() -> MonitorStatus:
         """The numbers on the page's tiles as of this moment: the bar is read at the stream's clock, so it keeps moving through silence."""
@@ -276,7 +276,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         if not monitor.password:
             _log.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
-            site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, trace=trace, chart=config.chart,
+            site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, chart=config.chart,
                                poll_seconds=monitor.poll_seconds, stream_now=stream_now, ticks_source=bar_keeper.ticks_between,
                                stream_began_at=stream_started_at, password_on_localhost=monitor.password_on_localhost,
                                status_source=status_now)
@@ -287,7 +287,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
-             "turn_taker": turn_taker, "trace": trace, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
+             "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
              "warmer": warmer, "boot_slipper": slipper}
     return Printer(conductor, history, site, terminal, floor, parts, services, warmer, slipper)
 

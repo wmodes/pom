@@ -44,7 +44,7 @@ class TestTheWiring:
         p = build(tmp_path, '[terminal]\nmode = "none"\n')
         assert isinstance(p, Printer) and isinstance(p.conductor, Conductor) and isinstance(p.floor, FloorKeeper)
         assert isinstance(p.parts["turn_taker"], TurnTaker)
-        for name in ("whisper", "scorer", "bar_keeper", "selector", "writer", "formatter", "trace", "monitor"):
+        for name in ("whisper", "scorer", "bar_keeper", "selector", "writer", "formatter", "notebook", "monitor"):
             assert p.parts[name] is not None
 
     def test_the_scorers_warm_up_is_built_on_the_printers_own_scorer_and_asks_the_scorers_address(self, tmp_path, monkeypatch):
@@ -434,8 +434,8 @@ class TestTheMonitoringSite:
         p.conductor._on_attempt(Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
         p.conductor._on_attempt(Attempt("Room tone.", "room_tone", None, ScoredBy.NONE if hasattr(ScoredBy, "NONE") else ScoredBy.MODEL,
                                         None, 13.0, None, 3, 1))
-        assert len(p.parts["trace"].recent()) == 1                  # only the scored one is a point on the chart
-        assert p.parts["trace"].report.ok                           # and the unscored one was never offered to it
+        assert len(p.parts["notebook"].recent()) == 1                  # only the scored one is a point on the chart
+        assert p.parts["notebook"].report.ok                           # and the unscored one was never offered to it
 
 
 class TestOptions:

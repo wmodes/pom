@@ -34,12 +34,12 @@ def test_the_chart_flag_serves_the_feed_and_exits():
 
 def test_the_head_start_is_played_at_once_so_the_chart_is_not_empty(script):
     r = room(script)
-    points = r.trace.recent()
+    points = r.notebook.recent()
     assert len(points) > 10 and points[-1].at <= r.now() and r.heard == len(points) == r.keeper.counted
 
 
 def test_a_longer_head_start_plays_more(script):
-    assert len(room(script, head_start_minutes=60.0).trace.recent()) > len(room(script, head_start_minutes=10.0).trace.recent())
+    assert len(room(script, head_start_minutes=60.0).notebook.recent()) > len(room(script, head_start_minutes=10.0).notebook.recent())
 
 
 def test_the_stream_clock_runs_at_the_speed_given(script, monkeypatch):
@@ -54,24 +54,24 @@ def test_the_stream_clock_runs_at_the_speed_given(script, monkeypatch):
 def test_attempts_are_played_up_to_now_and_no_further(script):
     r = room(script)
     r.advance_to(r.now() + 3600.0)
-    assert r.trace.recent()[-1].at <= r.now() + 3600.0 and r._next_at > r.now() + 3600.0
+    assert r.notebook.recent()[-1].at <= r.now() + 3600.0 and r._next_at > r.now() + 3600.0
 
 
 def test_the_same_seed_gives_the_same_room(script):
-    assert [(p.at, p.score) for p in room(script, seed=3).trace.recent()] == [(p.at, p.score) for p in room(script, seed=3).trace.recent()]
+    assert [(p.at, p.score) for p in room(script, seed=3).notebook.recent()] == [(p.at, p.score) for p in room(script, seed=3).notebook.recent()]
 
 
 def test_the_room_goes_quiet_now_and_then(script):
-    points = room(script, head_start_minutes=600.0).trace.recent()
+    points = room(script, head_start_minutes=600.0).notebook.recent()
     gaps = [b.at - a.at for a, b in zip(points, points[1:])]
     assert max(gaps) > 6 * 60 and min(gaps) >= 15.0
 
 
 def test_a_qualifier_gets_a_turn_in_the_history(script):
     r = room(script, head_start_minutes=600.0)
-    qualifiers = [p for p in r.trace.recent() if p.qualified]
+    qualifiers = [p for p in r.notebook.recent() if p.qualified]
     heard = {record.heard_at for record in r.history.recent()}
-    assert qualifiers and all(p.at in heard for p in qualifiers)          # the trace keeps an hour of attempts, the history every turn
+    assert qualifiers and all(p.at in heard for p in qualifiers)          # the notebook keeps an hour of attempts, the history every turn
 
 
 def test_the_bar_it_uses_is_the_one_in_the_config_with_its_anchor(script):
@@ -80,12 +80,12 @@ def test_the_bar_it_uses_is_the_one_in_the_config_with_its_anchor(script):
 
 
 def test_with_no_quiet_start_the_first_attempt_comes_at_twenty_seconds(script):
-    assert room(script).trace.recent()[0].at == 20.0
+    assert room(script).notebook.recent()[0].at == 20.0
 
 
 def test_a_quiet_start_hears_nothing_until_then(script):
     r = room(script, head_start_minutes=60.0, quiet_start_minutes=20.0)
-    assert r.trace.recent()[0].at >= 20 * 60.0 and room(script, head_start_minutes=60.0).trace.recent()[0].at < 20 * 60.0
+    assert r.notebook.recent()[0].at >= 20 * 60.0 and room(script, head_start_minutes=60.0).notebook.recent()[0].at < 20 * 60.0
 
 
 def test_the_terminal_light_can_be_set():

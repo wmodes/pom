@@ -14,7 +14,7 @@ Design decisions, and why:
     portent are untrusted words. The only script is a few lines inline, and a Content-Security-Policy allows nothing else.
   * The page updates itself: a few lines of script ask `/api/turns` every few seconds, update the numbers in place, and
     reload the page when a newer turn has arrived. There are no websockets. The same feed is a plain JSON document.
-  * THE CHART. With a ScoreTrace the page draws the last 30 minutes of scores and the bar above "Turns, newest first" (see
+  * THE CHART. With a ChartNotebook the page draws the last 30 minutes of scores and the bar above "Turns, newest first" (see
     score_chart), as inline SVG made on the server; the same script refreshes it from `/chart.svg` on each poll. It is numbers only,
     so it is drawn whether or not hinges are hidden, and its qualifier dots link to the turn pages.
   * Nothing here may stop the oracle (see pom/__init__.py). A missing password, a port that is taken, or a status function
@@ -42,7 +42,7 @@ from werkzeug.serving import WSGIRequestHandler, make_server
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.monitor.score_chart import ChartLook, render_score_chart
-from pom.monitor.score_trace import ScoreTrace
+from pom.monitor.chart_notebook import ChartNotebook
 from pom.monitor.turn_history import TurnHistory, TurnRecord
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module 
@@ -240,7 +240,7 @@ class MonitorSite:
 
     def __init__(self, history: TurnHistory, password: str, show_hinges: bool = True,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
-                 clock: Callable[[], float] = time.time, strict: bool = False, trace: Optional[ScoreTrace] = None, chart=None,
+                 clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None, chart=None,
                  poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
                  ticks_source: Optional[Callable[[float, float], list]] = None, stream_began_at: Optional[float] = None,
                  password_on_localhost: bool = True):
@@ -251,21 +251,21 @@ class MonitorSite:
             status_source: A function returning the MonitorStatus now; optional.
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise MonitorSiteError on any problem instead of recording it.
-            trace: A ScoreTrace to draw the chart from; without one the page has no chart.
+            notebook: A ChartNotebook to draw the chart from; without one the page has no chart.
             chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
             poll_seconds: How often the open page asks for news and redraws (`[monitor] poll_seconds`), above 0; a bad value is the fallback, with a warning.
             stream_now: Returns the stream time now, the chart's right edge, so the chart moves through silence; without it the edge is the newest attempt.
             password_on_localhost: False lets a request from the Printer's own machine in without the password (see `_from_this_machine`); True, the
                 default and the fallback for anything that is not a bool, asks everyone.
             stream_began_at: The stream time at which listening began; a quiet start (no attempt for longer than the longest silence) is drawn as a
-                silence too, as long as the trace still holds every attempt since then.
+                silence too, as long as the notebook still holds every attempt since then.
             ticks_source: Called with (start, end) in stream time; returns the anchor's ticks between them, each as (time, anchor score, bar then).
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
         self._show_hinges = bool(show_hinges)
         self._status_source = status_source
-        self._trace = trace
+        self._notebook = notebook
         self._look = chart if chart is not None else ChartLook()
         self._clock = clock
         self._stream_now = stream_now
@@ -378,19 +378,19 @@ class MonitorSite:
         return (ids[at - 1] if at > 0 else None), (ids[at + 1] if at + 1 < len(ids) else None)
 
     def _chart(self) -> str:
-        """The chart as SVG, or "" if there is no trace. Qualifier dots link to the records still on the page."""
-        if self._trace is None:
+        """The chart as SVG, or "" if there is no notebook. Qualifier dots link to the records still on the page."""
+        if self._notebook is None:
             return ""
         links = {record.heard_at: record.id for record in self._history.recent()}
         if self._stream_now is None:
-            return render_score_chart(self._trace.recent(self._look.window_minutes * 60.0), links, self._look)
+            return render_score_chart(self._notebook.recent(self._look.window_minutes * 60.0), links, self._look)
         now = self._stream_now()
-        points = self._trace.recent()
+        points = self._notebook.recent()
         # the chart is in drawn minutes (a long silence is shortened), so it can reach back past `window_minutes` of real time: ask for the ticks
         # as far back as the oldest attempt kept, and no further back than the page remembers
         oldest = max(min(points[0].at if points else now, now - self._look.window_minutes * 60.0), now - self._history.max_age_seconds)
         ticks = self._ticks_source(oldest, now) if self._ticks_source is not None else []
-        began_at = self._stream_began_at if self._trace.holds_everything else None                  # else the start is no longer in what is drawn
+        began_at = self._stream_began_at if self._notebook.holds_everything else None                  # else the start is no longer in what is drawn
         return render_score_chart(points, links, self._look, ticks=ticks, now=now, bar_now=self._status().bar, began_at=began_at)
 
     def _row(self, record: TurnRecord, now: float) -> dict:
@@ -451,7 +451,7 @@ class MonitorSite:
 
         @app.get("/chart.svg")
         def chart_svg():
-            if self._trace is None:
+            if self._notebook is None:
                 abort(404)
             return Response(self._chart(), mimetype="image/svg+xml")
 

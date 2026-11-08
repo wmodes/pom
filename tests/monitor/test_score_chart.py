@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from pom.monitor.score_chart import ChartLook, SilenceCompressor, _silence_lines, render_score_chart
-from pom.monitor.score_trace import TracePoint
+from pom.monitor.chart_notebook import NotebookEntry
 
 NS = "{http://www.w3.org/2000/svg}"
 LOOK = ChartLook()                                       # the fallbacks, which are also what the shipped config says
@@ -39,7 +39,7 @@ def find(root, tag, css):
 
 
 def point(at, score=3.0, bar=5.0, qualified=False):
-    return TracePoint(float(at), float(score), None if bar is None else float(bar), qualified)
+    return NotebookEntry(float(at), float(score), None if bar is None else float(bar), qualified)
 
 
 def x_of(at, t_end, seconds=DEFAULT_SECONDS):

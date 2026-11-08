@@ -521,7 +521,7 @@ src/pom/
   printing/    portent_formatter, terminal_port
   conductor/   hinge_finder, keyboard_watcher, floor_keeper, turn_taker, conductor
                (the Conductor is the only module that knows the whole pipeline)
-  monitor/     turn_history, score_trace, score_chart, monitor_site
+  monitor/     turn_history, chart_notebook, score_chart, monitor_site
 ```
 
 ### Start-up duties

@@ -11,7 +11,7 @@ import urllib.request
 import pytest
 
 from pom.library import Passage
-from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ScoreTrace, TurnHistory
+from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, TurnHistory
 from pom.writing import Portent
 
 PASSWORD = "open sesame"
@@ -321,46 +321,46 @@ class TestTheTurnRule:
 
 class TestTheChart:
     @staticmethod
-    def with_trace(**options):
-        trace = ScoreTrace()
-        site, history, client, clock = make(trace=trace, **options)
-        return trace, history, client
+    def with_notebook(**options):
+        notebook = ChartNotebook()
+        site, history, client, clock = make(notebook=notebook, **options)
+        return notebook, history, client
 
     def test_the_index_has_the_chart_above_the_list(self):
-        trace, history, client = self.with_trace()
-        trace.add(3.0, 5.0, 10.0)
+        notebook, history, client = self.with_notebook()
+        notebook.add(3.0, 5.0, 10.0)
         page = get(client, "/").get_data(as_text=True)
         assert '<svg class="chart"' in page and 'id="chart"' in page
         assert page.index('id="chart"') < page.index("Turns, newest first")
 
     def test_the_chart_is_black_dots_and_a_red_bar_on_solid_grid_paper(self):
-        trace, _, client = self.with_trace()
+        notebook, _, client = self.with_notebook()
         page = get(client, "/").get_data(as_text=True)
         assert "--dot:#000;" in page and "--bar:#d62828;" in page
         assert ".chart .dot { fill:var(--dot); }" in page and ".chart .bar { stroke:var(--bar);" in page
         assert ".chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }" in page and "dasharray" not in page
 
     def test_in_dark_mode_the_dots_and_the_bar_stay_visible(self):
-        trace, _, client = self.with_trace()
+        notebook, _, client = self.with_notebook()
         page = get(client, "/").get_data(as_text=True)
         dark = page[page.index("prefers-color-scheme: dark"):]
         assert "--dot:#f2efe6;" in dark and "--bar:#ff6b6b;" in dark
 
     def test_the_chart_appears_once(self):
-        trace, _, client = self.with_trace()
-        trace.add(3.0, 5.0, 1.0)
+        notebook, _, client = self.with_notebook()
+        notebook.add(3.0, 5.0, 1.0)
         assert get(client, "/").get_data(as_text=True).count('<svg class="chart"') == 1
 
     def test_there_is_a_caption_that_says_what_the_marks_are(self):
-        trace, _, client = self.with_trace()
+        notebook, _, client = self.with_notebook()
         page = get(client, "/").get_data(as_text=True)
         assert "Black dots: attempts." in page and "Red line: the bar each one had to beat." in page
         assert "Orange: qualifiers (click one)." in page and "The last 30 minutes." in page
 
     def test_the_caption_and_the_chart_follow_the_configured_look(self):
         from pom.monitor import ChartLook
-        trace, _, client = self.with_trace(chart=ChartLook(window_minutes=12, bar_line_width=2.5, qualifier_dot_radius=7))
-        trace.add(3.0, 5.0, 10.0, True)
+        notebook, _, client = self.with_notebook(chart=ChartLook(window_minutes=12, bar_line_width=2.5, qualifier_dot_radius=7))
+        notebook.add(3.0, 5.0, 10.0, True)
         page = get(client, "/").get_data(as_text=True)
         assert "The last 12 minutes." in page and "The last 30 minutes." not in page
         assert 'stroke-width="2.5"' in page and 'r="7"' in page
@@ -368,88 +368,88 @@ class TestTheChart:
 
     def test_the_chart_window_also_picks_which_points_are_drawn(self):
         from pom.monitor import ChartLook
-        trace, _, client = self.with_trace(chart=ChartLook(window_minutes=5))
-        trace.add(3.0, 5.0, 0.0)
-        trace.add(3.0, 5.0, 1000.0)                      # 1000 s after the first: outside a five-minute window
+        notebook, _, client = self.with_notebook(chart=ChartLook(window_minutes=5))
+        notebook.add(3.0, 5.0, 0.0)
+        notebook.add(3.0, 5.0, 1000.0)                      # 1000 s after the first: outside a five-minute window
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 1
 
     def test_a_window_longer_than_the_old_thirty_minutes_draws_all_of_it(self):
         from pom.monitor import ChartLook
-        trace, _, client = self.with_trace(chart=ChartLook(window_minutes=60))
-        trace.add(3.0, 5.0, 0.0)
-        trace.add(3.0, 5.0, 2400.0)                      # forty minutes after the first: inside an hour, outside half an hour
+        notebook, _, client = self.with_notebook(chart=ChartLook(window_minutes=60))
+        notebook.add(3.0, 5.0, 0.0)
+        notebook.add(3.0, 5.0, 2400.0)                      # forty minutes after the first: inside an hour, outside half an hour
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 2
 
-    def test_without_a_trace_there_is_no_chart_and_no_route(self):
+    def test_without_a_notebook_there_is_no_chart_and_no_route(self):
         _, history, client, _ = make()
         page = get(client, "/").get_data(as_text=True)
         assert 'id="chart"' not in page and "<svg" not in page
         assert get(client, "/chart.svg").status_code == 404
 
-    def test_an_empty_trace_says_no_scores_yet(self):
-        _, _, client = self.with_trace()
+    def test_an_empty_notebook_says_no_scores_yet(self):
+        _, _, client = self.with_notebook()
         assert "No scores yet." in get(client, "/").get_data(as_text=True)
 
     def test_the_scores_and_the_bar_are_drawn(self):
-        trace, _, client = self.with_trace()
+        notebook, _, client = self.with_notebook()
         for i in range(5):
-            trace.add(2.0 + i, 6.0, float(i))
+            notebook.add(2.0 + i, 6.0, float(i))
         svg = get(client, "/chart.svg").get_data(as_text=True)
         assert svg.count('class="dot"') == 5 and 'class="bar"' in svg
 
     def test_the_chart_route_is_an_svg_behind_the_password(self):
-        trace, _, client = self.with_trace()
-        trace.add(3.0, 5.0, 1.0)
+        notebook, _, client = self.with_notebook()
+        notebook.add(3.0, 5.0, 1.0)
         response = get(client, "/chart.svg")
         assert response.status_code == 200 and response.mimetype == "image/svg+xml" and response.get_data(as_text=True).startswith("<svg")
         assert client.get("/chart.svg").status_code == 401
 
     def test_a_turn_dot_links_to_the_turn_page_by_its_heard_time(self):
-        trace, history, client = self.with_trace()
-        trace.add(3.0, 5.0, 100.0)
-        trace.add(7.0, 5.0, 130.0, True)
+        notebook, history, client = self.with_notebook()
+        notebook.add(3.0, 5.0, 100.0)
+        notebook.add(7.0, 5.0, 130.0, True)
         record = add(history, "a hinge", heard_at=130.0)
         assert f'href="/turn/{record.id}"' in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_a_turn_still_being_written_is_drawn_without_a_link(self):
-        trace, history, client = self.with_trace()
-        trace.add(7.0, 5.0, 130.0, True)
+        notebook, history, client = self.with_notebook()
+        notebook.add(7.0, 5.0, 130.0, True)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         assert 'class="hit"' in svg and "/turn/" not in svg
 
     def test_only_the_last_half_hour_is_drawn(self):
-        trace, _, client = self.with_trace()
-        trace.add(3.0, 5.0, 0.0)
-        trace.add(3.0, 5.0, 2500.0)
-        trace.add(3.0, 5.0, 2600.0)
+        notebook, _, client = self.with_notebook()
+        notebook.add(3.0, 5.0, 0.0)
+        notebook.add(3.0, 5.0, 2500.0)
+        notebook.add(3.0, 5.0, 2600.0)
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 2
 
     def test_the_chart_changes_as_scores_arrive(self):
-        trace, _, client = self.with_trace()
-        trace.add(3.0, 5.0, 1.0)
+        notebook, _, client = self.with_notebook()
+        notebook.add(3.0, 5.0, 1.0)
         before = get(client, "/chart.svg").get_data(as_text=True)
-        trace.add(4.0, 5.0, 2.0)
+        notebook.add(4.0, 5.0, 2.0)
         assert get(client, "/chart.svg").get_data(as_text=True) != before
 
     def test_the_chart_is_drawn_even_when_the_hinges_are_hidden(self):
-        trace, history, client = self.with_trace(show_hinges=False)
-        trace.add(3.0, 5.0, 1.0)
+        notebook, history, client = self.with_notebook(show_hinges=False)
+        notebook.add(3.0, 5.0, 1.0)
         assert '<svg class="chart"' in get(client, "/").get_data(as_text=True)
 
     def test_no_hinge_text_can_reach_the_chart(self):
-        trace, history, client = self.with_trace()
-        trace.add(7.0, 5.0, 130.0, True)
+        notebook, history, client = self.with_notebook()
+        notebook.add(7.0, 5.0, 130.0, True)
         add(history, "My neighbour owes me forty dollars.", heard_at=130.0)
         assert "neighbour" not in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_the_page_script_refreshes_the_chart_from_the_route(self):
-        trace, _, client = self.with_trace()
+        notebook, _, client = self.with_notebook()
         page = get(client, "/").get_data(as_text=True)
         assert "fetch('/chart.svg'" in page and "getElementById('chart')" in page
         assert page.count("drawChart()") >= 2                  # defined, and called by the poll
 
     def test_the_security_headers_still_allow_the_page_to_fetch_the_chart(self):
-        trace, _, client = self.with_trace()
+        notebook, _, client = self.with_notebook()
         csp = get(client, "/").headers["Content-Security-Policy"]
         assert "connect-src 'self'" in csp and "default-src 'none'" in csp
 
@@ -760,17 +760,17 @@ class TestTheChartMovesWithTheStream:
     def moving(now=1000.0, ticks=None, status=None, **options):
         calls = []
         stream = [now]
-        trace = ScoreTrace()
+        notebook = ChartNotebook()
 
         def source(start, end):
             calls.append((start, end))
             return list(ticks or [])
-        site, history, client, clock = make(trace=trace, stream_now=lambda: stream[0], ticks_source=source, status=status, **options)
-        return trace, client, calls, stream
+        site, history, client, clock = make(notebook=notebook, stream_now=lambda: stream[0], ticks_source=source, status=status, **options)
+        return notebook, client, calls, stream
 
     def test_the_chart_is_drawn_up_to_the_stream_time_not_the_newest_attempt(self):
-        trace, client, _, stream = self.moving(now=1000.0)
-        trace.add(3.0, 5.0, 900.0)
+        notebook, client, _, stream = self.moving(now=1000.0)
+        notebook.add(3.0, 5.0, 900.0)
         near = get(client, "/chart.svg").get_data(as_text=True)
         stream[0] = 1200.0
         later = get(client, "/chart.svg").get_data(as_text=True)
@@ -798,48 +798,48 @@ class TestTheChartMovesWithTheStream:
         assert calls == [(5000.0 - 50 * 60.0, 5000.0)]
 
     def test_it_asks_back_as_far_as_the_oldest_attempt_kept_so_a_silence_is_covered(self):
-        trace, client, calls, _ = self.moving(now=5000.0)
-        trace.add(3.0, 5.0, 2000.0)                                                 # older than the 30 minute window
+        notebook, client, calls, _ = self.moving(now=5000.0)
+        notebook.add(3.0, 5.0, 2000.0)                                                 # older than the 30 minute window
         get(client, "/chart.svg")
         assert calls == [(2000.0, 5000.0)]
 
     def test_but_never_further_back_than_the_page_remembers(self):
-        trace, client, calls, _ = self.moving(now=50_000.0)
-        trace.add(3.0, 5.0, 100.0)                                                  # hours old: the page keeps an hour
+        notebook, client, calls, _ = self.moving(now=50_000.0)
+        notebook.add(3.0, 5.0, 100.0)                                                  # hours old: the page keeps an hour
         get(client, "/chart.svg")
         assert calls == [(50_000.0 - 3600.0, 50_000.0)]
 
     def test_the_bar_line_runs_to_the_right_edge_at_the_bar_now(self):
-        trace, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
-        trace.add(3.0, 5.0, 900.0)
+        notebook, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
+        notebook.add(3.0, 5.0, 900.0)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         import re
         assert re.search(r'class="bar"[^>]* d="[^"]*H714\.0"', svg)                    # the right edge is 720 - 6
 
     def test_the_bar_line_is_where_the_bar_now_is(self):
-        trace, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
-        trace.add(3.0, 5.0, 900.0)
+        notebook, client, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))
+        notebook.add(3.0, 5.0, 900.0)
         high = get(client, "/chart.svg").get_data(as_text=True)
         _, client2, _, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=2.0))
         assert high != get(client2, "/chart.svg").get_data(as_text=True)
 
     def test_with_no_ticks_source_the_chart_still_moves(self):
-        trace = ScoreTrace()
-        site, _, client, _ = make(trace=trace, stream_now=lambda: 1000.0)
-        trace.add(3.0, 5.0, 900.0)
+        notebook = ChartNotebook()
+        site, _, client, _ = make(notebook=notebook, stream_now=lambda: 1000.0)
+        notebook.add(3.0, 5.0, 900.0)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         assert svg.count('class="dot"') == 1 and 'class="tick"' not in svg
 
     def test_without_the_stream_clock_the_chart_stands_still_at_the_newest_attempt(self):
-        trace = ScoreTrace()
-        _, _, client, _ = make(trace=trace)
-        trace.add(3.0, 5.0, 900.0)
+        notebook = ChartNotebook()
+        _, _, client, _ = make(notebook=notebook)
+        notebook.add(3.0, 5.0, 900.0)
         assert 'cx="714.0"' in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_a_silence_is_drawn_short_through_the_page(self):
         from pom.monitor import ChartLook
-        trace, client, _, _ = self.moving(now=4000.0, chart=ChartLook(longest_silence_minutes=5))
-        trace.add(3.0, 5.0, 100.0)
+        notebook, client, _, _ = self.moving(now=4000.0, chart=ChartLook(longest_silence_minutes=5))
+        notebook.add(3.0, 5.0, 100.0)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         assert 'class="gap"' in svg and ">silence<" in svg and ">1 hr 5 min<" in svg
 
@@ -849,20 +849,20 @@ class TestTheChartMovesWithTheStream:
 
     def test_the_stream_clock_is_read_afresh_for_every_drawing(self):
         reads = []
-        _, _, client, _ = make(trace=ScoreTrace(), stream_now=lambda: reads.append(1) or 1000.0)
+        _, _, client, _ = make(notebook=ChartNotebook(), stream_now=lambda: reads.append(1) or 1000.0)
         get(client, "/chart.svg")
         get(client, "/chart.svg")
         assert len(reads) == 2
 
 
 class TestTheQuietStart:
-    """The page tells the chart when listening began, but only while the trace still holds every attempt since then."""
+    """The page tells the chart when listening began, but only while the notebook still holds every attempt since then."""
 
     @staticmethod
-    def site(began_at=0.0, now=3960.0, trace=None, **options):
-        trace = trace if trace is not None else ScoreTrace()
-        _, _, client, _ = make(trace=trace, stream_now=lambda: now, stream_began_at=began_at, **options)
-        return trace, client
+    def site(began_at=0.0, now=3960.0, notebook=None, **options):
+        notebook = notebook if notebook is not None else ChartNotebook()
+        _, _, client, _ = make(notebook=notebook, stream_now=lambda: now, stream_began_at=began_at, **options)
+        return notebook, client
 
     def test_a_room_quiet_since_the_start_has_its_silence_drawn(self):
         _, client = self.site()
@@ -870,19 +870,19 @@ class TestTheQuietStart:
         assert 'class="gap"' in svg and ">1 hr 6 min<" in svg
 
     def test_so_does_a_quiet_start_before_the_first_attempt(self):
-        trace, client = self.site(now=1000.0)
-        trace.add(3.0, 5.0, 900.0)
+        notebook, client = self.site(now=1000.0)
+        notebook.add(3.0, 5.0, 900.0)
         assert ">15 min<" in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_with_no_start_given_it_is_not(self):
         _, client = self.site(began_at=None)
         assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
 
-    def test_once_the_trace_has_forgotten_an_attempt_the_start_is_not_used(self):
-        trace = ScoreTrace(max_points=2)
+    def test_once_the_notebook_has_forgotten_an_attempt_the_start_is_not_used(self):
+        notebook = ChartNotebook(max_points=2)
         for at in (3000.0, 3010.0, 3020.0):
-            trace.add(3.0, 5.0, at)
-        trace, client = self.site(now=3030.0, trace=trace)
+            notebook.add(3.0, 5.0, at)
+        notebook, client = self.site(now=3030.0, notebook=notebook)
         assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_a_start_inside_the_longest_silence_draws_nothing(self):
@@ -935,12 +935,12 @@ class TestTheServiceLights:
 
 class TestTheStyleOfTheNewMarks:
     def test_ticks_are_the_grid_s_grey_and_the_gap_is_the_card_s_color(self):
-        page = get(make(trace=ScoreTrace())[2], "/").get_data(as_text=True)
+        page = get(make(notebook=ChartNotebook())[2], "/").get_data(as_text=True)
         assert ".chart .tick { fill:var(--line); }" in page and ".chart .gap { fill:var(--card); }" in page
         assert ".chart .break { stroke:var(--muted); fill:none; stroke-width:1; }" in page
 
     def test_the_grid_and_the_ticks_use_the_same_variable(self):
-        page = get(make(trace=ScoreTrace())[2], "/").get_data(as_text=True)
+        page = get(make(notebook=ChartNotebook())[2], "/").get_data(as_text=True)
         assert ".chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }" in page and "fill:var(--line)" in page
 
 
@@ -1007,9 +1007,9 @@ class TestThePasswordOnLocalhost:
     def site(**options):
         history = TurnHistory()
         add(history)
-        trace = ScoreTrace()
-        trace.add(3.0, 5.0, 10.0)
-        _, _, client, _ = make(history=history, trace=trace, **options)
+        notebook = ChartNotebook()
+        notebook.add(3.0, 5.0, 10.0)
+        _, _, client, _ = make(history=history, notebook=notebook, **options)
         return client
 
     @staticmethod

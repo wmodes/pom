@@ -1,4 +1,4 @@
-"""The ScoreTrace: every attempt's score and the bar it was judged against, for the chart on the monitoring site.
+"""The ChartNotebook: every attempt's score and the bar it was judged against, for the chart on the monitoring site.
 
 The TurnHistory keeps the words of the hinges (the attempts that qualified). This keeps something lighter for all the others: just numbers, one
 point per attempt (when it was heard, its score, the bar it had to beat, and whether it qualified), so the page can draw the
@@ -14,7 +14,7 @@ Design decisions, and why:
     `recent()` returns a copy.
   * Nothing here may stop the oracle (see pom/__init__.py). A point that cannot be made (a score or time that is not a number) is
     recorded as a warning without any value and `add` returns False; a bad setting is replaced by its default. `strict=True` raises
-    ScoreTraceError instead, for tests and dev tools.
+    ChartNotebookError instead, for tests and dev tools.
   * This module never reads Config.
 """
 import math
@@ -33,12 +33,12 @@ DEFAULT_MAX_AGE_SECONDS = 3600.0
 DEFAULT_MAX_POINTS = 5000
 
 
-class ScoreTraceError(ValueError):
-    """Raised for any trace problem, but only in strict mode (development and tests)."""
+class ChartNotebookError(ValueError):
+    """Raised for any notebook problem, but only in strict mode (development and tests)."""
 
 
 @dataclass(frozen=True, slots=True)
-class TracePoint:
+class NotebookEntry:
     """One attempt, as numbers.
 
     Attributes:
@@ -57,7 +57,7 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-class ScoreTrace:
+class ChartNotebook:
     """Keeps the recent attempts as numbers, oldest first.
 
     Attributes:
@@ -68,9 +68,9 @@ class ScoreTrace:
         """Args:
             max_age_seconds: How much audio time is kept, above 0 (3600 is an hour).
             max_points: The most points kept, a whole number of at least 1; the oldest go first.
-            strict: Raise ScoreTraceError on any problem instead of recording it.
+            strict: Raise ChartNotebookError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=ScoreTraceError, logger=_log)
+        self.report = FaultRecorder(strict=strict, error=ChartNotebookError, logger=_log)
         if not (_is_number(max_age_seconds) and max_age_seconds > 0):
             self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; using {DEFAULT_MAX_AGE_SECONDS:g}")
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS
@@ -78,7 +78,7 @@ class ScoreTrace:
             self.report.warn(f"max_points must be a whole number of at least 1, got {max_points!r}; using {DEFAULT_MAX_POINTS}")
             max_points = DEFAULT_MAX_POINTS
         self._max_age = float(max_age_seconds)
-        self._points: Deque[TracePoint] = deque(maxlen=max_points)
+        self._points: Deque[NotebookEntry] = deque(maxlen=max_points)
         self._lock = threading.Lock()
         self._total_added = 0
 
@@ -87,14 +87,14 @@ class ScoreTrace:
         if not (_is_number(score) and _is_number(at)):
             self.report.warn("a point was given without a numeric score and time, so it was not kept")
             return False
-        point = TracePoint(float(at), float(score), float(bar) if _is_number(bar) else None, bool(qualified))
+        point = NotebookEntry(float(at), float(score), float(bar) if _is_number(bar) else None, bool(qualified))
         with self._lock:
             self._points.append(point)
             self._total_added += 1
             self._forget_old()
         return True
 
-    def recent(self, seconds: Optional[float] = None) -> List[TracePoint]:
+    def recent(self, seconds: Optional[float] = None) -> List[NotebookEntry]:
         """The points, oldest first, as a copy. With `seconds`, only those within that much audio time of the newest point."""
         with self._lock:
             points = list(self._points)
@@ -105,7 +105,7 @@ class ScoreTrace:
 
     @property
     def holds_everything(self) -> bool:
-        """True while no attempt has been forgotten, for age or for room: the trace then reaches back to the start of the stream."""
+        """True while no attempt has been forgotten, for age or for room: the notebook then reaches back to the start of the stream."""
         with self._lock:
             return self._total_added == len(self._points)
 

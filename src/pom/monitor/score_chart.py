@@ -1,6 +1,6 @@
 """The score chart: the room's scores and the bar riding above them, drawn as a small inline SVG for the monitoring site.
 
-`render_score_chart(points, qualifier_ids, look)` takes the points of a ScoreTrace and returns one `<svg>` element, the width of the text:
+`render_score_chart(points, qualifier_ids, look)` takes the points of a ChartNotebook and returns one `<svg>` element, the width of the text:
 
   * every attempt is a small dot (black on the page), on a fixed scale from 0 to `score_max` with gridlines at `score_gridlines`, and vertical
     gridlines every `gridline_every_minutes`, so it reads like graph paper;
@@ -29,7 +29,7 @@ Design decisions, and why:
 from dataclasses import dataclass
 from typing import Mapping, Optional, Sequence
 
-from pom.monitor.score_trace import TracePoint
+from pom.monitor.chart_notebook import NotebookEntry
 
 
 @dataclass(frozen=True)
@@ -95,12 +95,12 @@ def _y(score: float, plot_height: float, top: float, score_max: float) -> float:
     return top + plot_height * (1.0 - clamped / score_max)
 
 
-def render_score_chart(points: Sequence[TracePoint], qualifier_ids: Optional[Mapping[float, int]] = None, look=None,
+def render_score_chart(points: Sequence[NotebookEntry], qualifier_ids: Optional[Mapping[float, int]] = None, look=None,
                        ticks: Sequence = (), now: Optional[float] = None, bar_now: Optional[float] = None, began_at: Optional[float] = None) -> str:
     """The chart for these points as an `<svg>` string.
 
     Args:
-        points: The ScoreTrace's points, oldest first.
+        points: The ChartNotebook's points, oldest first.
         qualifier_ids: The number of each qualifier's record by the audio time it was heard, for linking its dot (a qualifier not in
             it is drawn without a link, for example one whose portent is still being written).
         look: The `[chart]` settings (anything with the fields of `ChartLook`); None means the fallbacks.

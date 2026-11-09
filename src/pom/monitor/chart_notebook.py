@@ -13,7 +13,8 @@ Design decisions, and why:
     next attempt is heard and gone after a long silence. So `add` asks the bar's `ticks_source` for the ticks since the previous attempt (or since the
     stream began, before the first one) and writes them down first. The ticks since the newest attempt are not here yet: the page works those out live.
   * A SILENCE IS DRAWN AS ITS FIRST MINUTES, A CUT, AND ITS LAST MINUTES, so only the first and the last `head_seconds` of it are ever on the chart
-    (see `score_chart.SilenceCompressor`). When the previous attempt is more than `longest_silence_seconds` back, the ticks of the stretch between are not
+    (see `silence_compressor.SilenceCompressor`). The rule for which ticks that gives is the TickWriter's (`tick_writer.py`); this keeps
+    the list and the lock, and hands it where the stretch begins. When the previous attempt is more than `longest_silence_seconds` back, the ticks of the stretch between are not
     written. Only the first `head_seconds` after that attempt are, and they were worked out when that attempt was heard (`head_ticks()` holds them
     until the next one arrives): by the time the next attempt comes the bar may have forgotten the scores they depend on, but at the moment an attempt is
     heard the bar holds them, and a tick's height depends only on scores heard before it, so they are exact. The last minutes of the silence are written
@@ -34,15 +35,15 @@ Design decisions, and why:
     warning and no ticks. `strict=True` raises ChartNotebookError instead, for tests and dev tools.
   * This module never reads Config, and never imports the bar: the Printer hands it a function.
 """
-import math
 import threading
 from collections import deque
-from dataclasses import dataclass
 from typing import Callable, Deque, List, Optional
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
+from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceCompressor
+from pom.monitor.tick_writer import TickWriter
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -54,35 +55,9 @@ DEFAULT_MAX_ENTRIES = 5000
 DEFAULT_LONGEST_SILENCE_SECONDS = 300.0
 DEFAULT_HEAD_SECONDS = 0.0
 
-ATTEMPT = "attempt"
-TICK = "tick"
-
 
 class ChartNotebookError(ValueError):
     """Raised for any notebook problem, but only in strict mode (development and tests)."""
-
-
-@dataclass(frozen=True, slots=True)
-class NotebookEntry:
-    """One attempt or one tick, as numbers.
-
-    Attributes:
-        at: Where in the audio stream it happened, in seconds from the start of listening (for an attempt, where it ended).
-        score: An attempt's score, 0 to 9; a tick's is the anchor's score.
-        bar: The bar at that moment: for an attempt the score it had to be above, as the bar stood before it joined; for a tick the bar as it
-            stood at that tick (None if there was none).
-        qualified: True if an attempt qualified (always False for a tick).
-        kind: "attempt" (the default) or "tick".
-    """
-    at: float
-    score: float
-    bar: Optional[float]
-    qualified: bool
-    kind: str = ATTEMPT
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class ChartNotebook:
@@ -107,36 +82,33 @@ class ChartNotebook:
                 for it, and nothing after them. 0, the default, writes none.
         """
         self.report = FaultRecorder(strict=strict, error=ChartNotebookError, logger=_log)
-        if not (_is_number(max_age_seconds) and max_age_seconds > 0):
+        if not (is_number(max_age_seconds) and max_age_seconds > 0):
             self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; using {DEFAULT_MAX_AGE_SECONDS:g}")
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS
         if not (isinstance(max_entries, int) and not isinstance(max_entries, bool) and max_entries >= 1):
             self.report.warn(f"max_entries must be a whole number of at least 1, got {max_entries!r}; using {DEFAULT_MAX_ENTRIES}")
             max_entries = DEFAULT_MAX_ENTRIES
-        if not (_is_number(longest_silence_seconds) and longest_silence_seconds > 0):
+        if not (is_number(longest_silence_seconds) and longest_silence_seconds > 0):
             self.report.warn(f"longest_silence_seconds must be a number above 0, got {longest_silence_seconds!r}; using {DEFAULT_LONGEST_SILENCE_SECONDS:g}")
             longest_silence_seconds = DEFAULT_LONGEST_SILENCE_SECONDS
-        if not (_is_number(head_seconds) and head_seconds >= 0):
+        if not (is_number(head_seconds) and head_seconds >= 0):
             self.report.warn(f"head_seconds must be a number of at least 0, got {head_seconds!r}; using {DEFAULT_HEAD_SECONDS:g}")
             head_seconds = DEFAULT_HEAD_SECONDS
-        self._head_seconds = float(head_seconds)
         self._head: List[NotebookEntry] = []                    # the ticks for the first minutes after the newest attempt, worked out when it was heard
         self._max_age = float(max_age_seconds)
         self._entries: Deque[NotebookEntry] = deque(maxlen=max_entries)
-        self._ticks_source = ticks_source
-        self._longest_silence = float(longest_silence_seconds)
-        self._began_at = float(began_at) if _is_number(began_at) else None
+        self._tick_writer = TickWriter(ticks_source, longest_silence_seconds, head_seconds, began_at, self.report)
         self._lock = threading.Lock()
         self._total_added = 0
 
     def add(self, score: float, bar: Optional[float], at: float, qualified: bool = False) -> bool:
         """Adds an attempt, after the ticks since the previous one. True if it was kept; False (see `report`) if the score or the time was not a number."""
-        if not (_is_number(score) and _is_number(at)):
+        if not (is_number(score) and is_number(at)):
             self.report.warn("an attempt was given without a numeric score and time, so it was not kept")
             return False
-        attempt = NotebookEntry(float(at), float(score), float(bar) if _is_number(bar) else None, bool(qualified), ATTEMPT)
-        ticks = self._ticks_before(attempt.at)                    # asked for outside the lock: the bar has its own
-        head = self._tick_entries(attempt.at, attempt.at + self._head_seconds) if self._head_seconds > 0 else []
+        attempt = NotebookEntry(float(at), float(score), float(bar) if is_number(bar) else None, bool(qualified), ATTEMPT)
+        ticks = self._stretch_ticks(attempt.at)                   # asked for outside the lock: the bar has its own
+        head = self._tick_writer.first_minutes(attempt.at)
         with self._lock:
             for tick in ticks:
                 self._entries.append(tick)
@@ -164,23 +136,7 @@ class ChartNotebook:
         """Every tick the chart draws, oldest first, as of `now`: the ones written down, then the first minutes of a silence that has begun since, then
         the last minutes before `now`, worked out fresh each time (they are not written: an attempt heard a moment ago may not be in the bar yet, and the
         next attempt writes them properly). While the quiet since the newest attempt is not yet a silence, it is all of it."""
-        written = self.ticks()
-        if self._ticks_source is None or not _is_number(now):
-            return written
-        with self._lock:
-            since = self._latest_attempt_at()
-            held = list(self._head)
-        began = since is None
-        if began:
-            since = self._began_at
-        if since is None or not now > since:
-            return written
-        if now - since <= self._longest_silence:
-            return written + self._tick_entries(since, now)
-        if began:
-            held = self._tick_entries(since, since + self._head_seconds) if self._head_seconds > 0 else []
-        tail = self._tick_entries(now - self._head_seconds, now) if self._head_seconds > 0 else []
-        return written + held + tail
+        return self.ticks() + self._stretch_ticks(now)
 
     def head_ticks(self) -> List[NotebookEntry]:
         """The ticks for the first minutes after the newest attempt, as a copy: what the chart draws at the start of a silence that has begun since."""
@@ -206,50 +162,22 @@ class ChartNotebook:
                 return entry.at
         return None
 
-    def _ticks_before(self, at: float) -> List[NotebookEntry]:
-        """The ticks to write down before an attempt heard at `at`: those since the previous attempt (or the stream's start), or, if that stretch is a
-        silence, only the ones at its start."""
-        if self._ticks_source is None:
+    def _stretch_ticks(self, until: float) -> List[NotebookEntry]:
+        """The ticks the chart draws between the newest attempt (or the stream's start, before the first) and `until`: the TickWriter's rule, given
+        where the stretch begins and the first minutes worked out when that attempt was heard."""
+        if self._tick_writer.ticks_source is None:                 # nothing to ask for, so no need to take the lock
             return []
         with self._lock:
             since = self._latest_attempt_at()
             held = list(self._head)
-        began = since is None
-        if began:
-            since = self._began_at
-        if since is None or not at > since:
-            return []
-        if at - since <= self._longest_silence:
-            return self._tick_entries(since, at)
-        if began:                                                  # nothing was heard before it, so no scores to wait for: worked out now, as exactly
-            held = self._tick_entries(since, since + self._head_seconds) if self._head_seconds > 0 else []
-        tail = self._tick_entries(at - self._head_seconds, at) if self._head_seconds > 0 else []
-        return [tick for tick in held if tick.at <= at] + tail      # the chart cuts the rest of the silence out, so nothing is written for it
-
-    def _tick_entries(self, start: float, end: float) -> List[NotebookEntry]:
-        """The bar's ticks after `start` and up to `end`, as entries. The start's own tick belongs to whatever was heard then."""
-        if self._ticks_source is None:
-            return []
-        try:
-            found = list(self._ticks_source(start, end))
-        except Exception:                                          # nothing here may stop the oracle; say what, never a value from the room
-            self.report.warn("the ticks source failed, so no ticks were written for this stretch")
-            return []
-        ticks = []
-        for item in found:
-            if not (isinstance(item, (tuple, list)) and len(item) == 3 and _is_number(item[0]) and _is_number(item[1])):
-                self.report.warn("a tick was given without a numeric time and score, so it was not kept")
-                continue
-            if start < item[0] <= end:
-                ticks.append(NotebookEntry(float(item[0]), float(item[1]), float(item[2]) if _is_number(item[2]) else None, False, TICK))
-        return ticks
+        return self._tick_writer.stretch(since, held, until)
 
     def _forget_old(self) -> None:
         """Drops entries older than the age limit in drawn time, measured back from the newest. The caller holds the lock."""
         entries = self._entries
-        began = self._began_at if self._total_added == len(entries) else None          # the quiet before the first attempt is a silence, if nothing before it was forgotten
-        squeeze = SilenceCompressor([entry.at for entry in entries if entry.kind == ATTEMPT], entries[-1].at, self._longest_silence, began,
-                                    self._longest_silence - 2.0 * self._head_seconds)
+        longest, head = self._tick_writer.longest_silence_seconds, self._tick_writer.head_seconds
+        began = self._tick_writer.began_at if self._total_added == len(entries) else None   # the quiet before the first attempt is a silence, if nothing before it was forgotten
+        squeeze = SilenceCompressor([entry.at for entry in entries if entry.kind == ATTEMPT], entries[-1].at, longest, began, longest - 2.0 * head)
         cutoff = squeeze.drawn(entries[-1].at) - self._max_age
         first = 0
         while first < len(entries) and squeeze.drawn(entries[first].at) < cutoff:
@@ -258,7 +186,7 @@ class ChartNotebook:
         before = [i for i in range(first) if entries[i].kind == ATTEMPT]
         if before and first < len(entries):
             following = next((entry.at for entry in list(entries)[first:] if entry.kind == ATTEMPT), None)
-            if following is not None and following - entries[before[-1]].at > self._longest_silence:
+            if following is not None and following - entries[before[-1]].at > longest:
                 first = before[-1]
         for _ in range(first):
             entries.popleft()

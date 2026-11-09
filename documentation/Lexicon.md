@@ -401,6 +401,9 @@ The machine, its settings, how it keeps going, and how it is watched.
   of drawn time, no more, so a long silence does not push the history before it out and the notebook stays about 30 minutes of data; at most
   `[monitor] chart_notebook_max_entries` are kept. The page reads only the notebook, never the bar. Example: `ChartNotebook`, `NotebookEntry`
   (was: score trace, `ScoreTrace`, `TracePoint`)
+- **tick writer**: What works out which of the anchor's ticks the chart draws for a stretch of the stream, as chart notebook entries: every tick in a stretch no longer
+  than the longest silence, and only the first and last minutes of a longer one. It asks the bar for them through a function it is handed, keeps no list of its own,
+  and is used by the chart notebook, both to write ticks down and to read the live ones for the page. Example: `TickWriter`
 - **drawn minutes**: The chart's time, counted after silences have been shortened: `window_minutes` (30) is the width of the chart in drawn minutes,
   so after a long silence it reaches further back in real time. Example: `window_minutes`, `SilenceCompressor`
 - **silence**: A stretch with no attempt, between two attempts, between the newest attempt and now, or (a *quiet start*) between the stream's start and the

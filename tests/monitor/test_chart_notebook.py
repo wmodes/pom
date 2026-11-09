@@ -507,8 +507,7 @@ class TestWhenTheBarCannotBeAsked:
 
     def test_the_bar_is_asked_without_the_lock_held(self):
         seen = []
-        t = ChartNotebook(began_at=0.0)
-        t._ticks_source = lambda start, end: seen.append(len(t.recent())) or []          # would hang if `add` still held the lock
+        t = ChartNotebook(ticks_source=lambda start, end: seen.append(len(t.recent())) or [], began_at=0.0)          # would hang if `add` still held the lock
         asker = threading.Thread(target=lambda: t.add(3.0, 5.0, 10.0))
         asker.start()
         asker.join(2)
@@ -566,6 +565,12 @@ class TestTheFirstMinutesOfASilence:
         t.add(3.0, 5.0, 10.0)
         t.add(3.0, 5.0, 250.0)
         assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 180.0, 240.0]
+
+    def test_no_tick_is_written_after_the_attempt_that_ends_the_silence_even_if_the_first_minutes_would_reach_past_it(self):
+        t = with_ticks(head_seconds=400.0, longest_silence_seconds=300.0, began_at=None)           # a head longer than the longest silence: not what the chart sets, but allowed
+        t.add(3.0, 5.0, 10.0)                                                                       # its first minutes reach to 410
+        t.add(3.0, 5.0, 320.0)                                                                      # a silence of 310 s: the attempt comes before 360 and 410
+        assert max(tick.at for tick in t.ticks()) <= 320.0
 
     def test_after_a_quiet_start_the_first_minutes_run_from_the_streams_start(self):
         t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=0.0)

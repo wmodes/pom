@@ -11,7 +11,7 @@ import urllib.request
 import pytest
 
 from pom.library import Passage
-from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, TurnHistory
+from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, SilenceShape, TurnHistory
 from pom.writing import Portent
 
 PASSWORD = "open sesame"
@@ -760,7 +760,7 @@ class TestTheChartMovesWithTheStream:
     def moving(now=1000.0, ticks=None, status=None, notebook=None, began_at=None, head_seconds=0.0, **options):
         stream = [now]
         notebook = notebook if notebook is not None else ChartNotebook(ticks_source=lambda start, end: list(ticks or []), began_at=began_at,
-                                                                      head_seconds=head_seconds)
+                                                                      silence_shape=SilenceShape(300.0, 300.0 - 2.0 * head_seconds))
         site, history, client, clock = make(notebook=notebook, stream_now=lambda: stream[0], status=status, **options)
         return notebook, client, stream
 
@@ -798,7 +798,7 @@ class TestTheChartMovesWithTheStream:
 
     def test_the_first_and_last_minutes_of_a_silence_are_drawn_and_nothing_between(self):
         grid = [(float(t), 5.85, 6.0) for t in range(60, 40_000, 60)]
-        notebook = ChartNotebook(ticks_source=lambda a, b: [tick for tick in grid if a < tick[0] <= b], head_seconds=100.0)
+        notebook = ChartNotebook(ticks_source=lambda a, b: [tick for tick in grid if a < tick[0] <= b], silence_shape=SilenceShape(300.0, 100.0))
         notebook.add(3.0, 6.0, 30.0)                                                # its first 100 s run to 130: the ticks at 60 and 120, and not the rest
         _, client, _ = self.moving(now=30.0 + 10_000.0, notebook=notebook)
         svg = get(client, "/chart.svg").get_data(as_text=True)

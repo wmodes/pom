@@ -4,6 +4,7 @@ import pytest
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.monitor.notebook_entry import NotebookEntry
+from pom.monitor.silence_compressor import SilenceShape
 from pom.monitor.tick_writer import TickWriter
 
 
@@ -18,9 +19,9 @@ def grid(interval=60.0, anchor=5.85, bar=lambda at: 6.0, asked=None):
 
 
 def writer(source="grid", longest=300.0, head=150.0, began_at=0.0):
-    """A TickWriter over the grid (or `source`), and the recorder it reports to."""
+    """A TickWriter over the grid (or `source`), and the recorder it reports to. `head` is how much of each end of a silence is drawn at true scale."""
     report = FaultRecorder(strict=False, error=ValueError, logger=get_logger("test_tick_writer", False))
-    return TickWriter(grid() if source == "grid" else source, longest, head, began_at, report), report
+    return TickWriter(grid() if source == "grid" else source, SilenceShape(longest, longest - 2.0 * head), began_at, report), report
 
 
 def times(entries):
@@ -102,10 +103,6 @@ class TestASilence:
         w, _ = writer(source=grid(asked=asked), longest=300.0, head=150.0)
         given = [NotebookEntry(60.0, 1.0, 2.0, False, "tick")]
         assert w.stretch(10.0, given, 50_000.0)[0] == given[0] and (10.0, 160.0) not in asked
-
-    def test_first_minutes_that_would_reach_past_the_end_are_left_out(self):
-        w, _ = writer(longest=300.0, head=400.0)                                              # a head longer than the longest silence is allowed
-        assert max(times(w.stretch(10.0, w.first_minutes(10.0), 320.0))) <= 320.0
 
     def test_with_no_head_a_silence_has_no_ticks(self):
         w, _ = writer(longest=300.0, head=0.0)

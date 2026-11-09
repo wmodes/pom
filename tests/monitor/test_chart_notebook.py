@@ -5,10 +5,20 @@ import threading
 import pytest
 
 from pom.monitor.chart_notebook import (DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_ENTRIES, ChartNotebook, ChartNotebookError, NotebookEntry)
+from pom.monitor.silence_compressor import SilenceShape
+
+
+def shaped(options):
+    """The tests say a silence in plain terms, `longest_silence_seconds` and `head_seconds` (how much of its start is drawn at true scale); the notebook is
+    given the one SilenceShape those make: the cut takes what the two sides leave of the longest silence."""
+    if "longest_silence_seconds" in options or "head_seconds" in options:
+        longest, head = options.pop("longest_silence_seconds", 300.0), options.pop("head_seconds", 0.0)
+        options["silence_shape"] = SilenceShape(longest, longest - 2.0 * head)
+    return options
 
 
 def notebook(**options):
-    return ChartNotebook(**options)
+    return ChartNotebook(**shaped(options))
 
 
 def feed(t, scores, start=0.0, step=1.0, bar=5.0):
@@ -303,7 +313,7 @@ def grid(interval=60.0, anchor=5.85, bar=lambda at: 6.0, asked=None):
 def with_ticks(**options):
     options.setdefault("ticks_source", grid())
     options.setdefault("began_at", 0.0)
-    return ChartNotebook(**options)
+    return ChartNotebook(**shaped(options))
 
 
 class TestTicksAreEntriesToo:
@@ -513,10 +523,10 @@ class TestWhenTheBarCannotBeAsked:
         asker.join(2)
         assert not asker.is_alive() and seen == [0]
 
-    @pytest.mark.parametrize("bad", [0, -5, "x", None, float("nan")])
-    def test_a_bad_longest_silence_is_a_warning_and_the_fallback(self, bad):
-        t = with_ticks(longest_silence_seconds=bad)
-        assert len(t.report.warnings) == 1 and "longest_silence_seconds" in t.report.warnings[0]
+    @pytest.mark.parametrize("bad", [300, "x", (300.0, 0.0), 0, object()])
+    def test_a_silence_shape_that_is_not_one_is_a_warning_and_the_default(self, bad):
+        t = with_ticks(silence_shape=bad)
+        assert len(t.report.warnings) == 1 and "silence_shape" in t.report.warnings[0]
         t.add(3.0, 5.0, 10.0)
         t.add(3.0, 5.0, 310.0)
         t.add(3.0, 5.0, 700.0)
@@ -566,23 +576,15 @@ class TestTheFirstMinutesOfASilence:
         t.add(3.0, 5.0, 250.0)
         assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 180.0, 240.0]
 
-    def test_no_tick_is_written_after_the_attempt_that_ends_the_silence_even_if_the_first_minutes_would_reach_past_it(self):
-        t = with_ticks(head_seconds=400.0, longest_silence_seconds=300.0, began_at=None)           # a head longer than the longest silence: not what the chart sets, but allowed
-        t.add(3.0, 5.0, 10.0)                                                                       # its first minutes reach to 410
-        t.add(3.0, 5.0, 320.0)                                                                      # a silence of 310 s: the attempt comes before 360 and 410
-        assert max(tick.at for tick in t.ticks()) <= 320.0
-
     def test_after_a_quiet_start_the_first_minutes_run_from_the_streams_start(self):
         t = with_ticks(head_seconds=150.0, longest_silence_seconds=300.0, began_at=0.0)
         t.add(3.0, 5.0, 4000.0)
         assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 3900.0, 3960.0]                    # the start's first 150 s and the 150 s before the attempt
 
-    def test_a_bad_head_is_a_warning_and_none(self):
-        for bad in (-1, "x", None, float("nan")):
-            t = with_ticks(head_seconds=bad)
-            assert len(t.report.warnings) == 1 and "head_seconds" in t.report.warnings[0]
-            t.add(3.0, 5.0, 10.0)
-            assert t.head_ticks() == []
+    def test_with_no_shape_given_a_silence_has_no_true_scale_sides_and_nothing_is_said(self):
+        t = with_ticks()
+        t.add(3.0, 5.0, 10.0)
+        assert t.report.ok and t.head_ticks() == []
 
 
 class TestReadingTheTicksAsOfNow:

@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from typing import Mapping, Optional, Sequence
 
 from pom.monitor.chart_notebook import NotebookEntry
-from pom.monitor.silence_compressor import SilenceCompressor
+from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 
 
 @dataclass(frozen=True)
@@ -56,16 +56,12 @@ class ChartLook:
     break_gap_width: float = 64.0
 
 
-def gap_seconds(look) -> float:
-    """How wide the cut is in the chart's drawn seconds: `break_gap_width` (drawing units) at the chart's scale, and no wider than a whole silence."""
+def silence_shape(look) -> SilenceShape:
+    """How the chart draws a silence, from its settings: the longest one, `longest_silence_minutes`, with a cut `break_gap_width` (drawing units) wide at the
+    chart's scale, and no wider than a whole silence. The one place that is worked out: the chart, the notebook and the tick writer are all given this."""
     plot_width = look.drawing_width - look.margin_left - look.margin_right
-    return min(look.break_gap_width / plot_width * look.window_minutes * 60.0, look.longest_silence_minutes * 60.0)
-
-
-def silence_edge_seconds(look) -> float:
-    """How much of a silence is drawn at true scale on each side of its cut: half of `longest_silence_minutes` once the cut has taken its share. Also
-    what the notebook records at the start of a silence and the page works out at its end."""
-    return (look.longest_silence_minutes * 60.0 - gap_seconds(look)) / 2.0
+    longest = look.longest_silence_minutes * 60.0
+    return SilenceShape(longest, look.break_gap_width / plot_width * look.window_minutes * 60.0)                  # the shape holds the cut to a whole silence
 
 
 def _silence_lines(seconds: float) -> tuple:
@@ -110,7 +106,7 @@ def render_score_chart(points: Sequence[NotebookEntry], qualifier_ids: Optional[
         return (f'{head}<title>No scores yet.</title><text class="key" x="{width / 2:.1f}" y="{height / 2:.1f}" '
                 f'text-anchor="middle">No scores yet.</text></svg>')
     t_end = now if now is not None else points[-1].at
-    squeeze = SilenceCompressor([point.at for point in points], t_end, look.longest_silence_minutes * 60.0, began_at, gap_seconds(look))
+    squeeze = SilenceCompressor([point.at for point in points], t_end, silence_shape(look), began_at)
     edge = squeeze.drawn(t_end)                                                    # the right edge, in drawn time
     def drawn_x(at: float) -> float:
         return _x(squeeze.drawn(at), edge, seconds, plot_width, left)

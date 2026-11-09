@@ -414,7 +414,10 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **break mark**, **gap**, **cut**: How the chart draws a silence, like a broken part in an engineering drawing: its first minutes at true scale, then a clear *gap* in the card's own color
   (the *cut*: what is left out of the middle, of any length), which breaks the bar line, between two *break marks* (a vertical line with a zigzag), then its last minutes at true
   scale. "14 min" over "silence" is written in the gap. Each side is half of what `longest_silence_minutes` has left after the gap. Example: `break_gap_width`, `break_mark_size`,
-  `SilenceCompressor`, `silence_edge_seconds`
+  `SilenceCompressor`, `SilenceShape`
+- **silence shape**: How a silence is drawn, as one value worked out once from the chart's settings: the longest silence, the width of the cut, and so the edge: how much of each end is
+  drawn at true scale. The chart, the chart notebook and the tick writer are all handed the same one, so none of them works the sizes out for itself and they cannot disagree.
+  Example: `SilenceShape`, `silence_shape(look)`
 - **service light**: One word on the monitoring page for each thing the Printer depends on: whisper, scorer, oracle and the terminal. **up** (green) if it
   answers, **DOWN** (red) if it does not, **none** (grey) if there is nothing to ask (no terminal is configured). The terminal's light is up if its port is open
   or opens now, and up while a portent is being typed on it: the page asks `online(wait=False)` and never waits behind the typing. Example: `ServiceWatch`,

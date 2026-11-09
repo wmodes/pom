@@ -43,7 +43,7 @@ from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
 from pom.log_setup import configure_logging, get_logger
-from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_edge_seconds
+from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
@@ -229,8 +229,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
     # (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)
     notebook = ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries, ticks_source=bar_keeper.ticks_between,
-                             longest_silence_seconds=config.chart.longest_silence_minutes * 60.0, began_at=stream_started_at,
-                             head_seconds=silence_edge_seconds(config.chart))
+                             silence_shape=silence_shape(config.chart), began_at=stream_started_at)
     floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds)
     turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
                            write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,

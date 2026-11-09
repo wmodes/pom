@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                     # noqa: E402
 from pom.library import Passage                                                  # noqa: E402
-from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_edge_seconds  # noqa: E402
+from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape  # noqa: E402
 from pom.qualifying import Ruling, bar_keeper_from_settings               # noqa: E402
 from pom.writing import Portent                                                 # noqa: E402
 
@@ -77,8 +77,7 @@ class InventedRoom:
                  quiet_start_minutes: float = 0.0):
         self.keeper = bar_keeper_from_settings(config.qualifying, 0.0)
         self.notebook = ChartNotebook(config.chart.window_minutes * 60.0, config.monitor.chart_notebook_max_entries, ticks_source=self.keeper.ticks_between,
-                                      longest_silence_seconds=config.chart.longest_silence_minutes * 60.0, began_at=0.0,
-                                      head_seconds=silence_edge_seconds(config.chart))
+                                      silence_shape=silence_shape(config.chart), began_at=0.0)
         self.history, self.rng, self.speed = history, rng, speed
         self.window_minutes = config.chart.window_minutes
         self._next_at, self._quiet_until, self._turns = max(20.0, quiet_start_minutes * 60.0), 0.0, 0         # the room is quiet until the first attempt

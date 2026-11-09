@@ -4,9 +4,9 @@ The ChartNotebook asks it for the ticks to write down when an attempt is heard, 
 newest attempt, live. It keeps no list of its own: it is given where the stretch begins and what was worked out for it earlier, and answers.
 
 The rule it carries (see the ChartNotebook's module note for why):
-  * A stretch no longer than `longest_silence_seconds` is all drawn: every tick in it.
+  * A stretch no longer than the shape's `longest_seconds` is all drawn: every tick in it.
   * A longer one is a silence, drawn as its first minutes, a cut, and its last minutes (see `silence_compressor.SilenceCompressor`). Only the first
-    and the last `head_seconds` of it have ticks; nothing at all is made for the cut, which the chart never draws.
+    and the last `edge_seconds` of it have ticks; nothing at all is made for the cut, which the chart never draws.
   * The first minutes are worked out when the attempt that begins the silence is heard (`first_minutes`), because the bar may have forgotten the
     scores they depend on by the time anyone asks again. The last minutes are worked out when they are wanted.
 
@@ -18,6 +18,7 @@ from typing import Callable, List, Optional
 
 from pom.fault_recorder import FaultRecorder
 from pom.monitor.notebook_entry import TICK, NotebookEntry, is_number
+from pom.monitor.silence_compressor import SilenceShape
 
 
 class TickWriter:
@@ -26,23 +27,19 @@ class TickWriter:
     Attributes:
         ticks_source: A function from (start, end) to the ticks in that stretch, each as (time, anchor score, the bar at that tick), oldest first
             (the bar's `ticks_between`); None means there are none to make.
-        longest_silence_seconds: A stretch longer than this is a silence on the chart.
-        head_seconds: How much of the start of a silence, and of the end of it, has ticks.
+        shape: How the chart draws a silence: a stretch longer than `shape.longest_seconds` is one, and the first and last `shape.edge_seconds` of it have ticks.
         began_at: The stream time at which listening began, or None; the stretch before the first attempt runs from here.
     """
 
-    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], longest_silence_seconds: float, head_seconds: float,
-                 began_at: Optional[float], report: FaultRecorder):
+    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], report: FaultRecorder):
         """Args:
             ticks_source: See the attribute. Without one, every method answers an empty list.
-            longest_silence_seconds: Already checked by the caller: a number above 0.
-            head_seconds: Already checked by the caller: a number of at least 0. 0 means a silence has no ticks at all.
+            shape: How a silence is drawn. An `edge_seconds` of 0 means a silence has no ticks at all.
             began_at: The stream time at which listening began; anything that is not a number means it is not known.
             report: Where problems are recorded (the notebook's own), so they are reported in one place.
         """
         self.ticks_source = ticks_source
-        self.longest_silence_seconds = float(longest_silence_seconds)
-        self.head_seconds = float(head_seconds)
+        self.shape = shape
         self.began_at = float(began_at) if is_number(began_at) else None
         self._report = report
 
@@ -65,8 +62,9 @@ class TickWriter:
         return ticks
 
     def first_minutes(self, since: float) -> List[NotebookEntry]:
-        """The ticks for the first `head_seconds` after `since`: what the chart draws at the start of a silence that begins there."""
-        return self.ticks_between(since, since + self.head_seconds) if self.head_seconds > 0 else []
+        """The ticks for the first `edge_seconds` after `since`: what the chart draws at the start of a silence that begins there."""
+        edge = self.shape.edge_seconds
+        return self.ticks_between(since, since + edge) if edge > 0 else []
 
     def stretch(self, since: Optional[float], first_minutes: List[NotebookEntry], until: float) -> List[NotebookEntry]:
         """The ticks the chart draws from `since` to `until`, oldest first.
@@ -87,9 +85,10 @@ class TickWriter:
             since = self.began_at
         if since is None or not until > since:
             return []
-        if until - since <= self.longest_silence_seconds:
+        if until - since <= self.shape.longest_seconds:
             return self.ticks_between(since, until)
         if began:                                                  # nothing was heard before it, so no scores to wait for: worked out now, as exactly
             first_minutes = self.first_minutes(since)
-        last_minutes = self.ticks_between(until - self.head_seconds, until) if self.head_seconds > 0 else []
-        return [tick for tick in first_minutes if tick.at <= until] + last_minutes        # the rest of the silence is cut out: no ticks for it
+        edge = self.shape.edge_seconds
+        last_minutes = self.ticks_between(until - edge, until) if edge > 0 else []
+        return first_minutes + last_minutes                         # the rest of the silence is cut out: no ticks for it

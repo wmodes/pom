@@ -205,10 +205,11 @@ class TestTheMonitorMovesWithTheStream:
         assert not hasattr(p.site, "_ticks_source")                                         # the page never sees the bar
 
     def test_the_notebook_is_told_how_much_of_a_silence_is_drawn_at_true_scale(self, tmp_path):
-        from pom.monitor import silence_edge_seconds
+        from pom.monitor import silence_shape
         text = self.CONFIG + "\n[chart]\nlongest_silence_minutes = 12\n"
         p = build(tmp_path, text)
-        assert p.parts["notebook"]._tick_writer.head_seconds == silence_edge_seconds(config_from(tmp_path, text).chart) > 0
+        shape = p.parts["notebook"]._tick_writer.shape
+        assert shape == silence_shape(config_from(tmp_path, text).chart) and shape.longest_seconds == 720.0 and shape.edge_seconds > 0
 
     def test_before_any_room_the_stream_time_is_the_streams_start(self, tmp_path, monkeypatch):
         self.clock(monkeypatch)

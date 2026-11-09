@@ -12,10 +12,10 @@ Design decisions, and why:
     tick can only be worked out from the scores the bar still holds (`discard_scores_older_than_minutes`), which are all there at the moment the
     next attempt is heard and gone after a long silence. So `add` asks the bar's `ticks_source` for the ticks since the previous attempt (or since the
     stream began, before the first one) and writes them down first. The ticks since the newest attempt are not here yet: the page works those out live.
-  * A SILENCE IS DRAWN AS ITS FIRST MINUTES, A CUT, AND ITS LAST MINUTES, so only the first and the last `head_seconds` of it are ever on the chart
+  * A SILENCE IS DRAWN AS ITS FIRST MINUTES, A CUT, AND ITS LAST MINUTES, so only the first and the last `edge_seconds` of it (the `silence_shape`) are ever on the chart
     (see `silence_compressor.SilenceCompressor`). The rule for which ticks that gives is the TickWriter's (`tick_writer.py`); this keeps
-    the list and the lock, and hands it where the stretch begins. When the previous attempt is more than `longest_silence_seconds` back, the ticks of the stretch between are not
-    written. Only the first `head_seconds` after that attempt are, and they were worked out when that attempt was heard (`head_ticks()` holds them
+    the list and the lock, and hands it where the stretch begins. When the previous attempt is more than the shape's `longest_seconds` back, the ticks of
+    the stretch between are not written. Only the first `edge_seconds` after that attempt are, and they were worked out when that attempt was heard (`head_ticks()` holds them
     until the next one arrives): by the time the next attempt comes the bar may have forgotten the scores they depend on, but at the moment an attempt is
     heard the bar holds them, and a tick's height depends only on scores heard before it, so they are exact. The last minutes of the silence are written
     when the attempt that ends it is heard, and while it is still going `ticks_up_to` works them out fresh for the page. Nothing for the cut is
@@ -42,7 +42,7 @@ from typing import Callable, Deque, List, Optional
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
 from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
-from pom.monitor.silence_compressor import SilenceCompressor
+from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 from pom.monitor.tick_writer import TickWriter
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -52,8 +52,7 @@ _log = get_logger(__name__, DEBUG)
 # and `[chart] longest_silence_minutes` in config/pom.toml.
 DEFAULT_MAX_AGE_SECONDS = 3600.0
 DEFAULT_MAX_ENTRIES = 5000
-DEFAULT_LONGEST_SILENCE_SECONDS = 300.0
-DEFAULT_HEAD_SECONDS = 0.0
+DEFAULT_SILENCE_SHAPE = SilenceShape(300.0)            # a silence over 300 s, drawn as nothing but its cut: so no ticks are written for one
 
 
 class ChartNotebookError(ValueError):
@@ -68,18 +67,17 @@ class ChartNotebook:
     """
 
     def __init__(self, max_age_seconds: float = DEFAULT_MAX_AGE_SECONDS, max_entries: int = DEFAULT_MAX_ENTRIES, strict: bool = False,
-                 ticks_source: Optional[Callable[[float, float], list]] = None, longest_silence_seconds: float = DEFAULT_LONGEST_SILENCE_SECONDS,
-                 began_at: Optional[float] = None, head_seconds: float = DEFAULT_HEAD_SECONDS):
+                 ticks_source: Optional[Callable[[float, float], list]] = None, silence_shape: Optional[SilenceShape] = None,
+                 began_at: Optional[float] = None):
         """Args:
             max_age_seconds: How much drawn time is kept, above 0: the chart's own width (`[chart] window_minutes`), since nothing older is ever drawn.
             max_entries: The most entries kept, a whole number of at least 1; the oldest go first.
             strict: Raise ChartNotebookError on any problem instead of recording it.
             ticks_source: A function from (start, end) to the ticks in that stretch, each as (time, anchor score, the bar at that tick), oldest
                 first (the bar's `ticks_between`). Without one, no ticks are written.
-            longest_silence_seconds: A stretch between two attempts longer than this is a silence on the chart, and no ticks are written for it. Above 0.
+            silence_shape: How the chart draws a silence (`score_chart.silence_shape(look)`): a stretch between two attempts longer than its `longest_seconds`
+                is one, and only its first and last `edge_seconds` have ticks. None means the default shape, which has no true-scale sides, so none.
             began_at: The stream time at which listening began, so the stretch before the first attempt gets its ticks too. None means it does not.
-            head_seconds: How much of the start of a silence the chart draws at true scale (`score_chart.silence_edge_seconds`): those ticks are written
-                for it, and nothing after them. 0, the default, writes none.
         """
         self.report = FaultRecorder(strict=strict, error=ChartNotebookError, logger=_log)
         if not (is_number(max_age_seconds) and max_age_seconds > 0):
@@ -88,16 +86,15 @@ class ChartNotebook:
         if not (isinstance(max_entries, int) and not isinstance(max_entries, bool) and max_entries >= 1):
             self.report.warn(f"max_entries must be a whole number of at least 1, got {max_entries!r}; using {DEFAULT_MAX_ENTRIES}")
             max_entries = DEFAULT_MAX_ENTRIES
-        if not (is_number(longest_silence_seconds) and longest_silence_seconds > 0):
-            self.report.warn(f"longest_silence_seconds must be a number above 0, got {longest_silence_seconds!r}; using {DEFAULT_LONGEST_SILENCE_SECONDS:g}")
-            longest_silence_seconds = DEFAULT_LONGEST_SILENCE_SECONDS
-        if not (is_number(head_seconds) and head_seconds >= 0):
-            self.report.warn(f"head_seconds must be a number of at least 0, got {head_seconds!r}; using {DEFAULT_HEAD_SECONDS:g}")
-            head_seconds = DEFAULT_HEAD_SECONDS
+        if silence_shape is None:
+            silence_shape = DEFAULT_SILENCE_SHAPE
+        elif not isinstance(silence_shape, SilenceShape):
+            self.report.warn(f"silence_shape must be a SilenceShape, got {type(silence_shape).__name__}; using the default")
+            silence_shape = DEFAULT_SILENCE_SHAPE
         self._head: List[NotebookEntry] = []                    # the ticks for the first minutes after the newest attempt, worked out when it was heard
         self._max_age = float(max_age_seconds)
         self._entries: Deque[NotebookEntry] = deque(maxlen=max_entries)
-        self._tick_writer = TickWriter(ticks_source, longest_silence_seconds, head_seconds, began_at, self.report)
+        self._tick_writer = TickWriter(ticks_source, silence_shape, began_at, self.report)
         self._lock = threading.Lock()
         self._total_added = 0
 
@@ -175,9 +172,9 @@ class ChartNotebook:
     def _forget_old(self) -> None:
         """Drops entries older than the age limit in drawn time, measured back from the newest. The caller holds the lock."""
         entries = self._entries
-        longest, head = self._tick_writer.longest_silence_seconds, self._tick_writer.head_seconds
+        shape = self._tick_writer.shape
         began = self._tick_writer.began_at if self._total_added == len(entries) else None   # the quiet before the first attempt is a silence, if nothing before it was forgotten
-        squeeze = SilenceCompressor([entry.at for entry in entries if entry.kind == ATTEMPT], entries[-1].at, longest, began, longest - 2.0 * head)
+        squeeze = SilenceCompressor([entry.at for entry in entries if entry.kind == ATTEMPT], entries[-1].at, shape, began)
         cutoff = squeeze.drawn(entries[-1].at) - self._max_age
         first = 0
         while first < len(entries) and squeeze.drawn(entries[first].at) < cutoff:
@@ -186,7 +183,7 @@ class ChartNotebook:
         before = [i for i in range(first) if entries[i].kind == ATTEMPT]
         if before and first < len(entries):
             following = next((entry.at for entry in list(entries)[first:] if entry.kind == ATTEMPT), None)
-            if following is not None and following - entries[before[-1]].at > longest:
+            if following is not None and following - entries[before[-1]].at > shape.longest_seconds:
                 first = before[-1]
         for _ in range(first):
             entries.popleft()

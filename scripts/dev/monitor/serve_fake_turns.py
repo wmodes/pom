@@ -138,7 +138,7 @@ def main() -> None:
         room = InventedRoom(config, history, rng, args.speed, quiet_start_minutes=args.quiet_start)
         threading.Thread(target=room.run, daemon=True).start()
         site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges, notebook=room.notebook, chart=config.chart,
-                           poll_seconds=config.monitor.poll_seconds, stream_now=room.now, stream_began_at=0.0,
+                           poll_seconds=config.monitor.poll_seconds, hinge_snippet_chars=config.monitor.hinge_snippet_chars, stream_now=room.now, stream_began_at=0.0,
                            status_source=lambda: MonitorStatus(bar=room.keeper.bar_at(room.now()), window_size=room.keeper.window_size_at(room.now()),
                                                                attempts_heard=room.heard, attempts_scored=room.scored, services=services,
                                                                algorithm=config.qualifying.algorithm, bar_description=room.keeper.describe()))

@@ -105,7 +105,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
          "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
          "listening.score_room_tone", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
-         "monitor.show_hinges", "monitor.password_on_localhost", "monitor.chart_notebook_max_entries", "monitor.history_seconds", "printing.paper_width_inches", "printing.margin_inches",
+         "monitor.show_hinges", "monitor.password_on_localhost", "monitor.chart_notebook_max_entries", "monitor.history_seconds", "monitor.hinge_snippet_chars", "monitor.history_max_turns", "printing.paper_width_inches", "printing.margin_inches",
          "printing.characters_per_inch", "printing.quote_indent", "printing.linefeeds_after_portent",
          "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
@@ -169,6 +169,8 @@ DEFAULT_MONITOR_SERVICE_CHECK_SECONDS = 15.0
 DEFAULT_MONITOR_POLL_SECONDS = 5.0
 DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST = True
 DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES = 5000
+DEFAULT_MONITOR_HINGE_SNIPPET_CHARS = 90
+DEFAULT_MONITOR_HISTORY_MAX_TURNS = 500
 DEFAULT_PRINTING_PAPER_WIDTH_INCHES = 8.5
 DEFAULT_PRINTING_MARGIN_INCHES = 1.0
 DEFAULT_PRINTING_CHARACTERS_PER_INCH = 10.0
@@ -427,6 +429,10 @@ class MonitorSettings:
         chart_notebook_max_entries: The most entries (attempts and ticks) the chart's notebook keeps, a whole number of at least 1. It is a safety limit: age
             (the chart's own `window_minutes` of drawn time) normally ends an entry first. Too low and the left of the chart is cut short in a busy room; too high only lets the
             notebook grow larger.
+        hinge_snippet_chars: How many characters of a hinge the page's list of turns shows before cutting it with an ellipsis; the whole hinge is on the turn's own
+            page. A whole number of at least 1. Higher shows more of each hinge and makes the list rows longer; lower makes the list tighter and shows less.
+        history_max_turns: The most turns the page keeps, a whole number of at least 1. It is a safety limit: age (`history_seconds`) normally ends a turn first. Too
+            low and a busy room's turns are dropped before they are old; too high only lets the history grow larger.
     """
     enabled: bool = DEFAULT_MONITOR_ENABLED
     host: str = DEFAULT_MONITOR_HOST
@@ -438,6 +444,8 @@ class MonitorSettings:
     poll_seconds: float = DEFAULT_MONITOR_POLL_SECONDS
     password_on_localhost: bool = DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST
     chart_notebook_max_entries: int = DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES
+    hinge_snippet_chars: int = DEFAULT_MONITOR_HINGE_SNIPPET_CHARS
+    history_max_turns: int = DEFAULT_MONITOR_HISTORY_MAX_TURNS
 
 
 @dataclass(frozen=True)
@@ -841,7 +849,11 @@ class Config:
             _bool(values.get("monitor.password_on_localhost", DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST), "monitor.password_on_localhost", report,
                   DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST),
             _whole(values.get("monitor.chart_notebook_max_entries", DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES), "monitor.chart_notebook_max_entries",
-                   DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES, 1, report))
+                   DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES, 1, report),
+            _whole(values.get("monitor.hinge_snippet_chars", DEFAULT_MONITOR_HINGE_SNIPPET_CHARS), "monitor.hinge_snippet_chars",
+                   DEFAULT_MONITOR_HINGE_SNIPPET_CHARS, 1, report),
+            _whole(values.get("monitor.history_max_turns", DEFAULT_MONITOR_HISTORY_MAX_TURNS), "monitor.history_max_turns",
+                   DEFAULT_MONITOR_HISTORY_MAX_TURNS, 1, report))
         printing = PrintingSettings(
             _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
                       "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),

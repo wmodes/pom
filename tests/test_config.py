@@ -520,6 +520,8 @@ MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's
     ("monitor", "poll_seconds", "2.5", 2.5, 5.0, ["0", "-1", '"5"', "true", "inf"]),
     ("monitor", "password_on_localhost", "false", False, True, ['"maybe"', '"sideways"', '""']),
     ("monitor", "chart_notebook_max_entries", "1200", 1200, 5000, ["0", "-1", "2.5", '"5000"', "true"]),
+    ("monitor", "hinge_snippet_chars", "40", 40, 90, ["0", "-1", "2.5", '"90"', "true"]),
+    ("monitor", "history_max_turns", "200", 200, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "max_typed_line_characters", "80", 80, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "refused_character_retry_seconds", "0.5", 0.5, 1.0, ["0", "-1", '"1"', "true", "inf"]),
     ("terminal", "wait_log_reminder_seconds", "30", 30.0, 60.0, ["0", "-1", '"60"', "true", "inf"]),

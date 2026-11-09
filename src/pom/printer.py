@@ -225,7 +225,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     terminal = _make_terminal(mode, terminal_settings)
 
     # the turn
-    history = TurnHistory(monitor.history_seconds)
+    history = TurnHistory(monitor.history_seconds, monitor.history_max_turns)
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
     # (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)
     notebook = ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries, ticks_source=bar_keeper.ticks_between,
@@ -280,7 +280,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
             _log.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, chart=config.chart,
-                               poll_seconds=monitor.poll_seconds, stream_now=stream_now,
+                               poll_seconds=monitor.poll_seconds, hinge_snippet_chars=monitor.hinge_snippet_chars, stream_now=stream_now,
                                stream_began_at=stream_started_at, password_on_localhost=monitor.password_on_localhost,
                                status_source=status_now)
 

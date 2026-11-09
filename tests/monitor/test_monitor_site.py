@@ -974,9 +974,47 @@ class TestThePollBeat:
         site, _, _, _ = make(poll_seconds=7)
         assert not site.report.warnings
 
+
     def test_the_beat_is_the_same_for_everything_the_page_asks_for(self):
         page = self.beat(poll_seconds=9)
         assert page.count("setInterval") == 1 and "drawChart();" in page and "fetch('/api/turns'" in page
+
+
+
+class TestTheHingeSnippetLength:
+    """How much of a hinge the list shows before cutting it is `[monitor] hinge_snippet_chars`."""
+
+    @staticmethod
+    def listed(hinge, **options):
+        site, history, client, _ = make(**options)
+        add(history, hinge)
+        return site, get(client, "/").get_data(as_text=True)
+
+    def test_the_list_shows_that_many_characters_and_then_an_ellipsis(self):
+        _, page = self.listed("0123456789ABCDEF", hinge_snippet_chars=10)
+        assert "0123456789…" in page and "0123456789A" not in page
+
+    def test_a_longer_setting_shows_more(self):
+        _, page = self.listed("0123456789ABCDEF", hinge_snippet_chars=12)
+        assert "0123456789AB…" in page
+
+    def test_a_hinge_no_longer_than_that_is_not_cut(self):
+        _, page = self.listed("0123456789", hinge_snippet_chars=10)
+        assert "0123456789" in page and "0123456789…" not in page
+
+    def test_with_no_setting_it_is_the_fallback(self):
+        _, page = self.listed("x" * 100)
+        assert "x" * 90 + "…" in page and "x" * 91 not in page
+
+    @pytest.mark.parametrize("bad", [0, -1, 2.5, "90", None, True])
+    def test_a_bad_length_is_the_fallback_with_a_warning(self, bad):
+        site, page = self.listed("x" * 100, hinge_snippet_chars=bad)
+        assert "x" * 90 + "…" in page and "x" * 91 not in page
+        assert any("hinge_snippet_chars" in w for w in site.report.warnings)
+
+    def test_a_good_length_says_nothing(self):
+        site, _ = self.listed("x" * 100, hinge_snippet_chars=20)
+        assert not site.report.warnings
 
 
 class TestTheTilesAreReadOnEveryPoll:

@@ -63,7 +63,7 @@ class _PollingRequestHandler(WSGIRequestHandler):
 
 REALM = "Printer of Mysteries"
 DEFAULT_POLL_SECONDS = 5.0      # the fallback for a missing or bad `[monitor] poll_seconds`; the setting is the one that counts
-SNIPPET_CHARS = 90
+DEFAULT_SNIPPET_CHARS = 90        # the fallback for a missing or bad `[monitor] hinge_snippet_chars`; the setting is the one that counts
 SECURITY_HEADERS = {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
@@ -117,9 +117,9 @@ def _clock_time(epoch: float) -> str:
     return time.strftime("%H:%M:%S", time.localtime(epoch))
 
 
-def _snippet(text: str) -> str:
-    """The start of a hinge for the list, with an ellipsis if it was cut."""
-    return text if len(text) <= SNIPPET_CHARS else text[:SNIPPET_CHARS].rstrip() + "…"
+def _snippet(text: str, chars: int) -> str:
+    """The first `chars` characters of a hinge for the list, with an ellipsis if it was cut."""
+    return text if len(text) <= chars else text[:chars].rstrip() + "…"
 
 
 _STYLE = """
@@ -243,7 +243,7 @@ class MonitorSite:
                  clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None, chart=None,
                  poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
                  stream_began_at: Optional[float] = None,
-                 password_on_localhost: bool = True):
+                 password_on_localhost: bool = True, hinge_snippet_chars: int = DEFAULT_SNIPPET_CHARS):
         """Args:
             history: Where the turns are read from.
             password: The site's password; the site does not run without one.
@@ -259,6 +259,8 @@ class MonitorSite:
                 default and the fallback for anything that is not a bool, asks everyone.
             stream_began_at: The stream time at which listening began; a quiet start (no attempt for longer than the longest silence) is drawn as a
                 silence too, as long as the notebook still holds every attempt since then.
+            hinge_snippet_chars: How many characters of a hinge the list shows before cutting it (`[monitor] hinge_snippet_chars`), a whole number of at least 1;
+                a bad value is the fallback, with a warning.
         """
         self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
@@ -277,6 +279,10 @@ class MonitorSite:
         if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
             self.report.warn(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
             self._poll_seconds = DEFAULT_POLL_SECONDS
+        if not (isinstance(hinge_snippet_chars, int) and not isinstance(hinge_snippet_chars, bool) and hinge_snippet_chars >= 1):
+            self.report.warn(f"hinge_snippet_chars must be a whole number of at least 1, not {hinge_snippet_chars!r}; using {DEFAULT_SNIPPET_CHARS}")
+            hinge_snippet_chars = DEFAULT_SNIPPET_CHARS
+        self._hinge_snippet_chars = hinge_snippet_chars
         self._started_at = clock()
         self._server = None
         self._thread: Optional[threading.Thread] = None
@@ -361,7 +367,7 @@ class MonitorSite:
     def _hinge_text(self, record: TurnRecord, short: bool) -> str:
         if not self._show_hinges:
             return "(hidden)"
-        return _snippet(record.hinge) if short else record.hinge
+        return _snippet(record.hinge, self._hinge_snippet_chars) if short else record.hinge
 
     @staticmethod
     def _bar_text(record: TurnRecord) -> str:

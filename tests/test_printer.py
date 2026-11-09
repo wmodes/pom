@@ -194,6 +194,14 @@ class TestTheMonitorMovesWithTheStream:
         p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\npoll_seconds = 2.5\n')
         assert p.site._poll_seconds == 2.5
 
+    def test_the_hinge_snippet_length_is_the_setting(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\nhinge_snippet_chars = 40\n')
+        assert p.site._hinge_snippet_chars == 40
+
+    def test_the_most_turns_kept_is_the_setting(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\nhistory_max_turns = 3\n')
+        assert p.site._history._records.maxlen == 3
+
     def test_the_password_on_localhost_setting_reaches_the_site(self, tmp_path):
         off = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\npassword_on_localhost = false\n')
         assert off.site._password_on_localhost is False

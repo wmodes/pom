@@ -361,6 +361,14 @@ show_hinges = true
 # How many seconds a turn stays on the page. It is kept in memory only, so a restart empties it. Above 0.
 history_seconds = 3600
 
+# The most turns the page keeps, a whole number of at least 1. A safety limit: age (history_seconds above) normally ends a turn first, so a flood of turns
+# cannot fill the Pi's memory. If it is too low, a busy room's turns are dropped before they are an hour old; too high only lets the history grow.
+history_max_turns = 500
+
+# How many characters of a hinge the list of turns shows before cutting it with an ellipsis (the whole hinge is on the turn's own page), a whole number of at
+# least 1. Higher shows more of each hinge and makes the rows of the list longer; lower makes the list tighter and shows less of what was said.
+hinge_snippet_chars = 90
+
 # How often, at most, the page's service lights (whisper, scorer, oracle) are checked, in seconds, above 0. The page polls every few seconds
 # while it is open; this keeps that from hammering the servers. A longer time makes a server's going down show later.
 service_check_seconds = 15

@@ -170,10 +170,10 @@ class TestTheBar:
         paths = find(parse(render(pts)), "path", "bar")
         return paths[0].get("d") if paths else None
 
-    def test_it_starts_at_the_first_bar_and_steps_to_each_next_one(self):
+    def test_it_starts_at_the_first_bar_and_runs_straight_to_each_next_one(self):
         d = self.path([point(0, bar=5.0), point(900, bar=7.0), point(1800, bar=6.0)])
         x0, x1, x2 = x_of(0, 1800), x_of(900, 1800), x_of(1800, 1800)
-        expected = f"M{x0:.1f} {y_of(5.0):.1f} V{y_of(7.0):.1f} H{x1:.1f} V{y_of(6.0):.1f} H{x2:.1f}"
+        expected = f"M{x0:.1f} {y_of(5.0):.1f} L{x1:.1f} {y_of(7.0):.1f} L{x2:.1f} {y_of(6.0):.1f}"
         assert d == expected
 
     def test_a_single_point_gives_a_line_start_only(self):
@@ -282,16 +282,16 @@ class TestTheTicks:
     def test_the_bar_line_runs_through_the_bar_at_each_tick_to_the_bar_now(self):
         d = find(self.ticked(), "path", "bar")[0].get("d")
         xs = [x_of(t, 180) for t in (0, 60, 120, 180)]
-        expected = f"M{xs[0]:.1f} {y_of(6.5):.1f} V{y_of(6.4):.1f} H{xs[1]:.1f} V{y_of(6.3):.1f} H{xs[2]:.1f} V{y_of(6.2):.1f} H{xs[3]:.1f}"
+        expected = f"M{xs[0]:.1f} {y_of(6.5):.1f} L{xs[1]:.1f} {y_of(6.4):.1f} L{xs[2]:.1f} {y_of(6.3):.1f} L{xs[3]:.1f} {y_of(6.2):.1f}"
         assert d == expected
 
     def test_without_a_bar_now_the_line_ends_at_the_last_sample(self):
         d = find(parse(render([point(0, bar=6.5)], ticks=[(60.0, 5.85, 6.4)], now=180.0)), "path", "bar")[0].get("d")
-        assert d == f"M{x_of(0, 180):.1f} {y_of(6.5):.1f} V{y_of(6.4):.1f} H{x_of(60, 180):.1f}"
+        assert d == f"M{x_of(0, 180):.1f} {y_of(6.5):.1f} L{x_of(60, 180):.1f} {y_of(6.4):.1f}"
 
     def test_an_attempt_and_a_tick_are_joined_in_time_order(self):
         d = find(parse(render([point(30, bar=6.0)], ticks=[(60.0, 5.85, 5.9), (0.0, 5.85, 6.1)], now=60.0)), "path", "bar")[0].get("d")
-        assert [float(part[1:]) for part in d.split() if part[0] == "H"] == pytest.approx([x_of(30, 60), x_of(60, 60)], abs=0.06)
+        assert [float(part[1:]) for part in d.split() if part[0] == "L"] == pytest.approx([x_of(30, 60), x_of(60, 60)], abs=0.06)
 
     def test_a_bar_now_with_no_now_is_ignored(self):
         with_it = render([point(0, bar=6.5)], bar_now=3.0)
@@ -546,7 +546,7 @@ class TestASilenceIsDrawnShort:
 
     def test_the_bar_line_runs_on_through_the_silence_on_both_sides_of_the_gap(self):
         d = find(self.drawn([point(0, bar=6.5), point(3000, bar=5.0)]), "path", "bar")[0].get("d")
-        assert d == f"M{x_of(0, 300):.1f} {y_of(6.5):.1f} V{y_of(5.0):.1f} H{x_of(300, 300):.1f}"
+        assert d == f"M{x_of(0, 300):.1f} {y_of(6.5):.1f} L{x_of(300, 300):.1f} {y_of(5.0):.1f}"
 
     def test_the_silence_up_to_now_is_drawn_too(self):
         root = self.drawn([point(0), point(60)], now=3660.0)

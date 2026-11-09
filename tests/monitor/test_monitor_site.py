@@ -817,7 +817,7 @@ class TestTheChartMovesWithTheStream:
         notebook.add(3.0, 5.0, 900.0)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         import re
-        assert re.search(r'class="bar"[^>]* d="[^"]*H714\.0"', svg)                    # the right edge is 720 - 6
+        assert re.search(r'class="bar"[^>]* d="[^"]*L714\.0 [\d.]+"', svg)                    # the right edge is 720 - 6
 
     def test_the_bar_line_is_where_the_bar_now_is(self):
         notebook, client, _ = self.moving(now=1000.0, status=lambda: MonitorStatus(bar=6.0))

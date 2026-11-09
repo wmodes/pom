@@ -4,8 +4,8 @@
 
   * every attempt is a small dot (black on the page), on a fixed scale from 0 to `score_max` with gridlines at `score_gridlines`, and vertical
     gridlines every `gridline_every_minutes`, so it reads like graph paper;
-  * the bar each attempt was judged against is a line (red on the page) that steps from one attempt to the next, so it rises and
-    falls with the room;
+  * the bar is a line (red on the page) through the bar each attempt was judged against and the bar at each tick, straight from one of these
+    points to the next, so it slides down through a quiet stretch and rises, steeply, where a qualifier joined it;
   * each qualifier is a larger orange dot, and where its record is known (`qualifier_ids`, by the audio time it was heard) the dot is a link
     to that qualifier's page, with the score and the bar as its tooltip.
   * the time axis runs back from now over the last `window_minutes`: "now" at the right, and on the left one note, "Intervals at approximately
@@ -147,7 +147,7 @@ def render_score_chart(points: Sequence[NotebookEntry], qualifier_ids: Optional[
             previous_bar = False
             continue
         x, y = drawn_x(at), _y(bar, plot_height, top, look.score_max)
-        path.append(f"V{y:.1f} H{x:.1f}" if previous_bar else f"M{x:.1f} {y:.1f}")
+        path.append(f"L{x:.1f} {y:.1f}" if previous_bar else f"M{x:.1f} {y:.1f}")
         previous_bar = True
     if path:
         parts.append(f'<path class="bar" stroke-width="{look.bar_line_width:g}" d="{" ".join(path)}"/>')

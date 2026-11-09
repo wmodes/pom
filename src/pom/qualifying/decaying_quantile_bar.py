@@ -158,7 +158,7 @@ class DecayingQuantileBar(Bar):
     def window_size_at(self, now: float) -> int:
         """How many scores' worth of weight the real scores carry at `now`, to the nearest whole score (the starting line is not
         counted, and neither are the ticks). A score counts for 1 when it is heard and for half that a half-life later, so this is the size of the window the
-        bar is really built from (about 100 in a busy room at a 5 minute half-life), not the 40 minutes of scores kept in memory."""
+        bar is really built from (about 100 in a busy room at a 5 minute half-life), not all the scores kept in memory (`discard_scores_older_than_minutes`)."""
         if not _is_number(now):
             return 0
         self._forget_old(now)

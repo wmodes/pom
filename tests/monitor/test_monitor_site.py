@@ -400,6 +400,14 @@ class TestTheChart:
         dark = page[page.index("prefers-color-scheme: dark"):]
         assert "--dot:#f2efe6;" in dark and "--bar:#ff6b6b;" in dark
 
+    def test_the_dark_colours_are_written_once_and_used_for_both_ways_of_being_dark(self):
+        """A device set to dark (until the icon is clicked) and a page the icon has set to dark get the very same colours."""
+        _, _, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        by_device = page.split('@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ')[1].split(" } }")[0]
+        by_icon = page.split(':root[data-theme="dark"] { ')[1].split(" }")[0]
+        assert by_device == by_icon and "--bg:#16140f;" in by_icon and "color-scheme:dark;" in by_icon
+
     def test_the_chart_appears_once(self):
         notebook, _, client = self.with_notebook()
         notebook.add(3.0, 5.0, 1.0)
@@ -437,7 +445,7 @@ class TestTheChart:
     def test_without_a_notebook_there_is_no_chart_and_no_route(self):
         _, history, client, _ = make()
         page = get(client, "/").get_data(as_text=True)
-        assert 'id="chart"' not in page and "<svg" not in page
+        assert 'id="chart"' not in page and '<svg class="chart"' not in page      # (the theme icon is an svg too, so the chart is named)
         assert get(client, "/chart.svg").status_code == 404
 
     def test_an_empty_notebook_says_no_scores_yet(self):
@@ -506,6 +514,105 @@ class TestTheChart:
         notebook, _, client = self.with_notebook()
         csp = get(client, "/").headers["Content-Security-Policy"]
         assert "connect-src 'self'" in csp and "default-src 'none'" in csp
+
+
+class TestTheThemeIcon:
+    """An icon in the top right flips the page between light and dark, and the browser remembers the choice."""
+
+    @pytest.mark.parametrize("path", ["/", "/turn/1"])
+    def test_every_page_has_the_icon_button(self, path):
+        _, history, client, _ = make()
+        add(history)
+        page = get(client, path).get_data(as_text=True)
+        assert 'id="theme"' in page and 'class="theme"' in page and "Switch between light and dark" in page
+
+    @pytest.mark.parametrize("path", ["/", "/turn/1"])
+    def test_a_saved_choice_is_applied_in_the_head_before_anything_is_drawn(self, path):
+        _, history, client, _ = make()
+        add(history)
+        page = get(client, path).get_data(as_text=True)
+        head = page[:page.index("</head>")]
+        assert "localStorage.getItem('pom-theme')" in head and "setAttribute('data-theme', saved)" in head
+
+    def test_a_click_saves_the_choice_and_sets_it_on_the_page(self):
+        _, _, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        assert "localStorage.setItem('pom-theme', next)" in page and "root.setAttribute('data-theme', next)" in page
+
+    def test_the_icon_is_a_moon_on_a_light_page_and_a_sun_on_a_dark_one(self):
+        _, _, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        assert "isDark() ? icons.dark : icons.light" in page
+        assert "light: '<svg" in page and "dark: '<svg" in page and '<circle cx="12" cy="12" r="4"/>' in page
+
+    @pytest.mark.parametrize("path", ["/", "/turn/1"])
+    def test_the_stylesheet_reaches_the_browser_with_its_quotes_unescaped(self, path):
+        """Inside <style> a browser does not decode &#34;, so an escaped selector would silently never match."""
+        _, history, client, _ = make()
+        add(history)
+        page = get(client, path).get_data(as_text=True)
+        assert '[data-theme="dark"]' in page and "&#34;" not in page[:page.index("</style>")]
+
+    def test_the_icon_sits_in_the_top_right_and_the_title_leaves_it_room(self):
+        _, _, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        assert "position: relative; }" in page and ".theme { position:absolute; top:.9rem; right:16px;" in page
+        assert "h1 { padding-right: 3rem; }" in page
+
+    # The page's own scripts, run under node with a stand-in for the browser, because the logic (what a click does, what a saved choice means) lives
+    # in them. Skipped where node is not installed.
+    HARNESS = """
+    const input = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+    const store = input.saved === null ? {} : {'pom-theme': input.saved};
+    global.localStorage = {getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; }};
+    const attrs = {};
+    const root = {getAttribute: k => (k in attrs ? attrs[k] : null), setAttribute: (k, v) => { attrs[k] = v; }};
+    let onClick = null;
+    const button = {innerHTML: '', addEventListener: (event, handler) => { onClick = handler; }};
+    global.document = {documentElement: root, getElementById: () => button};
+    global.window = {matchMedia: () => ({matches: input.deviceDark})};
+    for (const script of input.scripts) { (0, eval)(script); }
+    for (let i = 0; i < input.clicks; i++) { onClick(); }
+    console.log(JSON.stringify({theme: attrs['data-theme'] || null, saved: store['pom-theme'] || null,
+                                icon: button.innerHTML.includes('<circle') ? 'sun' : button.innerHTML.includes('<path') ? 'moon' : 'none'}));
+    """
+
+    def run_scripts(self, saved, device_dark, clicks=0):
+        """What the page ends up as: its `data-theme`, what the browser remembers and which icon shows."""
+        import json, re, shutil, subprocess
+        if shutil.which("node") is None:
+            pytest.skip("node is not installed")
+        _, _, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        scripts = [body for body in re.findall(r"<script>(.*?)</script>", page, re.S) if "pom-theme" in body]
+        assert len(scripts) == 2                            # the head script and the icon's
+        done = subprocess.run(["node", "-e", self.HARNESS], input=json.dumps(dict(saved=saved, deviceDark=device_dark, clicks=clicks, scripts=scripts)),
+                              capture_output=True, text=True, check=True)
+        return json.loads(done.stdout)
+
+    @pytest.mark.parametrize("saved, device_dark, clicks, theme, remembered, icon", [
+        (None, False, 0, None, None, "moon"),               # first visit, device light: follow it
+        (None, True, 0, None, None, "sun"),                 # first visit, device dark: follow it
+        (None, False, 1, "dark", "dark", "sun"),            # a click flips to dark and is remembered
+        (None, False, 2, "light", "light", "moon"),         # and back
+        (None, True, 1, "light", "light", "moon"),          # a click on a dark device flips to light
+        ("dark", False, 0, "dark", "dark", "sun"),          # a saved choice beats the device
+        ("light", True, 0, "light", "light", "moon"),
+        ("blue", False, 0, None, "blue", "moon"),           # a saved value that is not a choice is ignored
+        ("blue", True, 0, None, "blue", "sun"),
+    ])
+    def test_what_the_scripts_do(self, saved, device_dark, clicks, theme, remembered, icon):
+        assert self.run_scripts(saved, device_dark, clicks) == dict(theme=theme, saved=remembered, icon=icon)
+
+    def test_the_page_follows_the_device_until_the_icon_is_clicked(self):
+        _, _, client, _ = make()
+        page = get(client, "/").get_data(as_text=True)
+        assert ':root:not([data-theme="light"])' in page and "(prefers-color-scheme: dark)" in page
+
+    def test_the_content_security_policy_still_allows_the_inline_scripts_and_nothing_else(self):
+        _, _, client, _ = make()
+        csp = get(client, "/").headers["Content-Security-Policy"]
+        assert "script-src 'unsafe-inline'" in csp and "default-src 'none'" in csp
 
 
 class TestTheDetailPage:

@@ -122,12 +122,20 @@ def _snippet(text: str, chars: int) -> str:
     return text if len(text) <= chars else text[:chars].rstrip() + "…"
 
 
+# The dark colours, written once: used for a device set to dark (until the icon is clicked) and for a page the icon has set to dark.
+_DARK_COLOURS = ("color-scheme:dark; --bg:#16140f; --fg:#ece7dc; --muted:#a39d90; --line:#3a352b; --card:#1f1c15; --good:#5cc27a; --bad:#ff8a80; "
+                 "--accent:#e0a36b; --dot:#f2efe6; --bar:#ff6b6b;")
+
 _STYLE = """
-:root { --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#dcd6c9; --card:#fff; --good:#1f7a3a; --bad:#b3261e; --accent:#7a3b12; --dot:#000; --bar:#d62828; }
-@media (prefers-color-scheme: dark) { :root { --bg:#16140f; --fg:#ece7dc; --muted:#a39d90; --line:#3a352b; --card:#1f1c15; --good:#5cc27a; --bad:#ff8a80; --accent:#e0a36b; --dot:#f2efe6; --bar:#ff6b6b; } }
+:root { color-scheme:light; --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#dcd6c9; --card:#fff; --good:#1f7a3a; --bad:#b3261e; --accent:#7a3b12; --dot:#000; --bar:#d62828; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { %(dark)s } }
+:root[data-theme="dark"] { %(dark)s }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
-main { max-width: 56rem; margin: 0 auto; padding: 1rem 16px 3rem; }
+main { max-width: 56rem; margin: 0 auto; padding: 1rem 16px 3rem; position: relative; }
+.theme { position:absolute; top:.9rem; right:16px; background:none; border:1px solid var(--line); border-radius:8px; color:var(--muted); padding:.3rem; line-height:0; cursor:pointer; }
+.theme:hover { color:var(--fg); }
+h1 { padding-right: 3rem; }
 h1 { font-size: 1.3rem; margin: .5rem 0 1rem; } h2 { font-size: 1.05rem; margin: 1.6rem 0 .5rem; }
 a { color: var(--accent); }
 .tiles { display:grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap:.6rem; }
@@ -145,7 +153,32 @@ pre { background:var(--card); border:1px solid var(--line); border-radius:8px; p
 .small { font-size:.8rem; }
 .muted { color: var(--muted); } .facts td:first-child { color:var(--muted); width:11rem; }
 @media (max-width: 40rem) { .hide-narrow { display:none; } }
-"""
+""".replace("%(dark)s", _DARK_COLOURS)
+
+# Runs in the head, before anything is drawn, so a saved choice is on the page from the first paint (no white flash for someone who chose dark).
+_THEME_HEAD = """<script>try { var saved = localStorage.getItem('pom-theme'); if (saved === 'dark' || saved === 'light') { document.documentElement.setAttribute('data-theme', saved); } } catch (e) {}</script>"""
+
+# The icon in the top right: a moon on a light page, a sun on a dark one. A click flips the page and the browser remembers it (this browser only).
+_THEME_BUTTON = """<button type="button" id="theme" class="theme" aria-label="Switch between light and dark"></button>
+<script>(function () {
+  var button = document.getElementById('theme'), root = document.documentElement;
+  var icons = {
+    light: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+    dark: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+  };
+  function isDark() {
+    var chosen = root.getAttribute('data-theme');
+    return chosen ? chosen === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  function draw() { button.innerHTML = isDark() ? icons.dark : icons.light; }
+  button.addEventListener('click', function () {
+    var next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('pom-theme', next); } catch (e) {}
+    draw();
+  });
+  draw();
+})();</script>"""
 
 _SCRIPT = """
 (function () {
@@ -173,8 +206,9 @@ _SCRIPT = """
 
 _INDEX = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Printer monitor</title><style>{{ style }}</style></head>
+<title>Printer monitor</title><style>{{ style|safe }}</style>{{ theme_head|safe }}</head>
 <body><main>
+{{ theme_button|safe }}
 <h1>Printer of Mysteries <span class="muted">· monitor</span> <span class="down" data-stat="connection"></span></h1>
 <div class="tiles">
   <div class="tile"><b data-stat="in_history">{{ s.turns_in_history }}</b><span>turns in the last {{ s.history_minutes }} min</span></div>
@@ -204,8 +238,9 @@ _INDEX = """<!doctype html>
 
 _DETAIL = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Turn {{ r.id }}</title><style>{{ style }}</style></head>
+<title>Turn {{ r.id }}</title><style>{{ style|safe }}</style>{{ theme_head|safe }}</head>
 <body><main>
+{{ theme_button|safe }}
 <p><a href="/">&larr; all turns</a></p>
 <p class="nav">{% if older %}<a href="/turn/{{ older }}" rel="prev">&larr; Older</a>{% else %}<span class="muted">&larr; Older</span>{% endif %}
  &nbsp;·&nbsp; {% if newer %}<a href="/turn/{{ newer }}" rel="next">Newer &rarr;</a>{% else %}<span class="muted">Newer &rarr;</span>{% endif %}</p>
@@ -448,7 +483,7 @@ class MonitorSite:
             stats = self._stats(records)
             now = self._clock()
             script = _SCRIPT % {"newest": records[0].id if records else "null", "every": self._poll_seconds}
-            return render_template_string(_INDEX, style=_STYLE, script=script, s=stats, chart=self._chart(), chart_minutes=f"{self._look.window_minutes:g}",
+            return render_template_string(_INDEX, style=_STYLE, theme_head=_THEME_HEAD, theme_button=_THEME_BUTTON, script=script, s=stats, chart=self._chart(), chart_minutes=f"{self._look.window_minutes:g}",
                                           services=list(stats["services"].items()),
                                           rows=[self._row(record, now) for record in records])
 
@@ -468,7 +503,7 @@ class MonitorSite:
             status = self._status()
             rule = " - ".join(part for part in (str(status.algorithm or ""), str(status.bar_description or "")) if part)
             return render_template_string(
-                _DETAIL, style=_STYLE, r=record, newer=newer, older=older, rule=rule, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
+                _DETAIL, style=_STYLE, theme_head=_THEME_HEAD, theme_button=_THEME_BUTTON, r=record, newer=newer, older=older, rule=rule, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
                 hinge=self._hinge_text(record, short=False), score=f"{record.score:.2f}", bar=self._bar_text(record),
                 portent=portent,
                 seconds=f"{portent.seconds:.1f}" if portent is not None else "")

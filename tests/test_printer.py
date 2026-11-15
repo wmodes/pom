@@ -439,6 +439,15 @@ class TestTheMonitoringSite:
             p = build(tmp_path, "[monitor]\nenabled = true\n")
         assert p.site is None and any("no password" in r.getMessage() for r in caplog.records)
 
+    def test_the_history_keeps_a_turn_while_the_notebook_still_holds_its_attempt(self, tmp_path):
+        from pom.qualifying import Attempt, Ruling
+        from pom.scoring import ScoredBy
+        p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n')
+        keep_from = p.history._keep_heard_since
+        assert keep_from() is None                                              # nothing on the chart yet
+        p.conductor._on_attempt(Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
+        assert keep_from() == p.parts["notebook"].earliest_at is not None
+
     def test_the_turn_taker_records_into_the_history_the_site_reads(self, tmp_path):
         p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n')
         assert p.parts["turn_taker"]._history is p.history and p.site._history is p.history

@@ -204,6 +204,8 @@ class TestTheLockAndTheMemory:
         assert SpyLock.entered == 2
         t.latest_at
         assert SpyLock.entered == 3
+        t.earliest_at
+        assert SpyLock.entered == 4
 
     def test_old_points_are_dropped_as_new_ones_arrive_even_if_nobody_reads(self):
         t = notebook(max_age_seconds=60)
@@ -250,6 +252,30 @@ class TestNothingIsLogged:
         t.add("secret", 1.0, 1.0)
         assert "7.123456" not in caplog.text + "\n".join(t.report.lines())
         assert "secret" not in caplog.text + "\n".join(t.report.lines())
+
+
+class TestEarliestAt:
+    """`earliest_at` is how far back the chart can reach: the oldest attempt held (the turn history keeps a turn while its dot is that recent)."""
+
+    def test_an_empty_notebook_has_none(self):
+        assert notebook().earliest_at is None
+
+    def test_it_is_the_oldest_attempt(self):
+        t = notebook()
+        t.add(3.0, 5.0, 40.0)
+        t.add(4.0, 5.0, 90.0)
+        assert t.earliest_at == 40.0
+
+    def test_a_tick_before_the_first_attempt_is_not_an_attempt(self):
+        t = with_ticks(began_at=0.0)
+        t.add(3.0, 5.0, 100.0)                                       # the tick at 60 is written before it
+        assert t.ticks()[0].at == 60.0 and t.earliest_at == 100.0
+
+    def test_it_moves_up_as_the_oldest_is_forgotten(self):
+        t = notebook(max_age_seconds=60, longest_silence_seconds=10 ** 9)
+        t.add(3.0, 5.0, 0.0)
+        t.add(3.0, 5.0, 100.0)
+        assert t.earliest_at == 100.0
 
 
 class TestHoldsEverything:

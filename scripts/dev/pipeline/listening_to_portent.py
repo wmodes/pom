@@ -162,7 +162,8 @@ def main() -> None:
         monitor = config.monitor
         watch = ServiceWatch({"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: answers(scoring.url),
                               "oracle": lambda: answers(config.oracle.url)})
-        history, notebook = TurnHistory(monitor.history_seconds, monitor.history_max_turns), ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries)
+        notebook = ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries)
+        history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at)
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
         site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, status_source=lambda: MonitorStatus(
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],

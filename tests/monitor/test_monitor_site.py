@@ -172,6 +172,60 @@ class TestTheList:
         assert "var newest = null;" in get(client, "/").get_data(as_text=True)
 
 
+class TestTurnsKeptForTheChart:
+    """A turn stays on the page, past the hour, while the chart still shows its qualifier dot."""
+
+    @staticmethod
+    def long_ago(reach=500.0, hours=7.0):
+        """A page whose one turn (heard at 600) is `hours` old, with the chart reaching back to `reach`; the notebook has that qualifier."""
+        clock = Clock()
+        history = TurnHistory(max_age_seconds=3600, clock=clock, keep_heard_since=lambda: reach)
+        notebook = ChartNotebook()
+        notebook.add(8.0, 6.0, 600.0, True)
+        _, _, client, _ = make(clock, history=history, notebook=notebook)
+        record = add(history, "a hinge from long ago", heard_at=600.0)
+        clock.now += hours * 3600
+        return client, history, record
+
+    def test_an_hours_old_turn_is_still_listed_with_its_age(self):
+        client, _, _ = self.long_ago()
+        page = get(client, "/").get_data(as_text=True)
+        assert "a hinge from long ago" in page and "7 h 00 min ago" in page
+
+    def test_the_tiles_count_a_turn_exactly_as_old_as_the_span(self):
+        client, _, _ = self.long_ago(hours=1.0)             # exactly `max_age_seconds` old: still in the last hour
+        stats = get(client, "/api/turns").get_json()["stats"]
+        assert stats["turns_in_history"] == 1
+
+    def test_its_page_opens(self):
+        client, _, record = self.long_ago()
+        assert get(client, f"/turn/{record.id}").status_code == 200
+
+    def test_its_dot_on_the_chart_links_to_it(self):
+        client, _, record = self.long_ago()
+        assert f'href="/turn/{record.id}"' in get(client, "/chart.svg").get_data(as_text=True)
+
+    def test_once_the_chart_has_lost_the_dot_the_turn_goes_too(self):
+        client, _, record = self.long_ago(reach=700.0)
+        assert "a hinge from long ago" not in get(client, "/").get_data(as_text=True)
+        assert get(client, f"/turn/{record.id}").status_code == 404
+
+    def test_the_tiles_count_only_the_last_hour(self):
+        clock = Clock()
+        history = TurnHistory(max_age_seconds=3600, clock=clock, keep_heard_since=lambda: 0.0)
+        _, _, client, _ = make(clock, history=history)
+        add(history, "old one", heard_at=100.0)
+        clock.now += 5 * 3600
+        add(history, "new one", heard_at=200.0)
+        stats = get(client, "/api/turns").get_json()["stats"]
+        assert stats["turns_in_history"] == 1 and stats["turns_per_hour"] == "1.0"
+        assert [turn["hinge"] for turn in get(client, "/api/turns").get_json()["turns"]] == ["new one", "old one"]
+
+    def test_the_last_turn_ago_is_the_newest(self):
+        client, _, _ = self.long_ago()
+        assert get(client, "/api/turns").get_json()["stats"]["last_turn_ago"] == "7 h 00 min ago"
+
+
 class TestTheStats:
     def test_turn_counts_and_the_pace(self):
         _, history, client, _ = make()
@@ -459,10 +513,19 @@ class TestTheDetailPage:
         _, history, client, _ = make()
         record = add(history, "Nooooooo.", score=7.32, bar=6.9, window_size=140, heard_at=3725.0)
         page = get(client, f"/turn/{record.id}").get_data(as_text=True)
-        for shown in ("Nooooooo.", "The ghosts keep the hours.", "7.32", "6.90", "140", "62 min 05 s",
+        for shown in ("Nooooooo.", "The ghosts keep the hours.", "7.32", "6.90", "140",
                       "dreambook#7", "divination", "To dream of a sea is a sign of travel.",
                       "horoscope#2", "The Moon in Cancer favours the home.", "2.5 s", "5 words"):
             assert shown in page
+
+    def test_it_says_how_long_ago_the_hinge_was_heard_in_hours_and_minutes(self):
+        clock = Clock()
+        _, history, client, _ = make(clock=clock, history=TurnHistory(max_age_seconds=24 * 3600, clock=clock))
+        record = add(history, "Nooooooo.", heard_at=3725.0)
+        clock.now += 2 * 3600 + 5 * 60
+        page = get(client, f"/turn/{record.id}").get_data(as_text=True)
+        assert "<td>Heard</td><td>2 h 05 min ago</td>" in page
+        assert "into the listening" not in page and "62 min 05 s" not in page
 
     def test_a_portent_cut_off_is_marked(self):
         _, history, client, _ = make()
@@ -511,8 +574,8 @@ class TestMovingBetweenTurns:
         """The numbers behind the Newer and Older links of a turn's page (None for a link that is not there)."""
         import re
         page = get(client, f"/turn/{record_id}").get_data(as_text=True)
-        newer = re.search(r'href="/turn/(\d+)" rel="prev"', page)
-        older = re.search(r'href="/turn/(\d+)" rel="next"', page)
+        newer = re.search(r'href="/turn/(\d+)" rel="next"', page)
+        older = re.search(r'href="/turn/(\d+)" rel="prev"', page)
         return (int(newer[1]) if newer else None), (int(older[1]) if older else None)
 
     def test_a_turn_in_the_middle_links_both_ways(self):
@@ -538,6 +601,13 @@ class TestMovingBetweenTurns:
         add(history)
         page = get(client, "/turn/1").get_data(as_text=True)
         assert "Newer" in page and "Older" in page
+
+    def test_older_is_on_the_left_and_newer_on_the_right(self):
+        _, history, client, _ = make()
+        for text in ("one", "two", "three"):
+            add(history, text)
+        page = get(client, "/turn/2").get_data(as_text=True)
+        assert page.index("&larr; Older") < page.index("Newer &rarr;")
 
     def test_a_neighbour_that_has_expired_is_not_linked(self):
         clock = Clock()

@@ -358,7 +358,9 @@ password = ""
 # true shows the hinge on the page; false shows numbers only (time, score, bar, window) and the exemplars and portent.
 show_hinges = true
 
-# How many seconds a turn stays on the page. It is kept in memory only, so a restart empties it. Above 0.
+# How many seconds a turn stays on the page. It is kept in memory only, so a restart empties it. Above 0. A turn also stays, however old, while its
+# qualifier dot is still on the chart (after a long silence the chart reaches back hours), so a dot never links to nothing. Up: the page lists
+# older turns that have no dot; down: the page forgets them sooner. The "turns in the last hour" tiles count only turns this young.
 history_seconds = 3600
 
 # The most turns the page keeps, a whole number of at least 1. A safety limit: age (history_seconds above) normally ends a turn first, so a flood of turns

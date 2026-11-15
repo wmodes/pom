@@ -1,4 +1,4 @@
-"""The TurnHistory: the last hour of turns, for the monitoring site.
+"""The TurnHistory: the recent turns (an hour of them, and any the chart still shows), for the monitoring site.
 
 Each time a hinge qualifies, the Conductor records what happened: the hinge, its score, the bar it had to beat, the
 exemplars the oracle was shown and the portent it wrote. The monitoring site reads this list to show the newest
@@ -7,8 +7,12 @@ turns and, for each, its details. It is only a memory: the list is for looking a
 Design decisions, and why:
   * MEMORY ONLY. A hinge is something that was said in the room, and the project keeps nothing that was said in the
     room. So the records live in this object and nowhere else: never written to disk, never logged, never put in a
-    report (those hold counts only). They are dropped after `max_age_seconds` (an hour) and when the Printer restarts.
-  * Bounded twice: by age, and by `max_records`, so a flood of turns cannot grow the memory.
+    report (those hold counts only). They are dropped after `max_age_seconds` (an hour), unless the chart still shows the turn's qualifier dot, and
+    when the Printer restarts.
+  * A TURN STAYS WHILE ITS DOT IS ON THE CHART. After a long silence the chart reaches back hours of clock time, so a dot can outlive its turn and
+    link to nothing. So the history is handed a function (`keep_heard_since`) that says the audio time from which turns are kept whatever their age; the
+    Printer hands it the chart notebook's oldest attempt. The history does not import the notebook, and asks the function outside its own lock.
+  * Bounded twice: by age (with that exception), and by `max_records`, so a flood of turns cannot grow the memory.
   * Thread-safe. The Conductor adds from its thread and the web server reads from its own, so every change and read
     takes one lock, and `recent()` returns a copy.
   * Nothing here may stop the oracle (see pom/__init__.py). A record that cannot be made (a blank hinge, a score that is
@@ -83,12 +87,16 @@ class TurnHistory:
     """
 
     def __init__(self, max_age_seconds: float = DEFAULT_MAX_AGE_SECONDS, max_records: int = DEFAULT_MAX_RECORDS,
-                 clock: Callable[[], float] = time.time, strict: bool = False):
+                 clock: Callable[[], float] = time.time, strict: bool = False,
+                 keep_heard_since: Optional[Callable[[], Optional[float]]] = None):
         """Args:
-            max_age_seconds: How long a record is kept, above 0 (3600 is an hour).
+            max_age_seconds: How long a record is kept, above 0 (3600 is an hour), unless `keep_heard_since` keeps it longer.
             max_records: The most records kept, a whole number of at least 1; the oldest go first.
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise TurnHistoryError on any problem instead of recording it.
+            keep_heard_since: A function returning the audio time (as `heard_at`) from which turns are kept whatever their age, or None for no such
+                time: the chart notebook's oldest attempt, so a turn stays while its dot is on the chart. Without one, or if it fails or gives
+                something that is not a number, the age limit alone decides.
         """
         self.report = FaultRecorder(strict=strict, error=TurnHistoryError, logger=_log)
         if not (_is_number(max_age_seconds) and max_age_seconds > 0):
@@ -102,6 +110,7 @@ class TurnHistory:
         self._max_age = float(max_age_seconds)
         self._records: Deque[TurnRecord] = deque(maxlen=max_records)       # oldest first
         self._clock = clock
+        self._keep_heard_since = keep_heard_since
         self._lock = threading.Lock()
         self._next_id = 1
         self.total_added = 0
@@ -120,6 +129,7 @@ class TurnHistory:
         if not _is_number(score):
             self.report.warn("a turn was given without a numeric score, so it was not recorded")
             return None
+        keep_from = self._keep_from()                       # asked for outside the lock: the function belongs to another object
         with self._lock:
             record = TurnRecord(self._next_id, self._clock(), heard_at if _is_number(heard_at) else 0.0, hinge.strip(),
                                    float(score), float(bar) if _is_number(bar) else None,
@@ -128,7 +138,7 @@ class TurnHistory:
             self._next_id += 1
             self.total_added += 1
             self._records.append(record)
-            self._forget_old()
+            self._forget_old(keep_from)
         _log.debug("recorded turn %d (%d kept)", record.id, len(self._records))
         return record
 
@@ -141,8 +151,9 @@ class TurnHistory:
         if not (isinstance(outcome, str) and outcome.strip()):
             self.report.warn("a turn's outcome must be a short label, so it was not recorded")
             return False
+        keep_from = self._keep_from()
         with self._lock:
-            self._forget_old()
+            self._forget_old(keep_from)
             for index, record in enumerate(self._records):
                 if record.id == record_id:
                     self._records[index] = replace(record, outcome=outcome.strip())
@@ -150,19 +161,33 @@ class TurnHistory:
         return False
 
     def recent(self) -> List[TurnRecord]:
-        """The records still within `max_age_seconds`, newest first. A copy, so it may be changed freely."""
+        """The records still kept (within `max_age_seconds`, or still shown on the chart), newest first. A copy, so it may be changed freely."""
+        keep_from = self._keep_from()
         with self._lock:
-            self._forget_old()
+            self._forget_old(keep_from)
             return list(reversed(self._records))
 
     def get(self, record_id: int) -> Optional[TurnRecord]:
         """The record with this number, or None if there is none or it has expired."""
+        keep_from = self._keep_from()
         with self._lock:
-            self._forget_old()
+            self._forget_old(keep_from)
             return next((record for record in self._records if record.id == record_id), None)
 
-    def _forget_old(self) -> None:
-        """Drops the records older than the age limit. The caller holds the lock."""
+    def _keep_from(self) -> Optional[float]:
+        """The audio time from which records are kept whatever their age, or None. Asked outside the lock; a failing function is a warning, never a stop."""
+        if self._keep_heard_since is None:
+            return None
+        try:
+            found = self._keep_heard_since()
+        except Exception:                                                    # nothing here may stop the oracle; say what, never a hinge
+            self.report.warn("the function that says which turns the chart still shows failed, so only the age limit applies")
+            return None
+        return float(found) if _is_number(found) else None
+
+    def _forget_old(self, keep_from: Optional[float] = None) -> None:
+        """Drops the records older than the age limit, except those heard at or after `keep_from`. The caller holds the lock."""
         cutoff = self._clock() - self._max_age
-        while self._records and self._records[0].at < cutoff:
-            self._records.popleft()
+        kept = [record for record in self._records if record.at >= cutoff or (keep_from is not None and record.heard_at >= keep_from)]
+        if len(kept) != len(self._records):
+            self._records = deque(kept, maxlen=self._records.maxlen)

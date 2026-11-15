@@ -152,6 +152,16 @@ class ChartNotebook:
         with self._lock:
             return self._latest_attempt_at()
 
+    @property
+    def earliest_at(self) -> Optional[float]:
+        """The audio time of the oldest attempt held, or None if there are none: how far back the chart can reach, so a turn whose qualifier dot is
+        still on the chart can be kept."""
+        with self._lock:
+            for entry in self._entries:
+                if entry.kind == ATTEMPT:
+                    return entry.at
+        return None
+
     def _latest_attempt_at(self) -> Optional[float]:
         """The audio time of the newest attempt. The caller holds the lock."""
         for entry in reversed(self._entries):

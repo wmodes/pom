@@ -225,11 +225,12 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     terminal = _make_terminal(mode, terminal_settings)
 
     # the turn
-    history = TurnHistory(monitor.history_seconds, monitor.history_max_turns)
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
     # (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)
     notebook = ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries, ticks_source=bar_keeper.ticks_between,
                              silence_shape=silence_shape(config.chart), began_at=stream_started_at)
+    # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
+    history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at)
     floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds)
     turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
                            write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,

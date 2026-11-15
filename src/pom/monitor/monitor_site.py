@@ -1,4 +1,4 @@
-"""The MonitorSite: a web page of the last hour of turns, for a person to open from another machine.
+"""The MonitorSite: a web page of the recent turns (the last hour, and any the chart still shows), for a person to open from another machine.
 
 Open it on the Printer's network (for example http://pom1.local:8080) and it shows how the Printer is doing and the newest
 turns first. Click a turn for its details: the hinge, the exemplars the oracle was shown, the portent it wrote, the
@@ -207,8 +207,8 @@ _DETAIL = """<!doctype html>
 <title>Turn {{ r.id }}</title><style>{{ style }}</style></head>
 <body><main>
 <p><a href="/">&larr; all turns</a></p>
-<p class="nav">{% if newer %}<a href="/turn/{{ newer }}" rel="prev">&larr; Newer</a>{% else %}<span class="muted">&larr; Newer</span>{% endif %}
- &nbsp;·&nbsp; {% if older %}<a href="/turn/{{ older }}" rel="next">Older &rarr;</a>{% else %}<span class="muted">Older &rarr;</span>{% endif %}</p>
+<p class="nav">{% if older %}<a href="/turn/{{ older }}" rel="prev">&larr; Older</a>{% else %}<span class="muted">&larr; Older</span>{% endif %}
+ &nbsp;·&nbsp; {% if newer %}<a href="/turn/{{ newer }}" rel="next">Newer &rarr;</a>{% else %}<span class="muted">Newer &rarr;</span>{% endif %}</p>
 <h1>Turn {{ r.id }} <span class="muted">· {{ time }} ({{ ago }})</span></h1>
 <h2>Hinge</h2>
 <pre>{{ hinge }}</pre>
@@ -216,7 +216,7 @@ _DETAIL = """<!doctype html>
 <tr><td>Score</td><td>{{ score }}</td></tr>
 <tr><td>Bar it had to beat</td><td>{{ bar }}</td></tr>
 <tr><td>Scores in the window</td><td>{{ r.window_size }}</td></tr>
-<tr><td>Heard at</td><td>{{ heard_at }} into the listening</td></tr>
+<tr><td>Heard</td><td>{{ ago }}</td></tr>
 {% if rule %}<tr><td>Bar type</td><td>{{ rule }}</td></tr>{% endif %}
 </tbody></table>
 <h2>Portent</h2>
@@ -347,9 +347,10 @@ class MonitorSite:
         status = self._status()
         span = self._history.max_age_seconds
         uptime = _ago(now - self._started_at).replace(" ago", "")
+        lately = [record for record in records if now - record.at <= span]       # the tiles are about the last `span`; an older turn is listed only because the chart still shows its dot
         return {
-            "turns_in_history": len(records),
-            "turns_per_hour": f"{len(records) * 3600 / span:.1f}",
+            "turns_in_history": len(lately),
+            "turns_per_hour": f"{len(lately) * 3600 / span:.1f}",
             "history_minutes": f"{span / 60:g}",
             "turns_since_start": self._history.total_added,
             "last_turn_ago": _ago(now - records[0].at) if records else "none yet",
@@ -469,7 +470,7 @@ class MonitorSite:
             return render_template_string(
                 _DETAIL, style=_STYLE, r=record, newer=newer, older=older, rule=rule, time=_clock_time(record.at), ago=_ago(self._clock() - record.at),
                 hinge=self._hinge_text(record, short=False), score=f"{record.score:.2f}", bar=self._bar_text(record),
-                heard_at=f"{int(record.heard_at) // 60} min {int(record.heard_at) % 60:02d} s", portent=portent,
+                portent=portent,
                 seconds=f"{portent.seconds:.1f}" if portent is not None else "")
 
         @app.get("/api/turns")

@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from pom.config import Config
-from pom.monitor import TurnHistory
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "dev" / "monitor" / "serve_fake_turns.py"
@@ -23,8 +22,7 @@ def script():
 
 
 def room(script, seed=7, speed=30.0, head_start_minutes=35.0, quiet_start_minutes=0.0):
-    return script.InventedRoom(Config.load(ROOT / "config" / "pom.toml"), TurnHistory(), random.Random(seed), speed, head_start_minutes,
-                               quiet_start_minutes)
+    return script.InventedRoom(Config.load(ROOT / "config" / "pom.toml"), random.Random(seed), speed, head_start_minutes, quiet_start_minutes)
 
 
 def test_the_chart_flag_serves_the_feed_and_exits():

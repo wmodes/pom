@@ -213,6 +213,125 @@ class TestForgetting:
         assert h.recent() == []
 
 
+class TestKeepingATurnWhileItsDotIsOnTheChart:
+    """A turn heard at or after `keep_heard_since()` is kept whatever its age: the chart still shows its qualifier dot."""
+
+    def test_an_old_turn_stays_while_the_function_keeps_it(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: 100.0)
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert len(h.recent()) == 1
+
+    def test_it_goes_once_the_function_moves_past_it(self):
+        reach, clock = [100.0], Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: reach[0])
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert len(h.recent()) == 1
+        reach[0] = 151.0
+        assert h.recent() == []
+
+    def test_the_limit_on_how_many_turns_still_holds_after_old_ones_are_dropped(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, max_records=3, keep_heard_since=lambda: 1000.0)
+        add(h, "gone", heard_at=1.0)                       # old, and before the chart's reach: dropped when the clock moves on
+        clock.now += 10_000
+        h.recent()                                          # the drop rebuilds the list; the cap must survive it
+        for index in range(5):
+            add(h, f"turn {index}", heard_at=2000.0 + index)
+        assert [record.hinge for record in h.recent()] == ["turn 4", "turn 3", "turn 2"]
+
+    def test_a_turn_heard_exactly_at_that_time_is_kept(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: 150.0)
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert len(h.recent()) == 1
+
+    def test_a_turn_heard_before_it_goes_by_age(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: 150.0)
+        add(h, heard_at=149.0)
+        clock.now += 10_000
+        assert h.recent() == []
+
+    def test_a_turn_within_the_age_limit_is_kept_either_way(self):
+        h = history(max_age_seconds=3600, keep_heard_since=lambda: 10 ** 9)
+        add(h, heard_at=5.0)
+        assert len(h.recent()) == 1
+
+    def test_only_the_old_turns_the_chart_has_lost_go(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: 200.0)
+        add(h, "on the chart", heard_at=250.0)
+        add(h, "off the chart", heard_at=100.0)
+        add(h, "also on the chart", heard_at=300.0)
+        clock.now += 10_000
+        assert [r.hinge for r in h.recent()] == ["also on the chart", "on the chart"]
+
+    def test_a_kept_turn_can_be_fetched_and_given_an_outcome(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: 0.0)
+        record = add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert h.get(record.id) is not None and h.set_outcome(record.id, "printed") is True and h.get(record.id).outcome == "printed"
+
+    def test_the_numbering_is_undisturbed(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: 0.0)
+        add(h)
+        clock.now += 10_000
+        assert add(h).id == 2
+
+    def test_the_most_turns_limit_still_applies(self):
+        h = history(max_records=2, keep_heard_since=lambda: 0.0)
+        for i in range(4):
+            add(h, f"hinge {i}", heard_at=10.0 + i)
+        assert [r.hinge for r in h.recent()] == ["hinge 3", "hinge 2"]
+
+    def test_without_a_function_only_age_counts(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60)
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert h.recent() == []
+
+    def test_no_time_means_only_age_counts(self):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: None)
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert h.recent() == [] and h.report.ok
+
+    @pytest.mark.parametrize("bad", ["100", True, [1], float("nan"), float("inf")])
+    def test_something_that_is_not_a_number_means_only_age_counts(self, bad):
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=lambda: bad)
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert h.recent() == []
+
+    def test_a_function_that_fails_is_a_warning_and_only_age_counts(self):
+        def broken():
+            raise RuntimeError("the secret hinge")
+        clock = Clock()
+        h = history(clock, max_age_seconds=60, keep_heard_since=broken)
+        add(h, heard_at=150.0)
+        clock.now += 10_000
+        assert h.recent() == [] and len(h.report.warnings) >= 1
+        assert "secret" not in "\n".join(h.report.lines())
+
+    def test_the_function_is_asked_without_the_lock_held(self):
+        seen = []
+        h = history(keep_heard_since=lambda: seen.append(h._lock.locked()) or None)
+        add(h)
+        h.recent()
+        h.get(1)
+        h.set_outcome(1, "printed")
+        assert seen and not any(seen)
+
+
 class TestWhenSeveralThreadsUseIt:
     def test_many_adders_and_a_reader_leave_every_record_whole(self):
         h = history(max_records=1000)

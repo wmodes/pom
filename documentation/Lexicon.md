@@ -389,7 +389,7 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **poll seconds**: How often the open monitoring page asks for news and redraws itself: the chart, the status tiles (the bar to beat now, the scores
   in the window, the attempts scored / heard) and the turns. A turn appears on the first poll after its portent is written. Example: `poll_seconds`
 - **turn record**: One turn and what came of it: the hinge, its score, the bar it beat, the window, the exemplars shown and the
-  portent. **Turn history** is the last hour of them, newest first, in memory only and never written down. Example: `TurnRecord`,
+  portent. **Turn history** is the last hour of them, newest first, in memory only and never written down; a turn also stays while its qualifier dot is still on the score chart, so a dot never links to nothing. Example: `TurnRecord`,
   `TurnHistory` (was: trigger record, `TriggerRecord`, `TriggerHistory`)
 - **score chart**: On the monitoring site, every attempt's score against the bar, with each qualifier marked and the anchor's ticks as grey dots.
   Its right edge is now, on the stream clock, so it keeps moving through silence, and the bar line slides down through it. The only words on it are

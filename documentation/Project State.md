@@ -283,6 +283,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   left alone.
 - **Revisit later (Wes, 2026-10-23): real whispers.** In the quietest of rooms, an actual whispered aside might be worth
   acting on. Today a whisper is treated like any quiet sound.
+- **A turn stays while its dot is on the chart** (2026-11-15): after a long silence the chart reaches back hours, so qualifier dots outlived their turns and linked to nothing. `TurnHistory` keeps a turn past `history_seconds` while `ChartNotebook.earliest_at` says its dot is still drawn (handed in as a function; the history never imports the notebook); the tiles count only the last `history_seconds`. The turn page says "Heard 2 h 05 min ago" (it said the audio position, "12266 min 11 s into the listening") and its Older link is on the left, Newer on the right. The dev sim has `--history-minutes` to show it.
 - **Earlier word-list plan, now a fallback only:** snag on the corpus (`wordfreq`), concreteness (WordNet), feeling
   (NRC-VAD, free for non-commercial research, **not redistributable**, so each machine downloads its own into the
   gitignored `data/lexicons/`), names/numbers/questions, a filler penalty, a recent-use penalty. `wordfreq` and `nltk` are

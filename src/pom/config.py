@@ -419,7 +419,8 @@ class MonitorSettings:
         password: The site's password. The site does not start while it is empty; set it in config/pom.local.toml,
             which git ignores, never in pom.toml.
         show_hinges: True shows the hinge (what was said in the room) on the page; False shows numbers only.
-        history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only.
+        history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only. A turn also stays while its qualifier dot
+            is still on the chart, however old it is; the tiles count only turns within this many seconds.
         service_check_seconds: How often, at most, the page's service lights (whisper, scorer, oracle) are checked, above 0, so the page's
             polling does not hammer the servers.
         password_on_localhost: True asks for the password of every request, including one from the Printer itself (its own display). False lets a

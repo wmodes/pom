@@ -72,11 +72,17 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 _log = get_logger(__name__, DEBUG)
 
 FLOW_CONTROLS = ("xon_xoff", "rts_cts", "none")
+DATA_BITS = (5, 6, 7, 8)
+PARITIES = {"none": "N", "even": "E", "odd": "O"}         # the setting's word -> pyserial's letter
+STOP_BITS = (1, 2)
 END_OF_LINES = {"cr": "\r", "crlf": "\r\n", "lf": "\n", "lfcr": "\n\r"}
 BAUD_RATES = (50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 76800,
               115200, 230400)
 DEFAULT_BAUD = 9600
 DEFAULT_FLOW_CONTROL = "xon_xoff"
+DEFAULT_DATA_BITS = 8
+DEFAULT_PARITY = "none"
+DEFAULT_STOP_BITS = 1
 DEFAULT_END_OF_LINE = "crlf"
 DEFAULT_CHARACTERS_PER_SECOND = 16.0
 DEFAULT_FINISH_WAIT_SECONDS = 2.0
@@ -106,10 +112,10 @@ class PrintResult:
     completed: bool
 
 
-def _open_serial(port: str, baud: int, flow_control: str):
+def _open_serial(port: str, baud: int, flow_control: str, data_bits: int, parity: str, stop_bits: int):
     """Opens the real serial port (pyserial is imported here, so a missing library is a recorded fault, not a crash)."""
     import serial
-    return serial.Serial(port, baud, bytesize=8, parity="N", stopbits=1, timeout=_READ_SLICE_SECONDS, write_timeout=10,
+    return serial.Serial(port, baud, bytesize=data_bits, parity=PARITIES[parity], stopbits=stop_bits, timeout=_READ_SLICE_SECONDS, write_timeout=10,
                          xonxoff=flow_control == "xon_xoff", rtscts=flow_control == "rts_cts")
 
 
@@ -128,7 +134,8 @@ class TerminalPort:
                  max_typed_line_characters: int = DEFAULT_MAX_TYPED_LINE_CHARACTERS,
                  refused_character_retry_seconds: float = DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS,
                  wait_log_reminder_seconds: float = DEFAULT_WAIT_LOG_REMINDER_SECONDS,
-                 opener: Optional[Callable[[str, int, str], object]] = None, clock: Callable[[], float] = time.monotonic,
+                 data_bits: int = DEFAULT_DATA_BITS, parity: str = DEFAULT_PARITY, stop_bits: int = DEFAULT_STOP_BITS,
+                 opener: Optional[Callable[[str, int, str, int, str, int], object]] = None, clock: Callable[[], float] = time.monotonic,
                  sleep: Callable[[float], None] = time.sleep, lister: Callable[[str], list] = glob.glob, strict: bool = False):
         """Args:
             port: The serial device, e.g. /dev/ttyACM0, or a pattern such as /dev/ttyACM* (looked up each time it is opened).
@@ -144,8 +151,11 @@ class TerminalPort:
             max_typed_line_characters: A line typed on the keyboard is ended at this many characters, a whole number of at least 1.
             refused_character_retry_seconds: The pause before a character the machine refused is sent again, above 0.
             wait_log_reminder_seconds: A long wait for the machine is mentioned in the log this often, above 0.
+            data_bits: Bits in each character, one of DATA_BITS. Must match the machine's setting.
+            parity: "none", "even" or "odd". Must match the machine's setting.
+            stop_bits: 1 or 2. Must match the machine's setting.
             lister: A function pattern -> list of matching device names. Default: glob.glob. Tests give a fake.
-            opener: A function (port, baud, flow_control) -> an object with write(bytes), flush(), close(), read(size)
+            opener: A function (port, baud, flow_control, data_bits, parity, stop_bits) -> an object with write(bytes), flush(), close(), read(size)
                 and reset_input_buffer(). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
             sleep: Waits for that many seconds.
@@ -156,6 +166,13 @@ class TerminalPort:
         self._baud = self._valid(baud, "baud", DEFAULT_BAUD, lambda v: v in BAUD_RATES, "one of the standard baud rates")
         self._flow_control = self._valid(flow_control, "flow_control", DEFAULT_FLOW_CONTROL,
                                          lambda v: v in FLOW_CONTROLS, f"one of {', '.join(FLOW_CONTROLS)}")
+        self._data_bits = self._valid(data_bits, "data_bits", DEFAULT_DATA_BITS,
+                                      lambda v: isinstance(v, int) and v in DATA_BITS,                    # (True is 1, which is not in DATA_BITS)
+                                      f"one of {', '.join(str(bits) for bits in DATA_BITS)}")
+        self._parity = self._valid(parity, "parity", DEFAULT_PARITY, lambda v: v in PARITIES, f"one of {', '.join(PARITIES)}")
+        self._stop_bits = self._valid(stop_bits, "stop_bits", DEFAULT_STOP_BITS,
+                                      lambda v: isinstance(v, int) and not isinstance(v, bool) and v in STOP_BITS,
+                                      f"one of {', '.join(str(bits) for bits in STOP_BITS)}")
         self._end_of_line = END_OF_LINES[self._valid(end_of_line, "end_of_line", DEFAULT_END_OF_LINE,
                                                      lambda v: v in END_OF_LINES, f"one of {', '.join(END_OF_LINES)}")]
         self._seconds_per_character = 1.0 / self._valid(
@@ -417,7 +434,7 @@ class TerminalPort:
         try:
             if name is None:
                 raise FileNotFoundError("no device matches the port pattern")
-            self._serial = self._opener(name, self._baud, self._flow_control)
+            self._serial = self._opener(name, self._baud, self._flow_control, self._data_bits, self._parity, self._stop_bits)
         except Exception as error:
             if not self._connect_failing and not quiet:
                 self.report.warn(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); nothing was typed")
@@ -518,5 +535,5 @@ class ConsoleTerminal(TerminalPort):
                            input_stream if input_stream is not None else sys.stdin)
         super().__init__("console", end_of_line="lf", characters_per_second=characters_per_second,
                          finish_wait_seconds=finish_wait_seconds, echoplex=echoplex,
-                         type_during_printing=type_during_printing, opener=lambda port, baud, flow: sink,
+                         type_during_printing=type_during_printing, opener=lambda *line: sink,
                          clock=clock, sleep=sleep, strict=strict)

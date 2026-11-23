@@ -79,8 +79,8 @@ def make(fake=None, clock=None, **settings):
     fake = fake or FakeSerial(clock)
     opened = []
 
-    def opener(port, baud, flow):
-        opened.append((port, baud, flow))
+    def opener(port, baud, flow, data_bits, parity, stop_bits):
+        opened.append((port, baud, flow, data_bits, parity, stop_bits))
         return fake
 
     settings.setdefault("finish_wait_seconds", 0)
@@ -178,7 +178,7 @@ def test_the_port_is_opened_on_the_first_use_with_its_settings_and_only_once():
     assert opened == []
     port.transmit("a")
     port.transmit("b")
-    assert opened == [("/dev/ttyTEST", 115200, "rts_cts")]
+    assert opened == [("/dev/ttyTEST", 115200, "rts_cts", 8, "none", 1)]
 
 
 def test_a_port_that_will_not_open_gives_an_incomplete_report_and_a_warning_never_an_exception():
@@ -195,7 +195,7 @@ def test_a_port_that_would_not_open_is_tried_again_on_the_next_call():
     fake = FakeSerial(clock)
     attempts = []
 
-    def opener(port, baud, flow):
+    def opener(port, *line):
         attempts.append(1)
         if len(attempts) == 1:
             raise OSError("not plugged in yet")
@@ -248,7 +248,7 @@ def test_a_bad_setting_means_the_default_with_a_warning(setting, bad):
     port, fake, clock, opened = make(**{setting: bad})
     assert len(port.report.warnings) == 1 and setting in port.report.warnings[0]
     report = port.transmit("ab\n")
-    assert report.completed is True and opened == [("/dev/ttyTEST", 9600, "xon_xoff")]
+    assert report.completed is True and opened == [("/dev/ttyTEST", 9600, "xon_xoff", 8, "none", 1)]
     assert fake.written == b"ab\r\n"                                   # the default line ending
     if setting == "characters_per_second":
         assert fake.write_times == pytest.approx([0.0, 1 / 16, 2 / 16])
@@ -287,18 +287,48 @@ def test_closing_a_port_that_was_never_opened_or_that_fails_to_close_is_fine():
     port.close()
 
 
-def test_the_real_serial_port_is_opened_with_8n1_and_the_chosen_flow_control(monkeypatch):
+def test_the_real_serial_port_is_opened_with_the_chosen_line_settings_and_flow_control(monkeypatch):
     seen = []
     monkeypatch.setattr("serial.Serial", lambda *args, **kwargs: seen.append((args, kwargs)) or object())
-    terminal_port._open_serial("/dev/ttyACM0", 9600, "xon_xoff")
-    terminal_port._open_serial("/dev/ttyACM0", 19200, "rts_cts")
-    terminal_port._open_serial("/dev/ttyACM0", 19200, "none")
+    terminal_port._open_serial("/dev/ttyACM0", 9600, "xon_xoff", 8, "none", 1)
+    terminal_port._open_serial("/dev/ttyACM0", 19200, "rts_cts", 8, "none", 1)
+    terminal_port._open_serial("/dev/ttyACM0", 19200, "none", 8, "none", 1)
     (args, kwargs), (_, rts), (_, none) = seen
     assert args == ("/dev/ttyACM0", 9600)
     assert (kwargs["bytesize"], kwargs["parity"], kwargs["stopbits"]) == (8, "N", 1)
     assert (kwargs["xonxoff"], kwargs["rtscts"]) == (True, False)
     assert (rts["xonxoff"], rts["rtscts"]) == (False, True) and (none["xonxoff"], none["rtscts"]) == (False, False)
     assert kwargs["timeout"] == terminal_port._READ_SLICE_SECONDS
+
+
+@pytest.mark.parametrize("data_bits, parity, stop_bits, letter", [(7, "even", 1, "E"), (8, "none", 1, "N"), (7, "odd", 2, "O"), (5, "none", 2, "N")])
+def test_the_real_serial_port_gets_the_data_bits_parity_and_stop_bits_it_was_given(monkeypatch, data_bits, parity, stop_bits, letter):
+    seen = []
+    monkeypatch.setattr("serial.Serial", lambda *args, **kwargs: seen.append(kwargs) or object())
+    terminal_port._open_serial("/dev/ttyUSB0", 19200, "xon_xoff", data_bits, parity, stop_bits)
+    assert (seen[0]["bytesize"], seen[0]["parity"], seen[0]["stopbits"]) == (data_bits, letter, stop_bits)
+
+
+def test_the_line_settings_reach_the_opener():
+    port, _, _, opened = make(baud=19200, data_bits=7, parity="even", stop_bits=2)
+    port.transmit("a")
+    assert opened == [("/dev/ttyTEST", 19200, "xon_xoff", 7, "even", 2)]
+
+
+@pytest.mark.parametrize("setting, bad", [("data_bits", 4), ("data_bits", 9), ("data_bits", "7"), ("data_bits", 7.0), ("data_bits", True),
+                                          ("parity", "x"), ("parity", "E"), ("parity", None), ("parity", 0),
+                                          ("stop_bits", 0), ("stop_bits", 3), ("stop_bits", "1"), ("stop_bits", True)])
+def test_a_bad_line_setting_means_the_default_with_a_warning(setting, bad):
+    port, _, _, opened = make(**{setting: bad})
+    assert len(port.report.warnings) == 1 and setting in port.report.warnings[0]
+    port.transmit("a")
+    assert opened == [("/dev/ttyTEST", 9600, "xon_xoff", 8, "none", 1)]
+
+
+@pytest.mark.parametrize("setting, bad", [("data_bits", 9), ("parity", "x"), ("stop_bits", 3)])
+def test_strict_mode_raises_on_a_bad_line_setting(setting, bad):
+    with pytest.raises(TerminalPortError):
+        TerminalPort("/dev/x", strict=True, **{setting: bad})
 
 
 # --- The keyboard: lines typed back --------------------------------------------------------
@@ -772,7 +802,7 @@ class TestAPortThatIsLost:
         second = ScriptedSerial(clock)
         attempts = []
 
-        def opener(name, baud, flow):
+        def opener(name, *line):
             attempts.append(name)
             if len(attempts) == 1:
                 return first

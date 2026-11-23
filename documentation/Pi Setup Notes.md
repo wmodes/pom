@@ -230,6 +230,16 @@ the log holds counts, labels and seconds, never anything said.
 **The Pi's own `config/pom.local.toml`** (gitignored; not in the repo) holds the monitor's password and `[terminal] mode = "none"` while no typewriter is
 connected. The monitoring page is at `http://pom1.local:8080` (any user name). Set `mode = "serial"` (or remove the section) once the CadetWriter is plugged in.
 
+**A second terminal: the Okidata Microline 320 (9-pin dot matrix) on its serial card, through a USB-to-serial adapter (2026-11-22).** The adapter is a
+Prolific/ATEN bridge and shows up as `/dev/ttyUSB0` (`ls /dev/serial/by-id/`). The 320's standard port is parallel, so a serial cable needs the optional serial
+card, which adds a *Serial Interface* group to the printer's own menu (MODE, then GROUP, ITEM, SET, MODE; the manuals do not list its defaults, so read them
+off a printed menu: MODE, then PRINT). This one was set to **19200 baud, 7 data bits, even parity, XON/XOFF** (busy line DTR, DSR signal valid, busy time 200 ms).
+The Printer's old serial settings (9600 baud, 8 data bits, no parity) printed nothing, because the settings must match to the bit. They are `[terminal] baud`,
+`data_bits`, `parity` and `stop_bits` (data bits, parity and stop bits had been fixed in code). A printer with no ribbon still strikes the paper, so the head
+moving and clacking shows the data arrived. The printer's self-tests (hold LF while turning it on for the font sample, QUIET for the rolling ASCII test; SEL
+stops them) prove the printer without the Pi. Nothing in `config/pom.local.toml` was changed: it still says `mode = "none"`, so the Printer does not print until
+that line is removed.
+
 **Memory: the models are loaded with `-lm mmap -lzm off`, not pinned.** Measured on the Pi 2026-11-03 with whisper, the scorer and the oracle all loaded and idle:
 about 7.7 GB of the 16 GB available (the oracle holds 9.2 GB resident, 5.0 anonymous and 4.2 mapped file; the scorer 5.1 GB). Pinning the models in RAM
 (`-lm mmap+mlock`) was tried and rejected: this ARM build keeps a repacked copy of the weights, so it pinned the memory twice and left 0.9 GB available, close

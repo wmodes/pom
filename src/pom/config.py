@@ -49,7 +49,7 @@ of being threaded through by hand. Today there are five:
     [chart]    A section (see ChartSettings): the monitoring page's chart of the room's scores and the bar: how much time it shows, its
                axes and gridlines, the size of the drawing and its margins, and the dot sizes and line width. Colors are the page's own.
     [terminal] A section (see TerminalSettings): the serial connection to the typewriter, which acts as a terminal. The port,
-               baud rate, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
+               baud rate, data bits, parity, stop bits, flow control, line ending, the pace of the typing, the wait at the end, and how the keyboard is handled
                (`echoplex`, `type_during_printing`). The entry point builds the
                TerminalPort from `config.terminal`. The entry point
                builds the PortentFormatter from `config.printing`.
@@ -97,7 +97,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "qualifying.anchor_score", "qualifying.anchor_interval_minutes", "qualifying.discard_scores_older_than_minutes",
          "qualifying.starting_bar_weight", "listening.max_clip_words", "scorer.warmup_poll_seconds", "scorer.warmup_attempts",
          "monitor.service_check_seconds", "monitor.poll_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
-         "terminal.wait_log_reminder_seconds",
+         "terminal.wait_log_reminder_seconds", "terminal.data_bits", "terminal.parity", "terminal.stop_bits",
          "chart.window_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
          "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
          "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width", "chart.longest_silence_minutes", "chart.break_mark_size", "chart.break_gap_width", "display.browser", "display.browser_flags", "display.browser_profile_dir",
@@ -185,6 +185,12 @@ DEFAULT_TERMINAL_PORT = "/dev/ttyACM0"
 DEFAULT_TERMINAL_BAUD = 9600
 TERMINAL_BAUD_RATES = (50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600,
                        76800, 115200, 230400)
+DEFAULT_TERMINAL_DATA_BITS = 8
+TERMINAL_DATA_BITS = (5, 6, 7, 8)
+DEFAULT_TERMINAL_PARITY = "none"
+TERMINAL_PARITIES = ("none", "even", "odd")
+DEFAULT_TERMINAL_STOP_BITS = 1
+TERMINAL_STOP_BITS = (1, 2)
 DEFAULT_TERMINAL_FLOW_CONTROL = "xon_xoff"
 TERMINAL_FLOW_CONTROLS = ("xon_xoff", "rts_cts", "none")
 DEFAULT_TERMINAL_END_OF_LINE = "crlf"
@@ -507,6 +513,10 @@ class TerminalSettings:
     Attributes:
         port: The serial device (/dev/ttyACM0 for the CadetWriter's USB port).
         baud: The speed, one of TERMINAL_BAUD_RATES. Only the CadetWriter's RS-232 port uses it; USB ignores it.
+        data_bits: Bits in each character, one of TERMINAL_DATA_BITS (7 or 8 are the usual). Must match the terminal's setting; a mismatch
+            prints wrong characters or none.
+        parity: "none", "even" or "odd": the check bit sent with each character. Must match the terminal's setting.
+        stop_bits: Bits that end each character, 1 or 2. Must match the terminal's setting.
         flow_control: "xon_xoff", "rts_cts" or "none". Match the CadetWriter's setting; without it a flood loses text.
         end_of_line: What a newline is sent as: "cr", "crlf", "lf" or "lfcr". Must match the CadetWriter's "receive
             end-of-line" setting (its default is crlf); a bare LF only feeds the paper.
@@ -541,6 +551,9 @@ class TerminalSettings:
     max_typed_line_characters: int = DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS
     refused_character_retry_seconds: float = DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS
     wait_log_reminder_seconds: float = DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS
+    data_bits: int = DEFAULT_TERMINAL_DATA_BITS
+    parity: str = DEFAULT_TERMINAL_PARITY
+    stop_bits: int = DEFAULT_TERMINAL_STOP_BITS
 
 
 @dataclass(frozen=True)
@@ -901,7 +914,12 @@ class Config:
             _positive(values.get("terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS),
                       "terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS, report),
             _positive(values.get("terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS),
-                      "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, report))
+                      "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, report),
+            _whole_choice(values.get("terminal.data_bits", DEFAULT_TERMINAL_DATA_BITS), "terminal.data_bits", DEFAULT_TERMINAL_DATA_BITS,
+                          TERMINAL_DATA_BITS, report),
+            _choice(values.get("terminal.parity", DEFAULT_TERMINAL_PARITY), "terminal.parity", DEFAULT_TERMINAL_PARITY, TERMINAL_PARITIES, report),
+            _whole_choice(values.get("terminal.stop_bits", DEFAULT_TERMINAL_STOP_BITS), "terminal.stop_bits", DEFAULT_TERMINAL_STOP_BITS,
+                          TERMINAL_STOP_BITS, report))
         chart = ChartSettings(
             _positive(values.get("chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES), "chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES, report),
             _positive(values.get("chart.gridline_every_minutes", DEFAULT_CHART_GRIDLINE_EVERY_MINUTES), "chart.gridline_every_minutes",
@@ -1110,6 +1128,14 @@ def _choice(value, label: str, default: str, choices, report: FaultRecorder) -> 
     if isinstance(value, str) and value in choices:
         return value
     report.warn(f"{label} must be one of {', '.join(choices)}, got {value!r}; using {default}")
+    return default
+
+
+def _whole_choice(value, label: str, default: int, choices, report: FaultRecorder) -> int:
+    """One of the listed whole numbers (not a boolean or a decimal); otherwise the default."""
+    if isinstance(value, int) and not isinstance(value, bool) and value in choices:
+        return value
+    report.warn(f"{label} must be one of {', '.join(str(choice) for choice in choices)}, got {value!r}; using {default}")
     return default
 
 

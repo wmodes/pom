@@ -505,17 +505,33 @@ ascii_printwheel = false
 # ================================================
 
 # The Wheelwriter, converted with the CadetWriter board, acts as a serial terminal. The Printer sends each portent to it
-# over a serial port, no faster than the typewriter can type. These must match the CadetWriter's own settings
-# (its SetUp mode; see its user guide, section 3).
+# over a serial port, no faster than the terminal can print. The serial settings below (baud, data_bits, parity,
+# stop_bits, flow_control, end_of_line) must match the terminal's own, or it prints wrong characters or none.
+# For the CadetWriter that is its SetUp mode (see its user guide, section 3). For the Okidata Microline 320 with its serial
+# card, the printer's own menu (Serial Interface group) holds them: 19200 baud, 7 data bits, even parity, XON/XOFF.
 [terminal]
 
-# The serial device. /dev/ttyACM0 is the CadetWriter's USB port on the Pi; check with `ls /dev/ttyACM*` after plugging it in.
-# It may be a pattern, such as "/dev/ttyACM*" or "/dev/serial/by-id/usb-*": it is looked up each time the port is opened, so a
-# printer that comes back under another name (ttyACM0, then ttyACM1) is found.
-port = "/dev/ttyACM0"
+# The serial device. A USB-to-serial adapter on the Pi shows up as /dev/ttyUSB0, and the CadetWriter's own USB port as
+# /dev/ttyACM0; check with `ls /dev/ttyUSB* /dev/ttyACM*` after plugging it in.
+# It may be a pattern, such as "/dev/ttyUSB*" or "/dev/serial/by-id/usb-*": it is looked up each time the port is opened, so a
+# terminal that comes back under another name (ttyUSB0, then ttyUSB1) is found.
+port = "/dev/ttyUSB0"
 
-# The speed. Only the CadetWriter's RS-232 port uses it (its default is 9600); the USB port ignores it.
-baud = 9600
+# The speed in bits a second. Only an RS-232 port uses it; a USB port (the CadetWriter's) ignores it. Too high or too low for the
+# terminal and it prints garbage or nothing.
+baud = 19200
+
+# Bits in each character: 7 or 8 are the usual (5 and 6 exist). Must match the terminal's setting. 7 leaves room for a parity
+# bit; 8 is the usual with no parity. A mismatch prints wrong characters or none.
+data_bits = 7
+
+# The check bit sent with each character: "none", "even" or "odd". Must match the terminal's setting. With "none" no check bit
+# is sent; a mismatch prints wrong characters or none.
+parity = "even"
+
+# Bits that end each character, 1 or 2. Must match the terminal's setting; 1 is the usual. A mismatch prints wrong characters
+# or none.
+stop_bits = 1
 
 # "xon_xoff" (the CadetWriter's default), "rts_cts" or "none". Without flow control a flood of text is lost.
 flow_control = "xon_xoff"

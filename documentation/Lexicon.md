@@ -245,7 +245,8 @@ These words say *terminal*; a machine's name appears only where a fact belongs t
     portent -> printable text -> terminal -> paper
 
 - **terminal**: The device at the end of the serial line: the converted typewriter, or any terminal. The host transmits text to it,
-  and its keyboard sends keys back. Example: `[terminal]` (was/still)
+  and its keyboard sends keys back. The serial line's own settings (`baud`, `data_bits`, `parity`, `stop_bits`, `flow_control`, `end_of_line`) are in
+  `[terminal]` and must match the terminal's. Example: `[terminal]` (was/still)
 - **CadetWriter**: The open-source board that turns the IBM Wheelwriter 1000 into a serial terminal. Its own settings (line ending,
   flow control, duplex) must match `[terminal]`: a mismatch loses text or prints every character twice. Example: none (was/still)
 - **portent formatter**: Makes a portent printable: code fences out, plain ASCII only, wrapped to the line width, and ending with

@@ -117,9 +117,10 @@ class TestWhatItPrintsOn:
     def test_the_serial_port_gets_every_terminal_setting(self, tmp_path):
         p = build(tmp_path, '[terminal]\nport = "/dev/ttyACM*"\nbaud = 19200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
                             "characters_per_second = 12\nfinish_wait_seconds = 1\nechoplex = false\ntype_during_printing = true\n"
-                            "stall_patience_seconds = 90\nreconnect_seconds = 0.5\n")
+                            "stall_patience_seconds = 90\nreconnect_seconds = 0.5\ndata_bits = 7\nparity = \"even\"\nstop_bits = 2\n")
         t = p.terminal
         assert (t._port_name, t._baud, t._flow_control, t._end_of_line) == ("/dev/ttyACM*", 19200, "rts_cts", "\n")
+        assert (t._data_bits, t._parity, t._stop_bits) == (7, "even", 2)
         assert (t._seconds_per_character, t._finish_wait, t._echoplex, t._type_during_printing) == (1 / 12, 1, False, True)
         assert (t._stall_patience, t._reconnect) == (90.0, 0.5)
 

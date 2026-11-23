@@ -540,9 +540,12 @@ flow_control = "xon_xoff"
 # setting, whose default is "crlf". A bare LF only feeds the paper, so each line would step down the page.
 end_of_line = "crlf"
 
-# The fastest the text is sent, in characters a second, above 0. The Wheelwriter types about 16; a little under keeps
-# the CadetWriter's small buffer nearly empty. To be measured on the machine.
-characters_per_second = 16
+# The fastest the text is sent, in characters a second, above 0. This is a software pace, apart from the baud rate: the Printer
+# waits between characters so the terminal's buffer does not fill. Set it to about the terminal's own speed (a Wheelwriter types
+# about 16, so a little under keeps the CadetWriter's small buffer nearly empty; the Okidata Microline 320's draft mode is about
+# 300). Too high and a terminal with a small buffer drops or garbles characters when its handshake (flow_control) is not
+# honored in time; too low and a portent types slower than the terminal could print. To be measured on the machine.
+characters_per_second = 300
 
 # Seconds to wait after the last character for the typewriter to finish the line, 0 or more. Listening waits too.
 finish_wait_seconds = 2

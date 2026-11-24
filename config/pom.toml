@@ -486,7 +486,7 @@ quote_indent = 4
 
 # How many line feeds are typed after each portent, 0 or more. The first ends the last line; the rest are blank lines,
 # so the paper has moved on when the next portent is typed.
-linefeeds_after_portent = 34
+linefeeds_after_portent = 30
 
 # Most print wheels lack nine ASCII characters: < > \ ^ ` { | } ~. The CadetWriter builds them from periods and
 # micro-movements ("period graphics"), which is correct but slow and dotty. < and > can carry meaning and are rare, so

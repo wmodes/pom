@@ -77,6 +77,30 @@ class TestTheWiring:
         assert finder1._scorer is finder2._scorer is p.parts["scorer"]
         assert ears1._deck is not ears2._deck and isinstance(ears1._deck, MicDeck)
 
+    def test_the_microphone_is_looked_up_each_time_a_room_is_built_and_the_settings_reach_the_finder(self, tmp_path, monkeypatch):
+        opened, asked = [], []
+
+        class StandInFinder:
+            def __init__(self, timeout_seconds):
+                asked.append(("timeout", timeout_seconds))
+
+            def resolve(self, device):
+                asked.append(("resolve", device))
+                return f"found-{len(asked)}"
+
+        class StandInDeck:
+            def __init__(self, device, buffer_seconds):
+                opened.append((device, buffer_seconds))
+
+        monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
+        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        p = build(tmp_path, '[listening]\ndevice = "auto"\ndevice_lookup_seconds = 7\nbuffer_seconds = 3\n[terminal]\nmode = "none"\n')
+        p.conductor._room_factory()
+        p.conductor._room_factory()
+        assert asked[0] == ("timeout", 7.0)                                          # the lookup's patience is the setting
+        assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
+        assert opened == [("found-2", 3.0), ("found-3", 3.0)]                        # the deck gets what the finder answered, not the setting
+
     def test_the_writer_and_the_selector_share_one_random_generator(self, tmp_path):
         p = build(tmp_path)
         assert p.parts["writer"]._rng is p.parts["selector"]._rng

@@ -1,5 +1,6 @@
 """The listening module: turning what the room says into pieces the oracle can pick a hinge from."""
 from pom.listening.audio_deck import AudioDeck
+from pom.listening.capture_card_finder import CaptureCardFinder, CaptureCardFinderError
 from pom.listening.eavesdropper import Take, Eavesdropper, EavesdropperError
 from pom.listening.mac_mic_deck import MacMicDeck
 from pom.listening.mic_deck import MicDeck, MicDeckError
@@ -9,5 +10,5 @@ from pom.listening.wav_deck import WavDeck, WavDeckError
 from pom.listening.whisper_model_client import Segment, WhisperModelClient, WhisperModelClientError
 from pom.listening.track_splitter import Tracks, TrackSplitter
 
-__all__ = ["Take", "Eavesdropper", "EavesdropperError", "RollingCutter", "RollingCutterError", "AudioDeck", "MicDeck", "MicDeckError", "MacMicDeck", "WavDeck", "WavDeckError", "Clip", "TakeCutter", "TakeCutterError", "ClipLevel", "Segment", "WhisperModelClient",
+__all__ = ["CaptureCardFinder", "CaptureCardFinderError", "Take", "Eavesdropper", "EavesdropperError", "RollingCutter", "RollingCutterError", "AudioDeck", "MicDeck", "MicDeckError", "MacMicDeck", "WavDeck", "WavDeckError", "Clip", "TakeCutter", "TakeCutterError", "ClipLevel", "Segment", "WhisperModelClient",
            "WhisperModelClientError", "Tracks", "TrackSplitter"]

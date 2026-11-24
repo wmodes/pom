@@ -243,9 +243,16 @@ average_floor_fraction = 0.05
 whisper_url = "http://127.0.0.1:8110"
 whisper_timeout = 180
 
-# The microphone, as arecord's -D takes it (arecord -l lists them), and how many seconds of sound are held for it. If
-# the Printer falls that far behind, the oldest sound is dropped.
-device = "plughw:0,0"
+# The microphone. "auto" finds it by asking `arecord -l`, which lists only the sound cards that can record, each time the Printer starts
+# listening, so it works for whatever microphone is plugged in and survives a reboot that numbers the cards differently. With more than
+# one microphone it uses the first and warns. To choose one yourself, give arecord's -D name instead, by the card's NAME, which stays put at
+# boot, for example "plughw:CARD=ATR4697USB,DEV=0" (the names are in `arecord -l`). Not by number ("plughw:0,0"): the numbers follow the
+# order the kernel meets the cards, so the HDMI outputs and the microphone trade places from one boot to the next.
+device = "auto"
+# How many seconds to wait for `arecord -l` when device is "auto" (above 0). Up: a slow sound system is waited for. Down: a stuck listing is
+# given up on sooner; the Printer then cannot hear until the next start-of-listening try, a few seconds later.
+device_lookup_seconds = 5
+# How many seconds of sound are held for the microphone. If the Printer falls that far behind, the oldest sound is dropped.
 buffer_seconds = 10
 
 # Whisper is asked about the audio every `cut_every_seconds`. A finished segment is kept once it ends `hold_back_seconds` before
@@ -511,11 +518,11 @@ ascii_printwheel = false
 # card, the printer's own menu (Serial Interface group) holds them: 19200 baud, 7 data bits, even parity, XON/XOFF.
 [terminal]
 
-# The serial device. A USB-to-serial adapter on the Pi shows up as /dev/ttyUSB0, and the CadetWriter's own USB port as
-# /dev/ttyACM0; check with `ls /dev/ttyUSB* /dev/ttyACM*` after plugging it in.
-# It may be a pattern, such as "/dev/ttyUSB*" or "/dev/serial/by-id/usb-*": it is looked up each time the port is opened, so a
-# terminal that comes back under another name (ttyUSB0, then ttyUSB1) is found.
-port = "/dev/ttyUSB0"
+# The serial device. "/dev/serial/by-id/usb-*" means any USB serial device the Pi has found: a USB-to-serial adapter (which is /dev/ttyUSB0
+# today and may be /dev/ttyUSB1 after another boot) or a terminal's own USB port (/dev/ttyACM0). The first match is used, and it is looked
+# up each time the port is opened, so a terminal that comes back under another name is found. To choose one yourself, give a pattern or a
+# name, for example "/dev/serial/by-id/usb-Prolific_*" (`ls /dev/serial/by-id/` lists them) or "/dev/ttyUSB0" (the number is not stable).
+port = "/dev/serial/by-id/usb-*"
 
 # The speed in bits a second. Only an RS-232 port uses it; a USB port (the CadetWriter's) ignores it. Too high or too low for the
 # terminal and it prints garbage or nothing.

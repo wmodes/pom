@@ -101,7 +101,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "
          "chart.window_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
          "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
          "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width", "chart.longest_silence_minutes", "chart.break_mark_size", "chart.break_gap_width", "display.browser", "display.browser_flags", "display.browser_profile_dir",
-         "listening.whisper_url", "listening.whisper_timeout", "listening.device",
+         "listening.whisper_url", "listening.whisper_timeout", "listening.device", "listening.device_lookup_seconds",
          "listening.buffer_seconds", "listening.cut_every_seconds", "listening.hold_back_seconds", "listening.rewind_seconds", "listening.max_cut_seconds",
          "listening.room_tone_pass_every", "listening.room_tone_pass_seconds", "listening.room_tone_memory",
          "listening.score_room_tone", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
@@ -149,7 +149,8 @@ DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER = 1.5
 DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE = 0.0
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
-DEFAULT_LISTENING_DEVICE = "plughw:0,0"
+DEFAULT_LISTENING_DEVICE = "auto"
+DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS = 5.0
 DEFAULT_LISTENING_BUFFER_SECONDS = 10.0
 DEFAULT_LISTENING_CUT_EVERY_SECONDS = 5.0
 DEFAULT_LISTENING_HOLD_BACK_SECONDS = 2.0
@@ -384,7 +385,8 @@ class ListeningSettings:
     Attributes:
         whisper_url: The whisper-server's address (POM_WHISPER_URL overrides it).
         whisper_timeout: Seconds to wait for one transcription, above 0.
-        device: The ALSA capture device for the microphone, as `arecord -D` takes it.
+        device: The ALSA capture device for the microphone, as `arecord -D` takes it, or `auto` (the default) to find the microphone by asking
+            `arecord -l` each time the Printer starts listening.
         buffer_seconds: Sound held for the microphone before the oldest is dropped, above 0.
         cut_every_seconds: Seconds of new audio between whisper runs, above 0.
         hold_back_seconds: A segment is kept once it ends this many seconds before the end of the buffer, 0 or more.
@@ -398,6 +400,8 @@ class ListeningSettings:
             speech does. False (the default) leaves them unscored.
         max_clip_words: The most words one clip may have, a whole number of at least 1. Whisper's punctuation is what cuts speech into sentences,
             clauses and phrases; a run of words with none is cut into consecutive windows of this many words, so a hinge is always a bounded size.
+        device_lookup_seconds: How long to wait for `arecord -l` when `device` is `auto`, above 0. Up: a slow sound system is waited for; down: a stuck
+            listing is given up on sooner (the keyword is then handed to arecord, which fails, and the lookup is tried again at the next start).
     """
     whisper_url: str = DEFAULT_LISTENING_WHISPER_URL
     whisper_timeout: float = DEFAULT_LISTENING_WHISPER_TIMEOUT
@@ -412,6 +416,7 @@ class ListeningSettings:
     room_tone_memory: int = DEFAULT_LISTENING_ROOM_TONE_MEMORY
     score_room_tone: bool = DEFAULT_LISTENING_SCORE_ROOM_TONE
     max_clip_words: int = DEFAULT_LISTENING_MAX_CLIP_WORDS
+    device_lookup_seconds: float = DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS
 
 
 @dataclass(frozen=True)
@@ -847,7 +852,9 @@ class Config:
             _bool(values.get("listening.score_room_tone", DEFAULT_LISTENING_SCORE_ROOM_TONE),
                   "listening.score_room_tone", report),
             _whole(values.get("listening.max_clip_words", DEFAULT_LISTENING_MAX_CLIP_WORDS), "listening.max_clip_words",
-                   DEFAULT_LISTENING_MAX_CLIP_WORDS, 1, report))
+                   DEFAULT_LISTENING_MAX_CLIP_WORDS, 1, report),
+            _positive(values.get("listening.device_lookup_seconds", DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS), "listening.device_lookup_seconds",
+                      DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS, report))
         monitor = MonitorSettings(
             _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report),
             _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, report),

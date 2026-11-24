@@ -757,7 +757,7 @@ def test_the_shipped_algorithm_is_one_the_factory_knows():
 
 # --- The [listening] section ---------------------------------------------------------------
 
-KNOWN_GOOD = ListeningSettings("http://127.0.0.1:8110", 180.0, "plughw:0,0", 10.0, 5.0, 2.0, 0.0, 30.0, 3, 10.0, 6, False)
+KNOWN_GOOD = ListeningSettings("http://127.0.0.1:8110", 180.0, "auto", 10.0, 5.0, 2.0, 0.0, 30.0, 3, 10.0, 6, False)
 
 
 def test_the_listening_defaults_when_nothing_is_set():
@@ -770,9 +770,9 @@ def test_the_starting_listening_values_are_the_known_good_ones():
 
 
 def test_the_listening_defaults_match_the_modules_defaults():
-    from pom.listening import eavesdropper, mic_deck, rolling_cutter, whisper_model_client
+    from pom.listening import capture_card_finder, eavesdropper, mic_deck, rolling_cutter, whisper_model_client
     assert ListeningSettings() == ListeningSettings(
-        whisper_model_client.DEFAULT_URL, whisper_model_client.DEFAULT_TIMEOUT, mic_deck.DEFAULT_DEVICE,
+        whisper_model_client.DEFAULT_URL, whisper_model_client.DEFAULT_TIMEOUT, capture_card_finder.AUTO,
         mic_deck.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_CUT_EVERY_SECONDS, rolling_cutter.DEFAULT_HOLD_BACK_SECONDS,
         rolling_cutter.DEFAULT_REWIND_SECONDS, rolling_cutter.DEFAULT_MAX_CUT_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_PASS_EVERY,
         eavesdropper.DEFAULT_ROOM_TONE_PASS_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_MEMORY)
@@ -781,9 +781,10 @@ def test_the_listening_defaults_match_the_modules_defaults():
 def test_all_the_listening_values_are_read_from_the_section(tmp_path):
     text = ("[listening]\nwhisper_url = \"http://pi.test:9000\"\nwhisper_timeout = 60\ndevice = \"hw:1,0\"\n"
             "buffer_seconds = 4\ncut_every_seconds = 3\nhold_back_seconds = 1.5\nrewind_seconds = 0.5\nmax_cut_seconds = 20\nroom_tone_pass_every = 5\n"
-            "room_tone_pass_seconds = 8\nroom_tone_memory = 9\nscore_room_tone = true\n")
+            "room_tone_pass_seconds = 8\nroom_tone_memory = 9\nscore_room_tone = true\ndevice_lookup_seconds = 7\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9, True)
+    assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9, True,
+                                                 device_lookup_seconds=7.0)
     assert config.report.ok
 
 
@@ -799,6 +800,8 @@ def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
     ("whisper_timeout", "0"), ("whisper_timeout", "-1"), ("whisper_timeout", '"180"'), ("whisper_timeout", "true"),
     ("whisper_timeout", "inf"),
     ("device", "5"), ("device", "true"),
+    ("device_lookup_seconds", "0"), ("device_lookup_seconds", "-1"), ("device_lookup_seconds", '"5"'), ("device_lookup_seconds", "true"),
+    ("device_lookup_seconds", "inf"),
     ("buffer_seconds", "0"), ("buffer_seconds", "-1"), ("buffer_seconds", '"10"'), ("buffer_seconds", "true"),
     ("cut_every_seconds", "0"), ("cut_every_seconds", "-1"), ("cut_every_seconds", '"5"'), ("cut_every_seconds", "true"), ("cut_every_seconds", "nan"),
     ("hold_back_seconds", "-1"), ("hold_back_seconds", '"2"'), ("hold_back_seconds", "true"),
@@ -838,6 +841,21 @@ def test_the_shipped_config_has_the_known_good_listening_values():
     """The combination that worked in the room is fragile, so a change to it must be on purpose: change this test with it."""
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
     assert shipped.listening == KNOWN_GOOD and shipped.report.ok
+
+
+def test_the_shipped_config_finds_the_microphone_by_itself_and_says_how_long_to_wait():
+    """`device = "auto"` is what lets a clone with another microphone work; the lookup's wait is written in the file, not only defaulted in code."""
+    import tomllib
+    path = Path(__file__).parent.parent / "config" / "pom.toml"
+    written = tomllib.loads(path.read_text(encoding="utf-8"))["listening"]
+    assert written["device"] == "auto" and written["device_lookup_seconds"] == 5
+
+
+def test_the_shipped_config_finds_the_terminal_by_itself():
+    """Any USB serial device, by the name the Pi gives it, which does not change at boot as /dev/ttyUSB0 may."""
+    import tomllib
+    path = Path(__file__).parent.parent / "config" / "pom.toml"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["terminal"]["port"] == "/dev/serial/by-id/usb-*"
 
 
 def test_the_listening_settings_plug_straight_into_the_modules():

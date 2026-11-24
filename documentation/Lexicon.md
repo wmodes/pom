@@ -351,6 +351,7 @@ time: that is half-duplex.
   starts whatever state the servers, the microphone and the printer are in, and stops cleanly on SIGTERM or ctrl-C. Example: `python -m pom`,
   `pom.printer` (`Options`, `build_printer`, `Printer`) (was: none)
 - **boot slip**: The few lines the typewriter types when the Printer and the typewriter come online, laid out like a terminal announcing itself, one of them the Pi's address so the monitoring page and ssh can be reached with no screen. Its words are `[boot_slip] text`. Example: `BootSlipper`, `[boot_slip]` (was: none)
+- **capture card finder**: Turns the microphone setting (`[listening] device`) into a device `arecord` can open: `auto` becomes the first card that can record, by its name (`plughw:CARD=<id>,DEV=<n>`), since card numbers change from one boot to the next; any other value is kept as written. Example: `CaptureCardFinder` (was: none)
 - **address finder**: Lists the machine's usable IPv4 addresses (not loopback, not link-local) for the boot slip. Example: `AddressFinder` (was: none)
 
 **Words in reserve.** Ready if the code ever needs a name for them:

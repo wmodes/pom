@@ -41,7 +41,7 @@ from pom.conductor import AddressFinder, BootSlipper, Conductor, FloorKeeper, Hi
 from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
-from pom.listening import (Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
+from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
 from pom.log_setup import configure_logging, get_logger
 from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort
@@ -193,12 +193,14 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at)
     take_cutter = TakeCutter(max_words=listening.max_clip_words)
 
+    card_finder = CaptureCardFinder(listening.device_lookup_seconds)     # turns `auto` into the microphone's card, looked up again at each start of listening
+
     def make_deck():
         if options.wav:
             return WavDeck(options.wav, speed=options.speed)
         if options.mac_mic is not None:
             return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds)
-        return MicDeck(listening.device, buffer_seconds=listening.buffer_seconds)
+        return MicDeck(card_finder.resolve(listening.device), buffer_seconds=listening.buffer_seconds)
 
     last_room = {"ears": None}     # the Eavesdropper of the room that ran last, so the next one's clock can carry on from it
 

@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config  # noqa: E402
-from pom.listening import Eavesdropper, MicDeck, TakeCutter, WavDeck, WhisperModelClient  # noqa: E402
+from pom.listening import CaptureCardFinder, Eavesdropper, MicDeck, TakeCutter, WavDeck, WhisperModelClient  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
 from pom.conductor import HingeFinder
 from pom.qualifying import bar_keeper_from_settings, Ruling
@@ -59,8 +59,9 @@ def main():
     client = WhisperModelClient(listening.whisper_url, listening.whisper_timeout)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
+    device = CaptureCardFinder(listening.device_lookup_seconds).resolve(listening.device)     # "auto" becomes the microphone's card
     deck = (WavDeck(args.wav, speed=args.speed) if args.wav
-              else MicDeck(listening.device, buffer_seconds=listening.buffer_seconds))
+              else MicDeck(device, buffer_seconds=listening.buffer_seconds))
     eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
                         listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
                         listening.room_tone_memory)
@@ -76,7 +77,7 @@ def main():
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {listening.whisper_url}; scorer at {settings.url}")
-    print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + listening.device}; "
+    print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + device}; "
           f"a whisper run every {listening.cut_every_seconds:g} s")
     print(f"  qualifying ({qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"  room tone {'is' if listening.score_room_tone else 'is not'} scored")

@@ -274,6 +274,10 @@ internet and no router or firewall changes are needed, which matters behind a ve
 - **Undo:** `sudo tailscale down`, `sudo apt remove tailscale`, and remove the Pi from the admin console.
 - **Another Pi in the lab (`lpfm`, not part of this repo)** was put on the same tailnet the same way the same day, so from `pom1` it is reachable as `ssh pi@lpfm` too.
 
+## The microphone and the terminal after a reboot (2026-11-24)
+
+The sound cards are numbered in the order the kernel meets them, and the Pi's two HDMI outputs (`vc4hdmi0`, `vc4hdmi1`) are sound cards too. After one reboot they took cards 0 and 1 and the USB microphone (ATR4697-USB) became card 2, so `device = "plughw:0,0"` could not be opened and the Printer heard nothing. Now `[listening] device = "auto"`: the Printer asks `arecord -l` (it lists only the cards that can record) and uses the card's name, `plughw:CARD=ATR4697USB,DEV=0`, which does not move. To pin one by hand, give that name in `config/pom.local.toml`. `cat /proc/asound/cards` and `arecord -l` show what the Pi sees. The terminal's `[terminal] port = "/dev/serial/by-id/usb-*"` is any USB serial device (`ls /dev/serial/by-id/`), so `/dev/ttyUSB0` turning into `/dev/ttyUSB1` does not matter either.
+
 ## The display (kiosk)
 
 *Installed 2026-11-07.* A monitor on the Pi's HDMI port (HDMI-A-2, 1920x1080) shows the monitoring page full-screen. The Pi is headless (Bookworm Lite, boots to `multi-user.target`),

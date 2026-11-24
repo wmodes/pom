@@ -22,7 +22,9 @@ Design decisions, and why:
     the end time predictable. A newline takes one slot, like a character. Timing is scheduled from the start, not
     slept per character, so it does not drift.
   * FINISHING. When the last byte has been sent the machine may still be typing the end of the line, so `type` waits
-    `finish_wait_seconds` more before returning. Only then does the Conductor resume listening.
+    `finish_wait_seconds` more before returning. Only then does the Conductor resume listening. Before that it waits until the machine has
+    TAKEN every byte (pyserial's `out_waiting` is zero): a write returns once the bytes are in the port's queue, so a short portent can be
+    "sent" in full while the machine is held. It never calls `flush()`, which has no time limit and would wait for ever on a held machine.
   * ONLY SAFE BYTES. Only printable ASCII and newlines are sent. An ESC would start one of the CadetWriter's escape
     sequences and the other control characters have jobs of their own, so any that reach here are dropped.
   * KEYBOARD. In its default full-duplex mode the CadetWriter sends each key to the Pi and prints nothing itself; the Pi
@@ -155,8 +157,8 @@ class TerminalPort:
             parity: "none", "even" or "odd". Must match the machine's setting.
             stop_bits: 1 or 2. Must match the machine's setting.
             lister: A function pattern -> list of matching device names. Default: glob.glob. Tests give a fake.
-            opener: A function (port, baud, flow_control, data_bits, parity, stop_bits) -> an object with write(bytes), flush(), close(), read(size)
-                and reset_input_buffer(). Default: the real serial port.
+            opener: A function (port, baud, flow_control, data_bits, parity, stop_bits) -> an object with write(bytes), close(), read(size)
+                and reset_input_buffer(), and optionally `out_waiting` (the bytes accepted but not yet taken). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
             sleep: Waits for that many seconds.
             strict: Raise TerminalPortError on any problem instead of recording it.
@@ -271,18 +273,48 @@ class TerminalPort:
                 if trouble.since is not None:
                     trouble.over(self._clock())
             try:
-                self._serial.flush()
+                left = self._wait_until_taken(sent, len(data), trouble, still_alive)
             except Exception as error:               # a dead port must never stop the oracle
                 self.report.warn(f"the terminal port failed at the end, after all {sent} characters were sent "
                                  f"({type(error).__name__})")
                 self.close()
                 return PrintResult(sent, self._clock() - started, False)
+            if left:                                 # the patience ran out (reported, and the port closed, by the wait)
+                return PrintResult(max(0, sent - left), self._clock() - started, False)
             if self._finish_wait:
                 self._sleep(self._finish_wait)
             self._discard_input()
             seconds = self._clock() - started
             _log.debug("typed %d characters in %.1f s", sent, seconds)
             return PrintResult(sent, seconds, True)
+
+    def _queued(self) -> int:
+        """How many bytes the port has accepted that the machine has not yet taken (pyserial's `out_waiting`); 0 for a port that cannot say."""
+        return getattr(self._serial, "out_waiting", 0) or 0
+
+    def _wait_until_taken(self, sent: int, total: int, trouble: "_Trouble", still_alive) -> int:
+        """Waits until the machine has taken everything the port accepted. 0 once it has; the bytes still waiting if the patience ran out.
+
+        `write` returns when the bytes are in the port's queue, not when the machine has them, so a held machine does not make a write fail
+        for a short portent. A queue that is going down is the machine taking its time; one that is not going down is a stall, waited out
+        exactly like a stalled write. (The count of characters in the report is bytes, so it is a character or two out where a line ends
+        in two bytes.)
+        """
+        previous = None
+        while True:
+            queued = self._queued()
+            stalled = previous is not None and queued >= previous
+            if not stalled and trouble.since is not None:
+                trouble.over(self._clock())          # it is taking them again, or has taken them all
+            if queued == 0:
+                return 0
+            if stalled:
+                if not self._wait_to_go_on(TimeoutError("the machine is not taking what is queued"), trouble, max(0, sent - queued), total,
+                                           still_alive):
+                    return queued
+            else:
+                self._sleep(self._refused_retry)     # going down, or the first look: give it a moment and look again
+            previous = queued
 
     @staticmethod
     def _is_stall(error: Exception) -> bool:

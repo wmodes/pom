@@ -94,7 +94,7 @@ def test_the_text_is_sent_a_character_at_a_time_and_reported():
     port, fake, _, _ = make()
     report = port.transmit("Hi there")
     assert fake.written == b"Hi there" and report.characters == 8 and report.completed is True
-    assert fake.flushes == 1 and port.report.ok
+    assert fake.flushes == 0 and port.report.ok                  # never flush(): it has no time limit, so a held machine would hang it for ever
 
 
 @pytest.mark.parametrize("setting, ending", [("cr", b"\r"), ("crlf", b"\r\n"), ("lf", b"\n"), ("lfcr", b"\n\r")])
@@ -793,6 +793,104 @@ class TestAHeldMachine:
         assert "zebra" not in caplog.text and all("zebra" not in line for line in port.report.lines())
 
 
+class QueuedSerial(FakeSerial):
+    """A FakeSerial that says how many bytes it has accepted but the machine has not yet taken (pyserial's `out_waiting`).
+
+    `level(now)` gives that number for the fake clock's time, so a test can make the machine slow, held, or released."""
+
+    def __init__(self, clock, level):
+        super().__init__(clock)
+        self.level = level
+
+    @property
+    def out_waiting(self):
+        return self.level(self.clock.now)
+
+
+def queued_port(level, **settings):
+    """A port over a QueuedSerial. Returns (port, serial, clock)."""
+    clock = FakeClock()
+    serial_port = QueuedSerial(clock, level)
+    settings.setdefault("finish_wait_seconds", 0)
+    port = TerminalPort("/dev/ttyTEST", opener=lambda *a: serial_port, clock=clock, sleep=clock.sleep, **settings)
+    return port, serial_port, clock
+
+
+class TestAMachineThatHoldsTheEndOfThePortent:
+    """Every character was accepted by the port, but the machine has not taken them (held, no paper): the end waits, like a stalled write."""
+
+    def test_a_queue_that_empties_by_itself_is_not_trouble(self):
+        levels = iter([30, 20, 10, 0])
+        port, serial_port, _ = queued_port(lambda now: next(levels))
+        report = port.transmit("abc")
+        assert report.completed is True and report.characters == 3 and port.report.ok and serial_port.flushes == 0
+
+    def test_a_queue_going_down_with_the_clock_is_given_time_and_is_not_called_a_stall(self):
+        """A machine taking one byte a second: the wait must let time pass between looks, or the queue would look unchanged and held."""
+        port, serial_port, clock = queued_port(lambda now: max(0, 5 - int(now)))
+        report = port.transmit("abc")
+        assert report.completed is True and port.report.ok
+        assert clock.now >= 5 - 1                                  # it waited for the machine, a pause at a time, not in a busy loop
+
+    def test_a_held_machine_that_is_released_in_time_finishes_the_portent(self, caplog):
+        port, serial_port, _ = queued_port(lambda now: 40 if now < 90 else 0)
+        with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
+            report = port.transmit("abcdef")
+        assert report.completed is True and report.characters == 6 and serial_port.closed is False
+        assert len(port.report.warnings) == 1 and "stopped taking characters" in port.report.warnings[0] and not port.report.criticals
+        assert any("typing again after" in r.getMessage() for r in caplog.records)
+
+    def test_the_heartbeat_is_called_while_the_end_waits(self):
+        port, _, _ = queued_port(lambda now: 40 if now < 30 else 0)
+        beats = []
+        port.transmit("abc", still_alive=lambda: beats.append(1))
+        assert len(beats) >= 25
+
+    def test_a_machine_held_for_ever_is_given_up_after_the_patience_and_the_port_is_closed(self):
+        port, serial_port, clock = queued_port(lambda now: 4, stall_patience_seconds=300)
+        report = port.transmit("abcdef")
+        assert report.completed is False and serial_port.closed is True and serial_port.flushes == 0
+        assert 300 <= clock.now < 310
+        assert len(port.report.criticals) == 1 and "300 s" in port.report.criticals[0]
+
+    def test_the_characters_counted_are_the_ones_the_machine_took_not_the_ones_the_port_accepted(self):
+        port, _, _ = queued_port(lambda now: 4, stall_patience_seconds=30)
+        report = port.transmit("abcdef")
+        assert report.characters == 2 and "2 of 6" in port.report.criticals[0]
+
+    def test_text_the_machine_took_none_of_counts_as_nothing_typed_so_the_caller_may_try_it_again(self):
+        port, _, _ = queued_port(lambda now: 6, stall_patience_seconds=30)
+        report = port.transmit("abcdef")
+        assert report.characters == 0 and report.completed is False
+
+    def test_the_patience_counts_from_the_last_time_the_machine_took_something(self):
+        # held 60 s, takes one byte, held 60 s more, then released: 120 s in all, but never 100 s without progress
+        def level(now):
+            if now >= 125:
+                return 0
+            return 5 if now < 62 else 4
+        port, _, _ = queued_port(level, stall_patience_seconds=100)
+        assert port.transmit("abc").completed is True and not port.report.criticals
+
+    def test_the_next_text_after_giving_up_opens_the_port_again(self):
+        clock = FakeClock()
+        ports = [QueuedSerial(clock, lambda now: 4), FakeSerial(clock)]
+        port = TerminalPort("/dev/x", opener=lambda *a: ports.pop(0), clock=clock, sleep=clock.sleep, finish_wait_seconds=0,
+                            stall_patience_seconds=30)
+        assert port.transmit("abc").completed is False
+        assert port.transmit("xyz").completed is True
+
+    def test_a_port_that_cannot_say_how_much_is_queued_is_taken_to_have_taken_it_all(self):
+        port, fake, _, _ = make()                                  # a FakeSerial has no out_waiting
+        assert port.transmit("abc").completed is True and port.report.ok
+
+    def test_the_wait_leaks_no_words(self, caplog):
+        port, _, _ = queued_port(lambda now: 4, stall_patience_seconds=30)
+        with caplog.at_level(logging.DEBUG):
+            port.transmit("zebra-secret portent")
+        assert "zebra" not in caplog.text and all("zebra" not in line for line in port.report.lines())
+
+
 class TestAPortThatIsLost:
     """The cable is pulled, or the port fails: close it, open it again every few seconds, go on from the first character not sent."""
 
@@ -872,10 +970,9 @@ class TestAPortThatIsLost:
         report = port.transmit("abcde")
         assert report.completed is True and first.written == b"ab" and second.written == b"cde"
 
-    def test_a_failure_at_the_last_flush_is_reported_with_every_character_counted(self):
+    def test_a_failure_at_the_end_is_reported_with_every_character_counted(self):
         clock = FakeClock()
-        serial_port = FakeSerial(clock)
-        serial_port.flush = lambda: (_ for _ in ()).throw(OSError("flush failed"))
+        serial_port = QueuedSerial(clock, lambda now: (_ for _ in ()).throw(OSError("port gone")))
         port = TerminalPort("/dev/x", opener=lambda *a: serial_port, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
         report = port.transmit("abc")
         assert report.characters == 3 and report.completed is False and serial_port.closed is True

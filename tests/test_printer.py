@@ -81,8 +81,9 @@ class TestTheWiring:
         opened, asked = [], []
 
         class StandInFinder:
-            def __init__(self, timeout_seconds):
+            def __init__(self, timeout_seconds, log_limit):
                 asked.append(("timeout", timeout_seconds))
+                asked.append(("log_limit", log_limit))
 
             def resolve(self, device):
                 asked.append(("resolve", device))
@@ -98,8 +99,9 @@ class TestTheWiring:
         p.conductor._room_factory()
         p.conductor._room_factory()
         assert asked[0] == ("timeout", 7.0)                                          # the lookup's patience is the setting
+        assert asked[1] == ("log_limit", 50)                                         # and how many failed lookups are logged
         assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
-        assert opened == [("found-2", 3.0), ("found-3", 3.0)]                        # the deck gets what the finder answered, not the setting
+        assert opened == [("found-3", 3.0), ("found-4", 3.0)]                        # the deck gets what the finder answered, not the setting
 
     def test_the_writer_and_the_selector_share_one_random_generator(self, tmp_path):
         p = build(tmp_path)

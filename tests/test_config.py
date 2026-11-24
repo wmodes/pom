@@ -83,6 +83,29 @@ def test_local_logs_is_read_from_the_file_and_the_environment(tmp_path):
     assert Config.load(environ={"POM_LOCAL_LOGS": "yes"}).local_logs is True
 
 
+def test_device_search_log_limit_defaults_to_fifty():
+    config = Config.load(environ={})
+    assert config.device_search_log_limit == 50 and config.report.ok
+
+
+def test_device_search_log_limit_is_read_from_the_file(tmp_path):
+    config = Config.load(write(tmp_path, "device_search_log_limit = 7\n"), environ={})
+    assert config.device_search_log_limit == 7 and config.report.ok
+
+
+@pytest.mark.parametrize("bad", ["0", "-3", "2.5", '"ten"', "true", "[1]"])
+def test_a_bad_device_search_log_limit_is_the_default_with_a_warning(tmp_path, bad):
+    config = Config.load(write(tmp_path, f"device_search_log_limit = {bad}\n"), environ={})
+    assert config.device_search_log_limit == 50
+    assert len(config.report.warnings) == 1 and "device_search_log_limit" in config.report.warnings[0]
+
+
+def test_the_shipped_config_sets_the_device_search_log_limit():
+    import tomllib
+    path = Path(__file__).parent.parent / "config" / "pom.toml"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["device_search_log_limit"] == 50
+
+
 def test_bad_local_logs_values_mean_off_with_a_warning(tmp_path):
     from_file = Config.load(write(tmp_path, 'local_logs = "sure"\n'), environ={})
     from_env = Config.load(environ={"POM_LOCAL_LOGS": "banana"})

@@ -193,7 +193,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at)
     take_cutter = TakeCutter(max_words=listening.max_clip_words)
 
-    card_finder = CaptureCardFinder(listening.device_lookup_seconds)     # turns `auto` into the microphone's card, looked up again at each start of listening
+    card_finder = CaptureCardFinder(listening.device_lookup_seconds, config.device_search_log_limit)     # turns `auto` into the microphone's card, looked up again at each start of listening
 
     def make_deck():
         if options.wav:

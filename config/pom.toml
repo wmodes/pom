@@ -34,6 +34,12 @@ log_level = "INFO"
 # false on the Pi, where journald (journalctl -u pom) already keeps the log.
 local_logs = false
 
+# The microphone and the terminal are looked for again and again, for ever, while they are missing (every `[conductor] restart_pause_seconds` for the
+# microphone, every `[terminal] reconnect_seconds` for the terminal). Only this many lookups in a row that find nothing are written to the log, so an
+# unplugged microphone over a weekend does not fill it; the count starts again as soon as one is found. A whole number of at least 1. Higher logs more
+# of a long outage; lower is quieter.
+device_search_log_limit = 50
+
 
 # ================================================
 # SCORER: how interesting each sentence is

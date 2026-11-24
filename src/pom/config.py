@@ -9,6 +9,7 @@ of being threaded through by hand. Today there are five:
                its own `DEBUG = ...` line (see pom/log_setup.py).
     log_level  How much the service logs to stdout (and so to journald).
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
+    device_search_log_limit How many lookups in a row that find no microphone or terminal are logged (then quiet until one is found).
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
                that defines "interesting" and the score scale, the clip_filter's score, how many content
                words a sentence needs to be sent to the model, and the circuit-breaker numbers. The
@@ -86,7 +87,7 @@ DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "debug", "log_level", "local_logs", "oracle.exemplars_min", "oracle.exemplars_max",
+_KEYS = {"strict", "debug", "log_level", "local_logs", "device_search_log_limit", "oracle.exemplars_min", "oracle.exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.clip_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
@@ -149,6 +150,7 @@ DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER = 1.5
 DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE = 0.0
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
+DEFAULT_DEVICE_SEARCH_LOG_LIMIT = 50
 DEFAULT_LISTENING_DEVICE = "auto"
 DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS = 5.0
 DEFAULT_LISTENING_BUFFER_SECONDS = 10.0
@@ -662,6 +664,7 @@ class Config:
         debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         local_logs: Also write the log to a local file (development only).
+        device_search_log_limit: How many lookups in a row that find no microphone or terminal are logged, a whole number of at least 1.
         exemplar_range: (fewest, most) passages per pull of exemplars, for the Bibliomancer.
         scorer: The `[scorer]` section, as a ScorerSettings.
         oracle: The `[oracle]` section, as an OracleSettings (the exemplar range is `exemplar_range`).
@@ -684,7 +687,8 @@ class Config:
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
                  printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
                  conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None,
-                 chart: Optional["ChartSettings"] = None, display: Optional["DisplaySettings"] = None):
+                 chart: Optional["ChartSettings"] = None, display: Optional["DisplaySettings"] = None,
+                 device_search_log_limit: int = DEFAULT_DEVICE_SEARCH_LOG_LIMIT):
         """Use `Config.load`; this just holds already-validated values."""
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
@@ -700,6 +704,7 @@ class Config:
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
+        self.device_search_log_limit = device_search_log_limit
         self.exemplar_range = tuple(exemplar_range)
         self.log_level = log_level
         self.report = report if report is not None else FaultRecorder(logger=_log)
@@ -727,6 +732,8 @@ class Config:
         strict = _bool(values.get("strict", False), "strict", report)
         debug = _bool(values.get("debug", False), "debug", report)
         local_logs = _bool(values.get("local_logs", False), "local_logs", report)
+        device_search_log_limit = _count(values.get("device_search_log_limit", DEFAULT_DEVICE_SEARCH_LOG_LIMIT), "device_search_log_limit",
+                                         DEFAULT_DEVICE_SEARCH_LOG_LIMIT, report)
         low = _count(values.get("oracle.exemplars_min", DEFAULT_EXEMPLAR_RANGE[0]), "oracle.exemplars_min",
                      DEFAULT_EXEMPLAR_RANGE[0], report)
         high = _count(values.get("oracle.exemplars_max", DEFAULT_EXEMPLAR_RANGE[1]), "oracle.exemplars_max",
@@ -991,7 +998,7 @@ class Config:
             _nonblank(values.get("display.browser_profile_dir", DEFAULT_DISPLAY_BROWSER_PROFILE_DIR), "display.browser_profile_dir",
                       DEFAULT_DISPLAY_BROWSER_PROFILE_DIR, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
-                   printing, terminal, conductor, boot_slip, chart, display)
+                   printing, terminal, conductor, boot_slip, chart, display, device_search_log_limit)
 
 
 # A portent is at most this many characters per token (4 is typical English; 5 leaves room), for the printing time worked out below.

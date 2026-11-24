@@ -976,7 +976,7 @@ def test_the_monitor_defaults_when_nothing_is_set():
     from pom.config import MonitorSettings
     config = Config.load(environ={})
     assert config.monitor == MonitorSettings() and config.report.ok
-    assert (config.monitor.enabled, config.monitor.host, config.monitor.port) == (False, "0.0.0.0", 8080)
+    assert (config.monitor.enabled, config.monitor.host, config.monitor.port) == (True, "0.0.0.0", 8080)
     assert (config.monitor.password, config.monitor.show_hinges, config.monitor.history_seconds) == ("", True, 3600.0)
 
 
@@ -1034,13 +1034,13 @@ def test_the_monitor_section_merges_key_by_key_with_the_local_file(tmp_path):
     assert (monitor.enabled, monitor.port, monitor.password) == (True, 9000, "from-the-local-file")
 
 
-def test_the_shipped_monitor_section_is_off_and_has_no_password():
-    """The committed file goes to a public repository and the Pi: the site must be off and the password empty. Read the committed
+def test_the_shipped_monitor_section_is_on_and_has_no_password():
+    """The committed file goes to a public repository and the Pi: the site is on (it waits for a password) and the password is empty. Read the committed
     file alone (a pom.local.toml next to it, which git ignores, may well hold a password on this machine)."""
     import tomllib
     with open(Path(__file__).parent.parent / "config" / "pom.toml", "rb") as committed:
         monitor = tomllib.load(committed)["monitor"]
-    assert monitor["enabled"] is False and monitor["password"] == ""
+    assert monitor["enabled"] is True and monitor["password"] == ""
 
 
 # --- The [printing] section ------------------------------------------------------------------
@@ -1250,9 +1250,9 @@ def test_a_config_built_without_terminal_settings_has_the_defaults():
 
 def test_a_bad_flag_falls_back_to_that_flags_own_default_with_the_right_word_in_the_warning(tmp_path):
     config = Config.load(write(tmp_path, '[terminal]\nechoplex = "maybe"\n[monitor]\nenabled = "maybe"\n'), environ={})
-    assert config.terminal.echoplex is True and config.monitor.enabled is False
+    assert config.terminal.echoplex is True and config.monitor.enabled is True
     assert any("terminal.echoplex" in w and "using true" in w for w in config.report.warnings)
-    assert any("monitor.enabled" in w and "using false" in w for w in config.report.warnings)
+    assert any("monitor.enabled" in w and "using true" in w for w in config.report.warnings)
 
 
 # --- The [conductor] section ---------------------------------------------------------------
@@ -1408,34 +1408,34 @@ CONFIG_DIR = Path(__file__).resolve().parents[1] / "config"
 
 def test_every_key_the_local_template_sets_is_also_in_the_shipped_config():
     """Someone installing reads config/pom.toml to learn what can be set, so a key a local file sets must be there too."""
-    shipped, template = _keys(CONFIG_DIR / "pom.toml"), _keys(CONFIG_DIR / "pom.local.toml.example")
+    shipped, template = _keys(CONFIG_DIR / "pom.toml"), _keys(CONFIG_DIR / "pom.local.example.toml")
     assert template, "the template sets nothing"
     assert not (set(template) - set(shipped)), f"in the template but not in pom.toml: {sorted(set(template) - set(shipped))}"
 
 
 def test_the_shipped_config_and_the_template_hold_no_secret():
     """pom.toml is committed to a public repository. A key that looks like a secret must be empty in both files."""
-    for name in ("pom.toml", "pom.local.toml.example"):
+    for name in ("pom.toml", "pom.local.example.toml"):
         for key, value in _keys(CONFIG_DIR / name).items():
             if re.search(r"(^|[._])(password|passwd|secret|token|api_?key)$", key.lower()):      # not "max_tokens", which is a count
                 assert value == "", f"{name}: {key} must be empty, not a real value"
 
 
 def test_the_template_has_the_password_empty_so_the_page_stays_off_until_one_is_chosen():
-    template = _keys(CONFIG_DIR / "pom.local.toml.example")
-    assert template["monitor.password"] == "" and template["monitor.enabled"] is True
+    template = _keys(CONFIG_DIR / "pom.local.example.toml")
+    assert template["monitor.password"] == "" and "monitor.enabled" not in template
 
 
 def test_the_template_loads_cleanly_over_the_shipped_config(tmp_path):
-    config = Config.load(CONFIG_DIR / "pom.local.toml.example", environ={})
+    config = Config.load(CONFIG_DIR / "pom.local.example.toml", environ={})
     assert config.report.ok
     assert config.monitor.enabled is True and config.monitor.password == ""
 
 
 def test_the_shipped_config_says_how_to_make_a_local_file():
     text = (CONFIG_DIR / "pom.toml").read_text(encoding="utf-8")
-    assert "cp config/pom.local.toml.example config/pom.local.toml" in text and "public" in text
-    assert (CONFIG_DIR / "pom.local.toml.example").exists()
+    assert "cp config/pom.local.example.toml config/pom.local.toml" in text and "public" in text
+    assert (CONFIG_DIR / "pom.local.example.toml").exists()
 
 
 # --- The [boot_slip] section ----------------------------------------------------------------

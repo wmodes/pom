@@ -447,10 +447,10 @@ class TestTheBootSlip:
 
 
 class TestTheMonitoringSite:
-    def test_it_is_off_by_default_and_says_nothing_about_a_password(self, tmp_path, caplog):
+    def test_it_is_on_by_default_but_does_not_run_without_a_password_and_says_so(self, tmp_path, caplog):
         with caplog.at_level(logging.WARNING, logger="pom.printer"):
             assert build(tmp_path).site is None
-        assert [r for r in caplog.records if r.name == "pom.printer"] == []        # (the empty test config rightly makes other parts complain)
+        assert any("no password" in r.getMessage() for r in caplog.records if r.name == "pom.printer")
 
     def test_a_password_alone_does_not_switch_it_on(self, tmp_path):
         assert build(tmp_path, '[monitor]\nenabled = false\npassword = "pw"\n').site is None

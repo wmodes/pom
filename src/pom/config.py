@@ -161,7 +161,7 @@ DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS = 10.0
 DEFAULT_LISTENING_ROOM_TONE_MEMORY = 6
 DEFAULT_LISTENING_SCORE_ROOM_TONE = False
 DEFAULT_LISTENING_MAX_CLIP_WORDS = 40
-DEFAULT_MONITOR_ENABLED = False
+DEFAULT_MONITOR_ENABLED = True
 DEFAULT_MONITOR_HOST = "0.0.0.0"
 DEFAULT_MONITOR_PORT = 8080
 DEFAULT_MONITOR_SHOW_HINGES = True
@@ -424,7 +424,7 @@ class MonitorSettings:
     """The `[monitor]` section: the monitoring site, a web page of the last hour of turns.
 
     Attributes:
-        enabled: True starts the site with the Printer.
+        enabled: True starts the site with the Printer (it still waits for a password).
         host: The address it listens on; 0.0.0.0 means every network interface, so anyone on the local network can reach it.
         port: The port it listens on, 1 to 65535.
         password: The site's password. The site does not start while it is empty; set it in config/pom.local.toml,
@@ -856,7 +856,7 @@ class Config:
             _positive(values.get("listening.device_lookup_seconds", DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS), "listening.device_lookup_seconds",
                       DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS, report))
         monitor = MonitorSettings(
-            _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report),
+            _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report, DEFAULT_MONITOR_ENABLED),
             _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, report),
             _port(values.get("monitor.port", DEFAULT_MONITOR_PORT), "monitor.port", DEFAULT_MONITOR_PORT, report),
             _text(values.get("monitor.password", ""), "monitor.password", "", report),

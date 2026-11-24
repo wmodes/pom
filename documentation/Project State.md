@@ -5,6 +5,8 @@ Written 2026-10-21, rewritten 2026-10-27, brought up to date 2026-11-04. It says
 For detail it points at the other docs instead of repeating them: **the design is in `Design Document.md`**, the words
 are in `Lexicon.md`, the Pi is in `Pi Setup Notes.md`. If this file and the code disagree, trust the code and fix this file.
 
+**Current work (2026-11-24): `Hardening TODO.md`** is the numbered list (H1 to H29, tick-boxes) of robustness weaknesses found by auditing the whole source, worked one at a time with Wes's go on each; `Robust Testing.md` is the matching list of live unplug/kill tests. Read both before starting anything.
+
 ## What this is
 
 The **Printer of Mysteries**: an IBM Wheelwriter 1000 typewriter, driven by a Raspberry Pi 5 (16 GB,
@@ -285,6 +287,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   acting on. Today a whisper is treated like any quiet sound.
 - **A turn stays while its dot is on the chart** (2026-11-15): after a long silence the chart reaches back hours, so qualifier dots outlived their turns and linked to nothing. `TurnHistory` keeps a turn past `history_seconds` while `ChartNotebook.earliest_at` says its dot is still drawn (handed in as a function; the history never imports the notebook); the tiles count only the last `history_seconds`. The turn page says "Heard 2 h 05 min ago" (it said the audio position, "12266 min 11 s into the listening") and its Older link is on the left, Newer on the right. The dev sim has `--history-minutes` to show it.
 - **Dark mode on the monitor** (2026-11-15): an icon in the top right of every page flips light and dark, remembered in the browser only (`localStorage` key `pom-theme`); with no choice the page follows the device. The dark colours are one value (`_DARK_COLOURS`) used twice. The tests run the page's scripts under node (skipped without it).
+- **Hardening TODO** (2026-11-24): after the microphone-by-number bug Wes asked for a whole-source audit for the same kind of assumption; the result is `documentation/Hardening TODO.md` (29 items in five groups), tackled one at a time. The monitor is now on by default in `pom.toml` (it still waits for a password in the per-machine `config/pom.local.toml`); the template is `config/pom.local.example.toml`.
 - **The microphone and the terminal are found by themselves** (2026-11-24): `[listening] device = "auto"` asks `arecord -l` for the card that can record and names it (`plughw:CARD=<id>,DEV=<n>`); `[terminal] port = "/dev/serial/by-id/usb-*"`. Device numbers (`plughw:0,0`, `/dev/ttyUSB0`) change from one boot to the next, and a reboot left the Printer deaf. Wes: a clone with another microphone or serial adapter, or anyone replicating the project, must work with no device name hidden in the config; a card name stays possible, as a comment.
 - **Earlier word-list plan, now a fallback only:** snag on the corpus (`wordfreq`), concreteness (WordNet), feeling
   (NRC-VAD, free for non-commercial research, **not redistributable**, so each machine downloads its own into the

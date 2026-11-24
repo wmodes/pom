@@ -37,6 +37,7 @@ Status: **passed** (tried for real, recovered by itself), **found a bug** (fixed
 
 ## Next
 
+- The weaknesses found by the 2026-11-24 audit, and the fix for each, are in [Hardening TODO.md](Hardening TODO.md); when one is fixed, its row here is updated and, where a real part can be had, tested on pom1.
 - Microphone unplug and replug, live, with the journal open (the first row above). Then the serial adapter, mid-portent, with the real printer.
 - The paper-out and printer-off test, which is what shows whether the handshake works.
 - Then the rest, in the order that a person is most likely to do it by accident: power, then the network, then the monitor.

@@ -464,10 +464,31 @@ def test_a_port_that_will_not_open_gives_none_after_waiting_the_timeout_not_a_ho
     assert clock.now == pytest.approx(3) and len(port.report.warnings) == 1
 
 
-def test_waiting_for_ever_on_a_port_that_will_not_open_still_gives_up_each_time_after_a_pause():
+def test_waiting_for_ever_on_a_port_that_will_not_open_still_gives_up_each_time_after_a_pause_that_is_the_reconnect_setting():
     clock = FakeClock()
-    port = TerminalPort("/dev/none", opener=lambda *a: (_ for _ in ()).throw(OSError()), clock=clock, sleep=clock.sleep)
-    assert port.read_line() is None and clock.now == pytest.approx(1.0)
+    port = TerminalPort("/dev/none", opener=lambda *a: (_ for _ in ()).throw(OSError()), clock=clock, sleep=clock.sleep, reconnect_seconds=7)
+    assert port.read_line() is None and clock.now == pytest.approx(7.0)
+    quick_clock = FakeClock()
+    quick = TerminalPort("/dev/none", opener=lambda *a: (_ for _ in ()).throw(OSError()), clock=quick_clock, sleep=quick_clock.sleep,
+                         reconnect_seconds=0.5)
+    assert quick.read_line() is None and quick_clock.now == pytest.approx(0.5)
+
+
+def test_a_read_that_fails_with_a_deadline_pauses_for_the_reconnect_setting_or_the_time_left_whichever_is_less():
+    for timeout, pause in ((30, 3.0), (1.5, 1.5)):
+        clock = FakeClock()
+        broken = FakeSerial(clock)
+        broken.read = lambda size=1: (_ for _ in ()).throw(OSError("unplugged"))
+        port = TerminalPort("/dev/x", opener=lambda *a: broken, clock=clock, sleep=clock.sleep, echoplex=False, reconnect_seconds=3)
+        assert port.read_line(timeout) is None and clock.now == pytest.approx(pause)
+
+
+def test_a_read_that_fails_pauses_for_the_reconnect_setting_before_it_gives_up():
+    clock = FakeClock()
+    broken = FakeSerial(clock)
+    broken.read = lambda size=1: (_ for _ in ()).throw(OSError("unplugged"))
+    port = TerminalPort("/dev/x", opener=lambda *a: broken, clock=clock, sleep=clock.sleep, echoplex=False, reconnect_seconds=3)
+    assert port.read_line() is None and clock.now == pytest.approx(3.0)
 
 
 def test_a_read_that_fails_gives_none_and_a_warning_and_the_port_is_reopened_next_time():
@@ -985,62 +1006,79 @@ class TestAPortThatIsLost:
             port.transmit("abc")
 
 
-class TestThePortNameAsAPattern:
-    def test_the_first_match_in_sorted_order_is_opened(self):
-        clock = FakeClock()
-        seen = []
-        port = TerminalPort("/dev/ttyACM*", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock, sleep=clock.sleep,
-                            finish_wait_seconds=0, lister=lambda pattern: ["/dev/ttyACM1", "/dev/ttyACM0"])
-        port.transmit("a")
-        assert seen == ["/dev/ttyACM0"]
+class StandInFinder:
+    """Stands in for the TerminalPortFinder: answers each lookup from a list (the last answer repeats), and records what it was asked."""
 
-    def test_with_several_matches_the_first_in_sorted_order_is_chosen_whatever_order_they_come_in(self):
-        clock = FakeClock()
-        seen = []
-        port = TerminalPort("/dev/ttyACM*", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock, sleep=clock.sleep,
-                            finish_wait_seconds=0, lister=lambda pattern: ["/dev/ttyACM2", "/dev/ttyACM0", "/dev/ttyACM1"])
-        port.transmit("a")
-        assert seen == ["/dev/ttyACM0"]
+    def __init__(self, *answers):
+        self.answers = list(answers)
+        self.asked = []
 
-    def test_a_printer_that_comes_back_under_another_name_is_found(self):
+    def resolve(self, setting):
+        self.asked.append(setting)
+        return self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+
+
+class TestThePortIsFoundByItsFinder:
+    def test_the_finder_is_asked_the_setting_and_its_answer_is_what_is_opened(self):
         clock = FakeClock()
-        names = [["/dev/ttyACM0"]]
+        seen, finder = [], StandInFinder("/dev/serial/by-id/usb-Prolific-port0")
+        port = TerminalPort("auto", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock, sleep=clock.sleep,
+                            finish_wait_seconds=0, finder=finder)
+        port.transmit("a")
+        assert finder.asked == ["auto"] and seen == ["/dev/serial/by-id/usb-Prolific-port0"]
+
+    def test_it_is_asked_again_each_time_the_port_is_opened_so_a_printer_that_comes_back_under_another_name_is_found(self):
+        clock = FakeClock()
+        finder = StandInFinder("/dev/a", "/dev/b")
         first, second = ScriptedSerial(clock, {1: OSError("unplugged")}), ScriptedSerial(clock)
         seen = []
 
         def opener(name, *a):
             seen.append(name)
             return first if len(seen) == 1 else second
-
-        def lister(pattern):
-            if len(seen) == 1:
-                names[0] = ["/dev/ttyACM1"]                # replugged: the device has a new number
-            return names[0]
-        port = TerminalPort("/dev/ttyACM*", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0, lister=lister)
+        port = TerminalPort("auto", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0, finder=finder)
         report = port.transmit("abcd")
-        assert seen == ["/dev/ttyACM0", "/dev/ttyACM1"] and report.completed is True and second.written == b"bcd"
+        assert seen == ["/dev/a", "/dev/b"] and report.completed is True and second.written == b"bcd"
 
-    def test_a_pattern_with_no_match_means_the_port_will_not_open_with_one_warning(self):
+    def test_it_is_not_asked_again_while_the_port_stays_open(self):
         clock = FakeClock()
-        port = TerminalPort("/dev/serial/by-id/usb-*", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep,
-                            lister=lambda pattern: [])
+        finder = StandInFinder("/dev/a")
+        port = TerminalPort("auto", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep, finish_wait_seconds=0, finder=finder)
+        port.transmit("a")
+        port.transmit("b")
+        assert finder.asked == ["auto"]
+
+    def test_a_finder_that_found_nothing_hands_the_setting_back_and_the_port_will_not_open_with_one_warning(self):
+        clock = FakeClock()
+        finder = StandInFinder("auto")
+
+        def opener(name, *a):
+            raise FileNotFoundError(name)
+        port = TerminalPort("auto", opener=opener, clock=clock, sleep=clock.sleep, finder=finder)
         for _ in range(3):
             assert port.transmit("a") == PrintResult(0, 0.0, False)
         assert len(port.report.warnings) == 1 and "would not open" in port.report.warnings[0]
+        assert finder.asked == ["auto"] * 3                               # and it looked again each time
 
-    def test_a_lookup_that_fails_is_the_same_as_no_match(self):
+    def test_a_finder_that_breaks_is_a_port_that_will_not_open_not_a_crash(self):
+        class BrokenFinder:
+            def resolve(self, setting):
+                raise RuntimeError("a bug in the finder")
         clock = FakeClock()
-        port = TerminalPort("/dev/ttyACM*", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep,
-                            lister=lambda pattern: (_ for _ in ()).throw(OSError("glob broke")))
-        assert port.transmit("a").completed is False
+        port = TerminalPort("auto", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep, finder=BrokenFinder())
+        assert port.transmit("a") == PrintResult(0, 0.0, False)
+        assert len(port.report.warnings) == 1 and "would not open" in port.report.warnings[0]
 
-    def test_a_plain_name_is_opened_as_it_is_without_any_lookup(self):
+    def test_without_a_finder_the_port_is_opened_as_written(self):
         clock = FakeClock()
         seen = []
         port = TerminalPort("/dev/ttyACM0", opener=lambda name, *a: seen.append(name) or FakeSerial(clock), clock=clock,
-                            sleep=clock.sleep, finish_wait_seconds=0, lister=lambda pattern: (_ for _ in ()).throw(AssertionError("no lookup")))
+                            sleep=clock.sleep, finish_wait_seconds=0)
         port.transmit("a")
         assert seen == ["/dev/ttyACM0"]
+
+    def test_the_console_stand_in_needs_no_finder(self):
+        assert ConsoleTerminal(stream=io.StringIO(), input_stream=None, characters_per_second=10000).transmit("hi").completed is True
 
 
 class TestAPortThatWillNotOpen:

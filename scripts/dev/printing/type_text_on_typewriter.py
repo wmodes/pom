@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from pom.config import Config  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort  # noqa: E402
+from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder  # noqa: E402
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")
 
@@ -29,7 +29,7 @@ CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("text", nargs="*", help="the text to type (read from stdin if omitted)")
-    parser.add_argument("--port", help="a real serial port to type on, instead of the screen (e.g. /dev/ttyACM0)")
+    parser.add_argument("--port", help="a real serial port to type on, instead of the screen: auto, part of the terminal's USB name, or a device path (e.g. /dev/ttyACM0)")
     parser.add_argument("--fast", action="store_true", help="do not wait: no pacing and no wait at the end")
     parser.add_argument("--cps", type=float, help="characters a second (default: [terminal] in the config)")
     parser.add_argument("--reply", type=float, metavar="SECONDS", help="after typing, wait this long for a line typed back and show it")
@@ -47,7 +47,8 @@ def main():
     if args.port:
         typewriter = TerminalPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
                                     terminal.echoplex, terminal.type_during_printing, data_bits=terminal.data_bits,
-                                    parity=terminal.parity, stop_bits=terminal.stop_bits)
+                                    parity=terminal.parity, stop_bits=terminal.stop_bits,
+                                    finder=TerminalPortFinder(terminal.port_search, config.device_search_log_limit))
     else:
         typewriter = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
                                        type_during_printing=terminal.type_during_printing)

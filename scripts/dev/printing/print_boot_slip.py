@@ -21,14 +21,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from pom.config import Config  # noqa: E402
 from pom.conductor import AddressFinder, BootSlipper, FloorKeeper  # noqa: E402
 from pom.log_setup import configure_logging  # noqa: E402
-from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort  # noqa: E402
+from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder  # noqa: E402
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--port", help="a real serial port to type on, instead of the screen (e.g. /dev/ttyACM0)")
+    parser.add_argument("--port", help="a real serial port to type on, instead of the screen: auto, part of the terminal's USB name, or a device path (e.g. /dev/ttyACM0)")
     parser.add_argument("--fast", action="store_true", help="do not wait: no pacing, no wait at the end, no waits before typing")
     parser.add_argument("--no-network", action="store_true", help="pretend the machine has no address")
     parser.add_argument("--address", action="append", help="pretend the machine has this address (repeat for more)")
@@ -43,7 +43,8 @@ def main():
     if args.port:
         terminal = TerminalPort(args.port, terminal_settings.baud, terminal_settings.flow_control, terminal_settings.end_of_line, cps,
                                 finish_wait, terminal_settings.echoplex, terminal_settings.type_during_printing,
-                                data_bits=terminal_settings.data_bits, parity=terminal_settings.parity, stop_bits=terminal_settings.stop_bits)
+                                data_bits=terminal_settings.data_bits, parity=terminal_settings.parity, stop_bits=terminal_settings.stop_bits,
+                                finder=TerminalPortFinder(terminal_settings.port_search, config.device_search_log_limit))
     else:
         terminal = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
                                    type_during_printing=terminal_settings.type_during_printing)

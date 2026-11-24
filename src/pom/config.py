@@ -108,7 +108,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "device_search_log_limit"
          "listening.score_room_tone", "monitor.enabled", "monitor.host", "monitor.port", "monitor.password",
          "monitor.show_hinges", "monitor.password_on_localhost", "monitor.chart_notebook_max_entries", "monitor.history_seconds", "monitor.hinge_snippet_chars", "monitor.history_max_turns", "printing.paper_width_inches", "printing.margin_inches",
          "printing.characters_per_inch", "printing.quote_indent", "printing.linefeeds_after_portent",
-         "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.baud",
+         "printing.keep_composed_characters", "printing.ascii_printwheel", "terminal.port", "terminal.port_search", "terminal.baud",
          "terminal.flow_control", "terminal.end_of_line", "terminal.characters_per_second",
          "terminal.finish_wait_seconds", "terminal.echoplex", "terminal.type_during_printing",
          "terminal.stall_patience_seconds", "terminal.reconnect_seconds", "terminal.mode",
@@ -184,7 +184,8 @@ DEFAULT_PRINTING_ASCII_PRINTWHEEL = False
 # Seven of the nine ASCII characters most print wheels lack (< and > are the others, and are always typed as they are); the
 # CadetWriter builds them from periods ("period graphics"), and the PortentFormatter swaps each for a look-alike unless kept.
 COMPOSED_CHARACTERS = "\\^`{|}~"
-DEFAULT_TERMINAL_PORT = "/dev/ttyACM0"
+DEFAULT_TERMINAL_PORT = "auto"
+DEFAULT_TERMINAL_PORT_SEARCH = "/dev/serial/by-id/*"
 DEFAULT_TERMINAL_BAUD = 9600
 TERMINAL_BAUD_RATES = (50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600,
                        76800, 115200, 230400)
@@ -518,7 +519,9 @@ class TerminalSettings:
     """The `[terminal]` section: the serial connection to the typewriter, which acts as a terminal.
 
     Attributes:
-        port: The serial device (/dev/ttyACM0 for the CadetWriter's USB port).
+        port: `auto`, or a name: any part of the USB name of the serial device or of its path (see DeviceFinder). A name not found falls
+            back to whatever is there.
+        port_search: Where `auto` and a name look for serial devices: a glob such as /dev/serial/by-id/*.
         baud: The speed, one of TERMINAL_BAUD_RATES. Only the CadetWriter's RS-232 port uses it; USB ignores it.
         data_bits: Bits in each character, one of TERMINAL_DATA_BITS (7 or 8 are the usual). Must match the terminal's setting; a mismatch
             prints wrong characters or none.
@@ -561,6 +564,7 @@ class TerminalSettings:
     data_bits: int = DEFAULT_TERMINAL_DATA_BITS
     parity: str = DEFAULT_TERMINAL_PARITY
     stop_bits: int = DEFAULT_TERMINAL_STOP_BITS
+    port_search: str = DEFAULT_TERMINAL_PORT_SEARCH
 
 
 @dataclass(frozen=True)
@@ -933,7 +937,8 @@ class Config:
                           TERMINAL_DATA_BITS, report),
             _choice(values.get("terminal.parity", DEFAULT_TERMINAL_PARITY), "terminal.parity", DEFAULT_TERMINAL_PARITY, TERMINAL_PARITIES, report),
             _whole_choice(values.get("terminal.stop_bits", DEFAULT_TERMINAL_STOP_BITS), "terminal.stop_bits", DEFAULT_TERMINAL_STOP_BITS,
-                          TERMINAL_STOP_BITS, report))
+                          TERMINAL_STOP_BITS, report),
+            _nonblank(values.get("terminal.port_search", DEFAULT_TERMINAL_PORT_SEARCH), "terminal.port_search", DEFAULT_TERMINAL_PORT_SEARCH, report))
         chart = ChartSettings(
             _positive(values.get("chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES), "chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES, report),
             _positive(values.get("chart.gridline_every_minutes", DEFAULT_CHART_GRIDLINE_EVERY_MINUTES), "chart.gridline_every_minutes",

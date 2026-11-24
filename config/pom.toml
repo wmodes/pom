@@ -525,11 +525,19 @@ ascii_printwheel = false
 # card, the printer's own menu (Serial Interface group) holds them: 19200 baud, 7 data bits, even parity, XON/XOFF.
 [terminal]
 
-# The serial device. "/dev/serial/by-id/usb-*" means any USB serial device the Pi has found: a USB-to-serial adapter (which is /dev/ttyUSB0
-# today and may be /dev/ttyUSB1 after another boot) or a terminal's own USB port (/dev/ttyACM0). The first match is used, and it is looked
-# up each time the port is opened, so a terminal that comes back under another name is found. To choose one yourself, give a pattern or a
-# name, for example "/dev/serial/by-id/usb-Prolific_*" (`ls /dev/serial/by-id/` lists them) or "/dev/ttyUSB0" (the number is not stable).
-port = "/dev/serial/by-id/usb-*"
+# Which serial device is the terminal: "auto", or a name. "auto" takes the first USB serial device the Pi has found (a USB-to-serial adapter,
+# which is /dev/ttyUSB0 today and may be /dev/ttyUSB1 after another boot, or a terminal's own USB port), by the name the Pi gives it, which
+# does not move; with several it takes the first in sorted order and warns, saying what it chose and what else was there. A name is any part of
+# the device's USB name or of its path, in any case, for example "Prolific" or "ttyUSB0" (`ls /dev/serial/by-id/` lists the names); a name
+# that matches nothing falls back to whatever is there, with a warning; a name that matches several takes the first and warns. The device is
+# looked up each time the port is opened, so a terminal that comes back under another name is found. While none is there it is looked for
+# again every `reconnect_seconds`, for ever, and only the first `device_search_log_limit` misses in a row are logged. A device with no USB name
+# (a GPIO serial port) is chosen by writing its path, for example "/dev/serial0", which is used as written when nothing is found.
+port = "auto"
+
+# Where `auto` and a name look for serial devices: a glob. /dev/serial/by-id/* is the USB serial devices by their stable names. Change it only
+# for a machine that keeps them somewhere else (for example /dev/serial/by-path/*, which names the USB socket instead of the device).
+port_search = "/dev/serial/by-id/*"
 
 # The speed in bits a second. Only an RS-232 port uses it; a USB port (the CadetWriter's) ignores it. Too high or too low for the
 # terminal and it prints garbage or nothing.
@@ -580,7 +588,8 @@ type_during_printing = false
 # the Printer deaf for that long. A portent not yet started is waited for much less (the Conductor's freshness limit).
 stall_patience_seconds = 600
 
-# How often (in seconds, above 0) a lost port is tried again while waiting.
+# How often (in seconds, above 0) a port that is lost, or not there at all, is looked for again, for ever, while a portent waits for it and
+# while the keyboard is being listened for. Lower finds a plugged-in terminal sooner; higher looks less often.
 reconnect_seconds = 2
 
 # A line typed on the typewriter's keyboard is ended at this many characters, so a stuck key cannot grow it without limit. A whole number of at

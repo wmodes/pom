@@ -875,10 +875,11 @@ def test_the_shipped_config_finds_the_microphone_by_itself_and_says_how_long_to_
 
 
 def test_the_shipped_config_finds_the_terminal_by_itself():
-    """Any USB serial device, by the name the Pi gives it, which does not change at boot as /dev/ttyUSB0 may."""
+    """`auto`: any USB serial device, by the name the Pi gives it, which does not change at boot as /dev/ttyUSB0 may."""
     import tomllib
     path = Path(__file__).parent.parent / "config" / "pom.toml"
-    assert tomllib.loads(path.read_text(encoding="utf-8"))["terminal"]["port"] == "/dev/serial/by-id/usb-*"
+    written = tomllib.loads(path.read_text(encoding="utf-8"))["terminal"]
+    assert written["port"] == "auto" and written["port_search"] == "/dev/serial/by-id/*"
 
 
 def test_the_listening_settings_plug_straight_into_the_modules():
@@ -1190,7 +1191,8 @@ def test_the_terminal_defaults_are_the_cadetwriters_own():
     config = Config.load(environ={})
     assert config.terminal == TerminalSettings() and config.report.ok
     terminal = config.terminal
-    assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("/dev/ttyACM0", 9600, "xon_xoff", "crlf")
+    assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("auto", 9600, "xon_xoff", "crlf")
+    assert terminal.port_search == "/dev/serial/by-id/*"
     assert (terminal.data_bits, terminal.parity, terminal.stop_bits) == (8, "none", 1)
     assert (terminal.characters_per_second, terminal.finish_wait_seconds) == (16.0, 2.0)
     assert (terminal.echoplex, terminal.type_during_printing) == (True, False)
@@ -1202,15 +1204,15 @@ def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     text = ('[terminal]\nport = "/dev/ttyUSB0"\nbaud = 115200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
             "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_printing = true\n"
             "stall_patience_seconds = 90\nreconnect_seconds = 0.5\nmode = \"console\"\n"
-            'data_bits = 7\nparity = "even"\nstop_bits = 2\n')
+            'data_bits = 7\nparity = "even"\nstop_bits = 2\nport_search = "/dev/serial/by-path/*"\n')
     config = Config.load(write(tmp_path, text), environ={})
     assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True, 90.0, 0.5, "console",
-                                               data_bits=7, parity="even", stop_bits=2) \
+                                               data_bits=7, parity="even", stop_bits=2, port_search="/dev/serial/by-path/*") \
         and config.report.ok
 
 
 @pytest.mark.parametrize("key, value", [
-    ("port", "5"), ("baud", "1234"), ("baud", '"9600"'), ("baud", "true"), ("baud", "9600.0"), ("flow_control", '"hardware"'),
+    ("port", "5"), ("port_search", "5"), ("port_search", '""'), ("port_search", "true"), ("baud", "1234"), ("baud", '"9600"'), ("baud", "true"), ("baud", "9600.0"), ("flow_control", '"hardware"'),
     ("end_of_line", '"newline"'), ("characters_per_second", "0"), ("characters_per_second", '"fast"'),
     ("finish_wait_seconds", "-1"), ("finish_wait_seconds", "true"), ("echoplex", '"maybe"'), ("type_during_printing", "3"),
     ("stall_patience_seconds", "0"), ("stall_patience_seconds", '"long"'), ("reconnect_seconds", "-2"), ("reconnect_seconds", "true"),
@@ -1263,7 +1265,7 @@ def test_the_committed_config_sets_every_terminal_key():
     assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
                             "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds", "mode",
                             "max_typed_line_characters", "refused_character_retry_seconds", "wait_log_reminder_seconds",
-                            "data_bits", "parity", "stop_bits"}
+                            "data_bits", "parity", "stop_bits", "port_search"}
 
 
 def test_a_config_built_without_terminal_settings_has_the_defaults():

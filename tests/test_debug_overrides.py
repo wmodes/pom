@@ -18,7 +18,7 @@ MODULES = ["pom/config.py", "pom/library/circulation.py", "pom/library/catalog.p
            "pom/scoring/clip_scorer.py", "pom/scoring/fallback_scorer.py", "pom/scoring/scorer_warmer.py",
            "pom/qualifying/bar_keeper.py", "pom/writing/prompt_builder.py", "pom/writing/oracle_model_client.py",
            "pom/startup.py",
-           "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py", "pom/listening/capture_card_finder.py", "pom/device_finder.py",
+           "pom/listening/whisper_model_client.py", "pom/listening/wav_deck.py", "pom/listening/mic_deck.py", "pom/listening/capture_card_finder.py", "pom/device_finder.py", "pom/printing/terminal_port_finder.py",
            "pom/listening/rolling_cutter.py",
            "pom/listening/eavesdropper.py", "pom/writing/portent_writer.py", "pom/listening/mac_mic_deck.py",
            "pom/conductor/hinge_finder.py", "pom/conductor/floor_keeper.py", "pom/conductor/turn_taker.py", "pom/conductor/keyboard_watcher.py", "pom/conductor/conductor.py", "pom/conductor/boot_slipper.py", "pom/conductor/address_finder.py", "pom/printer.py", "pom/keyboard/typed_line_scorer.py",

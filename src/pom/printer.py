@@ -44,7 +44,7 @@ from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
 from pom.log_setup import configure_logging, get_logger
 from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape
-from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort
+from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
 from pom.writing import OracleModelClient, PortentWriter, PromptBuilder
@@ -224,7 +224,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     printing = config.printing
     formatter = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
                                  printing.composed_characters_kept)
-    terminal = _make_terminal(mode, terminal_settings)
+    terminal = _make_terminal(mode, terminal_settings, config.device_search_log_limit)
 
     # the turn
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
@@ -298,18 +298,19 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     return Printer(conductor, history, site, terminal, floor, parts, services, warmer, slipper)
 
 
-def _make_terminal(mode: str, settings):
-    """The terminal for this mode: the real serial port, the console stand-in, or None for no printer."""
+def _make_terminal(mode: str, settings, search_log_limit: int):
+    """The terminal for this mode: the real serial port (found by name, looked up again each time it opens), the console stand-in, or None for no printer."""
     if mode == "none":
         return None
     if mode == "console":
         return ConsoleTerminal(characters_per_second=settings.characters_per_second)
+    finder = TerminalPortFinder(settings.port_search, search_log_limit)
     return TerminalPort(settings.port, settings.baud, settings.flow_control, settings.end_of_line, settings.characters_per_second,
                         settings.finish_wait_seconds, settings.echoplex, settings.type_during_printing, settings.stall_patience_seconds,
                         settings.reconnect_seconds, max_typed_line_characters=settings.max_typed_line_characters,
                         refused_character_retry_seconds=settings.refused_character_retry_seconds,
                         wait_log_reminder_seconds=settings.wait_log_reminder_seconds, data_bits=settings.data_bits, parity=settings.parity,
-                        stop_bits=settings.stop_bits)
+                        stop_bits=settings.stop_bits, finder=finder)
 
 
 def parse_options(argv=None) -> Options:

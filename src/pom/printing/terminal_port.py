@@ -48,8 +48,9 @@ Design decisions, and why:
     `transmit` returns at once with nothing typed, and the caller (the TurnTaker) decides how long to keep trying. What software cannot see:
     whether the CadetWriter signals a hold or out-of-paper through flow control (if it does not, nothing in the code can tell), and a
     printer that is powered off behind a USB adapter that swallows the bytes.
-  * THE PORT NAME MAY BE A PATTERN (`/dev/ttyACM*`, `/dev/serial/by-id/usb-*`). It is looked up each time the port is opened, and the
-    first match (in sorted order) is used, so a printer that comes back under another name (ttyACM0, then ttyACM1) is found.
+  * THE PORT IS FOUND BY NAME, BY A FINDER (`auto`, or any part of the USB name or path; see TerminalPortFinder and pom/device_finder.py). It is
+    asked each time the port is opened, so a printer that comes back under another name (ttyUSB0, then ttyUSB1) is found. With no finder the
+    port name is opened as written. The wait between tries for a port that is not there is `reconnect_seconds`, for ever.
   * A port that cannot be opened is one warning for the whole stretch it stays unavailable, not one per try, and a line in the log when it
     opens again.
   * What is typed in the room is room content: like the portent it is never logged or put in a report.
@@ -58,7 +59,6 @@ Design decisions, and why:
     the ConsoleTerminal (the stand-in for development) is this same code writing to the terminal.
 """
 import collections
-import glob
 import os
 import select
 import sys
@@ -138,9 +138,9 @@ class TerminalPort:
                  wait_log_reminder_seconds: float = DEFAULT_WAIT_LOG_REMINDER_SECONDS,
                  data_bits: int = DEFAULT_DATA_BITS, parity: str = DEFAULT_PARITY, stop_bits: int = DEFAULT_STOP_BITS,
                  opener: Optional[Callable[[str, int, str, int, str, int], object]] = None, clock: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep, lister: Callable[[str], list] = glob.glob, strict: bool = False):
+                 sleep: Callable[[float], None] = time.sleep, finder: Optional[object] = None, strict: bool = False):
         """Args:
-            port: The serial device, e.g. /dev/ttyACM0, or a pattern such as /dev/ttyACM* (looked up each time it is opened).
+            port: The port setting: a device name such as /dev/ttyACM0, or `auto` or part of a name for the finder to look up each time it is opened.
             baud: The speed; only the RS-232 port uses it (USB ignores it). One of BAUD_RATES.
             flow_control: "xon_xoff", "rts_cts" or "none".
             end_of_line: What a newline is sent as: "cr", "crlf", "lf" or "lfcr". Must match the CadetWriter's setting.
@@ -156,7 +156,7 @@ class TerminalPort:
             data_bits: Bits in each character, one of DATA_BITS. Must match the machine's setting.
             parity: "none", "even" or "odd". Must match the machine's setting.
             stop_bits: 1 or 2. Must match the machine's setting.
-            lister: A function pattern -> list of matching device names. Default: glob.glob. Tests give a fake.
+            finder: Anything with `resolve(setting) -> device name` (a TerminalPortFinder), asked each time the port is opened. None opens `port` as written.
             opener: A function (port, baud, flow_control, data_bits, parity, stop_bits) -> an object with write(bytes), close(), read(size)
                 and reset_input_buffer(), and optionally `out_waiting` (the bytes accepted but not yet taken). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
@@ -198,7 +198,7 @@ class TerminalPort:
         self._wait_reminder = self._valid(
             wait_log_reminder_seconds, "wait_log_reminder_seconds", DEFAULT_WAIT_LOG_REMINDER_SECONDS,
             lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
-        self._lister = lister
+        self._finder = finder
         self._connect_failing = False            # the port has been unavailable since a warning was given
         self._opener = opener if opener is not None else _open_serial
         self._clock = clock
@@ -377,7 +377,7 @@ class TerminalPort:
                 return None
             with self._lock:
                 if not self._usable or not self._connect():
-                    self._sleep(1.0 if deadline is None else max(0.0, deadline - self._clock()))
+                    self._sleep(self._reconnect if deadline is None else max(0.0, deadline - self._clock()))
                     return None
                 try:
                     data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
@@ -385,7 +385,7 @@ class TerminalPort:
                     self.report.warn(f"the terminal port failed while listening for the keyboard "
                                      f"({type(error).__name__}); try again later")
                     self.close()
-                    self._sleep(1.0 if deadline is None else max(0.0, min(1.0, deadline - self._clock())))   # no hot loop on a dead port
+                    self._sleep(self._reconnect if deadline is None else max(0.0, min(self._reconnect, deadline - self._clock())))   # no hot loop on a dead port
                     return None
             if data:
                 self._received.extend(data)
@@ -447,25 +447,17 @@ class TerminalPort:
         except Exception:                            # a dead port is found by the next write
             pass
 
-    def _resolve(self) -> Optional[str]:
-        """The device to open: the port name, or the first device matching it if it is a pattern. None if nothing matches."""
-        name = self._port_name
-        if not any(wildcard in name for wildcard in "*?["):
-            return name
-        try:
-            matches = sorted(self._lister(name))
-        except Exception:                            # a failing lookup is the same as no match
-            matches = []
-        return matches[0] if matches else None
+    def _resolve(self) -> str:
+        """The device to open: what the finder says the port setting means now, or the port name as written if there is no finder."""
+        return self._finder.resolve(self._port_name) if self._finder is not None else self._port_name
 
     def _connect(self, quiet: bool = False) -> bool:
         """Opens the port if it is not open. False if it will not open: one warning for the whole stretch it stays unavailable."""
         if self._serial is not None:
             return True
-        name = self._resolve()
+        name = self._port_name
         try:
-            if name is None:
-                raise FileNotFoundError("no device matches the port pattern")
+            name = self._resolve()                   # inside the try: a finder that breaks is a port that will not open, not a crash
             self._serial = self._opener(name, self._baud, self._flow_control, self._data_bits, self._parity, self._stop_bits)
         except Exception as error:
             if not self._connect_failing and not quiet:

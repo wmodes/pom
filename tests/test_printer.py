@@ -103,6 +103,22 @@ class TestTheWiring:
         assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
         assert opened == [("found-3", 3.0), ("found-4", 3.0)]                        # the deck gets what the finder answered, not the setting
 
+    def test_the_terminal_is_found_by_a_finder_that_gets_the_search_pattern_and_the_log_limit(self, tmp_path, monkeypatch):
+        made, asked = [], []
+
+        class StandInFinder:
+            def __init__(self, search_pattern, log_limit):
+                made.append((search_pattern, log_limit))
+
+            def resolve(self, setting):
+                asked.append(setting)
+                return "/dev/not-a-real-port"
+
+        monkeypatch.setattr(printer_module, "TerminalPortFinder", StandInFinder)
+        p = build(tmp_path, '[terminal]\nmode = "serial"\nport = "Prolific"\nport_search = "/x/*"\n')
+        assert made == [("/x/*", 50)]
+        assert p.terminal.online() is False and asked == ["Prolific"]            # opening the terminal asks the finder about the setting
+
     def test_the_writer_and_the_selector_share_one_random_generator(self, tmp_path):
         p = build(tmp_path)
         assert p.parts["writer"]._rng is p.parts["selector"]._rng

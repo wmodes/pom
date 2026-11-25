@@ -507,7 +507,8 @@ What the burn test could not show: the real CadetWriter's flow-control behavior 
 
 ```
 src/pom/
-  fault_recorder.py, log_setup.py, config.py     the shared plumbing
+  bookkeeper/                                    fault_recorder.py (what a module recovered from), log_setup.py (where the logs go)
+  config.py                                      the shared settings
   startup.py                                     the runner; the ten duties are placeholders
   printer.py                                     the entry point (python -m pom): builds everything from one Config
   library/     catalog, circulation, bibliomancer, endings

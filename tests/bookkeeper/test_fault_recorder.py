@@ -1,9 +1,9 @@
-"""Tests for pom.fault_recorder: recording problems as data, with a strict mode for development."""
+"""Tests for pom.bookkeeper.fault_recorder: recording problems as data, with a strict mode for development."""
 import logging
 
 import pytest
 
-from pom.fault_recorder import Fault, FaultRecorder, Severity, strict_fault_recorder
+from pom.bookkeeper.fault_recorder import Fault, FaultRecorder, Severity, strict_fault_recorder
 
 
 class FakeError(Exception):

@@ -1,10 +1,10 @@
-"""Tests for pom.log_setup: one-time stdout logging setup that never fails and never duplicates."""
+"""Tests for pom.bookkeeper.log_setup: one-time stdout logging setup that never fails and never duplicates."""
 import io
 import logging
 
 import pytest
 
-from pom.log_setup import BACKUPS, LOG_FILE, LOGGER_NAME, MAX_BYTES, configure_logging, get_logger
+from pom.bookkeeper.log_setup import BACKUPS, LOG_FILE, LOGGER_NAME, MAX_BYTES, configure_logging, get_logger
 
 
 @pytest.fixture(autouse=True)
@@ -270,9 +270,9 @@ def test_an_unwritable_location_does_not_crash_and_warns_on_the_stream(tmp_path)
 
 def test_the_default_folder_is_logs_and_is_gitignored():
     from pathlib import Path
-    from pom.log_setup import LOG_DIR
+    from pom.bookkeeper.log_setup import LOG_DIR
     assert LOG_DIR == "logs"
-    ignored = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(encoding="utf-8").splitlines()
+    ignored = (Path(__file__).resolve().parents[2] / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "logs/" in ignored
 
 

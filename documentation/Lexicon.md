@@ -383,6 +383,9 @@ The machine, its settings, how it keeps going, and how it is watched.
   microphone, whisper, the model servers, the terminal), then a one-line readiness summary. Only the runner is built; the steps are
   placeholders. Example: `Startup`, `StepStatus`, `StepOutcome` (was: `Status`, `Outcome`)
 - **fault**: A problem a module recovered from and recorded instead of crashing. Example: `Fault` (was/still)
+- **bookkeeper**: The module (`src/pom/bookkeeper/`) that keeps the Printer's books: what a module recovered from (`FaultRecorder`, in
+  `fault_recorder.py`) and where everything it logs goes (`log_setup.py`). Example: `pom.bookkeeper.FaultRecorder` (was: `pom.fault_recorder`,
+  `pom.log_setup`, loose at the top of `pom/`)
 - **fault recorder**: Keeps a module's faults (WARNING means recovered, CRITICAL means the module cannot do its job). The Printer never
   stops because of a fault. Example: `FaultRecorder` (was/still)
 

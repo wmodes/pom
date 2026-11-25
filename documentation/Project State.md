@@ -61,7 +61,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   do one thing, plain data objects passed between them. Scripts in `scripts/` are standalone helpers;
   they may import `pom`, and `pom` never imports them. `src/pom/` never imports from `experiments/`.
 - **The Printer must never stop because of a typo or a recoverable fault** (a gallery cannot crash).
-  A problem a module can recover from is recovered from and recorded in a `pom.fault_recorder.FaultRecorder`
+  A problem a module can recover from is recovered from and recorded in a `pom.bookkeeper.fault_recorder.FaultRecorder`
   (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
@@ -110,8 +110,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 
 ```
 src/pom/
-  fault_recorder.py    built   faults as data (WARNING / CRITICAL, strict mode, cap, logging)
-  log_setup.py         built   stdout logging, debug flag, per-module override, local log file
+  bookkeeper/          built   fault_recorder.py: faults as data (WARNING / CRITICAL, strict mode, cap, logging); log_setup.py: stdout logging, debug flag, per-module override, local log file. The old paths pom.fault_recorder and pom.log_setup still work (re-export files, to be deleted once callers are switched)
   config.py            built   shared settings, layered; [scorer], [qualifying], [oracle]
   startup.py           built   the startup runner; its ten duties are placeholders in planned_steps(), and printer.py does not call it yet
   printer.py           built   the entry point (python -m pom): builds every part from one Config and runs the Conductor; --mac-mic, --wav, --terminal

@@ -54,6 +54,8 @@
 - [ ] **H28. Memory pressure and restart limits are protective only by accident** (confirmed absent; effect suspected). No `OOMScoreAdjust=` on any unit (the scorer unit's own comment says pinning left under 1 GB free; the kiosk adds about 300 MB); no `StartLimit*` anywhere (with `RestartSec=3`/`5` the default limit of 5 starts in 10 s is never reached, so nothing stays dead, but an edit toward 0 would make it). *Direction:* `OOMScoreAdjust` so the kernel never picks `pom` or whisper first; `StartLimitIntervalSec=0` explicit on all five units. Never unload the models.
 - [ ] **H29. No outward health signal** (confirmed). Remote access depends on Wi-Fi and the Tailscale key; the monitor is plain HTTP with Basic auth on `0.0.0.0`. A gallery with no Wi-Fi, or an expired key, means nobody sees a problem until they walk up to it. *Direction:* an optional outbound heartbeat, a status LED, or a line on the typewriter.
 
+- [~] **H30. The terminal light said `up` with the adapter unplugged** (found on pom1 2026-11-25). Root cause: `read_line` held the port lock while pausing, so `online(wait=False)` read the busy lock as "being typed on". **Fixed in code 2026-11-25** (the pause is outside the lock). The monitor's lights are to move to a `StatusBoard` that parts report to (pull for the servers and the printer, push for the mic; up/waiting/down, no news is down): see the next commits; this overlaps H3.
+
 ## E. Carried over from earlier, not from the audit
 
 - [ ] The service lights on the monitor page do not refresh while the page is open.

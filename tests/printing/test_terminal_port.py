@@ -483,6 +483,38 @@ def test_a_read_that_fails_with_a_deadline_pauses_for_the_reconnect_setting_or_t
         assert port.read_line(timeout) is None and clock.now == pytest.approx(pause)
 
 
+def test_the_terminal_is_not_reported_online_while_the_keyboard_waits_for_it_to_come_back():
+    """The pause between tries must not hold the port: the monitoring page asks `online(wait=False)`, and a held port reads as "being typed on"."""
+    clock = FakeClock()
+    answers = []
+
+    def sleep(seconds):
+        answers.append(port.online(wait=False))                  # asked while the keyboard read is pausing
+        clock.sleep(seconds)
+    port = TerminalPort("/dev/none", opener=lambda *a: (_ for _ in ()).throw(OSError()), clock=clock, sleep=sleep)
+    assert port.read_line(1) is None
+    assert answers == [False]
+
+
+def test_the_terminal_is_not_reported_online_while_the_keyboard_pauses_after_a_failed_read():
+    clock = FakeClock()
+    broken, answers = FakeSerial(clock), []
+    broken.read = lambda size=1: (_ for _ in ()).throw(OSError("unplugged"))
+
+    def sleep(seconds):
+        answers.append(port.online(wait=False))
+        clock.sleep(seconds)
+    ports = [broken]
+
+    def opener(*a):
+        if ports:
+            return ports.pop(0)
+        raise OSError("gone")
+    port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=sleep, echoplex=False)
+    assert port.read_line(1) is None
+    assert answers == [False]
+
+
 def test_a_read_that_fails_pauses_for_the_reconnect_setting_before_it_gives_up():
     clock = FakeClock()
     broken = FakeSerial(clock)

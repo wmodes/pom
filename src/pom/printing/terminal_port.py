@@ -375,18 +375,21 @@ class TerminalPort:
                     return line
             if deadline is not None and self._clock() >= deadline:
                 return None
+            pause = None                             # set when the port is not there: the wait is done after the lock is let go
             with self._lock:
                 if not self._usable or not self._connect():
-                    self._sleep(self._reconnect if deadline is None else max(0.0, deadline - self._clock()))
-                    return None
-                try:
-                    data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
-                except Exception as error:           # a dead port must never stop the oracle
-                    self.report.warn(f"the terminal port failed while listening for the keyboard "
-                                     f"({type(error).__name__}); try again later")
-                    self.close()
-                    self._sleep(self._reconnect if deadline is None else max(0.0, min(self._reconnect, deadline - self._clock())))   # no hot loop on a dead port
-                    return None
+                    pause = self._reconnect if deadline is None else max(0.0, deadline - self._clock())
+                else:
+                    try:
+                        data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
+                    except Exception as error:       # a dead port must never stop the oracle
+                        self.report.warn(f"the terminal port failed while listening for the keyboard "
+                                         f"({type(error).__name__}); try again later")
+                        self.close()
+                        pause = self._reconnect if deadline is None else max(0.0, min(self._reconnect, deadline - self._clock()))   # no hot loop on a dead port
+            if pause is not None:
+                self._sleep(pause)                   # not under the lock: a held lock reads as "being typed on", so the printer would look online
+                return None
             if data:
                 self._received.extend(data)
             else:

@@ -49,7 +49,7 @@ from pom.library import Catalog, Circulation, Bibliomancer                      
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck,         # noqa: E402
                            WhisperModelClient)
 from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory                      # noqa: E402
-from pom.log_setup import configure_logging                                                         # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging                                                         # noqa: E402
 from pom.writing import PromptBuilder                                                                # noqa: E402
 from pom.conductor import HingeFinder
 from pom.qualifying import bar_keeper_from_settings, Ruling

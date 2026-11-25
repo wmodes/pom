@@ -1,8 +1,8 @@
 """Tests for the TickWriter: which ticks the chart draws for a stretch, as entries, with problems reported and never raised."""
 import pytest
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.notebook_entry import NotebookEntry
 from pom.monitor.silence_compressor import SilenceShape
 from pom.monitor.tick_writer import TickWriter

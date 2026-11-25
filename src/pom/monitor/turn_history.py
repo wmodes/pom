@@ -33,8 +33,8 @@ from collections import deque
 from dataclasses import dataclass, replace
 from typing import Callable, Deque, List, Optional
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.writing.portent_writer import Portent
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

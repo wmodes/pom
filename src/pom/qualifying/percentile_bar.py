@@ -23,8 +23,8 @@ import math
 from collections import deque
 from typing import Deque, List, Optional, Tuple
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

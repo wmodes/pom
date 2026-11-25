@@ -11,7 +11,7 @@ import time
 import pytest
 
 from pom.conductor import Conductor, ConductorError, FloorKeeper, FloorState, NoSoundSource
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
 

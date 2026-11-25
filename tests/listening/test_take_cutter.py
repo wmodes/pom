@@ -317,7 +317,7 @@ def test_problems_are_logged_so_they_reach_journald(caplog):
 
 
 def test_a_split_is_logged_at_debug_when_the_module_flag_is_on(caplog):
-    from pom.log_setup import get_logger
+    from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.listening.take_cutter", True)
     try:
         take_cutter = TakeCutter()
@@ -329,7 +329,7 @@ def test_a_split_is_logged_at_debug_when_the_module_flag_is_on(caplog):
 
 
 def test_a_split_is_not_logged_when_the_module_flag_is_off(caplog):
-    from pom.log_setup import get_logger
+    from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.listening.take_cutter", False)
     try:
         take_cutter = TakeCutter()

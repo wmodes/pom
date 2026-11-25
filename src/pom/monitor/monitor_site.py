@@ -39,8 +39,8 @@ from typing import Callable, Mapping, Optional
 from flask import Flask, Response, abort, jsonify, render_template_string, request
 from werkzeug.serving import WSGIRequestHandler, make_server
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
 from pom.monitor.score_chart import ChartLook, render_score_chart
 from pom.monitor.chart_notebook import ChartNotebook

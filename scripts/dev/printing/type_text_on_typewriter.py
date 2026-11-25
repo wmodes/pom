@@ -20,7 +20,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
 from pom.config import Config  # noqa: E402
-from pom.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder  # noqa: E402
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")

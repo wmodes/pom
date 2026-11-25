@@ -110,7 +110,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 
 ```
 src/pom/
-  bookkeeper/          built   fault_recorder.py: faults as data (WARNING / CRITICAL, strict mode, cap, logging); log_setup.py: stdout logging, debug flag, per-module override, local log file. The old paths pom.fault_recorder and pom.log_setup still work (re-export files, to be deleted once callers are switched)
+  bookkeeper/          built   fault_recorder.py: faults as data (WARNING / CRITICAL, strict mode, cap, logging); log_setup.py: stdout logging, debug flag, per-module override, local log file
   config.py            built   shared settings, layered; [scorer], [qualifying], [oracle]
   startup.py           built   the startup runner; its ten duties are placeholders in planned_steps(), and printer.py does not call it yet
   printer.py           built   the entry point (python -m pom): builds every part from one Config and runs the Conductor; --mac-mic, --wav, --terminal

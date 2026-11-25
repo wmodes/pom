@@ -25,8 +25,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from pom.library.catalog import Passage
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.writing.prompt_builder import PromptBuilder
 from pom.writing.oracle_model_client import OracleModelClient
 

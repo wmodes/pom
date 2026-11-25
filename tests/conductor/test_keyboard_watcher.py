@@ -9,7 +9,7 @@ import pytest
 
 from pom.conductor import KeyboardWatcher
 from pom.conductor.keyboard_watcher import KeyboardWatcherError
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
 

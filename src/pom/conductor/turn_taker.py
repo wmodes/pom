@@ -51,8 +51,8 @@ from enum import Enum
 from typing import Callable, Optional, Tuple
 
 from pom.conductor.floor_keeper import Turn
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

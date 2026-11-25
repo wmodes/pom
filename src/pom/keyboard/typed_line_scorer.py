@@ -26,8 +26,8 @@ Design decisions, and why:
 import math
 from typing import Callable
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 from pom.scoring.clip_scorer import ScoredBy
 

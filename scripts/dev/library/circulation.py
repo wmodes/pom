@@ -23,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
 from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
-from pom.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 
 LIBRARY = os.path.join(HERE, "..", "..", "..", "library")
 PULL = 5      # the pull size used for the "all alike" column

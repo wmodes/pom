@@ -31,8 +31,8 @@ import math
 from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
-from pom.log_setup import get_logger
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
 
 DEFAULT_WEIGHT = 1.0
 _SHELF_KEYS = {"share", "holdings"}

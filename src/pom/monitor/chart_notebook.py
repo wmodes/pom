@@ -39,8 +39,8 @@ import threading
 from collections import deque
 from typing import Callable, Deque, List, Optional
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 from pom.monitor.tick_writer import TickWriter

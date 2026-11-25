@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
 from pom.listening import TakeCutter  # noqa: E402
-from pom.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 
 
 def main():

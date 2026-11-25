@@ -59,6 +59,7 @@
 ## E. Carried over from earlier, not from the audit
 
 - [ ] The service lights on the monitor page do not refresh while the page is open.
+- [ ] Explain to Wes why `src/pom/config.py` is not in the config folder (asked 2026-11-25). An explanation first, not a move.
 - [ ] A boot "starting…" page, so the screen is not black while the Printer starts.
 - [ ] The live hot-plug tests, listed as "not tried" in [Robust Testing.md](Robust Testing.md): unplug and replug the microphone; then the serial adapter mid-portent with the real printer; then paper-out and printer-off (the handshake); then power, network, monitor, killing `pom`. Wes will do some of these at home; Claude watches `journalctl -u pom -f` on pom1 and records the result.
 

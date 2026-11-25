@@ -20,7 +20,7 @@ import subprocess
 from typing import Callable, List, Optional
 
 from pom.device_finder import AUTO, Device, DeviceFinder, DeviceFinderError
-from pom.log_setup import get_logger
+from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)

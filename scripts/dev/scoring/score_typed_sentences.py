@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config  # noqa: E402
 from pom.listening import TakeCutter  # noqa: E402
 from pom.listening.take_cutter import ClipLevel  # noqa: E402
-from pom.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 from pom.qualifying import bar_keeper_from_settings, Ruling   # noqa: E402
 from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
 

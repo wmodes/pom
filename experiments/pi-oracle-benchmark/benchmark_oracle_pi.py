@@ -51,7 +51,7 @@ sys.path.insert(0, str(ROOT / "experiments" / "oracle-bakeoff"))
 sys.path.insert(0, str(ROOT / "experiments" / "pi-benchmark"))
 from pom.config import Config                                      # noqa: E402
 from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
-from pom.log_setup import configure_logging                        # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging                        # noqa: E402
 from pom.writing import PromptBuilder                               # noqa: E402
 from pom.writing import OracleModelClient                            # noqa: E402
 from run_oracle_bakeoff import (HINGES, corpus_fingerprint, draw_seed, git_state,   # noqa: E402

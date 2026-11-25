@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.listening.eavesdropper import Eavesdropper
 from pom.listening.whisper_model_client import Segment
 from pom.listening import ClipLevel, Take, TakeCutter

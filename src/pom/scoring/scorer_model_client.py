@@ -53,8 +53,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from pom.log_setup import get_logger
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)

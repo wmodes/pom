@@ -35,9 +35,9 @@ import uuid
 import wave
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.listening.audio_format import SAMPLE_BYTES, SAMPLE_RATE
-from pom.log_setup import get_logger
+from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)

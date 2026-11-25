@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.keyboard import TypedLineScorer, TypedLineScorerError
 from pom.qualifying import Attempt, BarKeeper, PercentileBar, Ruling
 from pom.scoring import ScoredBy, ScoredClip

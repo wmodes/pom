@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(ROOT, "src"))    # scripts may import pom
 
 from pom.config import Config  # noqa: E402
 from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
-from pom.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 
 
 def show_pulls(selector, pulls, count):

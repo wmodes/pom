@@ -16,7 +16,7 @@ handed a function.
 """
 from typing import Callable, List, Optional
 
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.monitor.notebook_entry import TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceShape
 

@@ -26,7 +26,7 @@ Design decisions, and why:
 from typing import Iterator, Optional
 
 from pom.listening.take_cutter import ClipLevel
-from pom.log_setup import get_logger
+from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 from pom.qualifying.bar_keeper import Ruling
 from pom.scoring.clip_scorer import ScoredBy

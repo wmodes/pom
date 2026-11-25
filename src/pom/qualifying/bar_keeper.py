@@ -47,8 +47,8 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import Iterator, Optional
 
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.percentile_bar import PercentileBar
 from pom.qualifying.bar import Bar
 

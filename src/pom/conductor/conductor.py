@@ -41,8 +41,8 @@ import threading
 from typing import Callable, Optional
 
 from pom.conductor.floor_keeper import FloorKeeper, FloorState
-from pom.fault_recorder import FaultRecorder
-from pom.log_setup import get_logger
+from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module

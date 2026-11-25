@@ -57,7 +57,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 from pom.library import Circulation, ends_unfinished  # noqa: E402
 from pom.library.endings import ends_sentence  # noqa: E402  (scripts may import the package, never the reverse)
-from pom.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 
 DEFAULT_OVERSIZE = 1.0       # a piece with no sentence end to cut at may run to this times the limit before it is dropped (1.0: the ceiling holds)
 LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")

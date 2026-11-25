@@ -51,12 +51,12 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Iterator, Optional, Tuple
 
-from pom.fault_recorder import FaultRecorder
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.listening.audio_deck import AudioDeck
 from pom.listening.audio_format import FRAME_SECONDS
 from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter)
 from pom.listening.track_splitter import TrackSplitter
-from pom.log_setup import get_logger
+from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)

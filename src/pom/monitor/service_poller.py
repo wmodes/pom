@@ -15,7 +15,7 @@ Design decisions, and why:
 import threading
 from typing import Callable, Mapping
 
-from pom.log_setup import get_logger
+from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
 from pom.monitor.status_board import StatusBoard
 

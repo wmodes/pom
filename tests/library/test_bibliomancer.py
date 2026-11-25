@@ -450,7 +450,7 @@ def test_an_empty_store_logs_a_critical_line(caplog):
 
 
 def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
-    from pom.log_setup import get_logger
+    from pom.bookkeeper.log_setup import get_logger
     store, circulation = tiles()
     get_logger("pom.library.bibliomancer", True)
     try:
@@ -464,7 +464,7 @@ def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
 
 
 def test_draws_are_not_logged_when_the_module_flag_is_off(caplog):
-    from pom.log_setup import get_logger
+    from pom.bookkeeper.log_setup import get_logger
     store, circulation = tiles()
     get_logger("pom.library.bibliomancer", False)
     try:

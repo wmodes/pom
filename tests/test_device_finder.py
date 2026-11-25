@@ -132,6 +132,30 @@ def test_each_lookup_that_finds_something_logs_again_so_the_log_shows_every_time
     assert len(lines(caplog, logging.INFO)) == 2
 
 
+# --- found ----------------------------------------------------------------------------------
+
+def test_found_says_whether_the_last_lookup_found_a_device():
+    finder = ListedFinder([])
+    assert finder.found is False                             # nothing has been looked up yet
+    finder.resolve("auto")
+    assert finder.found is False
+    finder.devices = [MIC]
+    finder.resolve("auto")
+    assert finder.found is True
+    finder.devices = []
+    finder.resolve("auto")
+    assert finder.found is False
+
+
+def test_found_is_true_for_a_name_that_fell_back_to_what_is_there_and_false_when_the_listing_failed():
+    finder = ListedFinder([MIC])
+    finder.resolve("Nonesuch")
+    assert finder.found is True
+    finder.devices = OSError("x")
+    finder.resolve("auto")
+    assert finder.found is False
+
+
 # --- nothing there ----------------------------------------------------------------------------
 
 def test_nothing_there_hands_the_setting_back_as_written_so_opening_it_fails_loudly(caplog):

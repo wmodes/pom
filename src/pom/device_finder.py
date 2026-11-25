@@ -55,6 +55,7 @@ class DeviceFinder:
 
     Attributes:
         report: Problems met (nothing there, several there, a name not found, a listing that failed). Never raised outside strict mode.
+        found: True if the last lookup found a device to use (False before the first lookup, and when the last one found nothing).
     """
     KIND = "device"                     # what a subclass's devices are called in the log ("sound card", "serial port")
 
@@ -67,6 +68,7 @@ class DeviceFinder:
         self.report = FaultRecorder(strict=strict, error=error)      # it keeps the lines for tests; this class does the logging, so it is not capped
         self._log_limit = log_limit
         self._tries = 0                                              # lookups in a row that found nothing
+        self.found = False
 
     def _available(self) -> List[Device]:
         """What the machine says is there right now. A subclass implements this; it may raise (that counts as nothing there)."""
@@ -77,11 +79,14 @@ class DeviceFinder:
         try:
             devices = sorted(self._available(), key=lambda device: device.address)
         except Exception as problem:                                   # a failed listing is the same as nothing there
+            self.found = False
             self._found_nothing(f"could not list the {self.KIND}s ({type(problem).__name__})", setting)
             return setting
         if not devices:
+            self.found = False
             self._found_nothing(f"no {self.KIND} was found", setting)
             return setting
+        self.found = True
         if self._tries:
             _log.info("%s found after %d tries", self.KIND, self._tries)
         self._tries = 0

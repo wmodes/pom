@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from pom.conductor import Conductor, ConductorError, FloorKeeper, FloorState
+from pom.conductor import Conductor, ConductorError, FloorKeeper, FloorState, NoSoundSource
 from pom.fault_recorder import FaultRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
@@ -311,6 +311,19 @@ class TestTheRoomKeepsGoing:
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 1)
         assert rig.conductor.report.warnings[0] == "the room could not be built (OSError); trying again"
+
+    def test_a_room_with_nothing_to_hear_with_is_tried_again_and_says_nothing(self):
+        rig = Rig([NoSoundSource("no sound card"), NoSoundSource("no sound card"), room(attempt("Found it."))])
+        with rig.running():
+            assert wait_for(lambda: len(rig.seen) == 1)
+        assert rig.factory_calls == 3
+        assert rig.conductor.report.ok                           # the one who knows has said so; no second line here
+
+    def test_any_other_error_building_the_room_is_still_a_warning(self):
+        rig = Rig([RuntimeError("boom"), room(attempt("Found it."))])
+        with rig.running():
+            assert wait_for(lambda: len(rig.seen) == 1)
+        assert rig.conductor.report.warnings == ["the room could not be built (RuntimeError); trying again"]
 
     def test_a_finder_that_raises_is_replaced(self):
         rig = Rig([room(attempt("Before."), raises=RuntimeError("boom")), room(attempt("After."))])

@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from pom.conductor import AddressFinder, BootSlipper, Conductor, FloorKeeper, HingeFinder, KeyboardWatcher, TurnTaker
+from pom.conductor import AddressFinder, BootSlipper, Conductor, FloorKeeper, HingeFinder, KeyboardWatcher, NoSoundSource, TurnTaker
 from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
@@ -200,7 +200,10 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
             return WavDeck(options.wav, speed=options.speed)
         if options.mac_mic is not None:
             return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds)
-        return MicDeck(card_finder.resolve(listening.device), buffer_seconds=listening.buffer_seconds)
+        device = card_finder.resolve(listening.device)
+        if not card_finder.found:
+            raise NoSoundSource("no sound card was found")       # the finder has logged it; arecord is not started for a card that is not there
+        return MicDeck(device, buffer_seconds=listening.buffer_seconds)
 
     last_room = {"ears": None}     # the Eavesdropper of the room that ran last, so the next one's clock can carry on from it
 

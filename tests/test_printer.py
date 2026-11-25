@@ -39,6 +39,21 @@ def no_network(monkeypatch):
     monkeypatch.setattr("urllib.request.urlopen", refuse)
 
 
+@pytest.fixture(autouse=True)
+def a_sound_card_is_there(monkeypatch):
+    """Most tests build a room and do not care which microphone it is: stand in for a lookup that found a card, as on the Pi (this Mac has no arecord).
+    A test that cares sets its own stand-in for the finder."""
+    class FoundCard:
+        found = True
+
+        def __init__(self, timeout_seconds, log_limit):
+            pass
+
+        def resolve(self, device):
+            return "plughw:CARD=Test,DEV=0"
+    monkeypatch.setattr(printer_module, "CaptureCardFinder", FoundCard)
+
+
 class TestTheWiring:
     def test_every_part_is_built_and_joined_in_a_conductor(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "none"\n')
@@ -85,6 +100,8 @@ class TestTheWiring:
                 asked.append(("timeout", timeout_seconds))
                 asked.append(("log_limit", log_limit))
 
+            found = True
+
             def resolve(self, device):
                 asked.append(("resolve", device))
                 return f"found-{len(asked)}"
@@ -102,6 +119,30 @@ class TestTheWiring:
         assert asked[1] == ("log_limit", 50)                                         # and how many failed lookups are logged
         assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
         assert opened == [("found-3", 3.0), ("found-4", 3.0)]                        # the deck gets what the finder answered, not the setting
+
+    def test_with_no_sound_card_found_no_deck_is_opened_and_the_room_is_not_built(self, tmp_path, monkeypatch):
+        from pom.conductor import NoSoundSource
+        opened = []
+
+        class StandInFinder:
+            found = False
+
+            def __init__(self, timeout_seconds, log_limit):
+                pass
+
+            def resolve(self, device):
+                return device
+
+        class StandInDeck:
+            def __init__(self, device, buffer_seconds):
+                opened.append(device)
+
+        monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
+        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        p = build(tmp_path, '[listening]\ndevice = "auto"\n[terminal]\nmode = "none"\n')
+        with pytest.raises(NoSoundSource):
+            p.conductor._room_factory()
+        assert opened == []                                                          # arecord is never started for a card that is not there
 
     def test_the_terminal_is_found_by_a_finder_that_gets_the_search_pattern_and_the_log_limit(self, tmp_path, monkeypatch):
         made, asked = [], []

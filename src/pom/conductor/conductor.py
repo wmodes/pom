@@ -57,6 +57,11 @@ class ConductorError(ValueError):
     """Raised for any Conductor problem, but only in strict mode (development and tests)."""
 
 
+class NoSoundSource(Exception):
+    """Raised by the room factory when there is nothing to hear with (no microphone found). Whoever looked has already said so, so the Conductor
+    only waits and asks again."""
+
+
 def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -213,6 +218,10 @@ class Conductor:
         while not self._stop.is_set():
             try:
                 finder, ears = self._room_factory()
+            except NoSoundSource:                  # the finder has said so (and is the one record of it); wait and look again
+                if self._stop.wait(self._restart_pause):
+                    return
+                continue
             except Exception as problem:           # nothing may stop the oracle
                 self.report.warn(f"the room could not be built ({type(problem).__name__}); trying again")
                 if self._stop.wait(self._restart_pause):

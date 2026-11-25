@@ -11,7 +11,7 @@ import urllib.request
 import pytest
 
 from pom.library import Passage
-from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, SilenceShape, TurnHistory
+from pom.monitor import Light, MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, SilenceShape, TurnHistory
 from pom.writing import Portent
 
 PASSWORD = "open sesame"
@@ -276,7 +276,7 @@ class TestTheStats:
         stats = get(client, "/api/turns").get_json()["stats"]
         assert (stats["bar"], stats["bar_text"], stats["window_size"]) == (6.789, "6.79", 84)
         assert (stats["attempts_heard"], stats["attempts_scored"]) == (900, 870)
-        assert stats["services"] == {"whisper": True, "oracle": False}
+        assert stats["services"] == {"whisper": "up", "oracle": "down"}
         page = get(client, "/").get_data(as_text=True)
         assert "6.79" in page and "900" in page and "870" in page
 
@@ -1076,7 +1076,7 @@ class TestTheQuietStart:
 
 
 class TestTheServiceLights:
-    """Each light says up, DOWN or none: True, False, or None (there is nothing to check)."""
+    """Each light says up (green), waiting (amber), DOWN (red) or none (grey): a Light, or the old True, False, None."""
 
     @staticmethod
     def lights(**services):
@@ -1096,18 +1096,31 @@ class TestTheServiceLights:
         page, _ = self.lights(terminal=None)
         assert 'terminal: <b class="muted">none</b>' in page and 'terminal: <b class="down"' not in page
 
-    def test_the_feed_keeps_the_three_apart(self):
-        _, feed = self.lights(a=True, b=False, c=None)
-        assert feed == {"a": True, "b": False, "c": None}
+    def test_waiting_is_waiting_in_amber(self):
+        page, _ = self.lights(scorer=Light.WAITING)
+        assert 'scorer: <b class="waiting">waiting</b>' in page
 
-    @pytest.mark.parametrize("value", [1, 0, "yes", ""])
-    def test_anything_else_is_up_or_down_as_it_would_be_as_a_bool(self, value):
+    def test_the_lights_made_of_the_light_type_say_the_same_as_the_old_ones(self):
+        page, _ = self.lights(a=Light.UP, b=Light.DOWN, c=Light.NONE)
+        assert 'a: <b class="up">up</b>' in page and 'b: <b class="down">DOWN</b>' in page and 'c: <b class="muted">none</b>' in page
+
+    def test_the_feed_keeps_the_four_apart_as_words(self):
+        _, feed = self.lights(a=True, b=False, c=None, d=Light.WAITING)
+        assert feed == {"a": "up", "b": "down", "c": "none", "d": "waiting"}
+
+    @pytest.mark.parametrize("value, word", [(1, "up"), (0, "down"), ("yes", "up"), ("", "down")])
+    def test_anything_else_is_up_or_down_as_it_would_be_as_a_bool(self, value, word):
         _, feed = self.lights(x=value)
-        assert feed == {"x": bool(value)}
+        assert feed == {"x": word}
+
+    def test_the_page_has_a_colour_for_waiting_in_both_themes(self):
+        _, _, client, _ = make(status=lambda: MonitorStatus(services={"a": Light.WAITING}))
+        page = get(client, "/").get_data(as_text=True)
+        assert ".waiting { color:var(--warn); }" in page and ".up { color:var(--good); }" in page and ".down { color:var(--bad); }" in page and page.count("--warn:") == 3        # the light palette, and the dark one in its two places
 
     def test_each_light_is_its_own_span_in_order(self):
-        page, _ = self.lights(whisper=True, scorer=True, oracle=False, terminal=None)
-        assert page.index("whisper:") < page.index("scorer:") < page.index("oracle:") < page.index("terminal:")
+        page, _ = self.lights(mic=True, whisper=True, scorer=True, oracle=False, printer=None)
+        assert page.index("mic:") < page.index("whisper:") < page.index("scorer:") < page.index("oracle:") < page.index("printer:")
 
     def test_no_lights_no_line(self):
         _, _, client, _ = make(status=lambda: MonitorStatus())

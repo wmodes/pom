@@ -8,7 +8,8 @@ name and the password you gave (the default is `demo`).
 Usage:
     serve_fake_turns.py                    # serve on port 8080 with the password "demo"
     serve_fake_turns.py --live 15          # add a new invented turn every 15 seconds, to watch the page update itself
-    serve_fake_turns.py --terminal down    # the terminal's light: up, down or none (the default)
+    serve_fake_turns.py --printer down     # the printer's light: up, waiting, down or none (the default)
+    serve_fake_turns.py --light scorer=waiting --light mic=down   # any other light (mic, whisper, scorer, oracle), repeatable
     serve_fake_turns.py --hide-hinges      # the page with the hinge text hidden (numbers only)
     serve_fake_turns.py --port 9000 --password hunter2
     serve_fake_turns.py --chart            # also draw the chart: the real BarKeeper and anchor (from config/pom.toml) over invented attempts
@@ -33,6 +34,7 @@ from typing import Optional
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                     # noqa: E402
+from pom.monitor import Light                                                     # noqa: E402
 from pom.library import Passage                                                  # noqa: E402
 from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape  # noqa: E402
 from pom.qualifying import Ruling, bar_keeper_from_settings               # noqa: E402
@@ -124,7 +126,8 @@ def main() -> None:
     parser.add_argument("--password", default="demo", help="the password for the page")
     parser.add_argument("--hide-hinges", action="store_true", help="hide the hinge text, as show_hinges = false does")
     parser.add_argument("--live", type=float, default=0.0, metavar="SECONDS", help="add a new invented turn this often")
-    parser.add_argument("--terminal", choices=["up", "down", "none"], default="none", help="what the terminal's light says on the page")
+    parser.add_argument("--printer", choices=[light.value for light in Light], default="none", help="what the printer's light says on the page")
+    parser.add_argument("--light", action="append", default=[], metavar="NAME=STATE", help="set another light, for example scorer=waiting (repeatable); states: up, waiting, down, none")
     parser.add_argument("--chart", action="store_true", help="draw the chart from the real BarKeeper over invented attempts")
     parser.add_argument("--quiet-start", type=float, default=0.0, metavar="MINUTES", help="with --chart, nothing is heard for this many stream minutes")
     parser.add_argument("--history-minutes", type=float, default=None, metavar="MINUTES",
@@ -135,7 +138,12 @@ def main() -> None:
 
     rng = random.Random(7)
     started = time.time()
-    services = {"whisper": True, "scorer": True, "oracle": True, "terminal": {"up": True, "down": False, "none": None}[args.terminal]}
+    services = {"mic": Light.UP, "whisper": Light.UP, "scorer": Light.UP, "oracle": Light.UP, "printer": Light(args.printer)}
+    for setting in args.light:
+        name, _, state = setting.partition("=")
+        if name not in services or state not in {light.value for light in Light}:
+            parser.error(f"--light {setting!r}: say NAME=STATE with a name from {', '.join(services)} and a state from {', '.join(light.value for light in Light)}")
+        services[name] = Light(state)
     if args.chart:
         config = Config.load(ROOT / "config" / "pom.toml")
         room = InventedRoom(config, rng, args.speed, quiet_start_minutes=args.quiet_start,
@@ -161,9 +169,9 @@ def main() -> None:
             "Authorization": "Basic " + base64.b64encode(f"x:{args.password}".encode()).decode()})
         with urllib.request.urlopen(request, timeout=10) as response:
             feed = json.load(response)
-        light = {True: "up", False: "down", None: "none"}[feed["stats"]["services"]["terminal"]]
+        light = feed["stats"]["services"]["printer"]
         print(f"the site answered: {len(feed['turns'])} turns, bar {feed['stats']['bar_text']}, "
-              f"{feed['stats']['attempts_heard']} attempts heard, terminal light {light}")
+              f"{feed['stats']['attempts_heard']} attempts heard, printer light {light}")
         site.stop()
         return
 

@@ -41,6 +41,7 @@ from werkzeug.serving import WSGIRequestHandler, make_server
 
 from pom.fault_recorder import FaultRecorder
 from pom.log_setup import get_logger
+from pom.monitor.light import Light
 from pom.monitor.score_chart import ChartLook, render_score_chart
 from pom.monitor.chart_notebook import ChartNotebook
 from pom.monitor.turn_history import TurnHistory, TurnRecord
@@ -86,8 +87,8 @@ class MonitorStatus:
         window_size: How many scores the window holds now.
         attempts_heard: How many attempts have been heard since the Printer started.
         attempts_scored: How many of them were scored.
-        services: Whether each thing the Printer depends on is answering, by name, for example {"whisper": True}: True is up, False is down,
-            None is none (there is no such thing to answer, for example no terminal is configured).
+        services: The light for each thing the Printer depends on, by name, in the order they are shown, for example {"mic": Light.UP}: up, waiting, down or
+            none (see Light). The old True (up), False (down) and None (none) are taken too.
         algorithm: The name of the bar type in use, for example "decaying_quantile" ("" if not known).
         bar_description: One line saying how the BarKeeper works and how it is set (numbers only), shown beside the algorithm.
     """
@@ -95,7 +96,7 @@ class MonitorStatus:
     window_size: int = 0
     attempts_heard: int = 0
     attempts_scored: int = 0
-    services: Mapping[str, Optional[bool]] = field(default_factory=dict)
+    services: Mapping[str, Light] = field(default_factory=dict)
     algorithm: str = ""
     bar_description: str = ""
 
@@ -123,11 +124,11 @@ def _snippet(text: str, chars: int) -> str:
 
 
 # The dark colours, written once: used for a device set to dark (until the icon is clicked) and for a page the icon has set to dark.
-_DARK_COLOURS = ("color-scheme:dark; --bg:#16140f; --fg:#ece7dc; --muted:#a39d90; --line:#3a352b; --card:#1f1c15; --good:#5cc27a; --bad:#ff8a80; "
+_DARK_COLOURS = ("color-scheme:dark; --bg:#16140f; --fg:#ece7dc; --muted:#a39d90; --line:#3a352b; --card:#1f1c15; --good:#5cc27a; --warn:#e3b341; --bad:#ff8a80; "
                  "--accent:#e0a36b; --dot:#f2efe6; --bar:#ff6b6b;")
 
 _STYLE = """
-:root { color-scheme:light; --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#dcd6c9; --card:#fff; --good:#1f7a3a; --bad:#b3261e; --accent:#7a3b12; --dot:#000; --bar:#d62828; }
+:root { color-scheme:light; --bg:#fbfaf7; --fg:#1d1b18; --muted:#6b665e; --line:#dcd6c9; --card:#fff; --good:#1f7a3a; --warn:#9a6700; --bad:#b3261e; --accent:#7a3b12; --dot:#000; --bar:#d62828; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { %(dark)s } }
 :root[data-theme="dark"] { %(dark)s }
 * { box-sizing: border-box; }
@@ -141,7 +142,7 @@ a { color: var(--accent); }
 .tiles { display:grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap:.6rem; }
 .tile { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.6rem .8rem; }
 .tile b { display:block; font-size:1.35rem; } .tile span { color:var(--muted); font-size:.85rem; }
-.services span { margin-right:1rem; white-space:nowrap; } .up { color:var(--good); } .down { color:var(--bad); }
+.services span { margin-right:1rem; white-space:nowrap; } .up { color:var(--good); } .waiting { color:var(--warn); } .down { color:var(--bad); } .none { color:var(--muted); }
 table { width:100%; border-collapse: collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; }
 th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--line); vertical-align: top; }
 th { color:var(--muted); font-weight:600; font-size:.85rem; } td.num { text-align:right; font-variant-numeric: tabular-nums; }
@@ -220,7 +221,7 @@ _INDEX = """<!doctype html>
   <div class="tile"><b data-stat="since_start">{{ s.turns_since_start }}</b><span>turns since start</span></div>
   <div class="tile"><b data-stat="uptime">{{ s.uptime }}</b><span>up</span></div>
 </div>
-{% if services %}<p class="services">{% for name, up in services %}<span>{{ name }}: {% if up is none %}<b class="muted">none</b>{% else %}<b class="{{ 'up' if up else 'down' }}">{{ 'up' if up else 'DOWN' }}</b>{% endif %}</span>{% endfor %}</p>{% endif %}
+{% if services %}<p class="services">{% for name, light in services %}<span>{{ name }}: {% if light == 'none' %}<b class="muted">none</b>{% else %}<b class="{{ light }}">{{ 'DOWN' if light == 'down' else light }}</b>{% endif %}</span>{% endfor %}</p>{% endif %}
 {% if s.algorithm or s.bar_description %}<p class="rule"><span class="muted">Bar type:</span> <b>{{ s.algorithm }}</b>{% if s.bar_description %} <span class="muted">&mdash; a score above {{ s.bar_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
 <p class="muted small">Black dots: attempts. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last {{ chart_minutes }} minutes.</p>{% endif %}
@@ -395,7 +396,7 @@ class MonitorSite:
             "attempts_heard": status.attempts_heard,
             "attempts_scored": status.attempts_scored,
             "uptime": "just started" if uptime == "just now" else uptime,
-            "services": {str(name): (None if up is None else bool(up)) for name, up in dict(status.services).items()},
+            "services": {str(name): str(Light.of(light)) for name, light in dict(status.services).items()},
             "algorithm": str(status.algorithm or ""),
             "bar_description": str(status.bar_description or ""),
         }

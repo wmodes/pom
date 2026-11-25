@@ -36,6 +36,13 @@ class TestWhatItRuns:
         arguments = recorded_arguments(tmp_path, device="MacBook Pro Microphone")
         assert arguments[arguments.index("-i") + 1] == ":MacBook Pro Microphone"
 
+    def test_it_tells_that_sound_arrived_like_any_mic_deck(self, tmp_path):
+        beats = []
+        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(1, 2)"), heard=lambda: beats.append(1))
+        wait_for_the_reader(deck)
+        deck.close()
+        assert len(beats) == 2
+
     def test_it_is_a_mic_deck(self):
         assert issubclass(MacMicDeck, MicDeck)
 

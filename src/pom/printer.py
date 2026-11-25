@@ -43,7 +43,7 @@ from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
 from pom.log_setup import configure_logging, get_logger
-from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape
+from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
@@ -79,14 +79,22 @@ class Options:
     keyboard: bool = True
 
 
-def answers(url: str) -> bool:
-    """True if the llama-server behind this chat address says it is healthy."""
+def health(url: str) -> Light:
+    """How the llama-server behind this chat address is: UP if its health address says ok, WAITING if it says 503 (it answers but is still loading its
+    model), DOWN if it does not answer or says anything else."""
     parts = urllib.parse.urlparse(url)
     try:
         with urllib.request.urlopen(f"{parts.scheme}://{parts.netloc}/health", timeout=3):
-            return True
+            return Light.UP
+    except urllib.error.HTTPError as error:              # (an HTTPError is a URLError, so it is caught first)
+        return Light.WAITING if error.code == 503 else Light.DOWN
     except (urllib.error.URLError, OSError, ValueError):
-        return False
+        return Light.DOWN
+
+
+def answers(url: str) -> bool:
+    """True if the llama-server behind this chat address says it is healthy and ready."""
+    return health(url) is Light.UP
 
 
 def reachable(url: str) -> bool:
@@ -95,29 +103,6 @@ def reachable(url: str) -> bool:
         with urllib.request.urlopen(url, timeout=3):
             return True
     except (urllib.error.URLError, OSError, ValueError):
-        return False
-
-
-class ServiceWatch:
-    """Which servers answer, checked at most every `every` seconds so the monitoring page's polling does not hammer them.
-
-    Each check says True (up), False (down), or None (there is nothing to check: no terminal is configured)."""
-
-    def __init__(self, checks: dict, every: float = DEFAULT_SERVICE_CHECK_SECONDS, clock=time.monotonic):
-        self._checks, self._every, self._clock, self._at, self._last = checks, every, clock, None, {}
-
-    def __call__(self) -> dict:
-        now = self._clock()
-        if self._at is None or now - self._at >= self._every:
-            self._last, self._at = {name: _safely(check) for name, check in self._checks.items()}, now
-        return dict(self._last)
-
-
-def _safely(check) -> bool:
-    try:
-        answer = check()
-        return None if answer is None else bool(answer)
-    except Exception:                                    # a check that fails is a server that does not answer
         return False
 
 
@@ -134,18 +119,21 @@ class Printer:
     """
 
     def __init__(self, conductor: Conductor, history: TurnHistory, site: Optional[MonitorSite], terminal, floor: FloorKeeper, parts: dict,
-                 services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None):
+                 services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None, poller: Optional[ServicePoller] = None):
         self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
-        self._services, self._warmer, self._slipper = services, warmer, slipper
+        self._services, self._warmer, self._slipper, self._poller = services, warmer, slipper, poller
 
     def run(self) -> None:
-        """Starts the monitoring site (if any), the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
+        """Starts the monitoring site (if any), the status poller, the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
         if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
             _log.warning("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
             self.site = None
         elif self.site is not None:
             _log.info("monitoring site listening on port %s", self.site.port)
-        _log.info("services: %s", ", ".join(f"{name} {'up' if up else 'NOT answering'}" for name, up in self._services().items()))
+        if self._poller is not None:
+            self._poller.poll_once()                     # one round now, so the line below says how things are; then it goes on in its own thread
+            self._poller.start()
+        _log.info("services: %s", ", ".join(f"{name} {light}" for name, light in self._services().items()))
         if self._warmer is not None:
             self._warmer.start()                         # in the background: the Printer listens at once, whatever state the servers are in
         if self._slipper is not None:
@@ -153,6 +141,8 @@ class Printer:
         try:
             self.conductor.run()
         finally:
+            if self._poller is not None:
+                self._poller.stop()
             if self._slipper is not None:
                 self._slipper.stop()
             if self._warmer is not None:
@@ -193,17 +183,28 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at)
     take_cutter = TakeCutter(max_words=listening.max_clip_words)
 
+    # the status board: every light on the monitoring page, kept in one place. The microphone posts to it for itself as sound arrives; a poller asks the
+    # servers and the printer. NO NEWS IS DOWN: a light whose last post is too old shows down (see pom/monitor/status_board.py). A recording has no microphone.
+    board = StatusBoard()
+    if not options.wav:
+        board.expect("mic", monitor.mic_down_after_seconds)
+    for name in ("whisper", "scorer", "oracle", "printer"):
+        board.expect(name, monitor.service_down_after_seconds)
+
+    def sound_arrived() -> None:
+        board.post("mic", Light.UP)
+
     card_finder = CaptureCardFinder(listening.device_lookup_seconds, config.device_search_log_limit)     # turns `auto` into the microphone's card, looked up again at each start of listening
 
     def make_deck():
         if options.wav:
             return WavDeck(options.wav, speed=options.speed)
         if options.mac_mic is not None:
-            return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds)
+            return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds, heard=sound_arrived)
         device = card_finder.resolve(listening.device)
         if not card_finder.found:
             raise NoSoundSource("no sound card was found")       # the finder has logged it; arecord is not started for a card that is not there
-        return MicDeck(device, buffer_seconds=listening.buffer_seconds)
+        return MicDeck(device, buffer_seconds=listening.buffer_seconds, heard=sound_arrived)
 
     last_room = {"ears": None}     # the Eavesdropper of the room that ran last, so the next one's clock can carry on from it
 
@@ -275,11 +276,11 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         now = stream_now()
         return MonitorStatus(bar=bar_keeper.bar_at(now), window_size=bar_keeper.window_size_at(now),
                              attempts_heard=snapshot["heard"], attempts_scored=snapshot["scored"],
-                             services=services(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe())
+                             services=board.lights(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe())
 
-    services = ServiceWatch({"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: answers(scoring.url),
-                             "oracle": lambda: answers(oracle.url),
-                             "terminal": lambda: None if terminal is None else terminal.online(wait=False)}, every=monitor.service_check_seconds)
+    poller = ServicePoller(board, {"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: health(scoring.url),
+                                   "oracle": lambda: health(oracle.url),
+                                   "printer": lambda: None if terminal is None else terminal.online(wait=False)}, monitor.service_check_seconds)
     site = None
     if monitor.enabled:
         if not monitor.password:
@@ -297,8 +298,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
              "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
-             "warmer": warmer, "boot_slipper": slipper}
-    return Printer(conductor, history, site, terminal, floor, parts, services, warmer, slipper)
+             "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller}
+    return Printer(conductor, history, site, terminal, floor, parts, board.lights, warmer, slipper, poller)
 
 
 def _make_terminal(mode: str, settings, search_log_limit: int):

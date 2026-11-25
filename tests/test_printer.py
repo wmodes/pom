@@ -14,7 +14,8 @@ from pom.config import Config
 from pom.conductor import BootSlipper, Conductor, FloorKeeper, KeyboardWatcher, TurnTaker
 from pom.listening import MicDeck
 from pom.monitor import MonitorSite
-from pom.printer import Options, Printer, ServiceWatch, answers, build_printer, parse_options, reachable
+from pom.monitor import Light
+from pom.printer import Options, Printer, answers, build_printer, health, parse_options, reachable
 from pom.printing import ConsoleTerminal, TerminalPort
 from pom.scoring import ScorerWarmer
 
@@ -107,7 +108,7 @@ class TestTheWiring:
                 return f"found-{len(asked)}"
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds):
+            def __init__(self, device, buffer_seconds, heard=None):
                 opened.append((device, buffer_seconds))
 
         monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
@@ -119,6 +120,59 @@ class TestTheWiring:
         assert asked[1] == ("log_limit", 50)                                         # and how many failed lookups are logged
         assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
         assert opened == [("found-3", 3.0), ("found-4", 3.0)]                        # the deck gets what the finder answered, not the setting
+
+    def test_sound_arriving_from_the_microphone_posts_the_mic_light_to_the_board(self, tmp_path, monkeypatch):
+        decks = []
+
+        class StandInDeck:
+            def __init__(self, device, buffer_seconds, heard=None):
+                self.heard = heard
+                decks.append(self)
+
+        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        p = build(tmp_path, '[monitor]\nmic_down_after_seconds = 5\n[terminal]\nmode = "none"\n')
+        assert p.parts["board"].lights()["mic"] is Light.DOWN                      # nothing has been heard yet
+        p.conductor._room_factory()
+        decks[0].heard()                                                           # what the real deck does for each frame
+        assert p.parts["board"].lights()["mic"] is Light.UP
+
+    def test_the_mic_light_goes_down_when_the_sound_stops_for_the_time_in_the_settings(self, tmp_path, monkeypatch):
+        decks, now = [], [1000.0]
+
+        class StandInDeck:
+            def __init__(self, device, buffer_seconds, heard=None):
+                self.heard = heard
+                decks.append(self)
+
+        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        monkeypatch.setattr("pom.monitor.status_board.time.monotonic", lambda: now[0])
+        p = build(tmp_path, '[monitor]\nmic_down_after_seconds = 7\n[terminal]\nmode = "none"\n')
+        p.parts["board"]._clock = lambda: now[0]
+        p.conductor._room_factory()
+        decks[0].heard()
+        now[0] += 7.0
+        assert p.parts["board"].lights()["mic"] is Light.UP
+        now[0] += 0.5
+        assert p.parts["board"].lights()["mic"] is Light.DOWN
+
+    def test_the_servers_and_printer_lights_last_for_the_service_setting(self, tmp_path):
+        p = build(tmp_path, '[monitor]\nservice_down_after_seconds = 77\n[terminal]\nmode = "console"\n')
+        assert p.parts["board"]._down_after["printer"] == 77.0 and p.parts["board"]._down_after["whisper"] == 77.0
+
+    def test_a_model_that_is_still_loading_shows_waiting_for_the_scorer_and_the_oracle_and_whisper_is_asked_by_its_own_address(self, tmp_path, monkeypatch):
+        asked = []
+        monkeypatch.setattr(printer_module, "health", lambda url: asked.append(url) or Light.WAITING)
+        monkeypatch.setattr(printer_module, "reachable", lambda url: asked.append(url) or True)
+        p = build(tmp_path, '[scorer]\nurl = "http://127.0.0.1:1/score"\n[oracle]\nurl = "http://127.0.0.1:2/write"\n[listening]\nwhisper_url = "http://127.0.0.1:3"\n'
+                            '[terminal]\nmode = "none"\n')
+        p.parts["poller"].poll_once()
+        lights = p.parts["board"].lights()
+        assert (lights["scorer"], lights["oracle"], lights["whisper"], lights["printer"]) == (Light.WAITING, Light.WAITING, Light.UP, Light.NONE)
+        assert sorted(asked) == ["http://127.0.0.1:1/score", "http://127.0.0.1:2/write", "http://127.0.0.1:3"]
+
+    def test_a_recording_has_no_mic_light(self, tmp_path):
+        p = build(tmp_path, '[terminal]\nmode = "none"\n', wav="whatever.wav")
+        assert "mic" not in p.parts["board"].lights() and list(p.parts["board"].lights()) == ["whisper", "scorer", "oracle", "printer"]
 
     def test_with_no_sound_card_found_no_deck_is_opened_and_the_room_is_not_built(self, tmp_path, monkeypatch):
         from pom.conductor import NoSoundSource
@@ -134,7 +188,7 @@ class TestTheWiring:
                 return device
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds):
+            def __init__(self, device, buffer_seconds, heard=None):
                 opened.append(device)
 
         monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
@@ -251,7 +305,7 @@ class TestTheMovedSettingsReachTheirParts:
         assert (p._warmer._poll_seconds, p._warmer._attempts) == (2.5, 7)
 
     def test_the_service_check_interval(self, tmp_path):
-        assert build(tmp_path, "[monitor]\nservice_check_seconds = 40\n")._services._every == 40.0
+        assert build(tmp_path, "[monitor]\nservice_check_seconds = 40\n").parts["poller"]._every_seconds == 40.0
 
     def test_the_terminal_limits(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "serial"\nmax_typed_line_characters = 80\nrefused_character_retry_seconds = 0.5\n'
@@ -356,25 +410,30 @@ class TestTheMonitorMovesWithTheStream:
 
     def test_the_status_also_carries_the_services_and_the_bar_description(self, tmp_path):
         status = build(tmp_path, self.CONFIG).site._status_source()
-        assert status.algorithm == "decaying_quantile" and "steady tick" in status.bar_description and set(status.services) == {"whisper", "scorer", "oracle", "terminal"}
+        assert status.algorithm == "decaying_quantile" and "steady tick" in status.bar_description and list(status.services) == ["mic", "whisper", "scorer", "oracle", "printer"]
 
 
 class TestTheTerminalLight:
-    """`terminal` among the service lights: up if the terminal answers, DOWN if it does not, none if there is no terminal."""
+    """`printer` among the status lights: up if the terminal answers, DOWN if it does not, none if there is no terminal."""
 
     @staticmethod
     def light(tmp_path, mode_text):
         p = build(tmp_path, f'[monitor]\nenabled = true\npassword = "pw"\n[terminal]\n{mode_text}\n')
-        return p, p.site._status_source().services["terminal"]
+        p.parts["poller"].poll_once()                    # the poller runs in the background in a real run; here, one round
+        return p, p.site._status_source().services["printer"]
 
     def test_no_terminal_is_none(self, tmp_path):
-        assert self.light(tmp_path, 'mode = "none"')[1] is None
+        assert self.light(tmp_path, 'mode = "none"')[1] is Light.NONE
 
     def test_the_console_stand_in_is_up(self, tmp_path):
-        assert self.light(tmp_path, 'mode = "console"')[1] is True
+        assert self.light(tmp_path, 'mode = "console"')[1] is Light.UP
 
     def test_a_serial_port_that_is_not_there_is_down(self, tmp_path):
-        assert self.light(tmp_path, 'mode = "serial"\nport = "/dev/no-such-terminal-device"')[1] is False
+        assert self.light(tmp_path, 'mode = "serial"\nport = "/dev/no-such-terminal-device"')[1] is Light.DOWN
+
+    def test_a_light_that_has_never_been_asked_about_is_down_not_up(self, tmp_path):
+        p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n[terminal]\nmode = "console"\n')
+        assert set(p.site._status_source().services.values()) == {Light.DOWN}
 
     def test_a_terminal_being_typed_on_is_up_and_the_page_does_not_wait(self, tmp_path):
         import threading
@@ -391,37 +450,23 @@ class TestTheTerminalLight:
         assert held.wait(2)
         try:
             started = time.monotonic()
-            assert p.site._status_source().services["terminal"] is True and time.monotonic() - started < 1.0
+            p.parts["poller"].poll_once()
+            assert p.site._status_source().services["printer"] is Light.UP and time.monotonic() - started < 1.0
         finally:
             release.set()
             thread.join(2)
 
-    def test_the_lights_are_the_servers_and_the_terminal(self, tmp_path):
-        assert set(self.light(tmp_path, 'mode = "none"')[0].site._status_source().services) == {"whisper", "scorer", "oracle", "terminal"}
+    def test_the_lights_are_the_mic_the_servers_and_the_printer_in_that_order(self, tmp_path):
+        assert list(self.light(tmp_path, 'mode = "none"')[0].site._status_source().services) == ["mic", "whisper", "scorer", "oracle", "printer"]
 
     def test_the_page_says_none(self, tmp_path):
         import base64
         p, _ = self.light(tmp_path, 'mode = "none"')
         headers = {"Authorization": "Basic " + base64.b64encode(b"x:pw").decode()}
-        assert 'terminal: <b class="muted">none</b>' in p.site.app.test_client().get("/", headers=headers).get_data(as_text=True)
+        assert 'printer: <b class="muted">none</b>' in p.site.app.test_client().get("/", headers=headers).get_data(as_text=True)
 
     def test_the_site_is_told_when_listening_began(self, tmp_path):
         assert build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n').site._stream_began_at == 0.0
-
-
-class TestAServiceLightMayBeNone:
-    def test_a_check_that_says_none_stays_none(self):
-        assert ServiceWatch({"a": lambda: None})() == {"a": None}
-
-    def test_the_others_are_still_up_or_down(self):
-        lights = ServiceWatch({"a": lambda: 1, "b": lambda: 0, "c": lambda: True, "d": lambda: False, "e": lambda: "yes"})()
-        assert lights == {"a": True, "b": False, "c": True, "d": False, "e": True}
-        assert all(light is True or light is False for light in lights.values())          # real booleans, not 1 and 0
-
-    def test_a_check_that_fails_is_down_not_none(self):
-        def boom():
-            raise RuntimeError("x")
-        assert ServiceWatch({"a": boom})() == {"a": False}
 
 
 class TestTheBarStartsWithTheStream:
@@ -642,10 +687,10 @@ class FakeTerminalClose:
         self.closed += 1
 
 
-def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None, slipper=None):
+def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None, slipper=None, poller=None):
     monitor = type("M", (), {"host": "0.0.0.0", "port": 8080})()
     return Printer(conductor or FakeConductor(), None, site, terminal, None, {"monitor": monitor, "mode": "none"},
-                   services or (lambda: {"whisper": True, "scorer": False}), warmer, slipper)
+                   services or (lambda: {"whisper": Light.UP, "scorer": Light.DOWN}), warmer, slipper, poller)
 
 
 class FakeWarmer:
@@ -659,6 +704,22 @@ class FakeWarmer:
 
     def stop(self):
         self.events.append("warmer stopped")
+
+
+class FakePoller:
+    """Records when the status poller was asked for a round, started and stopped, in the same list the conductor writes to."""
+
+    def __init__(self, events):
+        self.events = events
+
+    def poll_once(self):
+        self.events.append("poller polled")
+
+    def start(self):
+        self.events.append("poller started")
+
+    def stop(self):
+        self.events.append("poller stopped")
 
 
 class FakeSlipper:
@@ -712,7 +773,18 @@ class TestRunningAndStopping:
         conductor = FakeConductor()
         with caplog.at_level(logging.INFO, logger="pom.printer"):
             assembled(None, None, conductor).run()
-        assert conductor.ran and any("whisper up, scorer NOT answering" in r.getMessage() for r in caplog.records)
+        assert conductor.ran and any("whisper up, scorer down" in r.getMessage() for r in caplog.records)
+
+    def test_the_status_poller_polls_once_for_the_log_line_then_runs_for_the_whole_run(self):
+        events = []
+        assembled(None, None, RecordingConductor(events), poller=FakePoller(events)).run()
+        assert events == ["poller polled", "poller started", "conductor ran", "poller stopped"]
+
+    def test_the_poller_is_stopped_even_when_the_conductor_raises(self):
+        events = []
+        with pytest.raises(RuntimeError):
+            assembled(None, None, RecordingConductor(events, raises=RuntimeError("boom")), poller=FakePoller(events)).run()
+        assert events[-1] == "poller stopped"
 
     def test_the_scorers_warm_up_starts_before_the_conductor_and_stops_after_it(self):
         events = []
@@ -795,6 +867,30 @@ class TestTheServiceChecks:
         monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(error))
         assert not answers("http://127.0.0.1:8099/x") and not reachable("http://127.0.0.1:8110")
 
+    @staticmethod
+    def http_error(code):
+        return urllib.error.HTTPError("http://x/health", code, "x", {}, None)
+
+    def test_a_server_that_answers_ok_is_up(self, monkeypatch):
+        class Open:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: Open())
+        assert health("http://127.0.0.1:8099/v1/chat/completions") is Light.UP
+
+    def test_a_server_that_says_503_is_loading_its_model_so_it_is_waiting(self, monkeypatch):
+        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(self.http_error(503)))
+        assert health("http://127.0.0.1:8099/x") is Light.WAITING
+        assert not answers("http://127.0.0.1:8099/x")                 # waiting is not answering, for the scorer's warm-up
+
+    @pytest.mark.parametrize("error", [http_error.__func__(500), http_error.__func__(404), urllib.error.URLError("down"), OSError("down"), ValueError("bad url")])
+    def test_any_other_trouble_is_down(self, monkeypatch, error):
+        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(error))
+        assert health("http://127.0.0.1:8099/x") is Light.DOWN
+
     def test_answers_asks_the_servers_health_address(self, monkeypatch):
         seen = []
 
@@ -807,21 +903,3 @@ class TestTheServiceChecks:
         monkeypatch.setattr("urllib.request.urlopen", lambda url, timeout=None: seen.append(url) or Open())
         answers("http://127.0.0.1:8099/v1/chat/completions")
         assert seen == ["http://127.0.0.1:8099/health"]
-
-    def test_the_checks_are_made_at_most_every_so_often(self):
-        now, calls = [100.0], []
-        watch = ServiceWatch({"a": lambda: calls.append("a") or True}, every=15.0, clock=lambda: now[0])
-        assert watch() == {"a": True} and watch() == {"a": True}
-        assert calls == ["a"]
-        now[0] = 116.0
-        watch()
-        assert calls == ["a", "a"]
-
-    def test_a_check_that_raises_is_a_server_that_does_not_answer(self):
-        watch = ServiceWatch({"a": lambda: (_ for _ in ()).throw(RuntimeError("boom")), "b": lambda: True})
-        assert watch() == {"a": False, "b": True}
-
-    def test_a_copy_is_handed_out(self):
-        watch = ServiceWatch({"a": lambda: True})
-        watch()["a"] = False
-        assert watch() == {"a": True}

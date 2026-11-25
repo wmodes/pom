@@ -548,6 +548,8 @@ MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's
     ("terminal", "max_typed_line_characters", "80", 80, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "refused_character_retry_seconds", "0.5", 0.5, 1.0, ["0", "-1", '"1"', "true", "inf"]),
     ("terminal", "wait_log_reminder_seconds", "30", 30.0, 60.0, ["0", "-1", '"60"', "true", "inf"]),
+    ("monitor", "mic_down_after_seconds", "7", 7.0, 5.0, ["0", "-1", '"5"', "true", "inf"]),
+    ("monitor", "service_down_after_seconds", "90", 90.0, 45.0, ["0", "-1", '"45"', "true", "inf"]),
 ]
 
 
@@ -1355,6 +1357,14 @@ class TestTheLimitsFitTheirSettings:
     def test_a_writing_limit_not_longer_than_the_oracle_timeout_is_warned_about(self, tmp_path):
         warnings = self.warnings(tmp_path, "[oracle]\ntimeout = 300\n[conductor]\nwriting_seconds = 300\n")
         assert any("conductor.writing_seconds (300) should be longer than oracle.timeout (300)" in w for w in warnings)
+
+    def test_a_light_that_goes_down_no_later_than_its_check_is_warned_about(self, tmp_path):
+        for text in ("[monitor]\nservice_check_seconds = 20\nservice_down_after_seconds = 20\n", "[monitor]\nservice_check_seconds = 50\n"):
+            warnings = self.warnings(tmp_path, text)
+            assert any("monitor.service_down_after_seconds" in w and "longer than monitor.service_check_seconds" in w for w in warnings)
+
+    def test_a_light_that_goes_down_after_more_than_its_check_is_fine(self, tmp_path):
+        assert self.warnings(tmp_path, "[monitor]\nservice_check_seconds = 10\nservice_down_after_seconds = 11\n") == []
 
     def test_a_writing_limit_longer_than_the_oracle_timeout_is_fine(self, tmp_path):
         assert self.warnings(tmp_path, "[oracle]\ntimeout = 100\n[conductor]\nwriting_seconds = 300\n") == []

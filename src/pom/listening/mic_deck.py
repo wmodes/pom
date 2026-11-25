@@ -23,7 +23,7 @@ import queue
 import shutil
 import subprocess
 import threading
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
 
 from pom.fault_recorder import FaultRecorder
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_RATE
@@ -60,15 +60,18 @@ class MicDeck:
     _MISSING_HINT = "this is meant to run on the Pi"
 
     def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord",
-                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False):
+                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False, heard: Optional[Callable[[], None]] = None):
         """Args:
             device: The ALSA capture device, e.g. plughw:0,0 (`arecord -l` lists them).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
             strict: Raise MicDeckError on any problem instead of recording it.
+            heard: Called, with no arguments, as each frame comes from the microphone (by the thread that reads it), so the status board can
+                tell that sound is arriving. A callback that raises is ignored: it must never stop the sound.
         """
         self.report = FaultRecorder(strict=strict, error=MicDeckError, logger=_log)
         self.dropped_frames = 0
+        self._heard = heard
         if not (isinstance(device, str) and device.strip()):
             self.report.warn(f"the capture device must be a name such as {self._FALLBACK_DEVICE}, got {device!r}; "
                              f"using {self._FALLBACK_DEVICE}")
@@ -112,6 +115,7 @@ class MicDeck:
                 if len(data) < FRAME_BYTES:
                     break
                 self._put(data)
+                self._tell_sound_arrived()
         except (OSError, ValueError):                       # the pipe was closed under us
             pass
         try:
@@ -119,6 +123,14 @@ class MicDeck:
                 self._fault("critical", f"the microphone stopped sending sound ({self._TOOL} ended); the Printer can no longer hear")
         finally:
             self._put(None)                                 # tells frames() the sound has ended
+
+    def _tell_sound_arrived(self) -> None:
+        """Calls `heard`, if there is one. Whatever it does, the sound goes on."""
+        if self._heard is not None:
+            try:
+                self._heard()
+            except Exception:                               # the board must never stop the sound
+                pass
 
     def _put(self, item: Optional[bytes]) -> None:
         """Adds to the buffer, throwing away the oldest frame if it is full (the end marker is never lost)."""

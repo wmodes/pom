@@ -46,6 +46,41 @@ def collect(deck):
     return list(deck.frames())
 
 
+class TestTellingThatSoundArrived:
+    """`heard` is called for each frame as it comes from the microphone, by the thread that reads it, so it does not wait for whoever uses the sound."""
+
+    def test_it_is_called_once_for_each_frame_without_anyone_using_the_sound(self, tmp_path):
+        beats = []
+        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, 3, 4, 5)"), heard=lambda: beats.append(1))
+        wait_for_the_reader(deck)
+        deck.close()
+        assert len(beats) == 5
+
+    def test_it_is_not_called_when_no_sound_comes(self, tmp_path):
+        beats = []
+        deck = MicDeck(arecord=fake_arecord(tmp_path, "sys.exit(1)"), heard=lambda: beats.append(1))
+        wait_for_the_reader(deck)
+        deck.close()
+        assert beats == []
+
+    def test_it_is_not_called_for_a_part_of_a_frame(self, tmp_path):
+        beats = []
+        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, extra=b'xx')"), heard=lambda: beats.append(1))
+        wait_for_the_reader(deck)
+        deck.close()
+        assert len(beats) == 1
+
+    def test_a_callback_that_raises_does_not_stop_the_sound(self, tmp_path):
+        def broken():
+            raise RuntimeError("the board broke")
+        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, 3)"), heard=broken)
+        assert [value_of(f) for f in collect(deck)] == [1, 2, 3]
+
+    def test_without_a_callback_nothing_changes(self, tmp_path):
+        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(7)"))
+        assert [value_of(f) for f in collect(deck)] == [7]
+
+
 class TestWhatItRuns:
     def test_arecord_is_started_for_16khz_mono_16bit_raw(self, tmp_path):
         record = tmp_path / "argv.txt"

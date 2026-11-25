@@ -90,7 +90,7 @@ typewriter
 | Keyboard: `TypedLineScorer`, `KeyboardWatcher` | Built |
 | Printing: `PortentFormatter`, `TerminalPort` | Built; tried on stand-ins, not yet on the real CadetWriter |
 | Conducting: `FloorKeeper`, `TurnTaker`, `Conductor`, entry point (`python -m pom`) | Built; burn-tested on the Mac, running as services on the Pi |
-| Monitoring site | Built, with a terminal light (up, DOWN, none) and a kiosk on the Pi's own monitor; a richer printer status line (on hold, out of paper) is not |
+| Monitoring site | Built, with five status lights (mic, whisper, scorer, oracle, printer: up, waiting, DOWN, none) kept on a status board where no news is down, and a kiosk on the Pi's own monitor; a richer printer status line (on hold, out of paper) is not |
 | Start-up duties | Runner built; the duties are placeholders (the scorer warm-up is done elsewhere) |
 
 ### How it runs

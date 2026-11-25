@@ -17,6 +17,8 @@ Design decisions, and why:
   * macOS asks the first time a program records from the microphone; the terminal app that runs this needs the
     permission under System Settings > Privacy & Security > Microphone.
 """
+from typing import Callable, Optional
+
 from pom.listening.audio_format import SAMPLE_RATE
 from pom.listening.mic_deck import DEFAULT_BUFFER_SECONDS, MicDeck, MicDeckError
 from pom.log_setup import get_logger
@@ -40,14 +42,15 @@ class MacMicDeck(MicDeck):
     _MISSING_HINT = "install it with `brew install ffmpeg`"
 
     def __init__(self, device: str = DEFAULT_MAC_DEVICE, ffmpeg: str = "ffmpeg",
-                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False):
+                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False, heard: Optional[Callable[[], None]] = None):
         """Args:
             device: The AVFoundation audio input: `default` for the system's default input, or a device name.
             ffmpeg: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
             strict: Raise MicDeckError on any problem instead of recording it.
+            heard: Called as each frame comes from the microphone (see MicDeck).
         """
-        super().__init__(device, ffmpeg, buffer_seconds, strict)
+        super().__init__(device, ffmpeg, buffer_seconds, strict, heard)
 
     def _command(self, program: str, device: str) -> list[str]:
         """ffmpeg reading the AVFoundation input and writing raw 16 kHz mono 16-bit samples to its standard output."""

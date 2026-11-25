@@ -423,10 +423,15 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **silence shape**: How a silence is drawn, as one value worked out once from the chart's settings: the longest silence, the width of the cut, and so the edge: how much of each end is
   drawn at true scale. The chart, the chart notebook and the tick writer are all handed the same one, so none of them works the sizes out for itself and they cannot disagree.
   Example: `SilenceShape`, `silence_shape(look)`
-- **service light**: One word on the monitoring page for each thing the Printer depends on: whisper, scorer, oracle and the terminal. **up** (green) if it
-  answers, **DOWN** (red) if it does not, **none** (grey) if there is nothing to ask (no terminal is configured). The terminal's light is up if its port is open
-  or opens now, and up while a portent is being typed on it: the page asks `online(wait=False)` and never waits behind the typing. Example: `ServiceWatch`,
-  `online()`
+- **status board**: The one place every light is kept: each part posts how it is (a light) and when; the monitoring page reads only the board. The rule is
+  **no news is down**: a part registered with how long a post stays good (`mic_down_after_seconds`, `service_down_after_seconds`) is down when its last post is
+  older than that, whatever it said, and down if it has never posted. Example: `StatusBoard` (was: `ServiceWatch`, which asked each part when the page was opened)
+- **service poller**: The thread that asks the parts that have an address (whisper, scorer, oracle, the printer's port) how they are every `service_check_seconds`,
+  whether or not the page is open, and posts the answers to the status board. The microphone is not polled: it posts for itself as each frame of sound arrives.
+  Example: `ServicePoller`, `health()` (up on 200, waiting on 503 while a model loads, down otherwise), `online()`
+- **service light**: (see **light**) One for each thing the Printer depends on, in this order: **mic**, **whisper**, **scorer**, **oracle**, **printer** (the terminal).
+  The printer's light is up if its port is open or opens now, and up while a portent is being typed on it: the poller asks `online(wait=False)` and never waits behind
+  the typing
 - **kiosk**: The Printer's own screen: when a monitor is plugged into the Pi, a browser run by *cage* (a one-window Wayland compositor) shows the monitoring
   page full-screen on it, from `http://127.0.0.1:<port>/`. With no monitor it does nothing, and the Printer never notices either way. Example:
   `pom-display.service`, `scripts/setup/kiosk_browser.py`, `display-attached.sh`, `setup-kiosk.sh`

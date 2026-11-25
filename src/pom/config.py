@@ -97,7 +97,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "device_search_log_limit"
          "qualifying.average_floor_fraction", "qualifying.typed_lines_score_multiplier", "qualifying.typed_lines_bar_influence",
          "qualifying.anchor_score", "qualifying.anchor_interval_minutes", "qualifying.discard_scores_older_than_minutes",
          "qualifying.starting_bar_weight", "listening.max_clip_words", "scorer.warmup_poll_seconds", "scorer.warmup_attempts",
-         "monitor.service_check_seconds", "monitor.poll_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
+         "monitor.service_check_seconds", "monitor.mic_down_after_seconds", "monitor.service_down_after_seconds", "monitor.poll_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
          "terminal.wait_log_reminder_seconds", "terminal.data_bits", "terminal.parity", "terminal.stop_bits",
          "chart.window_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
          "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
@@ -168,6 +168,8 @@ DEFAULT_MONITOR_HOST = "0.0.0.0"
 DEFAULT_MONITOR_PORT = 8080
 DEFAULT_MONITOR_SHOW_HINGES = True
 DEFAULT_MONITOR_HISTORY_SECONDS = 3600.0
+DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS = 5.0
+DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS = 45.0
 DEFAULT_MONITOR_SERVICE_CHECK_SECONDS = 15.0
 DEFAULT_MONITOR_POLL_SECONDS = 5.0
 DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST = True
@@ -435,7 +437,11 @@ class MonitorSettings:
         show_hinges: True shows the hinge (what was said in the room) on the page; False shows numbers only.
         history_seconds: How long a turn stays on the page, above 0 (3600 is an hour). Kept in memory only. A turn also stays while its qualifier dot
             is still on the chart, however old it is; the tiles count only turns within this many seconds.
-        service_check_seconds: How often, at most, the page's service lights (whisper, scorer, oracle) are checked, above 0, so the page's
+        mic_down_after_seconds: How long without any sound arriving before the mic light goes down, above 0. Longer forgives a hiccup; shorter
+            reports a silent microphone sooner.
+        service_down_after_seconds: How long a server's (or the printer's) last check stays good, above 0: with no fresh answer for this long its
+            light goes down. Must be longer than `service_check_seconds` (the default is three checks).
+        service_check_seconds: How often the lights for the servers and the printer (whisper, scorer, oracle, printer) are checked, above 0, so the page's
             polling does not hammer the servers.
         password_on_localhost: True asks for the password of every request, including one from the Printer itself (its own display). False lets a
             request that comes from the Printer's own machine (127.0.0.1 or ::1, and not through a proxy) in without one; everyone else still needs it.
@@ -461,6 +467,8 @@ class MonitorSettings:
     chart_notebook_max_entries: int = DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES
     hinge_snippet_chars: int = DEFAULT_MONITOR_HINGE_SNIPPET_CHARS
     history_max_turns: int = DEFAULT_MONITOR_HISTORY_MAX_TURNS
+    mic_down_after_seconds: float = DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS
+    service_down_after_seconds: float = DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS
 
 
 @dataclass(frozen=True)
@@ -885,7 +893,11 @@ class Config:
             _whole(values.get("monitor.hinge_snippet_chars", DEFAULT_MONITOR_HINGE_SNIPPET_CHARS), "monitor.hinge_snippet_chars",
                    DEFAULT_MONITOR_HINGE_SNIPPET_CHARS, 1, report),
             _whole(values.get("monitor.history_max_turns", DEFAULT_MONITOR_HISTORY_MAX_TURNS), "monitor.history_max_turns",
-                   DEFAULT_MONITOR_HISTORY_MAX_TURNS, 1, report))
+                   DEFAULT_MONITOR_HISTORY_MAX_TURNS, 1, report),
+            _positive(values.get("monitor.mic_down_after_seconds", DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS), "monitor.mic_down_after_seconds",
+                      DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS, report),
+            _positive(values.get("monitor.service_down_after_seconds", DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS), "monitor.service_down_after_seconds",
+                      DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS, report))
         printing = PrintingSettings(
             _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
                       "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),
@@ -990,6 +1002,7 @@ class Config:
             _positive(values.get("conductor.check_seconds", DEFAULT_CONDUCTOR_CHECK_SECONDS), "conductor.check_seconds",
                       DEFAULT_CONDUCTOR_CHECK_SECONDS, report))
         _check_the_limits_fit(conductor, oracle, terminal, report)
+        _check_the_lights_fit(monitor, report)
         boot_slip = BootSlipSettings(
             _bool(values.get("boot_slip.enabled", DEFAULT_BOOT_SLIP_ENABLED), "boot_slip.enabled", report, DEFAULT_BOOT_SLIP_ENABLED),
             _text(values.get("boot_slip.text", DEFAULT_BOOT_SLIP_TEXT), "boot_slip.text", DEFAULT_BOOT_SLIP_TEXT, report),
@@ -1030,6 +1043,13 @@ def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSetting
     if terminal.mode != "none" and conductor.printing_seconds < longest_print:
         report.warn(f"conductor.printing_seconds ({conductor.printing_seconds:g}) is shorter than the time to type the longest portent "
                     f"({longest_print:.0f} s for {oracle.max_tokens} tokens at {terminal.characters_per_second:g} characters a second)")
+
+
+def _check_the_lights_fit(monitor: "MonitorSettings", report: FaultRecorder) -> None:
+    """Warns about a light that would go down between two checks: a check's answer must stay good longer than the time to the next check."""
+    if monitor.service_down_after_seconds <= monitor.service_check_seconds:
+        report.warn(f"monitor.service_down_after_seconds ({monitor.service_down_after_seconds:g}) should be longer than monitor.service_check_seconds "
+                    f"({monitor.service_check_seconds:g}), or a light goes down between two checks")
 
 
 def _read_file(path: Path, report: FaultRecorder) -> dict:

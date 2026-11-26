@@ -1,5 +1,8 @@
 """Tests for pom.config: shared settings from a TOML file and the environment, never raising."""
+import dataclasses
+import json
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -12,10 +15,50 @@ import pom.qualifying.decaying_quantile_bar
 import pom.qualifying.moving_average_bar
 
 
-def write(tmp_path, text):
+def write_exactly(tmp_path, text):
+    """Writes the config file as given: what is not in it is unset (and said)."""
     path = tmp_path / "pom.toml"
     path.write_text(text, encoding="utf-8")
     return path
+
+
+def every_default() -> dict:
+    """Every setting at its default, as a TOML document holds it: the top-level keys, then one table per section."""
+    from pom.defaults import SECTIONS, ProjectSettings
+    document = {f.name: f.default for f in dataclasses.fields(ProjectSettings)}
+    for section, settings in SECTIONS.items():
+        document[section] = {f.name: f.default for f in dataclasses.fields(settings)}
+    return document
+
+
+def toml_value(value) -> str:
+    """One value as TOML writes it (a JSON string is a TOML basic string)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(toml_value(v) for v in value) + "]"
+    if isinstance(value, str):
+        return json.dumps(value)
+    return repr(value)
+
+
+def write(tmp_path, text):
+    """Writes a complete config file, like the shipped one: every setting at its default, with the test's own lines laid over them, so only the
+    test's lines can draw a warning. Text that is not TOML is written as it is."""
+    try:
+        lines = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return write_exactly(tmp_path, text)
+    document = every_default()
+    for key, value in lines.items():
+        if isinstance(value, dict) and isinstance(document.get(key), dict):
+            document[key].update(value)
+        else:
+            document[key] = value
+    top = [f"{key} = {toml_value(value)}" for key, value in document.items() if not isinstance(value, dict)]
+    tables = [f"[{key}]\n" + "\n".join(f"{inner} = {toml_value(v)}" for inner, v in value.items())
+              for key, value in document.items() if isinstance(value, dict)]
+    return write_exactly(tmp_path, "\n".join(top) + "\n\n" + "\n\n".join(tables) + "\n")
 
 
 # --- Defaults and sources --------------------------------------------------------------
@@ -25,9 +68,9 @@ def test_defaults_when_there_is_no_file_and_no_environment():
     assert config.strict is False and config.log_level == "INFO" and config.problems.ok
 
 
-def test_a_missing_file_is_fine_and_silent(tmp_path):
+def test_a_missing_file_means_every_default_and_says_so_once(tmp_path):
     config = Config.load(tmp_path / "absent.toml", environ={})
-    assert config.problems.ok and config.strict is False
+    assert len(config.problems.warnings) == 1 and "was not found" in config.problems.warnings[0] and config.strict is False
 
 
 def test_file_values_are_read(tmp_path):
@@ -216,8 +259,7 @@ def test_config_samples_plug_straight_into_the_sampler():
 # --- The per-machine override file ----------------------------------------------------
 
 def write_pair(tmp_path, base, local):
-    main = tmp_path / "pom.toml"
-    main.write_text(base, encoding="utf-8")
+    main = write(tmp_path, base)
     if local is not None:
         (tmp_path / "pom.local.toml").write_text(local, encoding="utf-8")
     return main
@@ -1290,7 +1332,8 @@ def test_the_conductor_defaults_err_long():
 
 
 def write_nothing_in():
-    return Path("/nonexistent/pom.toml")
+    """No config file at all (Config.load's `path` is None): every setting is its default, and nothing is said."""
+    return None
 
 
 def test_all_the_conductor_values_are_read_from_the_section(tmp_path):
@@ -1449,7 +1492,9 @@ def test_the_template_has_the_password_empty_so_the_page_stays_off_until_one_is_
 
 
 def test_the_template_loads_cleanly_over_the_shipped_config(tmp_path):
-    config = Config.load(CONFIG_DIR / "pom.local.example.toml", environ={})
+    (tmp_path / "pom.toml").write_text((CONFIG_DIR / "pom.toml").read_text(encoding="utf-8"), encoding="utf-8")
+    (tmp_path / "pom.local.toml").write_text((CONFIG_DIR / "pom.local.example.toml").read_text(encoding="utf-8"), encoding="utf-8")
+    config = Config.load(tmp_path / "pom.toml", environ={})
     assert config.problems.ok
     assert config.monitor.enabled is True and config.monitor.password == ""
 
@@ -1545,3 +1590,48 @@ def test_a_chart_with_no_room_for_the_plot_puts_back_every_default_size_and_marg
     drawing = ChartSettings()
     sizes = ("drawing_width", "drawing_height", "margin_left", "margin_right", "margin_top", "margin_bottom")
     assert [getattr(config.chart, s) for s in sizes] == [getattr(drawing, s) for s in sizes] and config.chart.window_minutes == 7.0
+
+
+# --- A setting the file does not set (Design Audit D5.8) ---------------------------------------------------------------------------------
+
+def test_a_setting_the_file_does_not_set_takes_its_default_and_says_so(tmp_path):
+    config = Config.load(write_exactly(tmp_path, "[conductor]\nwrite_attempts = 2\n"), environ={})
+    assert config.conductor.freshness_seconds == 360.0 and config.conductor.write_attempts == 2
+    assert "conductor.freshness_seconds is not set; using 360" in config.problems.warnings
+    assert not any(w.startswith("conductor.write_attempts is not set") for w in config.problems.warnings)
+
+
+def test_every_setting_the_file_does_not_set_is_named_once(tmp_path):
+    from pom.config import KNOWN_KEYS
+    config = Config.load(write_exactly(tmp_path, "debug = true\n"), environ={})
+    unset = [w.split(" is not set")[0] for w in config.problems.warnings if " is not set; using " in w]
+    assert sorted(unset) == sorted(KNOWN_KEYS - {"debug"})
+
+
+def test_a_setting_given_by_the_environment_is_set(tmp_path):
+    config = Config.load(write_exactly(tmp_path, ""), environ={"POM_LOG_LEVEL": "DEBUG"})
+    assert not any(w.startswith("log_level is not set") for w in config.problems.warnings)
+
+
+def test_a_setting_the_local_file_sets_is_set(tmp_path):
+    main = write_exactly(tmp_path, "")
+    (tmp_path / "pom.local.toml").write_text("[monitor]\npassword = \"x\"\n", encoding="utf-8")
+    assert not any(w.startswith("monitor.password is not set") for w in Config.load(main, environ={}).problems.warnings)
+
+
+def test_with_no_file_asked_for_nothing_is_said(tmp_path):
+    assert Config.load(environ={}).problems.ok
+
+
+def test_a_config_file_that_is_not_there_is_one_warning_not_one_per_setting(tmp_path):
+    config = Config.load(tmp_path / "nowhere.toml", environ={})
+    assert config.problems.warnings == [f"config file {tmp_path / 'nowhere.toml'} was not found; every setting takes its default"]
+
+
+def test_an_unreadable_file_is_its_own_warning_not_one_per_setting(tmp_path):
+    config = Config.load(write_exactly(tmp_path, "this is = = not toml"), environ={})
+    assert len(config.problems.warnings) == 1 and "cannot read config file" in config.problems.warnings[0]
+
+
+def test_the_shipped_config_sets_everything_so_the_printer_starts_without_a_word():
+    assert Config.load(Path(__file__).resolve().parents[1] / "config" / "pom.toml", environ={}).problems.ok

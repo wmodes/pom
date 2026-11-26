@@ -15,9 +15,11 @@ Where values come from, highest priority first:
     4. The defaults in defaults.py.
 
 Design decisions, and why:
-  * Config obeys the project principle: it never raises. A missing file is normal (no warning); an unreadable or invalid one, an unknown
-    key, or a value that breaks its rule each fall back to the default and are held in `config.problems`, which the entry point logs once
-    the log exists (the log's own settings are in this file, so it cannot log as it reads).
+  * Config obeys the project principle: it never raises. Every fallback to a default is said: a setting the file does not set (a line
+    commented out of pom.toml takes its default), a value that breaks its rule, a file that is missing or cannot be read (one warning for
+    the whole file), and an unknown key (ignored). They are held in `config.problems`, which the entry point logs once the log exists (the
+    log's own settings are in this file, so it cannot log as it reads). A missing per-machine file is normal and says nothing; with no
+    file asked for at all (a test, a tool) nothing is said about unset settings.
   * One loop reads every setting the same way, walking the fields defaults.py declares; there is no list of keys to keep in step by hand.
   * A few rules span several settings (the oracle's exemplar range, the printed line's width, the chart's margins, the Conductor's limits
     against the oracle's timeout, the lights' timing). They are checked here, after each section is read; they warn, and only the first
@@ -164,27 +166,34 @@ class Config:
         """
         environ = os.environ if environ is None else environ
         problems = ConfigProblems()
-        table = {}
+        table, file_was_read = {}, False
         if path is not None:
             path = Path(path)
-            table = _read_file(path, problems)
-            table.update(_read_file(path.with_name(f"{path.stem}.local{path.suffix}"), problems))
+            main = _read_file(path, problems)
+            if not path.exists():
+                problems.add(f"config file {path} was not found; every setting takes its default")
+            file_was_read = main is not None
+            table = main or {}
+            table.update(_read_file(path.with_name(f"{path.stem}.local{path.suffix}"), problems) or {})
         labels = {}                                     # a value from the environment is named by its variable in a warning
         for variable, key in ENVIRONMENT.items():
             if variable in environ:
                 table[key], labels[key] = environ[variable], variable
-        project = _read_settings(ProjectSettings, "", table, labels, problems)
-        sections = {name: _read_settings(settings, name, table, labels, problems) for name, settings in SECTIONS.items()}
+        project = _read_settings(ProjectSettings, "", table, labels, problems, file_was_read)
+        sections = {name: _read_settings(settings, name, table, labels, problems, file_was_read) for name, settings in SECTIONS.items()}
         _check_across_settings(sections, problems)
         return cls(project, problems, **sections)
 
 
-def _read_settings(settings_class, section: str, table: Mapping, labels: Mapping, problems: ConfigProblems):
-    """One settings object: each field the file sets and its rule accepts, and the default for the rest (with a warning for a bad value)."""
+def _read_settings(settings_class, section: str, table: Mapping, labels: Mapping, problems: ConfigProblems, unset_is_said: bool):
+    """One settings object: each field the file sets and its rule accepts, and the default for the rest, with a warning for a bad value and,
+    when a file was read (`unset_is_said`), for a setting it does not set."""
     values = {}
     for settings_field in dataclasses.fields(settings_class):
         key = f"{section}.{settings_field.name}" if section else settings_field.name
         if key not in table:
+            if unset_is_said:
+                problems.add(f"{key} is not set; using {_shown(settings_field.default)}")
             continue
         value, rule, label = table[key], rule_of(settings_field), labels.get(key, key)
         try:
@@ -266,16 +275,17 @@ def _check_the_lights_fit(monitor: MonitorSettings, problems: ConfigProblems) ->
                      f"({monitor.service_check_seconds:g}), or a light goes down between two checks")
 
 
-def _read_file(path: Path, problems: ConfigProblems) -> dict:
-    """The file's keys, flattened to "section.name"; {} if it is missing (fine) or unreadable (warned). Unknown keys are warned (and never read)."""
+def _read_file(path: Path, problems: ConfigProblems) -> Optional[dict]:
+    """The file's keys, flattened to "section.name"; None if it is missing (said by the caller where it matters) or cannot be read (warned).
+    Unknown keys are warned (and never read)."""
     if not path.exists():
-        return {}
+        return None
     try:
         with path.open("rb") as handle:
             document = tomllib.load(handle)
     except (OSError, tomllib.TOMLDecodeError) as error:
         problems.add(f"cannot read config file {path}: {error}; using defaults")
-        return {}
+        return None
     document = _flatten(document)
     unknown = sorted(k for k in document if k not in KNOWN_KEYS)
     if unknown:

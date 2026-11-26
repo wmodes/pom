@@ -4,6 +4,7 @@ The rule itself (auto, a name, the fallback, the log) is tested in tests/test_de
 import logging
 import stat
 import sys
+import time
 
 import pytest
 
@@ -161,5 +162,7 @@ def test_a_missing_arecord_is_a_warning_not_a_crash(tmp_path, logged):
 def test_a_listing_that_hangs_is_given_up_on_after_the_timeout(tmp_path, logged):
     program = fake_arecord(tmp_path, "time.sleep(30)")
     found = CaptureCardFinder(ListeningSettings(device_lookup_seconds=0.3), arecord=program)
+    began = time.monotonic()
     assert found.resolve(AUTO) == AUTO
+    assert time.monotonic() - began < 3.0                     # it waited the setting's 0.3 s, not the default's 5
     assert len(logged.of(found).warnings()) == 1 and "TimeoutExpired" in logged.of(found).warnings()[0]

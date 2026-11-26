@@ -50,6 +50,7 @@ from typing import Optional
 from pom.library.catalog import Passage
 from pom.library.bibliomancer import Bibliomancer
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import OracleSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -86,19 +87,21 @@ class PromptBuilder:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        oracle: The `[oracle]` settings it was handed (it reads `prompt`).
         available: True if there is a prompt to build from.
     """
 
-    def __init__(self, prompt: str, selector: Bibliomancer, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, oracle: OracleSettings, selector: Bibliomancer, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            prompt: The oracle prompt, with `{exemplars}` and `{hinge}` marking where those go.
+            oracle: The `[oracle]` section: `prompt`, the oracle prompt, with `{exemplars}` and `{hinge}` marking where those go.
             selector: Where the exemplars are drawn from.
             strict: Raise PromptBuilderError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PromptBuilderError, DEBUG, strict)
+        self.oracle = oracle
         self._selector = selector
-        self._prompt = prompt.strip() if isinstance(prompt, str) else ""
+        self._prompt = oracle.prompt.strip()
         self._wants_exemplars = False
         if not self._prompt:
             self.logger.warning("no oracle prompt was given, so no prompt can be built")

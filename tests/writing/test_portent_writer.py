@@ -55,7 +55,7 @@ def writer(post=None, prompt=PROMPT, passages=(passage(1), passage(2)), rng=None
     """A writer over the real builder and client, with a fake server. Returns the writer, the server and the selector."""
     post = post if post is not None else FakePost()
     selector = selector if selector is not None else FakeSelector(passages)
-    return PortentWriter(PromptBuilder(prompt, selector), OracleModelClient(OracleSettings(url=URL), post=post), rng, strict), post, selector
+    return PortentWriter(PromptBuilder(OracleSettings(prompt=prompt), selector), OracleModelClient(OracleSettings(url=URL), post=post), rng, strict), post, selector
 
 
 def real_selector(seed=None):

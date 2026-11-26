@@ -124,7 +124,7 @@ def main() -> None:
             if not hinge:
                 break
             oracle = Config.load(CONFIG_PATH).oracle                       # read again, so prompt edits show at once
-            writer = PortentWriter(PromptBuilder(oracle.prompt, selector),
+            writer = PortentWriter(PromptBuilder(oracle, selector),
                                    OracleModelClient(oracle), rng)
             portent = writer.write(hinge, seed=args.seed if args.seed is not None else seed_for(hinge))
             if portent is not None:

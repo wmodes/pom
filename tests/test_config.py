@@ -1016,7 +1016,7 @@ def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accep
     copy.write_text(sample.read_text(encoding="utf-8"), encoding="utf-8")
     config = Config.load(copy, environ={})
     assert config.problems.ok and config.oracle.prompt.strip()
-    assert logged.of(PromptBuilder(config.oracle.prompt, selector=None)).ok()
+    assert logged.of(PromptBuilder(config.oracle, selector=None)).ok()
 
 
 @pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"yes"', True), ('"off"', False)])

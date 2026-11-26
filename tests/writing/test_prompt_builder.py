@@ -8,6 +8,7 @@ import random
 
 import pytest
 
+from pom.defaults import OracleSettings
 from pom.library import Passage, Catalog, Circulation, Bibliomancer
 from pom.writing import OraclePrompt, PromptBuilder, PromptBuilderError
 
@@ -41,7 +42,7 @@ class FakeSelector:
 
 def builder(prompt=PROMPT, passages=(passage(1), passage(2)), strict=False):
     selector = FakeSelector(passages)
-    return PromptBuilder(prompt, selector, strict=strict), selector
+    return PromptBuilder(OracleSettings(prompt=prompt), selector, strict=strict), selector
 
 
 class TestBuilding:
@@ -138,7 +139,7 @@ class TestBadInput:
         assert built.build(hinge) is None
         assert len(logged.of(built).warnings()) == 1 and selector.draws == 0
 
-    @pytest.mark.parametrize("prompt", ["", "  \n ", None, 7])
+    @pytest.mark.parametrize("prompt", ["", "  \n "])
     def test_no_prompt_means_unavailable(self, prompt, logged):
         built, selector = builder(prompt)
         assert not built.available and built.build("h") is None
@@ -190,7 +191,7 @@ def seed_of(hinge):
 class TestRepeatableWithASeededSelector:
     def test_reseeding_with_the_hinge_gives_the_same_exemplars_every_time(self):
         selector, rng = real_selector()
-        built = PromptBuilder(PROMPT, selector)
+        built = PromptBuilder(OracleSettings(prompt=PROMPT), selector)
         runs = []
         for _ in range(3):
             rng.seed(seed_of("The dog barks at ghosts."))
@@ -199,7 +200,7 @@ class TestRepeatableWithASeededSelector:
 
     def test_a_different_hinge_gets_different_exemplars(self):
         selector, rng = real_selector()
-        built = PromptBuilder(PROMPT, selector)
+        built = PromptBuilder(OracleSettings(prompt=PROMPT), selector)
         rng.seed(seed_of("one"))
         first = built.build("one")
         rng.seed(seed_of("two"))
@@ -207,11 +208,11 @@ class TestRepeatableWithASeededSelector:
 
     def test_unseeded_draws_differ_between_builds(self):
         selector, _ = real_selector()
-        built = PromptBuilder(PROMPT, selector)
+        built = PromptBuilder(OracleSettings(prompt=PROMPT), selector)
         assert len({built.build("same").text for _ in range(10)}) > 1
 
     def test_the_exemplar_count_follows_the_selector_range(self):
         selector, rng = real_selector()
-        built = PromptBuilder(PROMPT, selector)
+        built = PromptBuilder(OracleSettings(prompt=PROMPT), selector)
         counts = {len(built.build("x").exemplars) for _ in range(60)}
         assert counts <= set(range(3, 6)) and len(counts) > 1

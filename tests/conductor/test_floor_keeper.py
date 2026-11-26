@@ -41,12 +41,12 @@ class TestTheDefaults:
         k, _ = keeper()
         assert k.state is LISTENING and k.holder is None and k.overruns == 0 and k.turns_taken == 0
 
-    def test_good_settings_are_quiet(self):
-        assert keeper()[0].report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(keeper()[0]).ok()
 
-    def test_with_no_settings_given_it_uses_the_defaults_and_a_real_clock(self):
+    def test_with_no_settings_given_it_uses_the_defaults_and_a_real_clock(self, logged):
         k = FloorKeeper()
-        assert k.report.ok and k.state is LISTENING
+        assert logged.of(k).ok() and k.state is LISTENING
 
 
 class TestTakingTheFloor:
@@ -104,14 +104,14 @@ class TestAGoodTurn:
         k.take_floor("room").finish()
         assert k.state is LISTENING
 
-    def test_a_clock_that_steps_back_never_extends_the_recovery_or_trips_the_watchdog(self):
+    def test_a_clock_that_steps_back_never_extends_the_recovery_or_trips_the_watchdog(self, logged):
         k, clock = keeper(writing=100, recovering=0)
         k.take_floor("room").finish()
         clock.advance(-5)
-        assert k.state is LISTENING and k.report.ok
+        assert k.state is LISTENING and logged.of(k).ok()
         k.take_floor("room")
         clock.advance(-50)
-        assert k.state is WRITING and k.report.ok
+        assert k.state is WRITING and logged.of(k).ok()
 
     def test_a_turn_that_never_prints_can_finish_from_writing(self):
         k, _ = keeper()
@@ -145,31 +145,31 @@ class TestAGoodTurn:
         turn.finish()
         assert turn.start_printing() is False and k.state is RECOVERING
 
-    def test_each_state_is_timed_from_when_it_began(self):
+    def test_each_state_is_timed_from_when_it_began(self, logged):
         k, clock = keeper(writing=100, printing=50)
         turn = k.take_floor("room")
         clock.advance(90)
         turn.start_printing()
         clock.advance(40)                        # 130 s in all, but only 40 s of printing
-        assert k.state is PRINTING and k.report.ok
+        assert k.state is PRINTING and logged.of(k).ok()
 
 
 class TestTheWatchdog:
-    def test_a_turn_still_writing_past_its_limit_loses_the_floor(self):
+    def test_a_turn_still_writing_past_its_limit_loses_the_floor(self, logged):
         k, clock = keeper(writing=100)
         k.take_floor("room")
         clock.advance(100.0)
         assert k.state is WRITING                  # at the limit is still allowed
         clock.advance(0.1)
         assert k.state is RECOVERING and k.holder is None and k.overruns == 1
-        assert len(k.report.warnings) == 1 and "writing ran more than 100 s" in k.report.warnings[0]
+        assert len(logged.of(k).warnings()) == 1 and "writing ran more than 100 s" in logged.of(k).warnings()[0]
 
-    def test_a_turn_still_printing_past_its_limit_loses_the_floor(self):
+    def test_a_turn_still_printing_past_its_limit_loses_the_floor(self, logged):
         k, clock = keeper(printing=50)
         k.take_floor("room").start_printing()
         clock.advance(50.1)
         assert k.state is RECOVERING and k.overruns == 1
-        assert "printing ran more than 50 s" in k.report.warnings[0]
+        assert "printing ran more than 50 s" in logged.of(k).warnings()[0]
 
     def test_after_an_overrun_the_recovery_runs_and_then_the_floor_is_free(self):
         k, clock = keeper(writing=100)
@@ -197,17 +197,17 @@ class TestTheWatchdog:
         clock.advance(3)
         assert k.take_floor("keyboard") is not None
 
-    def test_a_long_silence_does_not_trigger_the_watchdog_while_listening(self):
+    def test_a_long_silence_does_not_trigger_the_watchdog_while_listening(self, logged):
         k, clock = keeper()
         clock.advance(100000)
-        assert k.state is LISTENING and k.report.ok and k.overruns == 0
+        assert k.state is LISTENING and logged.of(k).ok() and k.overruns == 0
 
-    def test_a_fault_is_a_warning_not_a_critical_because_the_keeper_recovered(self):
+    def test_a_fault_is_a_warning_not_a_critical_because_the_keeper_recovered(self, logged):
         k, clock = keeper(writing=10)
         k.take_floor("room")
         clock.advance(11)
         k.state
-        assert k.report.criticals == [] and len(k.report.warnings) == 1
+        assert logged.of(k).criticals() == [] and len(logged.of(k).warnings()) == 1
 
     def test_in_strict_mode_an_overrun_raises(self):
         k, clock = keeper(writing=10, strict=True)
@@ -220,14 +220,14 @@ class TestTheWatchdog:
 class TestTheHeartbeat:
     """A turn waiting patiently for the printer sends still_printing() so the watchdog does not take the floor from it."""
 
-    def test_each_beat_restarts_the_printing_clock(self):
+    def test_each_beat_restarts_the_printing_clock(self, logged):
         k, clock = keeper(printing=50)
         turn = k.take_floor("room")
         turn.start_printing()
         for _ in range(10):                        # 400 s of waiting in all, far past the 50 s limit
             clock.advance(40)
             assert turn.still_printing() is True
-        assert k.state is PRINTING and k.overruns == 0 and k.report.ok
+        assert k.state is PRINTING and k.overruns == 0 and logged.of(k).ok()
 
     def test_without_beats_the_same_wait_is_an_overrun(self):
         k, clock = keeper(printing=50)
@@ -280,7 +280,7 @@ class TestTheHeartbeat:
         turn.still_printing()
         assert k.state is PRINTING and k.holder == "room"
 
-    def test_a_stuck_lock_makes_a_beat_false_and_records_it(self, monkeypatch):
+    def test_a_stuck_lock_makes_a_beat_false_and_records_it(self, monkeypatch, logged):
         monkeypatch.setattr("pom.conductor.floor_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
         k, _ = keeper()
         turn = k.take_floor("room")
@@ -290,7 +290,7 @@ class TestTheHeartbeat:
             assert turn.still_printing() is False
         finally:
             k._lock.release()
-        assert "still_printing" in k.report.criticals[0]
+        assert "still_printing" in logged.of(k).criticals()[0]
 
 
 class TestAStaleTurn:
@@ -414,19 +414,19 @@ class TestTheLogs:
 class TestBadSettings:
     @pytest.mark.parametrize("name", ["writing_seconds", "printing_seconds"])
     @pytest.mark.parametrize("bad", [0, -1, float("nan"), float("inf"), "x", None, True])
-    def test_a_bad_limit_is_the_default_with_a_warning(self, name, bad):
+    def test_a_bad_limit_is_the_default_with_a_warning(self, name, bad, logged):
         k = FloorKeeper(**{name: bad}, clock=Clock())
-        assert len(k.report.warnings) == 1 and name in k.report.warnings[0]
+        assert len(logged.of(k).warnings()) == 1 and name in logged.of(k).warnings()[0]
         k.take_floor("room")
 
     @pytest.mark.parametrize("bad", [-1, float("nan"), "x", None, True])
-    def test_a_bad_recovery_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_recovery_is_the_default_with_a_warning(self, bad, logged):
         k = FloorKeeper(recovering_seconds=bad, clock=Clock())
-        assert len(k.report.warnings) == 1 and "recovering_seconds" in k.report.warnings[0]
+        assert len(logged.of(k).warnings()) == 1 and "recovering_seconds" in logged.of(k).warnings()[0]
 
-    def test_a_clock_that_is_not_a_function_is_replaced_with_a_warning(self):
+    def test_a_clock_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
         k = FloorKeeper(clock=5)
-        assert len(k.report.warnings) == 1 and "clock" in k.report.warnings[0] and k.state is LISTENING
+        assert len(logged.of(k).warnings()) == 1 and "clock" in logged.of(k).warnings()[0] and k.state is LISTENING
 
     def test_in_strict_mode_a_bad_setting_raises(self):
         with pytest.raises(FloorKeeperError):
@@ -465,13 +465,13 @@ class TestAStuckLock:
         _, turn = stuck
         assert turn.start_printing() is False and turn.finish() is False
 
-    def test_each_give_up_is_a_critical_fault_that_names_the_call(self, stuck):
+    def test_each_give_up_is_a_critical_fault_that_names_the_call(self, stuck, logged):
         k, turn = stuck
         k.take_floor("keyboard")
         k.state
         turn.finish()
-        assert len(k.report.criticals) == 3
-        assert "take_floor" in k.report.criticals[0] and "state" in k.report.criticals[1] and "finish" in k.report.criticals[2]
+        assert len(logged.of(k).criticals()) == 3
+        assert "take_floor" in logged.of(k).criticals()[0] and "state" in logged.of(k).criticals()[1] and "finish" in logged.of(k).criticals()[2]
 
     def test_it_waits_no_longer_than_the_timeout(self, stuck):
         k, _ = stuck

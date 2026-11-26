@@ -26,7 +26,7 @@ Design decisions, and why:
     HingeFinder; the room thread builds a fresh one (`room_factory`) after `restart_pause_seconds`, and again and again for as long as it
     takes, so plugging the microphone back in is all it needs. (A recording that ends is the end of the run: `restart_room=False`.) A
     thread that dies in a way nobody expected is started again by the watching thread. Nothing here may stop the oracle.
-  * NOTHING SAID IS KEPT. Attempts and portents pass through; nothing is logged or put in a report but counts, labels and seconds.
+  * NOTHING SAID IS KEPT. Attempts and portents pass through; nothing is logged but counts, labels and seconds.
   * SHUTTING DOWN. `stop()`, from any thread (a signal handler, a test), shuts the ears for good and closes the keyboard, and `run()` returns
     after waiting at most `JOIN_SECONDS` (5) for each thread. So a turn that is only a moment from done finishes, but a portent being typed
     for another half minute is cut off when the process exits (a burn test showed this): restart the service between portents if that
@@ -41,12 +41,10 @@ import threading
 from typing import Callable, Optional
 
 from pom.conductor.floor_keeper import FloorKeeper, FloorState
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.attempt import Attempt
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_CHECK_SECONDS = 1.0            # how often the watching thread looks at the floor and the threads
 DEFAULT_RESTART_PAUSE_SECONDS = 5.0    # the wait before the room (or the keyboard) is started again after it ended or failed
@@ -70,7 +68,7 @@ class Conductor:
     """Runs the Printer: listens, takes the floor, has a turn taken, and listens again.
 
     Attributes:
-        report: Problems met (a thread that failed or ended, a callback that raised). Never holds anything said.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         hinges_dropped: How many hinges arrived while the floor was held and were dropped.
         turns_taken: How many turns have been handed to the turn thread.
     """
@@ -78,7 +76,7 @@ class Conductor:
     def __init__(self, floor: FloorKeeper, turn_taker, room_factory: Callable[[], tuple], keyboard=None,
                  on_attempt: Optional[Callable[[Attempt], object]] = None, on_turn: Optional[Callable[..., object]] = None,
                  restart_room: bool = True, restart_pause_seconds: float = DEFAULT_RESTART_PAUSE_SECONDS,
-                 check_seconds: float = DEFAULT_CHECK_SECONDS, strict: bool = False):
+                 check_seconds: float = DEFAULT_CHECK_SECONDS, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             floor: The FloorKeeper.
             turn_taker: A TurnTaker (anything with take_turn(turn, attempt) returning a result).
@@ -91,8 +89,9 @@ class Conductor:
             restart_pause_seconds: The wait before a part is started again, 0 or more.
             check_seconds: How often the watching thread looks at the floor and the threads, above 0.
             strict: Raise ConductorError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=ConductorError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ConductorError, DEBUG, strict)
         self._floor, self._turn_taker, self._room_factory, self._keyboard = floor, turn_taker, room_factory, keyboard
         self._on_attempt, self._on_turn = on_attempt, on_turn
         self._restart_room = bool(restart_room)
@@ -112,26 +111,26 @@ class Conductor:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.report.warn(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
         return default
 
     # --- Running --------------------------------------------------------------------
 
     def run(self) -> None:
         """Runs the Printer until `stop()` is called (or, without `restart_room`, until the room ends). Blocks."""
-        self.report.info("conductor: starting")
+        self.logger.info("conductor: starting")
         self._stop.clear()
         self._start_threads()
         try:
             while not self._stop.wait(self._check):
                 self._watch()
                 if not self._restart_room and not self._running("room") and self._floor.state is FloorState.LISTENING:
-                    self.report.info("conductor: the room ended and is not to be started again, so the run is over")
+                    self.logger.info("conductor: the room ended and is not to be started again, so the run is over")
                     break
         finally:
             self.stop()
             self._join_threads()
-            self.report.info("conductor: stopped (%d turns, %d hinges dropped)", self.turns_taken, self.hinges_dropped)
+            self.logger.info("conductor: stopped (%d turns, %d hinges dropped)", self.turns_taken, self.hinges_dropped)
 
     def stop(self) -> None:
         """Stops the Printer: the ears shut for good, the keyboard closed, a turn in progress allowed to finish. Safe from any thread, safe to repeat."""
@@ -172,10 +171,10 @@ class Conductor:
             else:
                 action = None
         if action == "open":
-            self.report.info("conductor: the floor is free, so the ears open")
+            self.logger.info("conductor: the floor is free, so the ears open")
             self._open_ears()
         elif action == "shut":
-            self.report.info("conductor: the floor is %s, so the ears shut", state.value)
+            self.logger.info("conductor: the floor is %s, so the ears shut", state.value)
             self._shut_ears()
         if self._stop.is_set():
             return
@@ -185,7 +184,7 @@ class Conductor:
             if name == "room" and not self._restart_room:
                 continue
             if not self._running(name):
-                self.report.warn(f"the {name} thread had stopped; it is started again")
+                self.logger.warning(f"the {name} thread had stopped; it is started again")
                 with self._lock:
                     thread = threading.Thread(target=target, name=f"conductor-{name}", daemon=True)
                     self._threads[name] = thread
@@ -210,7 +209,7 @@ class Conductor:
         try:
             getattr(part, method)()
         except Exception as problem:               # nothing may stop the oracle
-            self.report.warn(f"{method} failed on a part ({type(problem).__name__})")
+            self.logger.warning(f"{method} failed on a part ({type(problem).__name__})")
 
     # --- The room and the keyboard --------------------------------------------------
 
@@ -223,7 +222,7 @@ class Conductor:
                     return
                 continue
             except Exception as problem:           # nothing may stop the oracle
-                self.report.warn(f"the room could not be built ({type(problem).__name__}); trying again")
+                self.logger.warning(f"the room could not be built ({type(problem).__name__}); trying again")
                 if self._stop.wait(self._restart_pause):
                     return
                 continue
@@ -236,7 +235,7 @@ class Conductor:
                 for attempt in finder.find():
                     self._offer(attempt, "room")
             except Exception as problem:           # nothing may stop the oracle
-                self.report.warn(f"the room failed ({type(problem).__name__})")
+                self.logger.warning(f"the room failed ({type(problem).__name__})")
             finally:
                 self._call(finder, "close")
                 with self._lock:
@@ -244,7 +243,7 @@ class Conductor:
                         self._ears = None
             if self._stop.is_set() or not self._restart_room:
                 return
-            self.report.warn("the room ended (a microphone that stopped?); it is started again")
+            self.logger.warning("the room ended (a microphone that stopped?); it is started again")
             if self._stop.wait(self._restart_pause):
                 return
 
@@ -254,7 +253,7 @@ class Conductor:
                 for attempt in self._keyboard.watch():
                     self._offer(attempt, "keyboard")
             except Exception as problem:           # nothing may stop the oracle
-                self.report.warn(f"the keyboard failed ({type(problem).__name__})")
+                self.logger.warning(f"the keyboard failed ({type(problem).__name__})")
             if self._stop.is_set():
                 return
             if self._stop.wait(self._restart_pause):
@@ -268,14 +267,14 @@ class Conductor:
         turn = self._floor.take_floor(who)
         if turn is None:
             self.hinges_dropped += 1
-            self.report.info("conductor: a hinge from the %s was dropped; the floor is %s (%d dropped so far)", who, self._floor.state.value,
+            self.logger.info("conductor: a hinge from the %s was dropped; the floor is %s (%d dropped so far)", who, self._floor.state.value,
                              self.hinges_dropped)
             return
         with self._lock:
             self._shut = True
         self._shut_ears()
         self.turns_taken += 1
-        self.report.info("conductor: the %s's hinge takes the floor (turn %d)", who, self.turns_taken)
+        self.logger.info("conductor: the %s's hinge takes the floor (turn %d)", who, self.turns_taken)
         self._turns.put((turn, attempt))
 
     # --- The turn thread ------------------------------------------------------------
@@ -291,7 +290,7 @@ class Conductor:
             try:
                 result = self._turn_taker.take_turn(turn, attempt)
             except Exception as problem:           # take_turn should never raise; if it does the floor must still be given back
-                self.report.warn(f"a turn raised ({type(problem).__name__}); the floor was yielded")
+                self.logger.warning(f"a turn raised ({type(problem).__name__}); the floor was yielded")
                 turn.finish()
                 continue
             self._call_back(self._on_turn, attempt, result)
@@ -302,4 +301,4 @@ class Conductor:
         try:
             callback(*args)
         except Exception as problem:               # a bad callback must not stop the Printer
-            self.report.warn(f"a callback raised ({type(problem).__name__}); it was ignored")
+            self.logger.warning(f"a callback raised ({type(problem).__name__}); it was ignored")

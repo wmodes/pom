@@ -35,11 +35,9 @@ import threading
 import time
 from typing import Callable, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_GRACE_SECONDS = 15.0            # how long to wait for an address once the typewriter is online
 DEFAULT_RETRY_SECONDS = 5.0             # how often to ask whether the typewriter is online, and whether the floor is free
@@ -59,7 +57,7 @@ class BootSlipper:
     def __init__(self, floor, terminal, formatter, template: str, find_addresses: Callable[[], list],
                  hostname: Callable[[], str] = socket.gethostname, grace_seconds: float = DEFAULT_GRACE_SECONDS,
                  retry_seconds: float = DEFAULT_RETRY_SECONDS, ears_shut_seconds: float = DEFAULT_EARS_SHUT_SECONDS,
-                 clock: Callable[[], float] = time.monotonic):
+                 clock: Callable[[], float] = time.monotonic, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             floor: The FloorKeeper (`take_floor(who)` gives a Turn or None).
             terminal: The TerminalPort or ConsoleTerminal (`online()` and `transmit(text, still_alive)`).
@@ -71,8 +69,9 @@ class BootSlipper:
             retry_seconds: Seconds between asks while the typewriter is offline or the floor is held. 0 or more.
             ears_shut_seconds: Seconds to wait after taking the floor, so the ears are shut before the first character. 0 or more.
             clock: Returns seconds; injected so tests need no waiting.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(logger=_log)      # everything this class says goes through it
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._floor, self._terminal, self._formatter, self._template = floor, terminal, formatter, template
         self._find_addresses, self._hostname = find_addresses, hostname
         self._grace, self._retry, self._ears_shut, self._clock = grace_seconds, retry_seconds, ears_shut_seconds, clock
@@ -111,12 +110,12 @@ class BootSlipper:
                 result = self._terminal.transmit(text, still_alive=turn.still_printing)
             if result.completed:
                 self.typed, self.text = True, text
-                self.report.info("the boot slip is typed (%d characters; address %s)", result.characters, ", ".join(addresses) or NO_NETWORK_ADDRESS)
+                self.logger.info("the boot slip is typed (%d characters; address %s)", result.characters, ", ".join(addresses) or NO_NETWORK_ADDRESS)
                 return True
             if result.characters > 0:
-                self.report.warn("the boot slip stopped after %d characters; it is not typed again", result.characters)
+                self.logger.warning("the boot slip stopped after %d characters; it is not typed again", result.characters)
                 return False
-            self.report.info("the typewriter went away before the boot slip began; waiting for it again")
+            self.logger.info("the typewriter went away before the boot slip began; waiting for it again")
         return False
 
     def _wait_for_an_address(self) -> list:
@@ -150,4 +149,4 @@ class BootSlipper:
         try:
             self.run()
         except Exception as error:                    # nothing here may stop the oracle
-            self.report.warn("the boot slip stopped on an error (%s)", type(error).__name__)
+            self.logger.warning("the boot slip stopped on an error (%s)", type(error).__name__)

@@ -9,7 +9,6 @@ import pytest
 
 from pom.conductor import KeyboardWatcher
 from pom.conductor.keyboard_watcher import KeyboardWatcherError
-from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
 
@@ -41,7 +40,7 @@ class FakeTypedScorer:
     """Makes an Attempt of kind typed for each line, or raises if told to."""
 
     def __init__(self, fail_on=()):
-        self.lines, self.fail_on, self.report = [], set(fail_on), ReportRecorder()
+        self.lines, self.fail_on = [], set(fail_on)
 
     def score(self, line):
         self.lines.append(line)
@@ -147,20 +146,20 @@ class TestClosing:
 
 
 class TestWhenSomethingBreaks:
-    def test_a_terminal_that_raises_is_a_warning_and_a_pause_and_the_watching_goes_on(self):
+    def test_a_terminal_that_raises_is_a_warning_and_a_pause_and_the_watching_goes_on(self, logged):
         watcher, _, _, sleeps = watcher_over(OSError("keyboard gone"), "Still here.")
         assert [a.text for a in watcher.watch()] == ["Still here."]
-        assert watcher.report.warnings == ["the keyboard could not be read (OSError); trying again"] and sleeps == [1.0]
+        assert logged.of(watcher).warnings() == ["the keyboard could not be read (OSError); trying again"] and sleeps == [1.0]
 
-    def test_a_scorer_that_raises_drops_that_line_and_goes_on(self):
+    def test_a_scorer_that_raises_drops_that_line_and_goes_on(self, logged):
         watcher, _, scorer, sleeps = watcher_over("Bad.", "Good.", fail_on=["Bad."])
         assert [a.text for a in watcher.watch()] == ["Good."]
-        assert watcher.report.warnings == ["a typed line could not be scored (RuntimeError); it was dropped"] and sleeps == [1.0]
+        assert logged.of(watcher).warnings() == ["a typed line could not be scored (RuntimeError); it was dropped"] and sleeps == [1.0]
 
-    def test_the_error_names_only_its_type_not_its_message(self):
+    def test_the_error_names_only_its_type_not_its_message(self, logged):
         watcher, _, _, _ = watcher_over(SECRET_LINE, fail_on=[SECRET_LINE])
         list(watcher.watch())
-        assert "neighbor" not in " ".join(watcher.report.lines())
+        assert "neighbor" not in " ".join(logged.of(watcher).lines())
 
     def test_in_strict_mode_a_broken_part_raises(self):
         watcher, _, _, _ = watcher_over(OSError("gone"), strict=True)
@@ -175,20 +174,20 @@ class TestWhenSomethingBreaks:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
-    def test_a_bad_poll_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_poll_is_the_default_with_a_warning(self, bad, logged):
         watcher = KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), poll_seconds=bad)
-        assert len(watcher.report.warnings) == 1 and "poll_seconds" in watcher.report.warnings[0]
+        assert len(logged.of(watcher).warnings()) == 1 and "poll_seconds" in logged.of(watcher).warnings()[0]
 
     @pytest.mark.parametrize("bad", [-1, float("inf"), "x", None])
-    def test_a_bad_error_pause_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_error_pause_is_the_default_with_a_warning(self, bad, logged):
         watcher = KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), error_pause_seconds=bad)
-        assert len(watcher.report.warnings) == 1
+        assert len(logged.of(watcher).warnings()) == 1
 
-    def test_an_error_pause_of_zero_is_allowed(self):
-        assert KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), error_pause_seconds=0).report.ok
+    def test_an_error_pause_of_zero_is_allowed(self, logged):
+        assert logged.of(KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), error_pause_seconds=0)).ok()
 
-    def test_a_sleep_that_is_not_a_function_is_replaced_with_a_warning(self):
-        assert len(KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), sleep="x").report.warnings) == 1
+    def test_a_sleep_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
+        assert len(logged.of(KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), sleep="x")).warnings()) == 1
 
     def test_in_strict_mode_a_bad_setting_raises(self):
         with pytest.raises(KeyboardWatcherError):

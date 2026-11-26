@@ -153,15 +153,15 @@ class TestNoPrinterByDesign:
         record = rig.history.get(result.record_id)
         assert record.portent.text == SECRET_PORTENT and record.outcome == "not printed (no printer)"
 
-    def test_the_floor_is_yielded_without_a_printing_state(self):
+    def test_the_floor_is_yielded_without_a_printing_state(self, logged):
         rig = build(terminal=None)
         take(rig)
-        assert rig.keeper.state is FloorState.RECOVERING and rig.keeper.report.ok
+        assert rig.keeper.state is FloorState.RECOVERING and logged.of(rig.keeper).ok()
 
-    def test_it_is_no_fault(self):
+    def test_it_is_no_fault(self, logged):
         rig = build(terminal=None)
         take(rig)
-        assert rig.taker.report.ok
+        assert logged.of(rig.taker).ok()
 
 
 class TestWhenTheOracleGivesNothing:
@@ -209,20 +209,20 @@ class TestWhenTheOracleGivesNothing:
         take(rig)
         assert rig.keeper.state is FloorState.RECOVERING
 
-    def test_one_failed_turn_is_a_warning_and_three_in_a_row_are_a_critical_fault(self):
+    def test_one_failed_turn_is_a_warning_and_three_in_a_row_are_a_critical_fault(self, logged):
         rig = build(writer_replies=[None] * 9, write_attempts=1)
         for number in range(1, 4):
             take(rig)
             rig.clock.advance(10)
-            assert len(rig.taker.report.criticals) == (1 if number == 3 else 0)
-        assert len(rig.taker.report.warnings) == 2 and "3 turns in a row" in rig.taker.report.criticals[0]
+            assert len(logged.of(rig.taker).criticals()) == (1 if number == 3 else 0)
+        assert len(logged.of(rig.taker).warnings()) == 2 and "3 turns in a row" in logged.of(rig.taker).criticals()[0]
 
-    def test_a_good_turn_starts_the_count_again(self):
+    def test_a_good_turn_starts_the_count_again(self, logged):
         rig = build(writer_replies=[None, None, portent(), None, None], write_attempts=1)
         for _ in range(5):
             take(rig)
             rig.clock.advance(10)
-        assert rig.taker.report.criticals == []
+        assert logged.of(rig.taker).criticals() == []
 
     def test_the_pause_and_the_budget_are_settings(self):
         rig = build(writer_replies=[None, portent()], write_pause_seconds=3.0)
@@ -249,11 +249,11 @@ class TestWhenThePrinterCannotPrintYet:
         assert seen == [None, "waiting for the printer", "waiting for the printer"]
         assert rig.history.recent()[0].outcome == "printed"
 
-    def test_a_long_wait_is_no_hang_because_the_heartbeat_keeps_the_watchdog_off(self):
+    def test_a_long_wait_is_no_hang_because_the_heartbeat_keeps_the_watchdog_off(self, logged):
         # five minutes of waiting against a printing limit of 50 s
         rig = build(terminal_replies=[NOTHING_TYPED] * 29, printing=50.0)
         result = take(rig)
-        assert result.outcome is TurnOutcome.PRINTED and rig.keeper.overruns == 0 and rig.keeper.report.ok
+        assert result.outcome is TurnOutcome.PRINTED and rig.keeper.overruns == 0 and logged.of(rig.keeper).ok()
 
     def test_the_heartbeat_is_sent_every_few_seconds_even_through_a_long_pause(self):
         # a pause of two minutes against a printing limit of 50 s: only beats every few seconds keep the watchdog off
@@ -275,10 +275,10 @@ class TestWhenThePrinterCannotPrintYet:
         assert rig.clock.now - 1000.0 < 360.0                       # it stopped as soon as no further try could be made, not by waiting out the rest
         assert rig.history.recent()[0].outcome == "too late to print" and rig.history.recent()[0].portent is not None
 
-    def test_too_late_is_a_critical_fault_that_says_how_long_and_how_many_tries(self):
+    def test_too_late_is_a_critical_fault_that_says_how_long_and_how_many_tries(self, logged):
         rig = build(terminal_replies=[NOTHING_TYPED] * 100)
         take(rig)
-        assert len(rig.taker.report.criticals) == 1 and "360 s" in rig.taker.report.criticals[0]
+        assert len(logged.of(rig.taker).criticals()) == 1 and "360 s" in logged.of(rig.taker).criticals()[0]
 
     def test_the_floor_is_yielded_and_the_watchdog_never_acted(self):
         rig = build(terminal_replies=[NOTHING_TYPED] * 100)
@@ -295,11 +295,11 @@ class TestWhenThePrinterCannotPrintYet:
         result = take(rig)
         assert result.outcome is TurnOutcome.TOO_LATE and result.print_tries <= 17
 
-    def test_a_portent_written_after_the_freshness_has_passed_is_never_tried(self):
+    def test_a_portent_written_after_the_freshness_has_passed_is_never_tried(self, logged):
         rig = build(writer_takes=400.0, freshness_seconds=360.0, writing=1000.0)
         result = take(rig)
         assert result.outcome is TurnOutcome.TOO_LATE and result.print_tries == 0 and rig.terminal.texts == []
-        assert rig.taker.report.criticals == [] and len(rig.taker.report.warnings) == 1
+        assert logged.of(rig.taker).criticals() == [] and len(logged.of(rig.taker).warnings()) == 1
 
     def test_a_portent_that_has_begun_typing_is_finished_even_past_the_limit(self):
         rig = build(terminal_takes=500.0)
@@ -350,10 +350,10 @@ class TestWhenThePrinterFailsHalfway:
         result = take(rig)
         assert result.outcome is TurnOutcome.PRINT_FAILED and result.characters == 40 and len(rig.terminal.texts) == 1
 
-    def test_it_is_a_critical_fault_and_the_record_says_so(self):
+    def test_it_is_a_critical_fault_and_the_record_says_so(self, logged):
         rig = build(terminal_replies=[PrintResult(40, 3.0, False)])
         take(rig)
-        assert len(rig.taker.report.criticals) == 1 and "40 characters" in rig.taker.report.criticals[0]
+        assert len(logged.of(rig.taker).criticals()) == 1 and "40 characters" in logged.of(rig.taker).criticals()[0]
         assert rig.history.recent()[0].outcome == "print failed"
 
     def test_the_floor_is_yielded(self):
@@ -377,18 +377,18 @@ class TestWhenTheFloorWasLostWhileWriting:
         assert result.outcome is TurnOutcome.PRINTED and len(rig.terminal.texts) == 1
         assert rig.keeper.overruns == 1
 
-    def test_it_is_a_warning(self):
+    def test_it_is_a_warning(self, logged):
         rig = build(writer_takes=310.0, writing=300.0, freshness_seconds=600.0)
         take(rig)
-        assert any("floor was lost" in w for w in rig.taker.report.warnings)
+        assert any("floor was lost" in w for w in logged.of(rig.taker).warnings())
 
 
 class TestWhenSomethingGoesWrong:
-    def test_an_error_in_the_writer_ends_the_turn_with_an_error_and_yields_the_floor(self):
+    def test_an_error_in_the_writer_ends_the_turn_with_an_error_and_yields_the_floor(self, logged):
         rig = build(writer_replies=[RuntimeError("boom")])
         result = take(rig)
         assert result.outcome is TurnOutcome.ERROR and rig.keeper.state is FloorState.RECOVERING
-        assert rig.taker.report.warnings == ["a turn failed unexpectedly (RuntimeError); the floor was yielded"]
+        assert logged.of(rig.taker).warnings() == ["a turn failed unexpectedly (RuntimeError); the floor was yielded"]
 
     def test_an_error_in_the_terminal_marks_the_record_and_yields_the_floor(self):
         rig = build(terminal_replies=[OSError("gone")])
@@ -402,15 +402,15 @@ class TestWhenSomethingGoesWrong:
         result = take(rig)
         assert result.outcome is TurnOutcome.ERROR and rig.keeper.state is FloorState.RECOVERING
 
-    def test_the_error_names_only_its_type_not_its_message(self):
+    def test_the_error_names_only_its_type_not_its_message(self, logged):
         rig = build(writer_replies=[RuntimeError(SECRET_HINGE)])
         take(rig)
-        assert SECRET_HINGE not in " ".join(rig.taker.report.lines())
+        assert SECRET_HINGE not in " ".join(logged.of(rig.taker).lines())
 
-    def test_something_that_is_not_a_turn_is_refused_without_raising(self):
+    def test_something_that_is_not_a_turn_is_refused_without_raising(self, logged):
         rig = build()
         result = rig.taker.take_turn(None, attempt())
-        assert result.outcome is TurnOutcome.ERROR and rig.writer.calls == [] and len(rig.taker.report.warnings) == 1
+        assert result.outcome is TurnOutcome.ERROR and rig.writer.calls == [] and len(logged.of(rig.taker).warnings()) == 1
 
     def test_the_next_turn_works_after_an_error(self):
         rig = build(writer_replies=[RuntimeError("boom")])
@@ -436,29 +436,30 @@ class TestWithoutAHistory:
 class TestBadSettings:
     @pytest.mark.parametrize("name", ["freshness_seconds", "write_attempt_seconds", "write_budget_seconds", "print_pause_seconds"])
     @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
-    def test_a_bad_number_above_zero_is_the_default_with_a_warning(self, name, bad):
+    def test_a_bad_number_above_zero_is_the_default_with_a_warning(self, name, bad, logged):
         taker = TurnTaker(FakeWriter(), PortentFormatter(), None, **{name: bad})
-        assert len(taker.report.warnings) == 1 and name in taker.report.warnings[0]
+        assert len(logged.of(taker).warnings()) == 1 and name in logged.of(taker).warnings()[0]
 
     @pytest.mark.parametrize("bad", [0, 1.5, -2, "3", None, True])
-    def test_bad_write_attempts_is_the_default_with_a_warning(self, bad):
+    def test_bad_write_attempts_is_the_default_with_a_warning(self, bad, logged):
         taker = TurnTaker(FakeWriter(), PortentFormatter(), None, write_attempts=bad)
-        assert len(taker.report.warnings) == 1 and "write_attempts" in taker.report.warnings[0]
+        assert len(logged.of(taker).warnings()) == 1 and "write_attempts" in logged.of(taker).warnings()[0]
 
     @pytest.mark.parametrize("bad", [-1, "x", None])
-    def test_a_bad_pause_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_pause_is_the_default_with_a_warning(self, bad, logged):
         taker = TurnTaker(FakeWriter(), PortentFormatter(), None, write_pause_seconds=bad)
-        assert len(taker.report.warnings) == 1
+        assert len(logged.of(taker).warnings()) == 1
 
-    def test_a_pause_of_zero_is_allowed(self):
-        assert TurnTaker(FakeWriter(), PortentFormatter(), None, write_pause_seconds=0).report.ok
+    def test_a_pause_of_zero_is_allowed(self, logged):
+        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None, write_pause_seconds=0)).ok()
 
-    def test_a_clock_or_sleep_that_is_not_a_function_is_replaced_with_a_warning(self):
-        assert len(TurnTaker(FakeWriter(), PortentFormatter(), None, clock=5).report.warnings) == 1
-        assert len(TurnTaker(FakeWriter(), PortentFormatter(), None, sleep="x").report.warnings) == 1
+    def test_a_clock_or_sleep_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
+        assert len(logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None, clock=5)).warnings()) == 1
+        warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None, sleep="x")).warnings()
+        assert len(warnings) == 2 and "sleep must be a function" in warnings[1]                # the second taker's one warning, after the first's
 
-    def test_good_settings_are_quiet(self):
-        assert TurnTaker(FakeWriter(), PortentFormatter(), None).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None)).ok()
 
     def test_in_strict_mode_a_bad_setting_raises(self):
         with pytest.raises(TurnTakerError):
@@ -499,14 +500,14 @@ class TestTheLogs:
             take(rig)
         assert self.lines(caplog)[-1].startswith("turn: too late to print (writing 0.0 s")
 
-    def test_nothing_that_was_said_or_written_reaches_a_log_or_a_report(self, caplog):
+    def test_nothing_that_was_said_or_written_reaches_a_log_or_a_report(self, caplog, logged):
         rig = build(writer_replies=[None, portent()], terminal_replies=[NOTHING_TYPED, PrintResult(10, 1.0, False)])
         with caplog.at_level(logging.DEBUG):
             take(rig)
             rig.clock.advance(10)
             rig2 = build(writer_replies=[RuntimeError(SECRET_HINGE)])
             take(rig2)
-        text = caplog.text + "\n".join(rig.taker.report.lines() + rig2.taker.report.lines())
+        text = caplog.text + "\n".join(logged.of(rig.taker).lines() + logged.of(rig2.taker).lines())
         for word in ("neighbor", "secret", "cellar", "footstep"):
             assert word not in text
 

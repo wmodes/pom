@@ -216,7 +216,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                             listening.room_tone_memory, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at, wall=time.monotonic,
                             bookkeeper=bookkeeper)
         last_room["ears"] = ears
-        return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening.score_room_tone), ears
+        return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening.score_room_tone, bookkeeper=bookkeeper), ears
 
     # writing and printing
     passages = root / "library" / "passages"
@@ -238,25 +238,26 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                              silence_shape=silence_shape(config.chart), began_at=stream_started_at, bookkeeper=bookkeeper)
     # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
     history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at, bookkeeper=bookkeeper)
-    floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds)
+    floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds,
+                        bookkeeper=bookkeeper)
     turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
                            write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,
                            write_attempt_seconds=oracle.timeout, write_budget_seconds=conductor_settings.write_budget_seconds,
-                           print_pause_seconds=conductor_settings.print_pause_seconds)
+                           print_pause_seconds=conductor_settings.print_pause_seconds, bookkeeper=bookkeeper)
 
     # the boot slip: types the Pi's address when the typewriter is online (only if there is a terminal to type on)
     slip = config.boot_slip
     slipper = None
     if terminal is not None and slip.enabled:
-        slipper = BootSlipper(floor, terminal, formatter, slip.text, AddressFinder().find, grace_seconds=slip.address_grace_seconds,
-                              retry_seconds=slip.retry_seconds, ears_shut_seconds=conductor_settings.check_seconds + 1.0)
+        slipper = BootSlipper(floor, terminal, formatter, slip.text, AddressFinder(bookkeeper=bookkeeper).find, grace_seconds=slip.address_grace_seconds,
+                              retry_seconds=slip.retry_seconds, ears_shut_seconds=conductor_settings.check_seconds + 1.0, bookkeeper=bookkeeper)
 
     # the keyboard: only a real typewriter has one
     keyboard = None
     if terminal is not None and mode == "serial" and options.keyboard:
         typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, qualifying.typed_lines_score_multiplier,
                                 qualifying.typed_lines_bar_influence, bookkeeper=bookkeeper)
-        keyboard = KeyboardWatcher(terminal, typed)
+        keyboard = KeyboardWatcher(terminal, typed, bookkeeper=bookkeeper)
 
     # what the monitoring site is told: numbers only, from every attempt
     snapshot = {"heard": 0, "scored": 0}
@@ -296,7 +297,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         logger.info("turn over: %s", result.outcome.value)
 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
-                          restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
+                          restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds,
+                          bookkeeper=bookkeeper)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
              "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
              "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller}

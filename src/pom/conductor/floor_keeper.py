@@ -52,13 +52,13 @@ Design decisions, and why:
   * The lock is in memory only (no file, so nothing can be left stuck by a crash), and a call that cannot get it within
     `LOCK_TIMEOUT_SECONDS` records a CRITICAL fault and answers safely (no turn is given, the state reads as listening) instead of
     waiting for ever. Nothing inside the lock waits on anything, so this should never happen.
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`.
+  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged.
     `strict=True` raises FloorKeeperError instead, for tests and dev tools.
   * Who holds the floor is a short label ("room", "keyboard"), never anything that was said. Nothing said in the room is seen here.
   * LOGGING, so a problem can be read afterwards in the logs. At INFO, one line for every change of state, saying who holds the floor and
     how long the state before it lasted ("floor: writing -> printing (room) after 41.2 s"), one when a turn is over with its total time,
     one when someone asks for the floor and cannot have it, and one when a turn that lost the floor to the watchdog wakes up later and
-    calls in (ignored). An overrun is also a WARNING in `report`, and so reaches the log. A lock that could not be had is CRITICAL.
+    calls in (ignored). An overrun is also a WARNING in the log. A lock that could not be had is CRITICAL.
     Only labels and seconds are logged.
 """
 import math
@@ -68,11 +68,9 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_WRITING_SECONDS = 300.0       # longer than the oracle client's timeout (120 s now; a long portent may need more), with room to spare
 DEFAULT_PRINTING_SECONDS = 180.0      # the longest portent (300 tokens, about 1,400 characters) is typed in about 90 s at 16 characters a second
@@ -136,22 +134,23 @@ class FloorKeeper:
     """Keeps the floor: the state, the one-turn-at-a-time rule and the watchdog.
 
     Attributes:
-        report: Problems met (a bad setting, an overrun that was cut off).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         overruns: How many turns lost the floor to the watchdog.
         turns_taken: How many turns have been given out.
     """
 
     def __init__(self, writing_seconds: float = DEFAULT_WRITING_SECONDS, printing_seconds: float = DEFAULT_PRINTING_SECONDS,
                  recovering_seconds: float = DEFAULT_RECOVERING_SECONDS, clock: Optional[Callable[[], float]] = None,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             writing_seconds: The longest the oracle model may take to write one portent, above 0 (see the limits above).
             printing_seconds: The longest the formatting and typing of one portent may take, above 0.
             recovering_seconds: How long the ears stay shut after a turn, 0 or more (0 means none).
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
             strict: Raise FloorKeeperError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=FloorKeeperError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, FloorKeeperError, DEBUG, strict)
         self._writing_seconds = self._valid(writing_seconds, "writing_seconds", DEFAULT_WRITING_SECONDS, lambda v: v > 0, "above 0")
         self._printing_seconds = self._valid(printing_seconds, "printing_seconds", DEFAULT_PRINTING_SECONDS, lambda v: v > 0, "above 0")
         self._recovering_seconds = self._valid(recovering_seconds, "recovering_seconds", DEFAULT_RECOVERING_SECONDS, lambda v: v >= 0,
@@ -159,7 +158,7 @@ class FloorKeeper:
         if clock is None:
             clock = time.monotonic
         elif not callable(clock):
-            self.report.warn(f"clock must be a function, got {type(clock).__name__}; using time.monotonic")
+            self.logger.warning(f"clock must be a function, got {type(clock).__name__}; using time.monotonic")
             clock = time.monotonic
         self._clock = clock
         self._lock = threading.Lock()      # held for the whole of each public call
@@ -175,7 +174,7 @@ class FloorKeeper:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.report.warn(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
         return default
 
     # --- Questions ------------------------------------------------------------------
@@ -212,7 +211,7 @@ class FloorKeeper:
                 return None
             self._settle()
             if self._state is not FloorState.LISTENING:
-                self.report.info("floor: the %s asked for the floor but it is %s (%s)", who, self._state.value,
+                self.logger.info("floor: the %s asked for the floor but it is %s (%s)", who, self._state.value,
                                  f"held by the {self._who}" if self._current is not None else "nobody's, recovering")
                 return None
             turn = Turn(self, who)
@@ -264,16 +263,16 @@ class FloorKeeper:
     def _enter(self, state: FloorState) -> None:
         """Moves to `state`, from now, and logs it. Only called with the lock held."""
         now = self._clock()
-        self.report.info("floor: %s -> %s (%s) after %.1f s", self._state.value, state.value, self._who or "-", max(0.0, now - self._since))
+        self.logger.info("floor: %s -> %s (%s) after %.1f s", self._state.value, state.value, self._who or "-", max(0.0, now - self._since))
         if state is FloorState.RECOVERING:
-            self.report.info("floor: the %s's turn is over after %.1f s in all", self._who or "-", max(0.0, now - self._turn_began))
+            self.logger.info("floor: the %s's turn is over after %.1f s in all", self._who or "-", max(0.0, now - self._turn_began))
         self._state = state
         self._since = now
 
     def _note_late(self, turn: Turn, call: str) -> None:
         """Logs a call from a turn that lost the floor to the watchdog and has woken up. A turn that finished normally is not news."""
         if turn._ended == "lost":
-            self.report.info("floor: the %s's turn called %s after it lost the floor; ignored", turn.holder, call)
+            self.logger.info("floor: the %s's turn called %s after it lost the floor; ignored", turn.holder, call)
 
     def _settle(self) -> None:
         """Clears whatever has run out: a turn over its limit loses the floor, and a recovery that is done ends. Lock held."""
@@ -295,14 +294,14 @@ class FloorKeeper:
         self._current = None
         self.overruns += 1
         self._enter(FloorState.RECOVERING)
-        self.report.warn(f"{what}, so the {who}'s turn lost the floor; listening resumes after the recovery")
+        self.logger.warning(f"{what}, so the {who}'s turn lost the floor; listening resumes after the recovery")
 
     @contextmanager
     def _held(self, call: str) -> Iterator[bool]:
         """Takes the lock for the length of the `with`, yielding True; or yields False (and records a fault) if it waited too long."""
         got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
         if not got:
-            self.report.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if the floor were free of turns")
+            self.logger.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if the floor were free of turns")
         try:
             yield got
         finally:

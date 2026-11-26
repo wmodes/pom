@@ -4,7 +4,7 @@ Statistical tests use a seeded random generator, so they are deterministic: a pa
 time. Tolerances are generous (several standard deviations) so they check the odds, not the luck.
 
 The module follows the project principle that nothing may stop the oracle: by default problems are
-recorded in a ReportRecorder and the Bibliomancer returns what it can. In strict mode the same problems raise.
+logged and the Bibliomancer returns what it can. In strict mode the same problems raise.
 """
 import collections
 import logging

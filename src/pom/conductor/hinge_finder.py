@@ -17,7 +17,7 @@ Design decisions, and why:
     hinge. How room tone scores is untried; whisper sometimes invents it.
   * Nothing here may stop the oracle (see pom/__init__.py). A Scorer that cannot score gives an unscored sentence, which the
     BarKeeper ignores; nothing is raised.
-  * What was heard is never logged or put in a report: the sentences live only in the objects this yields.
+  * What was heard is never logged: the sentences live only in the objects this yields.
   * Every part is passed in, already built (the entry point takes their settings from Config); this module never reads Config.
   * Pausing while the oracle writes and the typewriter prints is the Conductor's job: it calls the Eavesdropper's `pause()`
     when a turn begins and `skip_ahead()` when it ends. The consumer keeps taking from `find()` the whole time, and while the
@@ -26,14 +26,12 @@ Design decisions, and why:
 from typing import Iterator, Optional
 
 from pom.listening.take_cutter import ClipLevel
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.attempt import Attempt
 from pom.qualifying.bar_keeper import Ruling
 from pom.scoring.clip_scorer import ScoredBy
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 ROOM_TONE = "room_tone"
 
@@ -41,15 +39,16 @@ ROOM_TONE = "room_tone"
 class HingeFinder:
     """Finds the sentences worth answering in what the room says."""
 
-    def __init__(self, eavesdropper, take_cutter, scorer, bar_keeper, score_room_tone: bool = False):
+    def __init__(self, eavesdropper, take_cutter, scorer, bar_keeper, score_room_tone: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            eavesdropper: An Eavesdropper (anything with hear(), paused, close() and report).
+            eavesdropper: An Eavesdropper (anything with hear(), paused and close()).
             take cutter: A TakeCutter that cuts words into sentences.
             scorer: A Scorer that scores a clip, or plain text with score_text().
             bar_keeper: A BarKeeper that says whether a score is a qualifier.
             score_room_tone: True lets room tone be scored and become hinges; False leaves it unscored.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(logger=_log)      # everything this class says goes through it
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._eavesdropper = eavesdropper
         self._take_cutter = take_cutter
         self._scorer = scorer
@@ -81,7 +80,7 @@ class HingeFinder:
             return Attempt(text, kind, None, ScoredBy.UNSCORED, None, now, bar, held, self._bar_keeper.counted)
         result = self._scorer.score(clip) if clip is not None else self._scorer.score_text(text, now)
         ruling = self._bar_keeper.rule(result.score, now)
-        self.report.debug("scored a %s of %d words: %s", kind, len(text.split()), ruling.value)
+        self.logger.debug("scored a %s of %d words: %s", kind, len(text.split()), ruling.value)
         return Attempt(text, kind, result.score, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)
 
     def close(self) -> None:

@@ -11,7 +11,6 @@ import time
 import pytest
 
 from pom.conductor import Conductor, ConductorError, FloorKeeper, FloorState, NoSoundSource
-from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
 
@@ -84,7 +83,6 @@ class FakeKeyboard:
     def __init__(self, *script, raises_first=False, raises_always=False):
         self.script, self.events, self.paused = list(script), [], False
         self.closed, self.raises_first, self.raises_always, self.watches = threading.Event(), raises_first, raises_always, 0
-        self.report = ReportRecorder()
 
     def watch(self):
         self.watches += 1
@@ -117,7 +115,7 @@ class FakeTurnTaker:
     def __init__(self, hold=None, fail=None, ears=None, keyboard=None, fail_before_the_turn_is_closed=None):
         self.turns, self.hold, self.fail, self.ears, self.keyboard = [], hold, fail, ears, keyboard
         self.fail_early = fail_before_the_turn_is_closed
-        self.started, self.ears_shut_at_start, self.report = threading.Event(), None, ReportRecorder()
+        self.started, self.ears_shut_at_start = threading.Event(), None
 
     def take_turn(self, turn, attempt):
         self.turns.append((turn.holder, attempt.text))
@@ -287,14 +285,14 @@ class TestFirstComeFirstServed:
 
 
 class TestTheRoomKeepsGoing:
-    def test_a_room_that_ends_is_built_again(self):
+    def test_a_room_that_ends_is_built_again(self, logged):
         first, first_ears = room(attempt("From the first."), block=False)
         second, second_ears = room(attempt("From the second."))
         rig = Rig([(first, first_ears), (second, second_ears)])
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 2)
         assert [a.text for a in rig.seen] == ["From the first.", "From the second."] and rig.factory_calls == 2
-        assert any("the room ended" in w for w in rig.conductor.report.warnings)
+        assert any("the room ended" in w for w in logged.of(rig.conductor).warnings())
 
     def test_it_goes_on_building_for_as_long_as_it_takes(self):
         rig = Rig([room(block=False) for _ in range(6)] + [room(attempt("Finally."))])
@@ -302,30 +300,30 @@ class TestTheRoomKeepsGoing:
             assert wait_for(lambda: len(rig.seen) == 1)
         assert rig.factory_calls == 7
 
-    def test_a_factory_that_raises_is_tried_again(self):
+    def test_a_factory_that_raises_is_tried_again(self, logged):
         rig = Rig([OSError("no microphone"), room(attempt("Found it."))])
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 1)
-        assert rig.conductor.report.warnings[0] == "the room could not be built (OSError); trying again"
+        assert logged.of(rig.conductor).warnings()[0] == "the room could not be built (OSError); trying again"
 
-    def test_a_room_with_nothing_to_hear_with_is_tried_again_and_says_nothing(self):
+    def test_a_room_with_nothing_to_hear_with_is_tried_again_and_says_nothing(self, logged):
         rig = Rig([NoSoundSource("no sound card"), NoSoundSource("no sound card"), room(attempt("Found it."))])
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 1)
         assert rig.factory_calls == 3
-        assert rig.conductor.report.ok                           # the one who knows has said so; no second line here
+        assert logged.of(rig.conductor).ok()                           # the one who knows has said so; no second line here
 
-    def test_any_other_error_building_the_room_is_still_a_warning(self):
+    def test_any_other_error_building_the_room_is_still_a_warning(self, logged):
         rig = Rig([RuntimeError("boom"), room(attempt("Found it."))])
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 1)
-        assert rig.conductor.report.warnings == ["the room could not be built (RuntimeError); trying again"]
+        assert logged.of(rig.conductor).warnings() == ["the room could not be built (RuntimeError); trying again"]
 
-    def test_a_finder_that_raises_is_replaced(self):
+    def test_a_finder_that_raises_is_replaced(self, logged):
         rig = Rig([room(attempt("Before."), raises=RuntimeError("boom")), room(attempt("After."))])
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 2)
-        assert any("the room failed (RuntimeError)" in w for w in rig.conductor.report.warnings)
+        assert any("the room failed (RuntimeError)" in w for w in logged.of(rig.conductor).warnings())
 
     def test_the_finder_is_closed_when_the_room_ends(self):
         finder, ears = room(block=False)
@@ -342,12 +340,12 @@ class TestTheRoomKeepsGoing:
 
 
 class TestTheKeyboardKeepsGoing:
-    def test_a_watcher_that_raises_is_run_again(self):
+    def test_a_watcher_that_raises_is_run_again(self, logged):
         keyboard = FakeKeyboard(hinge("Typed."), raises_first=True)
         rig = Rig([room()], keyboard=keyboard)
         with rig.running():
             assert wait_for(lambda: len(rig.taker.turns) == 1)
-        assert keyboard.watches >= 2 and any("the keyboard failed (OSError)" in w for w in rig.conductor.report.warnings)
+        assert keyboard.watches >= 2 and any("the keyboard failed (OSError)" in w for w in logged.of(rig.conductor).warnings())
 
     def test_a_watcher_that_keeps_failing_is_started_again_only_after_a_pause_not_in_a_hot_loop(self):
         keyboard = FakeKeyboard(raises_always=True)
@@ -356,22 +354,22 @@ class TestTheKeyboardKeepsGoing:
             time.sleep(0.5)
         assert 2 <= keyboard.watches <= 5
 
-    def test_with_no_keyboard_there_is_no_keyboard_thread_and_no_complaint(self):
+    def test_with_no_keyboard_there_is_no_keyboard_thread_and_no_complaint(self, logged):
         rig = Rig([room(attempt("x"))])
         with rig.running():
             assert wait_for(lambda: len(rig.seen) == 1)
             time.sleep(0.05)
             assert "keyboard" not in rig.conductor._threads
-        assert rig.conductor.report.ok
+        assert logged.of(rig.conductor).ok()
 
 
 class TestWhenAThingFails:
-    def test_a_taker_that_raises_still_gives_the_floor_back_and_the_next_turn_works(self):
+    def test_a_taker_that_raises_still_gives_the_floor_back_and_the_next_turn_works(self, logged):
         finder, ears = room(hinge("One."), lambda: wait_for(lambda: rig.floor.state is LISTENING), hinge("Two."))
         rig = Rig([(finder, ears)], taker=FakeTurnTaker(fail=RuntimeError("boom")))
         with rig.running():
             assert wait_for(lambda: len(rig.taker.turns) == 2)
-        assert any("a turn raised (RuntimeError)" in w for w in rig.conductor.report.warnings)
+        assert any("a turn raised (RuntimeError)" in w for w in logged.of(rig.conductor).warnings())
 
     def test_a_taker_that_raises_without_closing_the_turn_still_has_the_floor_given_back_by_the_conductor(self):
         finder, ears = room(hinge("One."))
@@ -381,23 +379,23 @@ class TestWhenAThingFails:
             assert wait_for(lambda: rig.floor.state is LISTENING)           # it was not left held until the watchdog (300 s)
             assert wait_for(lambda: "skip_ahead" in ears.events)
 
-    def test_a_callback_that_raises_is_ignored_with_a_warning(self):
+    def test_a_callback_that_raises_is_ignored_with_a_warning(self, logged):
         finder, ears = room(attempt("One."), attempt("Two."))
         rig = Rig([(finder, ears)])
         rig.conductor._on_attempt = lambda a: (_ for _ in ()).throw(ValueError("callback broke"))
         with rig.running():
-            assert wait_for(lambda: len([w for w in rig.conductor.report.warnings if "callback raised" in w]) == 2)
+            assert wait_for(lambda: len([w for w in logged.of(rig.conductor).warnings() if "callback raised" in w]) == 2)
 
-    def test_a_part_whose_pause_raises_is_a_warning_and_the_turn_goes_on(self):
+    def test_a_part_whose_pause_raises_is_a_warning_and_the_turn_goes_on(self, logged):
         finder, ears = room(hinge("H."))
         ears.pause = lambda: (_ for _ in ()).throw(RuntimeError("pause broke"))
         rig = Rig([(finder, ears)])
         with rig.running():
             assert wait_for(lambda: len(rig.turned) == 1)
-        assert any("pause failed on a part (RuntimeError)" in w for w in rig.conductor.report.warnings)
+        assert any("pause failed on a part (RuntimeError)" in w for w in logged.of(rig.conductor).warnings())
 
     @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
-    def test_a_thread_that_dies_unexpectedly_is_started_again(self):
+    def test_a_thread_that_dies_unexpectedly_is_started_again(self, logged):
         finder, ears = room(hinge("One."), lambda: wait_for(lambda: rig.floor.state is LISTENING), hinge("Two."))
         taker = FakeTurnTaker(fail=Die())
         rig = Rig([(finder, ears)], taker=taker)
@@ -405,7 +403,7 @@ class TestWhenAThingFails:
             assert wait_for(lambda: len(taker.turns) == 1)
             taker.fail = None
             assert wait_for(lambda: len(taker.turns) == 2)        # the second turn is taken by a turn thread that was started again
-        assert any("the turn thread had stopped" in w for w in rig.conductor.report.warnings)
+        assert any("the turn thread had stopped" in w for w in logged.of(rig.conductor).warnings())
 
 
 class TestStopping:
@@ -457,17 +455,17 @@ class TestStopping:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
-    def test_a_bad_check_time_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_check_time_is_the_default_with_a_warning(self, bad, logged):
         conductor = Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), check_seconds=bad)
-        assert len(conductor.report.warnings) == 1 and "check_seconds" in conductor.report.warnings[0]
+        assert len(logged.of(conductor).warnings()) == 1 and "check_seconds" in logged.of(conductor).warnings()[0]
 
     @pytest.mark.parametrize("bad", [-1, "x", None])
-    def test_a_bad_restart_pause_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_restart_pause_is_the_default_with_a_warning(self, bad, logged):
         conductor = Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), restart_pause_seconds=bad)
-        assert len(conductor.report.warnings) == 1
+        assert len(logged.of(conductor).warnings()) == 1
 
-    def test_a_restart_pause_of_zero_is_allowed(self):
-        assert Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), restart_pause_seconds=0).report.ok
+    def test_a_restart_pause_of_zero_is_allowed(self, logged):
+        assert logged.of(Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), restart_pause_seconds=0)).ok()
 
     def test_in_strict_mode_a_bad_setting_raises(self):
         with pytest.raises(ConductorError):
@@ -500,13 +498,13 @@ class TestTheLogs:
                 hold.set()
         assert any("a hinge from the room was dropped; the floor is writing (1 dropped so far)" in line for line in self.lines(caplog))
 
-    def test_nothing_said_reaches_a_log_or_a_report(self, caplog):
+    def test_nothing_said_reaches_a_log_or_a_report(self, caplog, logged):
         finder, ears = room(attempt(SECRET), hinge(SECRET + " Again."))
         rig = Rig([(finder, ears), room(raises=RuntimeError(SECRET))])
         with caplog.at_level(logging.DEBUG):
             with rig.running():
                 assert wait_for(lambda: len(rig.turned) == 1)
-        text = caplog.text + "\n".join(rig.conductor.report.lines())
+        text = caplog.text + "\n".join(logged.of(rig.conductor).lines())
         for word in ("neighbor", "secret", "cellar"):
             assert word not in text
 

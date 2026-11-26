@@ -20,11 +20,9 @@ from typing import Callable, Optional
 
 import psutil
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 LOOPBACK_ADDRESS = "127.0.0.1"          # what the slip shows when the machine has no usable address
 
@@ -32,12 +30,13 @@ LOOPBACK_ADDRESS = "127.0.0.1"          # what the slip shows when the machine h
 class AddressFinder:
     """Finds this machine's usable IPv4 addresses."""
 
-    def __init__(self, interfaces: Optional[Callable[[], dict]] = None):
+    def __init__(self, interfaces: Optional[Callable[[], dict]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             interfaces: Returns {interface name: [address records]} as `psutil.net_if_addrs` does (each record has `family` and `address`).
                 Defaults to the operating system's own list.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(logger=_log)      # everything this class says goes through it
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._interfaces = interfaces if interfaces is not None else psutil.net_if_addrs
 
     def find(self) -> list:
@@ -50,7 +49,7 @@ class AddressFinder:
                         found.append(record.address)
             return found
         except Exception as problem:                   # a failed lookup is the same as no network
-            self.report.warn("could not list the network addresses (%s)", type(problem).__name__)
+            self.logger.warning("could not list the network addresses (%s)", type(problem).__name__)
             return []
 
     @staticmethod

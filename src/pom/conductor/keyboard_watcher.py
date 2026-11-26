@@ -12,11 +12,11 @@ Design decisions, and why:
     unscored: nothing is sent to the scorer model during a turn, and a line typed over a portent is not an answer to it. A line typed during a
     turn is counted in `dropped_lines`, never kept. Both calls only set a flag and return at once, from any thread.
   * An empty line (C Rtn alone) is not an attempt and is skipped.
-  * NOTHING HERE MAY STOP THE ORACLE (see pom/__init__.py). A terminal that raises, or a scorer that raises, is a warning in `report`
+  * NOTHING HERE MAY STOP THE ORACLE (see pom/__init__.py). A terminal that raises, or a scorer that raises, is a warning in the log
     naming the error type, a short pause, and the watcher goes on listening; only `close()` ends `watch()`. A terminal that cannot be
     opened makes `read_line` return None at once, and the TerminalPort itself pauses between tries, so there is no hot loop here.
     `strict=True` raises KeyboardWatcherError instead, for tests and dev tools.
-  * What is typed is room content: it is never logged or put in a report. Only counts are.
+  * What is typed is room content: it is never logged. Only counts are.
   * The parts are passed in, already built; this module never reads Config.
 """
 import math
@@ -24,12 +24,10 @@ import threading
 import time
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.attempt import Attempt
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_POLL_SECONDS = 1.0           # how long one look at the keyboard waits; it is also how soon `close()` takes effect
 DEFAULT_ERROR_PAUSE_SECONDS = 1.0    # the pause after an error, so a broken part cannot make a hot loop
@@ -47,13 +45,13 @@ class KeyboardWatcher:
     """Turns the lines typed at the terminal into attempts.
 
     Attributes:
-        report: Problems met (a terminal or a scorer that raised, a bad setting). Never holds what was typed.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         dropped_lines: How many finished lines arrived during a turn and were thrown away unscored.
     """
 
     def __init__(self, terminal, typed_scorer, poll_seconds: float = DEFAULT_POLL_SECONDS,
                  error_pause_seconds: float = DEFAULT_ERROR_PAUSE_SECONDS, sleep: Optional[Callable[[float], None]] = None,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             terminal: Anything with read_line(timeout) returning a finished line or None (a TerminalPort).
             typed_scorer: A TypedLineScorer (anything with score(line) returning an Attempt).
@@ -61,15 +59,16 @@ class KeyboardWatcher:
             error_pause_seconds: How long to pause after an error, 0 or more.
             sleep: A function that waits that many seconds. Default: time.sleep.
             strict: Raise KeyboardWatcherError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=KeyboardWatcherError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, KeyboardWatcherError, DEBUG, strict)
         self._terminal, self._typed_scorer = terminal, typed_scorer
         self._poll = self._valid(poll_seconds, "poll_seconds", DEFAULT_POLL_SECONDS, lambda v: v > 0, "above 0")
         self._error_pause = self._valid(error_pause_seconds, "error_pause_seconds", DEFAULT_ERROR_PAUSE_SECONDS, lambda v: v >= 0,
                                         "at least 0")
         self._sleep = sleep if callable(sleep) else time.sleep
         if sleep is not None and not callable(sleep):
-            self.report.warn(f"sleep must be a function, got {type(sleep).__name__}; using time.sleep")
+            self.logger.warning(f"sleep must be a function, got {type(sleep).__name__}; using time.sleep")
         self._paused = threading.Event()
         self._closed = threading.Event()
         self.dropped_lines = 0
@@ -78,7 +77,7 @@ class KeyboardWatcher:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.report.warn(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
         return default
 
     @property
@@ -104,21 +103,21 @@ class KeyboardWatcher:
             try:
                 line = self._terminal.read_line(self._poll)
             except Exception as problem:             # nothing may stop the oracle
-                self.report.warn(f"the keyboard could not be read ({type(problem).__name__}); trying again")
+                self.logger.warning(f"the keyboard could not be read ({type(problem).__name__}); trying again")
                 self._sleep(self._error_pause)
                 continue
             if line is None or not isinstance(line, str):
                 continue
             if self._paused.is_set():
                 self.dropped_lines += 1
-                self.report.info("keyboard: a line typed during a turn was not answered (%d so far)", self.dropped_lines)
+                self.logger.info("keyboard: a line typed during a turn was not answered (%d so far)", self.dropped_lines)
                 continue
             if not line.strip():
                 continue                             # C Rtn alone
             try:
                 attempt = self._typed_scorer.score(line)
             except Exception as problem:             # nothing may stop the oracle
-                self.report.warn(f"a typed line could not be scored ({type(problem).__name__}); it was dropped")
+                self.logger.warning(f"a typed line could not be scored ({type(problem).__name__}); it was dropped")
                 self._sleep(self._error_pause)
                 continue
             yield attempt

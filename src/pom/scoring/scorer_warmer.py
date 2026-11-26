@@ -22,11 +22,9 @@ import time
 from typing import Callable, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ScorerSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-
-DEFAULT_POLL_SECONDS = 5.0           # how often to ask whether the server is up yet
-DEFAULT_ATTEMPTS = 3                 # warm-up requests that may fail, with the server up, before it gives up
 
 
 class ScorerWarmer:
@@ -36,19 +34,19 @@ class ScorerWarmer:
         warmed: True once a warm-up request has been answered with a score.
     """
 
-    def __init__(self, scorer, server_answers: Callable[[], bool], poll_seconds: float = DEFAULT_POLL_SECONDS,
-                 attempts: int = DEFAULT_ATTEMPTS, clock: Callable[[], float] = time.monotonic, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, scorer, server_answers: Callable[[], bool], scorer_settings: ScorerSettings,
+                 clock: Callable[[], float] = time.monotonic, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer: Anything with `warm_up() -> bool` (the ClipScorer): True if the model answered with a score.
             server_answers: Returns True when the scorer's server is up and ready for a request.
-            poll_seconds: Seconds between checks while the server is not up (and between failed warm-ups).
-            attempts: How many warm-up requests may fail, with the server up, before it gives up.
+            scorer_settings: The `[scorer]` section: `warmup_poll_seconds` (seconds between checks while the server is not up, and between
+                failed warm-ups) and `warmup_attempts` (how many warm-up requests may fail, with the server up, before it gives up).
             clock: Returns seconds; injected so tests need no waiting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._scorer, self._server_answers = scorer, server_answers
-        self._poll_seconds, self._attempts, self._clock = poll_seconds, attempts, clock
+        self._poll_seconds, self._attempts, self._clock = scorer_settings.warmup_poll_seconds, scorer_settings.warmup_attempts, clock
         self._stopped = threading.Event()
         self._thread = None
         self.warmed = False

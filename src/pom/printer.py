@@ -176,8 +176,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=bookkeeper),
                         clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                         failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds, bookkeeper=bookkeeper)
-    warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), poll_seconds=scoring.warmup_poll_seconds,
-                          attempts=scoring.warmup_attempts, bookkeeper=bookkeeper)     # sends the scorer one throwaway request once its server is up
+    warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), scoring, bookkeeper=bookkeeper)     # sends the scorer one throwaway request once its server is up
     stream_started_at = 0.0           # the stream time at which listening starts: the first room's clock begins here, and the bar begins here too
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at, bookkeeper=bookkeeper)
     take_cutter = TakeCutter(max_words=listening.max_clip_words, bookkeeper=bookkeeper)

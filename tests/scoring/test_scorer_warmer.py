@@ -2,8 +2,8 @@
 
 import pytest
 
+from pom.defaults import ScorerSettings
 from pom.scoring import ScorerWarmer
-from pom.scoring import scorer_warmer as warmer_module
 
 
 class FakeScorer:
@@ -28,9 +28,8 @@ class FakeServer:
         return self.states[min(self.checks, len(self.states)) - 1]
 
 
-def warmer_for(scorer, server, **options):
-    options.setdefault("poll_seconds", 0.0)
-    return ScorerWarmer(scorer, server, **options)
+def warmer_for(scorer, server, poll_seconds=0.0, attempts=ScorerSettings().warmup_attempts, **options):
+    return ScorerWarmer(scorer, server, ScorerSettings(warmup_poll_seconds=poll_seconds, warmup_attempts=attempts), **options)
 
 
 class TestWarmingOnceTheServerIsUp:
@@ -66,10 +65,10 @@ class TestWarmingOnceTheServerIsUp:
 
     def test_the_default_attempts_are_three(self):
         scorer = FakeScorer(False)
-        assert warmer_for(scorer, FakeServer(True)).run() is False and scorer.calls == warmer_module.DEFAULT_ATTEMPTS == 3
+        assert warmer_for(scorer, FakeServer(True)).run() is False and scorer.calls == ScorerSettings().warmup_attempts == 3
 
     def test_the_default_poll_is_a_few_seconds(self):
-        assert warmer_module.DEFAULT_POLL_SECONDS == 5.0
+        assert ScorerSettings().warmup_poll_seconds == 5.0
 
 
 class TestWhatItSaysInTheLog:
@@ -113,7 +112,7 @@ class TestInTheBackground:
         assert scorer.calls == 1
 
     def test_stop_ends_the_wait_for_a_server_that_never_comes(self):
-        warmer = ScorerWarmer(FakeScorer(True), FakeServer(False), poll_seconds=60.0)
+        warmer = warmer_for(FakeScorer(True), FakeServer(False), poll_seconds=60.0)
         warmer.start()
         warmer.stop()
         assert not warmer._thread.is_alive() and warmer.warmed is False

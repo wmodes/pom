@@ -52,16 +52,11 @@ from typing import Callable, Optional, Tuple
 
 from pom.conductor.floor_keeper import Turn
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ConductorSettings, OracleSettings
 from pom.qualifying.attempt import Attempt
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_FRESHNESS_SECONDS = 360.0       # a portent is worth printing for 6 minutes after its hinge
-DEFAULT_WRITE_ATTEMPTS = 3
-DEFAULT_WRITE_PAUSE_SECONDS = 10.0
-DEFAULT_WRITE_ATTEMPT_SECONDS = 240.0   # the longest one attempt can take: the oracle client's own timeout
-DEFAULT_WRITE_BUDGET_SECONDS = 270.0    # the FloorKeeper's writing limit (300 s) less a margin
-DEFAULT_PRINT_PAUSE_SECONDS = 10.0
 BEAT_SECONDS = 5.0                      # how often a wait for the printer sends its heartbeat
 WRITE_FAILURES_THAT_ALARM = 3           # turns in a row that wrote nothing
 
@@ -114,25 +109,23 @@ class TurnTaker:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        conductor, oracle: The `[conductor]` and `[oracle]` settings it was handed (from the oracle's section it reads only `timeout`).
         outcomes: How many turns have ended each way (a Counter of TurnOutcome).
     """
 
-    def __init__(self, writer, formatter, terminal=None, history=None, freshness_seconds: float = DEFAULT_FRESHNESS_SECONDS,
-                 write_attempts: int = DEFAULT_WRITE_ATTEMPTS, write_pause_seconds: float = DEFAULT_WRITE_PAUSE_SECONDS,
-                 write_attempt_seconds: float = DEFAULT_WRITE_ATTEMPT_SECONDS, write_budget_seconds: float = DEFAULT_WRITE_BUDGET_SECONDS,
-                 print_pause_seconds: float = DEFAULT_PRINT_PAUSE_SECONDS, clock: Optional[Callable[[], float]] = None,
-                 sleep: Optional[Callable[[float], None]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, writer, formatter, terminal=None, history=None, *, conductor: ConductorSettings, oracle: OracleSettings,
+                 clock: Optional[Callable[[], float]] = None, sleep: Optional[Callable[[float], None]] = None, strict: bool = False,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             writer: A PortentWriter (anything with write(hinge) returning a Portent or None).
             formatter: A PortentFormatter (anything with format(text)).
             terminal: Anything with transmit(text) returning a PrintResult, or None for no printer by design.
             history: A TurnHistory (add, set_outcome), or None to keep no record.
-            freshness_seconds: How long after the turn begins a portent is still worth printing, above 0.
-            write_attempts: The most times to ask the oracle, a whole number of at least 1.
-            write_pause_seconds: The wait between two attempts to write, 0 or more.
-            write_attempt_seconds: The longest one attempt can take (the oracle client's timeout), above 0.
-            write_budget_seconds: The time all the writing may take, above 0; keep it under the FloorKeeper's writing limit.
-            print_pause_seconds: The wait between two tries at a terminal that cannot print yet, above 0.
+            conductor: The `[conductor]` section: `freshness_seconds` (how long after the turn begins a portent is still worth printing),
+                `write_attempts` (the most times to ask the oracle), `write_pause_seconds` (the wait between two attempts to write),
+                `write_budget_seconds` (the time all the writing may take; under the FloorKeeper's writing limit) and `print_pause_seconds`
+                (the wait between two tries at a terminal that cannot print yet).
+            oracle: The `[oracle]` section: its `timeout` is the longest one attempt to write can take.
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
             sleep: A function that waits that many seconds. Default: time.sleep.
             strict: Raise TurnTakerError on any problem instead of logging it.
@@ -140,14 +133,7 @@ class TurnTaker:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnTakerError, DEBUG, strict)
         self._writer, self._formatter, self._terminal, self._history = writer, formatter, terminal, history
-        self._freshness = self._valid(freshness_seconds, "freshness_seconds", DEFAULT_FRESHNESS_SECONDS, lambda v: v > 0, "above 0")
-        self._write_attempts = int(self._valid(write_attempts, "write_attempts", DEFAULT_WRITE_ATTEMPTS,
-                                               lambda v: v >= 1 and float(v).is_integer(), "a whole number of at least 1"))
-        self._write_pause = self._valid(write_pause_seconds, "write_pause_seconds", DEFAULT_WRITE_PAUSE_SECONDS, lambda v: v >= 0, "at least 0")
-        self._write_attempt = self._valid(write_attempt_seconds, "write_attempt_seconds", DEFAULT_WRITE_ATTEMPT_SECONDS, lambda v: v > 0,
-                                          "above 0")
-        self._write_budget = self._valid(write_budget_seconds, "write_budget_seconds", DEFAULT_WRITE_BUDGET_SECONDS, lambda v: v > 0, "above 0")
-        self._print_pause = self._valid(print_pause_seconds, "print_pause_seconds", DEFAULT_PRINT_PAUSE_SECONDS, lambda v: v > 0, "above 0")
+        self.conductor, self.oracle = conductor, oracle
         self._clock = clock if callable(clock) else time.monotonic
         if clock is not None and not callable(clock):
             self.logger.warning("clock must be a function, got %s; using time.monotonic", type(clock).__name__)
@@ -156,13 +142,6 @@ class TurnTaker:
             self.logger.warning("sleep must be a function, got %s; using time.sleep", type(sleep).__name__)
         self.outcomes: Counter = Counter()
         self._failed_writes_in_a_row = 0
-
-    def _valid(self, value, name: str, default: float, is_good, wanted: str) -> float:
-        """A number that passes `is_good`, or the default with a warning."""
-        if _is_number(value) and is_good(value):
-            return float(value)
-        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
-        return default
 
     # --- One turn -------------------------------------------------------------------
 
@@ -220,14 +199,14 @@ class TurnTaker:
             portent = self._writer.write(hinge)
             if portent is not None:
                 return portent, attempts
-            if attempts >= self._write_attempts:
+            if attempts >= self.conductor.write_attempts:
                 break
-            if self._clock() - began + self._write_pause + self._write_attempt > self._write_budget:
+            if self._clock() - began + self.conductor.write_pause_seconds + self.oracle.timeout > self.conductor.write_budget_seconds:
                 self.logger.info("turn: the oracle gave nothing and another attempt would not fit in the time allowed")
                 break
-            self.logger.info("turn: the oracle gave nothing (attempt %d of %d); trying again in %.0f s", attempts, self._write_attempts,
-                             self._write_pause)
-            self._sleep(self._write_pause)
+            self.logger.info("turn: the oracle gave nothing (attempt %d of %d); trying again in %.0f s", attempts, self.conductor.write_attempts,
+                             self.conductor.write_pause_seconds)
+            self._sleep(self.conductor.write_pause_seconds)
         self._failed_writes_in_a_row += 1
         if self._failed_writes_in_a_row % WRITE_FAILURES_THAT_ALARM == 0:
             self.logger.critical("the oracle has written nothing for %s turns in a row; it looks broken", self._failed_writes_in_a_row)
@@ -247,7 +226,7 @@ class TurnTaker:
                write_attempts: int) -> TurnResult:
         """Types the portent, waiting for a terminal that cannot print yet, for as long as the portent is fresh."""
         printing_began = self._clock()
-        deadline = began + self._freshness
+        deadline = began + self.conductor.freshness_seconds
         tries = 0
         while True:
             if self._clock() >= deadline:
@@ -267,13 +246,13 @@ class TurnTaker:
                 self._set_outcome(record_id, "waiting for the printer")
             self.logger.info("turn: the terminal cannot print yet (try %d); waiting for it, for up to %.0f s more", tries,
                              max(0.0, deadline - self._clock()))
-            if self._clock() + self._print_pause >= deadline:
+            if self._clock() + self.conductor.print_pause_seconds >= deadline:
                 break
-            self._wait(turn, self._print_pause)
+            self._wait(turn, self.conductor.print_pause_seconds)
         if tries == 0:
-            self.logger.warning("the portent was ready more than %g s after the hinge, so it is dropped unprinted", self._freshness)
+            self.logger.warning("the portent was ready more than %g s after the hinge, so it is dropped unprinted", self.conductor.freshness_seconds)
         else:
-            self.logger.critical("the printer did not come back within %g s of the hinge (%s tries); the portent is dropped", self._freshness, tries)
+            self.logger.critical("the printer did not come back within %g s of the hinge (%s tries); the portent is dropped", self.conductor.freshness_seconds, tries)
         return self._done(TurnOutcome.TOO_LATE, record_id, words=words, writing_seconds=writing_seconds,
                           printing_seconds=self._clock() - printing_began, write_attempts=write_attempts, print_tries=tries)
 

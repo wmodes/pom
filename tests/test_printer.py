@@ -81,11 +81,11 @@ class TestTheWiring:
         p = build_printer(config, Options())
         floor, taker, conductor = p.floor, p.parts["turn_taker"], p.conductor
         assert floor.conductor is config.conductor
-        assert (taker._freshness, taker._write_attempts, taker._write_pause, taker._write_budget, taker._print_pause) == (99.0, 2, 4.0, 450.0, 3.0)
+        assert taker.conductor is config.conductor and taker.oracle is config.oracle
         assert (conductor._restart_pause, conductor._check) == (8.0, 0.5)
 
     def test_the_oracles_own_timeout_is_what_one_write_attempt_is_allowed(self, tmp_path):
-        assert build(tmp_path, "[oracle]\ntimeout = 123\n[conductor]\nwriting_seconds = 999\n").parts["turn_taker"]._write_attempt == 123.0
+        assert build(tmp_path, "[oracle]\ntimeout = 123\n[conductor]\nwriting_seconds = 999\n").parts["turn_taker"].oracle.timeout == 123.0
 
     def test_the_bar_keeper_and_scorer_are_shared_by_every_room_that_is_built(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "none"\n')

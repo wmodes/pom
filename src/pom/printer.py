@@ -234,10 +234,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
     history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at, bookkeeper=bookkeeper)
     floor = FloorKeeper(conductor_settings, bookkeeper=bookkeeper)
-    turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
-                           write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,
-                           write_attempt_seconds=oracle.timeout, write_budget_seconds=conductor_settings.write_budget_seconds,
-                           print_pause_seconds=conductor_settings.print_pause_seconds, bookkeeper=bookkeeper)
+    turn_taker = TurnTaker(writer, formatter, terminal, history, conductor=conductor_settings, oracle=oracle, bookkeeper=bookkeeper)
 
     # the boot slip: types the Pi's address when the typewriter is online (only if there is a terminal to type on)
     slip = config.boot_slip

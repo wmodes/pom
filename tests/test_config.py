@@ -1328,12 +1328,7 @@ def test_the_committed_config_s_conductor_fits_its_own_limits():
 
 def test_the_conductor_defaults_in_the_code_are_the_ones_the_parts_use():
     from pom import defaults as settings
-    from pom.conductor import turn_taker
     from pom.conductor import conductor
-    assert (settings.ConductorSettings().freshness_seconds, settings.ConductorSettings().write_attempts, settings.ConductorSettings().write_pause_seconds,
-            settings.ConductorSettings().write_budget_seconds, settings.ConductorSettings().print_pause_seconds) == (
-        turn_taker.DEFAULT_FRESHNESS_SECONDS, turn_taker.DEFAULT_WRITE_ATTEMPTS, turn_taker.DEFAULT_WRITE_PAUSE_SECONDS,
-        turn_taker.DEFAULT_WRITE_BUDGET_SECONDS, turn_taker.DEFAULT_PRINT_PAUSE_SECONDS)
     assert (settings.ConductorSettings().restart_pause_seconds, settings.ConductorSettings().check_seconds) == (
         conductor.DEFAULT_RESTART_PAUSE_SECONDS, conductor.DEFAULT_CHECK_SECONDS)
 

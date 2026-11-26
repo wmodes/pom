@@ -3,11 +3,12 @@
 The writer and the terminal are small fakes the test scripts; the formatter, the TurnHistory and the FloorKeeper are the real ones,
 because how the TurnTaker joins them is the point. One clock moves everything, and "sleeping" just moves it.
 """
+import dataclasses
 from types import SimpleNamespace
 
 import pytest
 
-from pom.defaults import ConductorSettings, PrintingSettings
+from pom.defaults import ConductorSettings, OracleSettings, PrintingSettings
 from pom.conductor import FloorKeeper, FloorState, TurnOutcome, TurnResult, TurnTaker, TurnTakerError
 from pom.library import Passage
 from pom.monitor import TurnHistory
@@ -81,6 +82,10 @@ class EmptyFormatter:
         return "   \n"
 
 
+CONDUCTOR, ORACLE = ConductorSettings(), OracleSettings()
+CONDUCTOR_SETTINGS = {f.name for f in dataclasses.fields(ConductorSettings)}
+
+
 def build(writer_replies=(), terminal=..., writer_takes=0.0, terminal_takes=0.0, writing=300.0, printing=50.0, recovering=3.0,
           history=True, formatter=None, terminal_replies=(), on_print=None, **options):
     clock = Clock()
@@ -88,7 +93,10 @@ def build(writer_replies=(), terminal=..., writer_takes=0.0, terminal_takes=0.0,
     writer = FakeWriter(*writer_replies, clock=clock, takes=writer_takes)
     the_terminal = FakeTerminal(*terminal_replies, on_call=on_print, clock=clock, takes=terminal_takes) if terminal is ... else terminal
     the_history = TurnHistory(clock=clock) if history else None
-    taker = TurnTaker(writer, formatter or PortentFormatter(PrintingSettings()), the_terminal, the_history, clock=clock, sleep=clock.advance, **options)
+    conductor = ConductorSettings(**{name: options.pop(name) for name in list(options) if name in CONDUCTOR_SETTINGS})
+    oracle = OracleSettings(timeout=options.pop("write_attempt_seconds", OracleSettings().timeout))     # one attempt may take the oracle's timeout
+    taker = TurnTaker(writer, formatter or PortentFormatter(PrintingSettings()), the_terminal, the_history, conductor=conductor, oracle=oracle,
+                      clock=clock, sleep=clock.advance, **options)
     return SimpleNamespace(taker=taker, keeper=keeper, clock=clock, writer=writer, terminal=the_terminal, history=the_history)
 
 
@@ -227,6 +235,11 @@ class TestWhenTheOracleGivesNothing:
     def test_the_pause_and_the_budget_are_settings(self):
         rig = build(writer_replies=[None, portent()], write_pause_seconds=3.0)
         assert take(rig).writing_seconds == pytest.approx(3.0)
+
+    def test_a_budget_too_small_for_a_second_attempt_allows_only_one(self):
+        rig = build(writer_replies=[None, portent()], write_attempt_seconds=10.0, write_pause_seconds=0.0, write_budget_seconds=9.0)
+        result = take(rig)
+        assert result.outcome is TurnOutcome.NO_PORTENT and result.write_attempts == 1      # 0 + 0 pause + 10 is over the 9 s budget
 
 
 class TestWhenThePrinterCannotPrintYet:
@@ -434,36 +447,15 @@ class TestWithoutAHistory:
 
 
 class TestBadSettings:
-    @pytest.mark.parametrize("name", ["freshness_seconds", "write_attempt_seconds", "write_budget_seconds", "print_pause_seconds"])
-    @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
-    def test_a_bad_number_above_zero_is_the_default_with_a_warning(self, name, bad, logged):
-        taker = TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, **{name: bad})
-        assert len(logged.of(taker).warnings()) == 1 and name in logged.of(taker).warnings()[0]
-
-    @pytest.mark.parametrize("bad", [0, 1.5, -2, "3", None, True])
-    def test_bad_write_attempts_is_the_default_with_a_warning(self, bad, logged):
-        taker = TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, write_attempts=bad)
-        assert len(logged.of(taker).warnings()) == 1 and "write_attempts" in logged.of(taker).warnings()[0]
-
-    @pytest.mark.parametrize("bad", [-1, "x", None])
-    def test_a_bad_pause_is_the_default_with_a_warning(self, bad, logged):
-        taker = TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, write_pause_seconds=bad)
-        assert len(logged.of(taker).warnings()) == 1
-
-    def test_a_pause_of_zero_is_allowed(self, logged):
-        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, write_pause_seconds=0)).ok()
-
     def test_a_clock_or_sleep_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
-        assert len(logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, clock=5)).warnings()) == 1
-        warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, sleep="x")).warnings()
+        assert len(logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE,
+                                       clock=5)).warnings()) == 1
+        warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE,
+                                       sleep="x")).warnings()
         assert len(warnings) == 2 and "sleep must be a function" in warnings[1]                # the second taker's one warning, after the first's
 
     def test_good_settings_are_quiet(self, logged):
-        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None)).ok()
-
-    def test_in_strict_mode_a_bad_setting_raises(self):
-        with pytest.raises(TurnTakerError):
-            TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, freshness_seconds=-1, strict=True)
+        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE)).ok()
 
 
 class TestTheLogs:

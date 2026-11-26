@@ -22,10 +22,7 @@ from typing import Callable, Optional
 from pom.listening.audio_format import SAMPLE_RATE
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.mic_deck import DEFAULT_BUFFER_SECONDS, MicDeck, MicDeckError
-from pom.bookkeeper.log_setup import get_logger
 
-DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_MAC_DEVICE = "default"
 

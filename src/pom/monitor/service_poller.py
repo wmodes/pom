@@ -15,12 +15,9 @@ Design decisions, and why:
 import threading
 from typing import Callable, Mapping
 
-from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
 from pom.monitor.status_board import StatusBoard
 
-DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 JOIN_SECONDS = 5.0     # how long stopping waits for the thread
 

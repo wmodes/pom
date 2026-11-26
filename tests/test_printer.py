@@ -256,6 +256,18 @@ class TestWhereSoundComesFrom:
         printer = build_printer(config, Options())
         assert handed == [config.scorer] and printer.parts["scorer"].scorer_settings is config.scorer
 
+    def test_the_oracle_model_client_is_handed_the_oracle_settings(self, tmp_path, monkeypatch):
+        handed = []
+        real = printer_module.OracleModelClient
+
+        def recording(oracle, **options):
+            handed.append(oracle)
+            return real(oracle, **options)
+        monkeypatch.setattr(printer_module, "OracleModelClient", recording)
+        config = config_from(tmp_path, '[oracle]\nmax_tokens = 123\n[terminal]\nmode = "none"\n')
+        build_printer(config, Options())
+        assert handed == [config.oracle]
+
     def test_each_room_s_eavesdropper_is_handed_the_listening_settings(self, tmp_path):
         config = config_from(tmp_path, '[listening]\nroom_tone_memory = 2\n[terminal]\nmode = "none"\n')
         finder, ears = build_printer(config, Options()).conductor._room_factory()

@@ -125,7 +125,7 @@ def main() -> None:
                 break
             oracle = Config.load(CONFIG_PATH).oracle                       # read again, so prompt edits show at once
             writer = PortentWriter(PromptBuilder(oracle.prompt, selector),
-                                   OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature), rng)
+                                   OracleModelClient(oracle), rng)
             portent = writer.write(hinge, seed=args.seed if args.seed is not None else seed_for(hinge))
             if portent is not None:
                 print("\n".join(exemplar_columns(list(portent.exemplars), shutil.get_terminal_size().columns)) or "exemplars: none")

@@ -15,8 +15,8 @@ Design decisions, and why:
     tests and dev tools.
   * Neither the prompt (it holds the hinge) nor the portent is logged: nothing
     that was said in the room is kept. Logs and reports hold counts and timings.
-  * The settings are passed in (the entry point takes them from Config); this module never reads Config.
-  * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.
+  * The `[oracle]` settings object is passed in (the entry point takes it from Config); this module never reads Config.
+  * The address is checked by the config (http or https only, so a mistyped setting cannot make it open a file).
   * The transport is injected (`post`), so tests run with a fake and need no server. The default uses the standard
     library, so there is nothing to install.
   * `chat_template_kwargs {"enable_thinking": False}` is sent because Qwen3 models think out loud first
@@ -29,12 +29,10 @@ import urllib.request
 from typing import Callable, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import OracleSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_TIMEOUT = 240.0
-DEFAULT_MAX_TOKENS = 300
-DEFAULT_TEMPERATURE = 0.8
 
 
 class OracleModelClientError(ValueError):
@@ -49,75 +47,46 @@ def _http_post(url: str, body: dict, timeout: float) -> dict:
         return json.load(response)
 
 
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
-
-
 class OracleModelClient:
     """Asks a language model served by llama-server for a consult.
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        oracle: The `[oracle]` settings it was handed (it reads `url`, `timeout`, `max_tokens` and `temperature`).
         last_seconds: How long the most recent request took, or None before the first.
         last_cut_off: True if the most recent consult stopped because it reached `max_tokens`.
     """
 
-    def __init__(self, url: str, timeout: float = DEFAULT_TIMEOUT, max_tokens: int = DEFAULT_MAX_TOKENS,
-                 temperature: float = DEFAULT_TEMPERATURE, post: Optional[Callable[[str, dict, float], dict]] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, oracle: OracleSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            url: The server's chat-completions address, e.g. http://127.0.0.1:8099/v1/chat/completions.
-            timeout: Seconds to wait for one portent.
-            max_tokens: The most the model may write, a whole number of at least 1.
-            temperature: How adventurous the word choice is, 0 or more.
+            oracle: The `[oracle]` section: `url` (the server's chat-completions address), `timeout` (seconds to wait for one portent),
+                `max_tokens` (the most the model may write) and `temperature` (how adventurous the word choice is).
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
             strict: Raise OracleModelClientError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, OracleModelClientError, DEBUG, strict)
-        self._url = url
-        self._timeout = self._valid(timeout, "timeout", DEFAULT_TIMEOUT, lambda v: _is_number(v) and v > 0,
-                                    "a positive number of seconds")
-        self._max_tokens = self._valid(max_tokens, "max_tokens", DEFAULT_MAX_TOKENS,
-                                       lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 1,
-                                       "a whole number of at least 1")
-        self._temperature = self._valid(temperature, "temperature", DEFAULT_TEMPERATURE,
-                                        lambda v: _is_number(v) and v >= 0, "a number of at least 0")
+        self.oracle = oracle
         self._post = post if post is not None else _http_post
         self.last_seconds: Optional[float] = None
         self.last_cut_off = False
-        self._usable = True
-        if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
-            self.logger.warning("the oracle address must start with http:// or https://, got %r; the model will not be asked", url)
-            self._usable = False
-
-    def _valid(self, value, name: str, default, is_good, wanted: str):
-        """The value if it passes `is_good`, otherwise the default with a warning."""
-        if is_good(value):
-            return value
-        self.logger.warning("the oracle %s must be %s, got %r; using %g", name, wanted, value, default)
-        return default
-
-    @property
-    def available(self) -> bool:
-        """False if the address was unusable, so the model will never be asked."""
-        return self._usable
 
     def consult(self, prompt: str) -> Optional[str]:
         """The model's portent for this prompt, or None if it wrote none.
 
         None means no portent could be had; the reason is in the log. Never raises (except in strict mode).
         """
-        if not self._usable or not isinstance(prompt, str) or not prompt.strip():
+        if not isinstance(prompt, str) or not prompt.strip():
             return None
         body = {
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": self._max_tokens, "temperature": self._temperature,
+            "max_tokens": self.oracle.max_tokens, "temperature": self.oracle.temperature,
             "chat_template_kwargs": {"enable_thinking": False},      # Qwen3 thinks otherwise; others ignore it
         }
         started = time.perf_counter()
         try:
-            reply = self._post(self._url, body, self._timeout)
+            reply = self._post(self.oracle.url, body, self.oracle.timeout)
             choice = reply["choices"][0]
             text = choice["message"]["content"].strip()
         except Exception as error:               # a dead or slow server must never stop the oracle

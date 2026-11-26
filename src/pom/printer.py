@@ -220,7 +220,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     selector = Bibliomancer(Catalog.load(passages, bookkeeper=bookkeeper), Circulation.from_file(passages / "circulation.json", bookkeeper=bookkeeper), rng,
                             exemplar_range=config.exemplar_range, redraw_limit=oracle.exemplar_redraws, bookkeeper=bookkeeper)
     writer = PortentWriter(PromptBuilder(oracle.prompt, selector, bookkeeper=bookkeeper),
-                           OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature, bookkeeper=bookkeeper), rng,
+                           OracleModelClient(oracle, bookkeeper=bookkeeper), rng,
                            bookkeeper=bookkeeper)
     printing = config.printing
     formatter = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,

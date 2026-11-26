@@ -200,7 +200,7 @@ def main() -> None:
             print("  >>> the oracle is writing; the Printer is not listening meanwhile ...", flush=True)
             oracle = Config.load(args.config).oracle                 # read again, so prompt edits show at once
             writer = PortentWriter(PromptBuilder(oracle.prompt, selector),
-                                   OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature), rng)
+                                   OracleModelClient(oracle), rng)
             portent = writer.write(sentence.text)
             if history is not None:
                 history.add(sentence.text, sentence.score, sentence.bar, sentence.window_size, sentence.heard_at, portent)

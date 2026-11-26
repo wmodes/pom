@@ -2,8 +2,8 @@
 
 import pytest
 
+from pom.defaults import OracleSettings
 from pom.writing import OracleModelClient, OracleModelClientError
-from pom.writing.oracle_model_client import DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT
 
 URL = "http://127.0.0.1:8099/v1/chat/completions"
 PROMPT = "Speak as the oracle.\n\nThey said: the dog barks at ghosts."
@@ -28,9 +28,14 @@ class FakePost:
         return self.result
 
 
-def client(post=None, **options):
+ORACLE = OracleSettings(url=URL)
+
+
+def client(post=None, timeout=None, max_tokens=None, temperature=None, **options):
+    """A client of the oracle at URL; a setting given here changes only that one."""
     options.setdefault("strict", False)
-    return OracleModelClient(URL, post=post or FakePost(), **options)
+    changed = {name: value for name, value in (("timeout", timeout), ("max_tokens", max_tokens), ("temperature", temperature)) if value is not None}
+    return OracleModelClient(OracleSettings(url=URL, **changed), post=post or FakePost(), **options)
 
 
 class TestAskingForAPortent:
@@ -57,8 +62,8 @@ class TestAskingForAPortent:
         post = FakePost()
         client(post).consult(PROMPT)
         _, body, timeout = post.calls[0]
-        assert (body["max_tokens"], body["temperature"], timeout) == (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT)
-        assert (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT) == (300, 0.8, 240.0)
+        assert (body["max_tokens"], body["temperature"], timeout) == (ORACLE.max_tokens, ORACLE.temperature, ORACLE.timeout)
+        assert (ORACLE.max_tokens, ORACLE.temperature, ORACLE.timeout) == (300, 0.8, 240.0)
 
     def test_thinking_is_turned_off_for_models_that_would_think(self):
         post = FakePost()
@@ -78,7 +83,7 @@ class TestAskingForAPortent:
     def test_a_good_client_is_quiet(self, logged):
         c = client()
         c.consult(PROMPT)
-        assert logged.of(c).ok() and c.available
+        assert logged.of(c).ok()
 
     def test_the_time_taken_is_recorded(self):
         c = client()
@@ -145,28 +150,6 @@ class TestCutOff:
 
 
 class TestSettings:
-    @pytest.mark.parametrize("url", ["", "ftp://x/y", "file:///etc/passwd", "127.0.0.1:8099", None, 5])
-    def test_a_bad_address_means_the_model_is_never_asked(self, url, logged):
-        post = FakePost()
-        c = OracleModelClient(url, post=post)
-        assert not c.available and c.consult(PROMPT) is None and post.calls == []
-        assert len(logged.of(c).warnings()) == 1
-
-    def test_https_is_accepted(self):
-        assert OracleModelClient("https://example.test/v1/chat/completions").available
-
-    @pytest.mark.parametrize("name,value", [
-        ("timeout", 0), ("timeout", -1), ("timeout", "slow"), ("timeout", True), ("timeout", None),
-        ("max_tokens", 0), ("max_tokens", 2.5), ("max_tokens", "300"), ("max_tokens", True),
-        ("temperature", -0.1), ("temperature", "hot"), ("temperature", True), ("temperature", None)])
-    def test_a_bad_setting_is_replaced_by_its_default_with_a_warning(self, name, value, logged):
-        post = FakePost()
-        c = client(post, **{name: value})
-        c.consult(PROMPT)
-        _, body, timeout = post.calls[0]
-        assert (body["max_tokens"], body["temperature"], timeout) == (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT)
-        assert len(logged.of(c).warnings()) == 1 and f"oracle {name}" in logged.of(c).warnings()[0]
-
     def test_the_smallest_allowed_settings_are_accepted(self, logged):
         post = FakePost()
         c = client(post, timeout=0.1, max_tokens=1, temperature=0)
@@ -174,11 +157,10 @@ class TestSettings:
         _, body, timeout = post.calls[0]
         assert (body["max_tokens"], body["temperature"], timeout) == (1, 0, 0.1) and logged.of(c).ok()
 
-    def test_strict_mode_raises_for_a_bad_setting(self):
-        with pytest.raises(OracleModelClientError):
-            client(max_tokens=0, strict=True)
-        with pytest.raises(OracleModelClientError):
-            OracleModelClient("nope", strict=True)
+    def test_a_request_goes_to_the_configured_address(self):
+        post = FakePost()
+        OracleModelClient(OracleSettings(url="http://pi.test:9100/v1/chat/completions"), post=post).consult(PROMPT)
+        assert post.calls[0][0] == "http://pi.test:9100/v1/chat/completions"
 
 
 class TestPrivacy:

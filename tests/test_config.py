@@ -965,14 +965,6 @@ def test_the_local_file_overrides_the_prompt_and_keeps_the_exemplar_counts(tmp_p
     assert config.oracle.prompt == "Mine. {hinge}" and config.exemplar_range == (2, 4)
 
 
-def test_the_oracle_defaults_match_the_oracle_clients_own():
-
-    from pom.writing import oracle_model_client
-    assert OracleSettings().timeout == oracle_model_client.DEFAULT_TIMEOUT
-    assert OracleSettings().max_tokens == oracle_model_client.DEFAULT_MAX_TOKENS
-    assert OracleSettings().temperature == oracle_model_client.DEFAULT_TEMPERATURE
-
-
 def test_oracle_values_are_read_from_the_section(tmp_path):
     text = ('[oracle]\nurl = "http://10.0.0.5:9100/v1/chat/completions"\ntimeout = 30\nprompt = "Speak. {hinge}"\n'
             "max_tokens = 200\ntemperature = 1.1\n")

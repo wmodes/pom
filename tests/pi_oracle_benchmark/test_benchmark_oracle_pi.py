@@ -158,8 +158,9 @@ class TestStreamTimer:
         assert timer.last.first_token_seconds is not None and timer.last.first_token_seconds >= 0
 
     def test_works_as_the_posting_function_of_the_real_client(self, server_url):
+        from pom.defaults import OracleSettings
         from pom.writing import OracleModelClient
-        client = OracleModelClient(server_url, 5, 300, 0.3, post=StreamTimer())
+        client = OracleModelClient(OracleSettings(url=server_url, timeout=5, max_tokens=300, temperature=0.3), post=StreamTimer())
         assert client.consult("a prompt") == "Hello world"
         assert client.last_cut_off is False
 

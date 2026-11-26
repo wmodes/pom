@@ -203,13 +203,6 @@ def test_samples_default_to_three_to_five():
     assert config.exemplar_range == (3, 5) and config.problems.ok
 
 
-def test_the_defaults_match_the_bibliomancers_defaults():
-    """Config and Bibliomancer each carry the default (neither imports the other), so keep them equal."""
-    from pom.library.bibliomancer import DEFAULT_EXEMPLAR_RANGE
-    CONFIG_DEFAULT = Config().exemplar_range
-    assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
-
-
 def test_samples_are_read_from_the_file_and_the_environment(tmp_path):
     path = write(tmp_path, "[oracle]\nexemplars_min = 2\nexemplars_max = 4\n")
     assert Config.load(path, environ={}).exemplar_range == (2, 4)
@@ -251,8 +244,7 @@ def test_config_samples_plug_straight_into_the_sampler():
     from pom.library import Passage, Catalog, Circulation, Bibliomancer
     config = Config.load(environ={"POM_EXEMPLARS_MIN": "2", "POM_EXEMPLARS_MAX": "2"})
     store = Catalog.from_passages([Passage(f"a#{i}", "a", "red", f"Passage {i}", 2) for i in range(9)])
-    selector = Bibliomancer(store, Circulation.from_dict({}), random.Random(1),
-                                exemplar_range=config.exemplar_range)
+    selector = Bibliomancer(store, Circulation.from_dict({}), random.Random(1), oracle=config.oracle)
     assert len(selector.draw()) == 2
 
 

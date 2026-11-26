@@ -150,7 +150,7 @@ def main() -> None:
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(PASSAGES), Circulation.from_file(PASSAGES / "circulation.json"), rng,
-                                exemplar_range=config.exemplar_range, redraw_limit=config.oracle.exemplar_redraws)
+                                oracle=config.oracle)
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")
 

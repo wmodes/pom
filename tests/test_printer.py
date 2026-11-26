@@ -221,9 +221,10 @@ class TestTheWiring:
     def test_the_library_is_the_real_one(self, tmp_path):
         assert p_ready(build(tmp_path))
 
-    def test_the_selector_redraws_unfinished_exemplars_as_often_as_the_config_says(self, tmp_path):
-        assert build(tmp_path, "[oracle]\nexemplar_redraws = 7\n").parts["selector"]._redraw_limit == 7
-        assert build(tmp_path).parts["selector"]._redraw_limit == 50
+    def test_the_selector_is_handed_the_oracle_settings_it_draws_by(self, tmp_path):
+        config = config_from(tmp_path, "[oracle]\nexemplar_redraws = 7\nexemplars_min = 2\n")
+        selector = build_printer(config, Options()).parts["selector"]
+        assert selector.oracle is config.oracle and selector.exemplar_range == (2, 5)
 
 
 def p_ready(p):

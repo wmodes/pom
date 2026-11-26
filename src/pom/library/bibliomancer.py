@@ -60,17 +60,16 @@ Design decisions, and why:
 """
 import bisect
 import random
-from typing import Optional, Sequence
+from typing import Optional
 
 from pom.library.catalog import Passage, Catalog
 from pom.library.circulation import Circulation
 from pom.library.endings import ends_unfinished
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import OracleSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_EXEMPLAR_RANGE = (3, 5)
-DEFAULT_REDRAW_LIMIT = 50
 
 
 class BibliomancerError(ValueError):
@@ -83,12 +82,11 @@ class Bibliomancer:
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper): problems found while building the odds (an
             empty library, a shelf with nothing drawable). What `Circulation.check` found about the layout is logged by the circulation.
+        oracle: The `[oracle]` settings it was handed (it reads `exemplars_min`, `exemplars_max` and `exemplar_redraws`).
     """
 
-    def __init__(self, store: Catalog, circulation: Circulation,
-                 rng: Optional[random.Random] = None, strict: bool = False,
-                 exemplar_range: Sequence[int] = DEFAULT_EXEMPLAR_RANGE,
-                 redraw_limit: int = DEFAULT_REDRAW_LIMIT, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, store: Catalog, circulation: Circulation, rng: Optional[random.Random] = None, strict: bool = False, *,
+                 oracle: OracleSettings, bookkeeper: Optional[Bookkeeper] = None):
         """Builds the draw odds from the store and the weights.
 
         Args:
@@ -98,14 +96,13 @@ class Bibliomancer:
                 for repeatable draws.
             strict: Raise BibliomancerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
-            exemplar_range: The (fewest, most) passages `draw()` returns when not told how many.
-            redraw_limit: How many times one pick that lands on an unfinished passage is drawn again before the
-                unfinished one is accepted; a whole number, 0 for never redrawing.
+            oracle: The `[oracle]` section: `exemplars_min` and `exemplars_max` (the fewest and most passages `draw()` returns when not
+                told how many) and `exemplar_redraws` (how many times one pick that lands on an unfinished passage is drawn again before
+                the unfinished one is accepted; 0 for never redrawing).
         """
         self._rng = rng if rng is not None else random.Random()
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, BibliomancerError, DEBUG, strict)
-        self._exemplar_range = self._valid_exemplar_range(exemplar_range)
-        self._redraw_limit = self._valid_redraw_limit(redraw_limit)
+        self.oracle = oracle
         self._unfinished: set[int] = set()       # table positions of the passages that end unfinished
         circulation.check(store.layout())                        # logs any drift; the odds still work
         self._passages: list[Passage] = []
@@ -114,32 +111,6 @@ class Bibliomancer:
         self._shares: dict[str, float] = {}
         self._counts: dict[str, int] = {}
         self._build(store, circulation)
-
-    def _valid_exemplar_range(self, exemplar_range) -> tuple[int, int]:
-        """A usable (fewest, most) pair: whole numbers of at least 1, in order.
-
-        Anything else is reported and replaced by the default; a reversed pair is swapped.
-        """
-        def whole(value):
-            return isinstance(value, int) and not isinstance(value, bool) and value >= 1
-        try:
-            low, high = exemplar_range
-        except (TypeError, ValueError):
-            low = high = None
-        if not (whole(low) and whole(high)):
-            self.logger.warning("exemplar_range must be two whole numbers of at least 1, got %r; using %s", exemplar_range, DEFAULT_EXEMPLAR_RANGE)
-            return DEFAULT_EXEMPLAR_RANGE
-        if low > high:
-            self.logger.warning("exemplar_range (%s, %s) is backwards; using (%s, %s)", low, high, high, low)
-            low, high = high, low
-        return (low, high)
-
-    def _valid_redraw_limit(self, redraw_limit) -> int:
-        """A whole number of at least 0; anything else is reported and replaced by the default."""
-        if isinstance(redraw_limit, int) and not isinstance(redraw_limit, bool) and redraw_limit >= 0:
-            return redraw_limit
-        self.logger.warning("redraw_limit must be a whole number of at least 0, got %r; using %s", redraw_limit, DEFAULT_REDRAW_LIMIT)
-        return DEFAULT_REDRAW_LIMIT
 
     # --- Building the odds ----------------------------------------------------------
 
@@ -179,7 +150,7 @@ class Bibliomancer:
             self.logger.critical("nothing to draw from: no passage has a positive chance")
             return
         self.logger.info("selector ready: %d drawable passage(s) in %d shelf(s); %d end unfinished and are %s", len(self._passages),
-                         len(drawable), len(self._unfinished), "drawn again" if self._redraw_limit else "left in (redraw is off)")
+                         len(drawable), len(self._unfinished), "drawn again" if self.oracle.exemplar_redraws else "left in (redraw is off)")
         self.logger.debug("shelf shares: %s",
                           ", ".join(f"{r}={s:.3f}" for r, s in sorted(self._shares.items())))
 
@@ -188,7 +159,7 @@ class Bibliomancer:
     @property
     def exemplar_range(self) -> tuple[int, int]:
         """The (fewest, most) passages a no-argument `draw()` returns."""
-        return self._exemplar_range
+        return (self.oracle.exemplars_min, self.oracle.exemplars_max)
 
     @property
     def ready(self) -> bool:
@@ -235,7 +206,7 @@ class Bibliomancer:
             passages do not exist; empty if there is nothing to draw (the log says why).
         """
         if count is None:
-            count = self._rng.randint(*self._exemplar_range)
+            count = self._rng.randint(*self.exemplar_range)
         wanted = min(max(int(count), 0), len(self._passages))
         if wanted == 0:
             return []
@@ -266,12 +237,12 @@ class Bibliomancer:
         mostly unfinished still gives the oracle something.
         """
         index, redraws = self._pick(), 0
-        while index in self._unfinished and redraws < self._redraw_limit:
+        while index in self._unfinished and redraws < self.oracle.exemplar_redraws:
             index = self._pick()
             redraws += 1
-        if index in self._unfinished and self._redraw_limit:
+        if index in self._unfinished and self.oracle.exemplar_redraws:
             self.logger.warning("%s picks in a row ended unfinished; using one anyway (%s of %s passages are unfinished)",
-                                self._redraw_limit, len(self._unfinished), len(self._passages))
+                                self.oracle.exemplar_redraws, len(self._unfinished), len(self._passages))
         return index, redraws
 
     def _pick(self) -> int:
@@ -282,7 +253,7 @@ class Bibliomancer:
     def _finish_exactly(self, picked: list[int], seen: set[int], wanted: int) -> None:
         """Completes a pull among the passages not yet picked, still in proportion to their odds."""
         rest = [i for i in range(len(self._passages)) if i not in seen]
-        if self._redraw_limit:                  # prefer the finished passages, as `_pick_finished` does, if any are left
+        if self.oracle.exemplar_redraws:                  # prefer the finished passages, as `_pick_finished` does, if any are left
             rest = [i for i in rest if i not in self._unfinished] or rest
         while rest and len(picked) < wanted:
             choice = self._rng.choices(rest, weights=[self._probability[i] for i in rest])[0]

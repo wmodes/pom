@@ -69,7 +69,7 @@ def main():
     configure_logging(config.log_level if args.verbose else "WARNING")
     store = Catalog.load(os.path.join(ROOT, "library", "passages"))
     selector = Bibliomancer(store, Circulation.from_file(args.circulation), random.Random(args.seed),
-                      exemplar_range=config.exemplar_range)
+                      oracle=config.oracle)
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     if args.stats is not None:

@@ -218,7 +218,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     passages = root / "library" / "passages"
     rng = random.Random()                                  # one generator for the Bibliomancer and the writer, so a draw can be seeded
     selector = Bibliomancer(Catalog.load(passages, bookkeeper=bookkeeper), Circulation.from_file(passages / "circulation.json", bookkeeper=bookkeeper), rng,
-                            exemplar_range=config.exemplar_range, redraw_limit=oracle.exemplar_redraws, bookkeeper=bookkeeper)
+                            oracle=oracle, bookkeeper=bookkeeper)
     writer = PortentWriter(PromptBuilder(oracle, selector, bookkeeper=bookkeeper),
                            OracleModelClient(oracle, bookkeeper=bookkeeper), rng,
                            bookkeeper=bookkeeper)

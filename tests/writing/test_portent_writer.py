@@ -62,7 +62,7 @@ def real_selector(seed=None):
     passages = [Passage(f"book#{i}", "book", "verse", f"verse number {i}", 3) for i in range(200)]
     circulation = Circulation.from_dict({"shelves": {"verse": {}}})
     rng = random.Random(seed)
-    return Bibliomancer(Catalog.from_passages(passages), circulation, rng), rng
+    return Bibliomancer(Catalog.from_passages(passages), circulation, rng, oracle=OracleSettings()), rng
 
 
 class TestWriting:

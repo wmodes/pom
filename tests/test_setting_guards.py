@@ -22,14 +22,14 @@ WHERE_DEFAULTS_MAY_LIVE = {"defaults.py", "config.py"}
 NOT_SETTINGS = {
     "printer.py": {"DEFAULT_CONFIG": "the path of pom.toml itself"},
     "qualifying/decaying_quantile_bar.py": {"DEFAULT_STARTED_AT": "a stream time, not a setting"},
-    "qualifying/moving_average_bar.py": {"DEFAULT_SCORE_RANGE": "the scorer's digits 0 to 9; an argument, not a setting (hidden value, to decide)"},
+    "qualifying/moving_average_bar.py": {"DEFAULT_SCORE_RANGE": "the scorer's digits 0 to 9, an argument; Design Audit D6.4"},
     "monitor/chart_notebook.py": {"DEFAULT_SILENCE_SHAPE": "for a notebook built without one; the Printer hands it silence_shape(config.chart)"},
     "listening/mic_deck.py": {"DEFAULT_DEVICE": "the deck's own device when none is given; [listening] device is looked up before it"},
     "listening/mac_mic_deck.py": {"DEFAULT_MAC_DEVICE": "the same, on the Mac"},
     "listening/wav_deck.py": {"DEFAULT_SPEED": "a testbench flag, not a setting", "DEFAULT_END_PAUSE_SECONDS": "Design Audit D6.1"},
     "library/circulation.py": {"DEFAULT_WEIGHT": "a shelf's share in the circulation file, not pom.toml (hidden value, to decide)"},
     "scoring/fallback_scorer.py": {"DEFAULT_BASE": "the fallback scorer's base (hidden value, to decide)"},
-    "scoring/word_tagger.py": {"DEFAULT_FILLERS": "the filler words (hidden value, to decide)"},
+    "scoring/word_tagger.py": {"DEFAULT_FILLERS": "the filler words; Design Audit D6.3"},
     "scoring/scorer_model_client.py": {"DEFAULT_EXPLAIN_TIMEOUT": "the explain request, Design Audit D2.3"},
     "conductor/keyboard_watcher.py": {"DEFAULT_POLL_SECONDS": "Design Audit D6.1", "DEFAULT_ERROR_PAUSE_SECONDS": "Design Audit D6.1"},
 }

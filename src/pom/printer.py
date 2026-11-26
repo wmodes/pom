@@ -55,7 +55,6 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "config" / "pom.toml"
 PASSAGES = ROOT / "library" / "passages"
 NLTK_DATA = ROOT / "data" / "nltk"
-DEFAULT_SERVICE_CHECK_SECONDS = 15.0   # the monitoring page's service lights are checked at most this often (the fallback; `[monitor] service_check_seconds`)
 
 
 @dataclass(frozen=True)

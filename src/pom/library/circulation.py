@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
-from pom.bookkeeper.log_recorder import LogRecorder
 
 DEFAULT_WEIGHT = 1.0
 _SHELF_KEYS = {"share", "holdings"}
@@ -51,24 +50,21 @@ class Circulation:
     circulation with the library layout and logs what has drifted.
     """
 
-    def __init__(self, shares: Mapping[str, float], holding_weights: Mapping[str, float],
-                 listed_under: Mapping[str, str], logger: Optional[LogRecorder] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
-        """Use the `from_*` constructors; this takes already-validated values.
+    def __init__(self, document, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+        """Reads an already-parsed circulation document, recovering from anything wrong in it. `from_file` reads the file first.
+
+        Keys starting with an underscore (such as `_about`) are notes and are ignored.
 
         Args:
-            shares: Relative share per listed shelf.
-            holding_weights: Weight per listed holding.
-            listed_under: For each listed holding, the shelf it is listed beneath.
-            logger: The logger the problems found while reading were logged through (a fresh one from the bookkeeper if not given).
-            strict: Whether later checks raise instead of logging.
+            document: The circulation, as parsed from its JSON (anything else gives all-default weights and a warning).
+            strict: Raise CirculationError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self._shares = dict(shares)
-        self._weights = dict(holding_weights)
-        self._listed_under = dict(listed_under)
-        self._strict = strict
-        self.logger = logger if logger is not None else _new_logger(strict, bookkeeper)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, CirculationError, DEBUG, strict)
+        self._shares: dict[str, float] = {}
+        self._weights: dict[str, float] = {}
+        self._listed_under: dict[str, str] = {}
+        self._read(document)
 
     # --- Construction ---------------------------------------------------------------
 
@@ -79,7 +75,7 @@ class Circulation:
         A missing, unreadable or invalid file gives all-default weights and a warning, so the
         oracle still runs. With strict=True it raises CirculationError instead.
         """
-        logger = _new_logger(strict, bookkeeper)
+        logger = (bookkeeper or Bookkeeper()).logger_for(__name__, CirculationError, DEBUG, strict)   # the file is read before there is a Circulation
         path = Path(path)
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
@@ -89,52 +85,59 @@ class Circulation:
         except json.JSONDecodeError as error:
             logger.warning("circulation file %s is not valid JSON: %s; every weight counts 1.0", path, error)
             document = {}
-        return cls._parse(document, logger, strict)
+        return cls(document, strict, bookkeeper)
 
     @classmethod
     def from_dict(cls, document, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Circulation":
-        """Reads an already-parsed circulation document, recovering from anything wrong in it.
+        """Reads an already-parsed circulation document (the same as building one directly)."""
+        return cls(document, strict, bookkeeper)
 
-        Keys starting with an underscore (such as `_about`) are notes and are ignored.
-        """
-        return cls._parse(document, _new_logger(strict, bookkeeper), strict)
-
-    @classmethod
-    def _parse(cls, document, logger: LogRecorder, strict: bool) -> "Circulation":
-        """Walks the document, keeping what is valid and reporting what is not."""
-        shares, weights, listed_under = {}, {}, {}
+    def _read(self, document) -> None:
+        """Walks the document, keeping what is valid and logging what is not."""
         if not isinstance(document, dict):
-            logger.warning("circulation file must be a JSON object; every weight counts 1.0")
-            return cls(shares, weights, listed_under, logger, strict)
+            self.logger.warning("circulation file must be a JSON object; every weight counts 1.0")
+            return
         shelves = document.get("shelves", {})
         if not isinstance(shelves, dict):
-            logger.warning("'shelves' must be an object; every weight counts 1.0")
-            return cls(shares, weights, listed_under, logger, strict)
+            self.logger.warning("'shelves' must be an object; every weight counts 1.0")
+            return
         for name, entry in shelves.items():
             if name.startswith("_"):
                 continue
-            logger.debug("shelf %r: %r", name, entry)
+            self.logger.debug("shelf %r: %r", name, entry)
             if not isinstance(entry, dict):
-                logger.warning("shelf '%s' must be an object with 'share' and 'holdings'; ignoring it", name)
+                self.logger.warning("shelf '%s' must be an object with 'share' and 'holdings'; ignoring it", name)
                 continue
             unknown = sorted(k for k in entry if k not in _SHELF_KEYS and not k.startswith("_"))
             if unknown:
-                logger.warning("shelf '%s' has unknown key(s): %s; ignoring them", name, ", ".join(unknown))
-            shares[name] = _number(entry.get("share", DEFAULT_WEIGHT), f"shelf '{name}' share", logger)
+                self.logger.warning("shelf '%s' has unknown key(s): %s; ignoring them", name, ", ".join(unknown))
+            self._shares[name] = self._number(entry.get("share", DEFAULT_WEIGHT), f"shelf '{name}' share")
             holdings = entry.get("holdings", {})
             if not isinstance(holdings, dict):
-                logger.warning("shelf '%s' 'holdings' must be an object; ignoring it", name)
+                self.logger.warning("shelf '%s' 'holdings' must be an object; ignoring it", name)
                 continue
             for holding, weight in holdings.items():
                 if holding.startswith("_"):
                     continue
-                if holding in weights:
-                    logger.warning("holding '%s' is listed under more than one shelf; keeping the first", holding)
+                if holding in self._weights:
+                    self.logger.warning("holding '%s' is listed under more than one shelf; keeping the first", holding)
                     continue
-                weights[holding] = _number(weight, f"holding '{holding}' weight", logger)
-                listed_under[holding] = name
-        logger.debug("parsed %d shelf share(s) and %d holding weight(s)", len(shares), len(weights))
-        return cls(shares, weights, listed_under, logger, strict)
+                self._weights[holding] = self._number(weight, f"holding '{holding}' weight")
+                self._listed_under[holding] = name
+        self.logger.debug("parsed %d shelf share(s) and %d holding weight(s)", len(self._shares), len(self._weights))
+
+    def _number(self, value, label: str) -> float:
+        """A finite, non-negative number; otherwise a warning and the default (1.0).
+
+        Booleans and strings are rejected: `true` is almost certainly a typo, not a weight of 1.
+        """
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            self.logger.warning("%s must be a number, got %r; using %s", label, value, DEFAULT_WEIGHT)
+            return DEFAULT_WEIGHT
+        if not math.isfinite(value) or value < 0:
+            self.logger.warning("%s must be a finite number of at least 0, got %r; using %s", label, value, DEFAULT_WEIGHT)
+            return DEFAULT_WEIGHT
+        return float(value)
 
     # --- Lookups --------------------------------------------------------------------
 
@@ -202,22 +205,3 @@ class Circulation:
         for holding, shelf in sorted(self._listed_under.items()):
             if holding in located and located[holding] != shelf:
                 logger.warning("holding '%s' is listed under '%s' but its passages are in '%s'", holding, shelf, located[holding])
-
-
-def _new_logger(strict: bool, bookkeeper: Optional[Bookkeeper] = None) -> LogRecorder:
-    """This module's logger: from the Bookkeeper the entry point built (a plain one when a test or tool gives none); strict mode raises CirculationError."""
-    return (bookkeeper or Bookkeeper()).logger_for(__name__, CirculationError, DEBUG, strict)
-
-
-def _number(value, label: str, logger: LogRecorder) -> float:
-    """A finite, non-negative number; otherwise a warning and the default (1.0).
-
-    Booleans and strings are rejected: `true` is almost certainly a typo, not a weight of 1.
-    """
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        logger.warning("%s must be a number, got %r; using %s", label, value, DEFAULT_WEIGHT)
-        return DEFAULT_WEIGHT
-    if not math.isfinite(value) or value < 0:
-        logger.warning("%s must be a finite number of at least 0, got %r; using %s", label, value, DEFAULT_WEIGHT)
-        return DEFAULT_WEIGHT
-    return float(value)

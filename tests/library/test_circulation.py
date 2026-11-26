@@ -224,6 +224,13 @@ def test_strict_invalid_json_raises(tmp_path):
         Circulation.from_file(path, strict=True)
 
 
+def test_strict_mode_reaches_what_is_in_a_file_that_reads_fine(tmp_path):
+    path = tmp_path / "circulation.json"
+    path.write_text(json.dumps(doc(news={"holdings": {"ads": None}})), encoding="utf-8")
+    with pytest.raises(CirculationError, match="holding 'ads'"):
+        Circulation.from_file(path, strict=True)
+
+
 def test_strict_mode_accepts_a_clean_document():
     assert Circulation.from_dict(doc(news={"share": 2, "holdings": {"ads": 1}}), strict=True).share("news") == 2.0
 

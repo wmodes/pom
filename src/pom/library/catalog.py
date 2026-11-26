@@ -69,14 +69,13 @@ class Catalog:
     Build one with `Catalog.load` (from disk) or `Catalog.from_passages` (in memory).
     """
 
-    def __init__(self, passages: Iterable[Passage], logger: Optional[LogRecorder] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, passages: Iterable[Passage], strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Indexes the passages. Use the `load` / `from_passages` constructors.
 
         A passage whose id was already seen is skipped and reported. A store with no passages at all
         logs a CRITICAL (and raises CatalogError in strict mode).
         """
-        self.logger = logger if logger is not None else _new_logger(strict, bookkeeper)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, CatalogError, DEBUG, strict)
         self._tree: dict[str, dict[str, list[Passage]]] = {}
         self._by_id: dict[str, Passage] = {}
         for passage in passages:
@@ -102,7 +101,7 @@ class Catalog:
         A missing directory, an unreadable file or a bad record is logged
         and skipped; the rest still loads. With strict=True the first problem raises CatalogError.
         """
-        logger = _new_logger(strict, bookkeeper)
+        logger = (bookkeeper or Bookkeeper()).logger_for(__name__, CatalogError, DEBUG, strict)   # the files are read before there is a Catalog
         root = Path(directory)
         passages = []
         if not root.is_dir():
@@ -114,7 +113,7 @@ class Catalog:
                     read = _read_file(path, folder.name, path.stem, logger)
                     logger.debug("read %s/%s: %d passage(s)", folder.name, path.name, len(read))
                     passages.extend(read)
-        store = cls(passages, logger, strict)
+        store = cls(passages, strict, bookkeeper)
         logger.info("loaded %d passages from %d holding(s) in %d shelf(s)", len(store),
                     sum(len(store.holdings(r)) for r in store.shelves()), len(store.shelves()))
         return store
@@ -168,11 +167,6 @@ class Catalog:
         """Every passage in deterministic order: shelf, holding, then file order."""
         for shelf in self.shelves():
             yield from self.passages(shelf)
-
-
-def _new_logger(strict: bool, bookkeeper: Optional[Bookkeeper] = None) -> LogRecorder:
-    """This module's logger: from the Bookkeeper the entry point built (a plain one when a test or tool gives none); strict mode raises CatalogError."""
-    return (bookkeeper or Bookkeeper()).logger_for(__name__, CatalogError, DEBUG, strict)
 
 
 def _read_file(path: Path, shelf: str, holding: str, logger: LogRecorder) -> list[Passage]:

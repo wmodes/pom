@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from pom.bookkeeper import Bookkeeper
 from pom.library import Passage, CatalogError, Catalog, Circulation
 
 REPO = Path(__file__).resolve().parents[2]
@@ -50,6 +51,21 @@ def test_loads_every_passage(library):
     store = Catalog.load(library)
     assert len(store) == 6
     assert store.count() == 6
+
+
+def test_the_catalog_gets_its_logger_from_the_bookkeeper_it_was_handed(library):
+    class RememberingBookkeeper(Bookkeeper):
+        """A Bookkeeper that remembers every logger it hands out."""
+        def __init__(self):
+            super().__init__()
+            self.handed = []
+
+        def logger_for(self, *args, **kwargs):
+            logger = super().logger_for(*args, **kwargs)
+            self.handed.append(logger)
+            return logger
+    keeper = RememberingBookkeeper()
+    assert Catalog.load(library, bookkeeper=keeper).logger in keeper.handed
 
 
 def test_shelves_and_holdings_are_sorted(library):

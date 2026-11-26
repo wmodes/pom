@@ -140,9 +140,7 @@ def main() -> None:
     else:
         device = CaptureCardFinder(listening).resolve(listening.device)     # "auto" becomes the microphone's card
         deck, where = MicDeck(device, listening=listening), f"the microphone {device}"
-    eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
-                        listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
-                        listening.room_tone_memory)
+    eavesdropper = Eavesdropper(deck, client, listening)
 
     nltk_dir = ROOT / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug)

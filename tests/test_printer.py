@@ -244,6 +244,11 @@ class TestWhereSoundComesFrom:
         _, ears = build(tmp_path, mac_mic="default").conductor._room_factory()
         assert type(ears._deck).__name__ == "MacMicDeck"
 
+    def test_each_room_s_eavesdropper_is_handed_the_listening_settings(self, tmp_path):
+        config = config_from(tmp_path, '[listening]\nroom_tone_memory = 2\n[terminal]\nmode = "none"\n')
+        _, ears = build_printer(config, Options()).conductor._room_factory()
+        assert ears.listening is config.listening
+
     def test_the_mac_microphone_is_handed_the_listening_settings(self, tmp_path, monkeypatch):
         handed = []
 

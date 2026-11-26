@@ -328,7 +328,7 @@ class TestARoomThatStartsAgain:
     def hear_for(seconds, keeper, start_seconds=0.0, now=0.0):
         """A room of `seconds` of sound that begins its clock at `start_seconds`; returns its Eavesdropper and the attempts it gave."""
         from tests.listening.test_eavesdropper import ScriptedDeck
-        ears = Eavesdropper(ScriptedDeck(seconds), TestARoomThatStartsAgain.StrongSentences(), start_seconds=start_seconds, wall=lambda: now)
+        ears = Eavesdropper(ScriptedDeck(seconds), TestARoomThatStartsAgain.StrongSentences(), ListeningSettings(), start_seconds=start_seconds, wall=lambda: now)
         finder = HingeFinder(ears, TakeCutter(ListeningSettings()), TestARoomThatStartsAgain.EverythingIsStrong(), keeper)
         return ears, list(finder.find())
 

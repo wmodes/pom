@@ -210,10 +210,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         # A room built again (after the last one failed) carries the stream clock on from where the old one stopped, plus the real seconds since, so stream time
         # keeps matching real time. Starting again at 0 would leave the BarKeeper, which never lets time run backwards, holding still until the new clock caught up.
         old = last_room["ears"]
-        ears = Eavesdropper(make_deck(), whisper, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
-                            listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
-                            listening.room_tone_memory, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at, wall=time.monotonic,
-                            bookkeeper=bookkeeper)
+        ears = Eavesdropper(make_deck(), whisper, listening, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at,
+                            wall=time.monotonic, bookkeeper=bookkeeper)
         last_room["ears"] = ears
         return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening.score_room_tone, bookkeeper=bookkeeper), ears
 

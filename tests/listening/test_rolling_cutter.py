@@ -4,8 +4,8 @@ import threading
 import pytest
 
 from pom.listening.audio_format import BYTES_PER_SECOND
-from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter,
-                                          RollingCutterError, join_unfinished)
+from pom.defaults import ListeningSettings
+from pom.listening.rolling_cutter import RollingCutter, RollingCutterError, join_unfinished
 from pom.listening.whisper_model_client import Segment
 
 
@@ -26,6 +26,8 @@ class FakeWhisper:
         return list(self.replies[number]) if number < len(self.replies) else []
 
 
+LISTENING = ListeningSettings()
+
 def audio(seconds: float) -> bytes:
     return bytes(int(seconds * BYTES_PER_SECOND))
 
@@ -41,17 +43,17 @@ def numbered_seconds(first: int, count: int) -> bytes:
 
 class TestWhenARoundIsDue:
     def test_nothing_is_due_before_a_step_of_audio(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(4.99))
         assert not cutter.due()
 
     def test_a_round_is_due_after_a_step(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.due()
 
     def test_the_next_round_is_a_step_after_the_last(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(5.0))
         cutter.cut()
         assert not cutter.due()
@@ -61,18 +63,18 @@ class TestWhenARoundIsDue:
         assert cutter.due()
 
     def test_the_step_is_a_setting(self):
-        cutter = RollingCutter(FakeWhisper(), cut_every_seconds=2.0)
+        cutter = RollingCutter(FakeWhisper(), ListeningSettings(cut_every_seconds=2.0))
         cutter.feed(audio(2.0))
         assert cutter.due()
 
     def test_total_seconds_counts_everything_received(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(1.5))
         cutter.feed(audio(0.5))
         assert cutter.total_seconds == pytest.approx(2.0)
 
     def test_total_seconds_still_counts_audio_that_was_trimmed_away(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "Hello there.")]))
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "Hello there.")]), LISTENING)
         cutter.feed(audio(5.0))
         cutter.cut()
         assert cutter.total_seconds == pytest.approx(5.0)
@@ -80,13 +82,13 @@ class TestWhenARoundIsDue:
 
 class TestKeepingFinishedSegments:
     def test_a_segment_that_ended_well_before_the_end_is_kept(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "Hello there.")]))
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "Hello there.")]), LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut() == [seg(0.5, 3.0, "Hello there.")]
 
     def test_the_window_whisper_is_asked_about_is_from_the_start_to_the_step(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(6.0))
         cutter.cut()
         assert whisper.calls == [(0.0, 5.0, True)]                         # the sixth second waits for the next round
@@ -94,7 +96,7 @@ class TestKeepingFinishedSegments:
     def test_a_segment_ending_within_the_hold_waits_for_the_next_round(self):
         late = seg(3.5, 4.8, "A late one.")
         whisper = FakeWhisper([late], [late])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut() == []
         cutter.feed(audio(5.0))
@@ -102,18 +104,18 @@ class TestKeepingFinishedSegments:
         assert whisper.calls[1][:2] == (0.0, 10.0)                         # the audio was kept for the second round
 
     def test_a_segment_ending_exactly_at_the_hold_is_kept(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.0, 3.0, "Right at the line.")]))
+        cutter = RollingCutter(FakeWhisper([seg(0.0, 3.0, "Right at the line.")]), LISTENING)
         cutter.feed(audio(5.0))
         assert len(cutter.cut()) == 1
 
     def test_the_hold_is_a_setting(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 4.5, "Close to the end.")]), hold_back_seconds=0.5)
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 4.5, "Close to the end.")]), ListeningSettings(hold_back_seconds=0.5))
         cutter.feed(audio(5.0))
         assert len(cutter.cut()) == 1
 
     def test_the_next_round_starts_where_the_last_kept_segment_ended(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "Hello there.")], [])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0))
         cutter.cut()
         cutter.feed(audio(5.0))
@@ -122,13 +124,13 @@ class TestKeepingFinishedSegments:
 
     def test_the_final_round_keeps_everything_whisper_found(self):
         late = seg(3.5, 4.8, "Late.")
-        cutter = RollingCutter(FakeWhisper([late]))
+        cutter = RollingCutter(FakeWhisper([late]), LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut(final=True) == [late]
 
     def test_the_final_round_uses_all_the_audio_not_just_the_step(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(7.3))
         cutter.cut(final=True)
         assert whisper.calls[0][1] == pytest.approx(7.3)
@@ -136,7 +138,7 @@ class TestKeepingFinishedSegments:
     def test_vad_is_passed_on(self):
         for vad in (True, False):
             whisper = FakeWhisper()
-            cutter = RollingCutter(whisper, vad=vad)
+            cutter = RollingCutter(whisper, LISTENING, vad=vad)
             cutter.feed(audio(5.0))
             cutter.cut()
             assert whisper.calls[0][2] is vad
@@ -171,7 +173,7 @@ class TestJoiningUnfinishedSegments:
         assert join_unfinished([]) == []
 
     def test_the_cutter_joins_what_whisper_split(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 1.5, "Hello there"), seg(1.6, 3.0, "friend.")]))
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 1.5, "Hello there"), seg(1.6, 3.0, "friend.")]), LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut() == [seg(0.5, 3.0, "Hello there friend.")]
 
@@ -179,14 +181,14 @@ class TestJoiningUnfinishedSegments:
 class TestWhatWhisperIsGiven:
     def test_the_first_round_gets_the_first_step_of_audio(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(numbered_seconds(0, 6))
         cutter.cut()
         assert whisper.pcms[0] == numbered_seconds(0, 5)
 
     def test_a_round_gets_audio_only_up_to_its_step_even_when_more_has_arrived(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 6))                                # eleven seconds in all, the round is for ten
@@ -195,20 +197,20 @@ class TestWhatWhisperIsGiven:
 
     def test_whisper_is_never_given_half_a_sample(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0) + b"\x01")                                  # an odd byte on the end, as a pipe might leave
         cutter.cut(final=True)
         assert len(whisper.pcms[0]) == len(audio(5.0))
 
     def test_audio_before_the_last_kept_segment_is_let_go(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "A.")]))
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "A.")]), LISTENING)
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         assert cutter.recent(100.0) == numbered_seconds(3, 2)
 
     def test_after_a_kept_segment_the_next_round_starts_at_its_end(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 5))
@@ -217,7 +219,7 @@ class TestWhatWhisperIsGiven:
 
     def test_after_noise_the_next_round_starts_two_seconds_before_the_end(self):
         whisper = FakeWhisper([], [])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 5))
@@ -226,7 +228,7 @@ class TestWhatWhisperIsGiven:
 
     def test_with_a_rewind_the_next_round_starts_that_much_earlier(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [])
-        cutter = RollingCutter(whisper, rewind_seconds=1.0)
+        cutter = RollingCutter(whisper, ListeningSettings(rewind_seconds=1.0))
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 5))
@@ -235,7 +237,7 @@ class TestWhatWhisperIsGiven:
 
     def test_a_rewind_longer_than_the_audio_so_far_starts_at_the_beginning(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [])
-        cutter = RollingCutter(whisper, rewind_seconds=10.0)
+        cutter = RollingCutter(whisper, ListeningSettings(rewind_seconds=10.0))
         cutter.feed(numbered_seconds(0, 5))
         cutter.cut()
         cutter.feed(numbered_seconds(5, 5))
@@ -244,7 +246,7 @@ class TestWhatWhisperIsGiven:
 
     def test_the_rounds_after_a_failure_still_start_where_they_should(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "A.")], [], [], failing=[1])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         for first in (0, 5, 10):
             cutter.feed(numbered_seconds(first, 5))
             cutter.cut()
@@ -252,7 +254,7 @@ class TestWhatWhisperIsGiven:
 
     def test_the_last_of_several_kept_segments_decides_where_the_next_round_starts(self):
         whisper = FakeWhisper([seg(0.5, 1.5, "A."), seg(2.0, 3.0, "B.")], [])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(numbered_seconds(0, 5))
         assert [s.text for s in cutter.cut()] == ["A.", "B."]
         cutter.feed(numbered_seconds(5, 5))
@@ -263,7 +265,7 @@ class TestWhatWhisperIsGiven:
 class TestNoSpeech:
     def test_a_buffer_with_no_speech_is_trimmed_to_its_last_two_seconds(self):
         whisper = FakeWhisper([], [])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut() == []
         cutter.feed(audio(5.0))
@@ -272,13 +274,13 @@ class TestNoSpeech:
 
     def test_a_round_too_short_to_be_worth_asking_about_asks_nothing(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(0.9))
         assert cutter.cut(final=True) == [] and whisper.calls == []
 
     def test_a_round_of_exactly_a_second_is_asked(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(1.0))
         cutter.cut(final=True)
         assert len(whisper.calls) == 1
@@ -288,7 +290,7 @@ class TestAVeryLongThought:
     def test_a_thought_that_never_finishes_is_forced_out_at_the_buffer_limit(self):
         # whisper keeps hearing one segment that runs to the end of whatever it is given
         replies = [[seg(0.5, 5.0 * n, "A long thought.")] for n in range(1, 7)]
-        cutter = RollingCutter(FakeWhisper(*replies))
+        cutter = RollingCutter(FakeWhisper(*replies), LISTENING)
         got = []
         for _ in range(6):
             cutter.feed(audio(5.0))
@@ -298,13 +300,13 @@ class TestAVeryLongThought:
 
     def test_at_the_limit_only_the_finished_segments_are_kept_when_there_are_some(self):
         late = seg(28.5, 29.9, "Held back.")
-        cutter = RollingCutter(FakeWhisper([seg(1.0, 5.0, "Done."), late]), cut_every_seconds=30.0)
+        cutter = RollingCutter(FakeWhisper([seg(1.0, 5.0, "Done."), late]), ListeningSettings(cut_every_seconds=30.0))
         cutter.feed(audio(30.0))
         assert [s.text for s in cutter.cut()] == ["Done."] and cutter.forced == 0
 
     def test_the_limit_is_a_setting(self):
         replies = [[seg(0.5, 5.0 * n, "Long.")] for n in range(1, 4)]
-        cutter = RollingCutter(FakeWhisper(*replies), max_cut_seconds=10.0)
+        cutter = RollingCutter(FakeWhisper(*replies), ListeningSettings(max_cut_seconds=10.0))
         results = []
         for _ in range(2):
             cutter.feed(audio(5.0))
@@ -312,7 +314,7 @@ class TestAVeryLongThought:
         assert results == [[], [seg(0.5, 10.0, "Long.")]] and cutter.forced == 1
 
     def test_nothing_is_forced_when_segments_finish_normally(self):
-        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "Fine.")]))
+        cutter = RollingCutter(FakeWhisper([seg(0.5, 3.0, "Fine.")]), LISTENING)
         cutter.feed(audio(5.0))
         cutter.cut()
         assert cutter.forced == 0
@@ -321,7 +323,7 @@ class TestAVeryLongThought:
 class TestRewinding:
     def test_with_a_rewind_the_next_round_starts_before_the_last_segments_end(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "First.")], [])
-        cutter = RollingCutter(whisper, rewind_seconds=1.0)
+        cutter = RollingCutter(whisper, ListeningSettings(rewind_seconds=1.0))
         cutter.feed(audio(5.0))
         cutter.cut()
         cutter.feed(audio(5.0))
@@ -331,7 +333,7 @@ class TestRewinding:
     def test_what_was_heard_again_in_the_rewind_is_dropped(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "First."), seg(3.2, 4.0, "Second.")],
                               [seg(2.0, 3.0, "First."), seg(3.2, 4.0, "Second.")])
-        cutter = RollingCutter(whisper, rewind_seconds=1.0)
+        cutter = RollingCutter(whisper, ListeningSettings(rewind_seconds=1.0))
         cutter.feed(audio(5.0))
         assert [s.text for s in cutter.cut()] == ["First."]
         cutter.feed(audio(5.0))
@@ -339,20 +341,20 @@ class TestRewinding:
 
     def test_a_segment_ending_within_a_fifth_of_a_second_of_the_last_is_dropped(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "First.")], [seg(2.5, 3.2, "Almost the same."), seg(4.0, 4.5, "New.")])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0))
         cutter.cut()
         cutter.feed(audio(5.0))
         assert [s.text for s in cutter.cut()] == ["New."]
 
     def test_without_a_rewind_the_default_is_zero(self):
-        assert DEFAULT_REWIND_SECONDS == 0.0
+        assert LISTENING.rewind_seconds == 0.0
 
 
 class TestWhenWhisperDoesNotAnswer:
     def test_a_failed_round_gives_nothing_and_keeps_the_audio(self):
         whisper = FakeWhisper([], [seg(0.5, 3.0, "Hello.")], failing=[0])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut() == []
         cutter.feed(audio(5.0))
@@ -360,7 +362,7 @@ class TestWhenWhisperDoesNotAnswer:
         assert whisper.calls[1][:2] == (0.0, 10.0)
 
     def test_a_failed_round_is_not_asked_again_until_the_next_step(self):
-        cutter = RollingCutter(FakeWhisper(failing=[0]))
+        cutter = RollingCutter(FakeWhisper(failing=[0]), LISTENING)
         cutter.feed(audio(5.0))
         cutter.cut()
         assert not cutter.due()
@@ -372,14 +374,14 @@ class TestWhenWhisperDoesNotAnswer:
             def segments(self, pcm, offset_s=0.0, vad=True):
                 raise RuntimeError("a bug in the client")
 
-        cutter = RollingCutter(Broken())
+        cutter = RollingCutter(Broken(), LISTENING)
         cutter.feed(audio(5.0))
         assert cutter.cut() == []
         assert len(logged.of(cutter).warnings()) == 1 and "RuntimeError" in logged.of(cutter).warnings()[0]
 
     def test_a_failed_round_still_says_how_long_it_took(self):
         ticks = iter([10.0, 10.5])
-        cutter = RollingCutter(FakeWhisper(failing=[0]), clock=lambda: next(ticks))
+        cutter = RollingCutter(FakeWhisper(failing=[0]), LISTENING, clock=lambda: next(ticks))
         cutter.feed(audio(5.0))
         cutter.cut()
         assert cutter.took == pytest.approx(0.5)
@@ -388,18 +390,18 @@ class TestWhenWhisperDoesNotAnswer:
 class TestTimingWhisper:
     def test_took_is_how_long_the_round_took(self):
         ticks = iter([100.0, 100.4])
-        cutter = RollingCutter(FakeWhisper(), clock=lambda: next(ticks))
+        cutter = RollingCutter(FakeWhisper(), LISTENING, clock=lambda: next(ticks))
         cutter.feed(audio(5.0))
         cutter.cut()
         assert cutter.took == pytest.approx(0.4)
 
     def test_took_starts_at_zero(self):
-        assert RollingCutter(FakeWhisper()).took == 0.0
+        assert RollingCutter(FakeWhisper(), LISTENING).took == 0.0
 
 
 class TestRecentAudio:
     def test_recent_gives_the_last_seconds(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(b"\x01\x00" * (BYTES_PER_SECOND // 2))
         cutter.feed(b"\x02\x00" * (BYTES_PER_SECOND // 2))
         last = cutter.recent(1.0)
@@ -407,18 +409,18 @@ class TestRecentAudio:
         assert cutter.recent(0.5) == b"\x02\x00" * (BYTES_PER_SECOND // 4)
 
     def test_recent_gives_less_when_there_is_less(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(2.0))
         assert len(cutter.recent(10.0)) == len(audio(2.0))
 
     @pytest.mark.parametrize("seconds", [0, -3, None, "5", float("nan")])
     def test_recent_of_nothing_is_nothing(self, seconds):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(2.0))
         assert cutter.recent(seconds) == b""
 
     def test_recent_never_splits_a_sample(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(b"\x01\x00" * 100)
         assert len(cutter.recent(0.0001)) % 2 == 0 and len(cutter.recent(0.0001)) <= 4
 
@@ -426,19 +428,19 @@ class TestRecentAudio:
 class TestFeeding:
     @pytest.mark.parametrize("not_audio", [None, "text", 5, [1, 2], {}])
     def test_what_is_not_bytes_is_ignored(self, not_audio):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(not_audio)
         assert cutter.total_seconds == 0.0
 
     @pytest.mark.parametrize("make", [bytes, bytearray, memoryview])
     def test_any_kind_of_bytes_will_do(self, make):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(make(audio(1.0)))
         assert cutter.total_seconds == pytest.approx(1.0)
 
     def test_audio_can_be_fed_while_a_round_is_cut(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         stop = threading.Event()
 
         def feeder():
@@ -457,31 +459,7 @@ class TestFeeding:
         assert cutter.total_seconds == pytest.approx(60.0, abs=0.01) and cuts >= 11
 
 
-class TestSettings:
-    def test_the_defaults_are_the_known_good_ones(self, logged):
-        assert (DEFAULT_CUT_EVERY_SECONDS, DEFAULT_HOLD_BACK_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_MAX_CUT_SECONDS) == (5.0, 2.0, 0.0, 30.0)
-        assert logged.of(RollingCutter(FakeWhisper())).ok()
-
-    @pytest.mark.parametrize("name,bad", [("cut_every_seconds", 0), ("cut_every_seconds", -1), ("cut_every_seconds", "5"), ("cut_every_seconds", None), ("cut_every_seconds", True),
-                                          ("cut_every_seconds", float("nan")), ("cut_every_seconds", float("inf")),
-                                          ("hold_back_seconds", -1), ("hold_back_seconds", "2"), ("hold_back_seconds", None), ("hold_back_seconds", True),
-                                          ("rewind_seconds", -0.5), ("rewind_seconds", "0"), ("rewind_seconds", None), ("rewind_seconds", True),
-                                          ("max_cut_seconds", 0), ("max_cut_seconds", -5), ("max_cut_seconds", "30"), ("max_cut_seconds", None)])
-    def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad, logged):
-        cutter = RollingCutter(FakeWhisper(), **{name: bad})
-        assert len(logged.of(cutter).warnings()) == 1 and name in logged.of(cutter).warnings()[0]
-        defaults = {"cut_every_seconds": DEFAULT_CUT_EVERY_SECONDS, "hold_back_seconds": DEFAULT_HOLD_BACK_SECONDS, "rewind_seconds": DEFAULT_REWIND_SECONDS, "max_cut_seconds": DEFAULT_MAX_CUT_SECONDS}
-        assert getattr(cutter, "_" + name) == defaults[name]
-
-    @pytest.mark.parametrize("name,low", [("hold_back_seconds", 0), ("rewind_seconds", 0)])
-    def test_zero_is_allowed_where_it_makes_sense(self, name, low, logged):
-        assert logged.of(RollingCutter(FakeWhisper(), **{name: low})).ok()
-
-    @pytest.mark.parametrize("name,bad", [("cut_every_seconds", 0), ("hold_back_seconds", -1), ("rewind_seconds", -1), ("max_cut_seconds", 0)])
-    def test_strict_mode_raises_on_a_bad_setting(self, name, bad):
-        with pytest.raises(RollingCutterError, match=name):
-            RollingCutter(FakeWhisper(), strict=True, **{name: bad})
-
+class TestStrictMode:
     def test_strict_mode_raises_when_the_client_raises(self):
         class Broken:
             error = None
@@ -489,7 +467,7 @@ class TestSettings:
             def segments(self, *args, **kwargs):
                 raise RuntimeError("bug")
 
-        cutter = RollingCutter(Broken(), strict=True)
+        cutter = RollingCutter(Broken(), LISTENING, strict=True)
         cutter.feed(audio(5.0))
         with pytest.raises(RollingCutterError, match="RuntimeError"):
             cutter.cut()
@@ -499,19 +477,19 @@ class TestSkippingAhead:
     """skip_ahead: forget everything held, and move the stream clock on by the sound that went by unheard."""
 
     def test_the_clock_moves_on_by_the_unheard_seconds(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(2.0))
         cutter.skip_ahead(10.0)
         assert cutter.total_seconds == pytest.approx(12.0)
 
     def test_all_the_audio_held_is_forgotten(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(3.0))
         cutter.skip_ahead(4.0)
         assert cutter.recent(10.0) == b""
 
     def test_the_next_round_is_a_step_after_the_new_start(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(3.0))
         cutter.skip_ahead(7.0)
         cutter.feed(audio(4.99))
@@ -521,7 +499,7 @@ class TestSkippingAhead:
 
     def test_whisper_is_given_only_audio_from_after_the_skip_and_told_where_it_starts(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(3.0))
         cutter.skip_ahead(7.0)
         cutter.feed(audio(5.0))
@@ -529,21 +507,21 @@ class TestSkippingAhead:
         assert whisper.calls == [(pytest.approx(10.0), pytest.approx(5.0), True)]
 
     def test_with_no_unheard_time_it_still_forgets_the_audio(self):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(3.0))
         cutter.skip_ahead()
         assert cutter.total_seconds == pytest.approx(3.0) and cutter.recent(5.0) == b""
 
     @pytest.mark.parametrize("bad", [-5.0, float("nan"), float("inf"), "x", None, True])
     def test_a_seconds_that_is_not_a_good_number_counts_as_nothing(self, bad):
-        cutter = RollingCutter(FakeWhisper())
+        cutter = RollingCutter(FakeWhisper(), LISTENING)
         cutter.feed(audio(3.0))
         cutter.skip_ahead(bad)
         assert cutter.total_seconds == pytest.approx(3.0)
 
     def test_what_whisper_finds_before_the_skip_is_not_kept_again_after_it(self):
         whisper = FakeWhisper([seg(0.5, 3.0, "Before.")], [seg(10.5, 12.0, "After.")])
-        cutter = RollingCutter(whisper)
+        cutter = RollingCutter(whisper, LISTENING)
         cutter.feed(audio(5.0))
         assert [s.text for s in cutter.cut()] == ["Before."]
         cutter.skip_ahead(5.0)

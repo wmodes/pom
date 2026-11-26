@@ -849,13 +849,8 @@ def test_the_starting_listening_values_are_the_known_good_ones():
 
 def test_the_listening_defaults_match_the_modules_defaults():
     """Until each part takes the [listening] settings object, its own copy of a default must agree with defaults.py (Design Audit D5)."""
-    from pom.listening import capture_card_finder, eavesdropper, rolling_cutter
-    s = ListeningSettings()
-    assert (s.device, s.cut_every_seconds, s.hold_back_seconds, s.rewind_seconds, s.max_cut_seconds, s.room_tone_pass_every,
-            s.room_tone_pass_seconds, s.room_tone_memory) == (
-        capture_card_finder.AUTO, rolling_cutter.DEFAULT_CUT_EVERY_SECONDS, rolling_cutter.DEFAULT_HOLD_BACK_SECONDS,
-        rolling_cutter.DEFAULT_REWIND_SECONDS, rolling_cutter.DEFAULT_MAX_CUT_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_PASS_EVERY,
-        eavesdropper.DEFAULT_ROOM_TONE_PASS_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_MEMORY)
+    from pom.listening import capture_card_finder
+    assert ListeningSettings().device == capture_card_finder.AUTO
 
 
 def test_all_the_listening_values_are_read_from_the_section(tmp_path):
@@ -951,9 +946,8 @@ def test_the_listening_settings_plug_straight_into_the_modules(logged):
 
     settings = Config.load(environ={}).listening
     client = WhisperModelClient(settings)
-    cutter = RollingCutter(client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds)
-    eavesdropper = Eavesdropper(NoSound(), client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds,
-                        settings.room_tone_pass_every, settings.room_tone_pass_seconds, settings.room_tone_memory)
+    cutter = RollingCutter(client, settings)
+    eavesdropper = Eavesdropper(NoSound(), client, settings)
     assert logged.ok("pom.listening")                                    # the client, the cutter and the eavesdropper said nothing
 
 

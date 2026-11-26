@@ -1,11 +1,12 @@
 """Tests for pom.listening.eavesdropper, with a scripted deck and a stand-in for whisper."""
+import dataclasses
 import threading
 
 import pytest
 
+from pom.defaults import ListeningSettings
 from pom.listening.audio_format import BYTES_PER_SECOND, FRAME_BYTES, FRAME_SECONDS
-from pom.listening.eavesdropper import (DEFAULT_ROOM_TONE_MEMORY, DEFAULT_ROOM_TONE_PASS_EVERY, DEFAULT_ROOM_TONE_PASS_SECONDS, Take,
-                                    Eavesdropper, EavesdropperError)
+from pom.listening.eavesdropper import Take, Eavesdropper, EavesdropperError
 from pom.listening.rolling_cutter import RollingCutter, RollingCutterError
 from pom.listening.whisper_model_client import Segment
 
@@ -51,6 +52,15 @@ class FakeWhisper:
         return self.texts[number] if number < len(self.texts) else ""
 
 
+LISTENING = ListeningSettings()
+SETTINGS = {f.name for f in dataclasses.fields(ListeningSettings)}
+
+
+def listening_from(options: dict) -> ListeningSettings:
+    """Takes the [listening] settings out of a test's options (what is left goes to the Eavesdropper as it is)."""
+    return ListeningSettings(**{name: options.pop(name) for name in list(options) if name in SETTINGS})
+
+
 def seg(start, end, text):
     return Segment(start, end, text)
 
@@ -61,7 +71,7 @@ def hear(eavesdropper):
 
 def make(seconds, *rounds, texts=(), failing=(), **options):
     deck, whisper = ScriptedDeck(seconds), FakeWhisper(*rounds, texts=texts, failing=failing)
-    return Eavesdropper(deck, whisper, **options), deck, whisper
+    return Eavesdropper(deck, whisper, listening_from(options), **options), deck, whisper
 
 
 class TestTheStreamClockCarriesOn:
@@ -98,7 +108,7 @@ class TestTheStreamClockCarriesOn:
                     now[0] += FRAME_SECONDS
                     yield frame
 
-        eavesdropper = Eavesdropper(LiveDeck(12), FakeWhisper(), wall=lambda: now[0])
+        eavesdropper = Eavesdropper(LiveDeck(12), FakeWhisper(), LISTENING, wall=lambda: now[0])
         hear(eavesdropper)
         failed_at = now[0]                                         # 112 on the wall
         assert eavesdropper.stream_time_at(failed_at) == pytest.approx(12.0, abs=0.1)
@@ -278,7 +288,7 @@ class TestTheSoundPass:
         assert whisper.text_calls == []
 
     def test_the_defaults_are_the_known_good_ones(self):
-        assert (DEFAULT_ROOM_TONE_PASS_EVERY, DEFAULT_ROOM_TONE_PASS_SECONDS, DEFAULT_ROOM_TONE_MEMORY) == (3, 10.0, 6)
+        assert (LISTENING.room_tone_pass_every, LISTENING.room_tone_pass_seconds, LISTENING.room_tone_memory) == (3, 10.0, 6)
 
 
 class TestWhenWhisperIsDown:
@@ -333,24 +343,8 @@ class TestStopping:
 
 
 class TestSettings:
-    @pytest.mark.parametrize("name,bad", [("room_tone_pass_every", -1), ("room_tone_pass_every", 2.5), ("room_tone_pass_every", "3"),
-                                          ("room_tone_pass_every", None), ("room_tone_pass_every", True),
-                                          ("room_tone_pass_seconds", 0), ("room_tone_pass_seconds", -5), ("room_tone_pass_seconds", "10"),
-                                          ("room_tone_pass_seconds", None), ("room_tone_pass_seconds", float("nan")), ("room_tone_pass_seconds", True),
-                                          ("room_tone_pass_seconds", float("inf")),
-                                          ("room_tone_memory", 0), ("room_tone_memory", 2.5), ("room_tone_memory", "6"),
-                                          ("room_tone_memory", None), ("room_tone_memory", True)])
-    def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad, logged):
-        eavesdropper = make(5, **{name: bad})[0]
-        assert len(logged.of(eavesdropper).warnings()) == 1 and name in logged.of(eavesdropper).warnings()[0]
-
     def test_zero_room_tone_passes_is_allowed(self, logged):
         assert logged.of(make(5, room_tone_pass_every=0)[0]).ok()
-
-    def test_the_cutters_settings_are_checked_too_and_logged_once(self, logged):
-        make(5, cut_every_seconds=0)
-        assert [line for line in logged.messages() if "cut_every_seconds" in line] == \
-            [line for line in logged.warnings() if "cut_every_seconds" in line] and len(logged.warnings()) == 1
 
     def test_the_hold_is_passed_to_the_cutter(self):
         close_to_the_end = seg(3.5, 4.4, "Close to the end.")
@@ -374,8 +368,8 @@ class TestSettings:
 
     def test_a_cutter_can_be_given_instead_of_made(self):
         whisper = FakeWhisper()
-        cutter = RollingCutter(whisper, cut_every_seconds=2.0)
-        eavesdropper = Eavesdropper(ScriptedDeck(5.0), whisper, cutter=cutter)
+        cutter = RollingCutter(whisper, ListeningSettings(cut_every_seconds=2.0))
+        eavesdropper = Eavesdropper(ScriptedDeck(5.0), whisper, LISTENING, cutter=cutter)
         hear(eavesdropper)
         assert len(whisper.calls) == 3          # the given cutter's step of 2 s: rounds at 2 s and 4 s, and the last;
         # the Eavesdropper's own cutter (step 5 s) would have made two
@@ -384,15 +378,6 @@ class TestSettings:
         eavesdropper, _, whisper = make(5, [], cut_every_seconds=2.0)
         hear(eavesdropper)
         assert len(whisper.calls) >= 3                                          # rounds at 2 s and 4 s, and the last
-
-    @pytest.mark.parametrize("name,bad", [("room_tone_pass_every", -1), ("room_tone_pass_seconds", 0), ("room_tone_memory", 0)])
-    def test_strict_mode_raises_on_a_bad_setting(self, name, bad):
-        with pytest.raises(EavesdropperError):
-            make(5, strict=True, **{name: bad})
-
-    def test_strict_mode_raises_on_a_bad_cutter_setting_with_the_cutters_error(self):
-        with pytest.raises(RollingCutterError, match="cut_every_seconds"):
-            make(5, strict=True, cut_every_seconds=0)
 
     def test_good_settings_are_quiet(self, logged):
         assert logged.of(make(5)[0]).ok()
@@ -442,7 +427,7 @@ def frame_at(seconds):
 def make_hooked(seconds, *rounds, texts=(), **options):
     """An Eavesdropper over a HookedDeck; fill `deck.hooks` afterwards with calls on `eavesdropper`."""
     deck, whisper = HookedDeck(seconds), FakeWhisper(*rounds, texts=texts)
-    return Eavesdropper(deck, whisper, **options), deck, whisper
+    return Eavesdropper(deck, whisper, listening_from(options), **options), deck, whisper
 
 
 class TestPauseAndSkipAhead:

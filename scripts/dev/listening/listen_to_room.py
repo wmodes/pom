@@ -62,9 +62,7 @@ def main():
     device = CaptureCardFinder(listening).resolve(listening.device)     # "auto" becomes the microphone's card
     deck = (WavDeck(args.wav, speed=args.speed) if args.wav
               else MicDeck(device, listening=listening))
-    eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
-                        listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
-                        listening.room_tone_memory)
+    eavesdropper = Eavesdropper(deck, client, listening)
 
     nltk_dir = ROOT / "data" / "nltk"
     settings = config.scorer

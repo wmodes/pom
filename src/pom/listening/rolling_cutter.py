@@ -36,15 +36,12 @@ import time
 from typing import Callable, List, Optional, Protocol
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 from pom.listening.audio_format import BYTES_PER_SECOND, SAMPLE_BYTES
 from pom.listening.whisper_model_client import Segment
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_CUT_EVERY_SECONDS = 5.0
-DEFAULT_HOLD_BACK_SECONDS = 2.0
-DEFAULT_REWIND_SECONDS = 0.0
-DEFAULT_MAX_CUT_SECONDS = 30.0
 _FINISHED = re.compile(r"[.?!][\"')\]]*$")             # ends like a sentence
 _LONGEST_JOIN = 25.0                                    # seconds: the longest a joined segment may grow
 _NOISE_KEPT = 2.0                                       # seconds of a buffer with no speech that are kept
@@ -84,19 +81,20 @@ class RollingCutter:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        listening: The `[listening]` settings it was handed (it reads `cut_every_seconds`, `hold_back_seconds`, `rewind_seconds` and
+            `max_cut_seconds`).
         took: How long the most recent whisper request took, in seconds.
         forced: How many times a segment had to be forced out at the buffer limit.
     """
 
-    def __init__(self, client: SegmentFinder, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
-                 rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS, vad: bool = True,
+    def __init__(self, client: SegmentFinder, listening: ListeningSettings, vad: bool = True,
                  clock: Optional[Callable[[], float]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             client: Asks whisper for segments (a WhisperModelClient, or anything with its `segments` and `error`).
-            cut_every_seconds: Seconds of new audio between whisper runs, above 0.
-            hold_back_seconds: A segment is kept once it ends this many seconds before the buffer's end, 0 or more.
-            rewind_seconds: Seconds before the last kept segment's end that the next round starts, 0 or more (0 is off).
-            max_cut_seconds: Seconds without a finished segment before one is forced out, above 0.
+            listening: The `[listening]` section: `cut_every_seconds` (seconds of new audio between whisper runs), `hold_back_seconds` (a
+                segment is kept once it ends this many seconds before the buffer's end), `rewind_seconds` (seconds before the last kept
+                segment's end that the next round starts; 0 is off) and `max_cut_seconds` (seconds without a finished segment before one
+                is forced out).
             vad: Whether whisper's voice detection is on for the rounds.
             clock: A function giving seconds, used only to time whisper. Default: time.perf_counter.
             strict: Raise RollingCutterError on any problem instead of logging it.
@@ -104,10 +102,7 @@ class RollingCutter:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, RollingCutterError, DEBUG, strict)
         self._client = client
-        self._cut_every_seconds = self._setting(cut_every_seconds, "cut_every_seconds", DEFAULT_CUT_EVERY_SECONDS, lambda v: v > 0, "above 0")
-        self._hold_back_seconds = self._setting(hold_back_seconds, "hold_back_seconds", DEFAULT_HOLD_BACK_SECONDS, lambda v: v >= 0, "at least 0")
-        self._rewind_seconds = self._setting(rewind_seconds, "rewind_seconds", DEFAULT_REWIND_SECONDS, lambda v: v >= 0, "at least 0")
-        self._max_cut_seconds = self._setting(max_cut_seconds, "max_cut_seconds", DEFAULT_MAX_CUT_SECONDS, lambda v: v > 0, "above 0")
+        self.listening = listening
         self._vad = bool(vad)
         self._clock = clock if clock is not None else time.perf_counter
         self._lock = threading.Lock()
@@ -115,16 +110,9 @@ class RollingCutter:
         self._base = 0.0               # seconds in the whole stream at which the buffer's first byte lies
         self._start = 0.0              # where the next whisper window begins
         self._last_end = 0.0           # the end of the last kept segment
-        self._next = self._cut_every_seconds        # the stream time at which the next whisper run is due
+        self._next = self.listening.cut_every_seconds        # the stream time at which the next whisper run is due
         self.took = 0.0
         self.forced = 0
-
-    def _setting(self, value, name: str, default: float, is_good, wanted: str) -> float:
-        """The value if it is a number that passes `is_good`, otherwise the default with a warning."""
-        if _is_number(value) and is_good(value):
-            return float(value)
-        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
-        return default
 
     @property
     def total_seconds(self) -> float:
@@ -153,7 +141,7 @@ class RollingCutter:
             self._pcm.clear()
             self._base = now
         self._start = now
-        self._next = now + self._cut_every_seconds
+        self._next = now + self.listening.cut_every_seconds
 
     def due(self) -> bool:
         """True when enough audio has arrived for the next whisper run."""
@@ -189,7 +177,7 @@ class RollingCutter:
         """
         total = self.total_seconds
         end = total if final else min(self._next, total)
-        self._next += self._cut_every_seconds
+        self._next += self.listening.cut_every_seconds
         window = self._buffer_to(end)
         found: List[Segment] = []
         if end - self._start >= _SHORTEST_WINDOW:
@@ -206,11 +194,11 @@ class RollingCutter:
             self._trim(end - _NOISE_KEPT)                       # only noise in the buffer: keep a short lead-in
             return []
         found = [s for s in found if s.end > self._last_end + _REHEARD_SLACK]    # drop what was already kept (heard again)
-        done = [s for s in found if final or s.end <= end - self._hold_back_seconds]
-        if not done and found and end - self._start >= self._max_cut_seconds:
+        done = [s for s in found if final or s.end <= end - self.listening.hold_back_seconds]
+        if not done and found and end - self._start >= self.listening.max_cut_seconds:
             done = found                              # one long thought: do not let the buffer grow forever
             self.forced += 1
         if done:
             self._last_end = done[-1].end
-            self._trim(self._last_end - self._rewind_seconds)
+            self._trim(self._last_end - self.listening.rewind_seconds)
         return done

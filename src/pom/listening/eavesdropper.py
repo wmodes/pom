@@ -52,16 +52,14 @@ from dataclasses import dataclass
 from typing import Callable, Iterator, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 from pom.listening.audio_deck import AudioDeck
 from pom.listening.audio_format import FRAME_SECONDS
-from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter)
+from pom.listening.rolling_cutter import RollingCutter
 from pom.listening.track_splitter import TrackSplitter
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_ROOM_TONE_PASS_EVERY = 3
-DEFAULT_ROOM_TONE_PASS_SECONDS = 10.0
-DEFAULT_ROOM_TONE_MEMORY = 6
 
 
 class EavesdropperError(ValueError):
@@ -84,10 +82,6 @@ class Take:
     ends_at: float
 
 
-def _is_whole(value, minimum: int) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= minimum
-
-
 def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -97,22 +91,18 @@ class Eavesdropper:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        listening: The `[listening]` settings it was handed (it reads the room-tone settings and hands it to its RollingCutter).
     """
 
-    def __init__(self, deck: AudioDeck, client, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
-                 rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS,
-                 room_tone_pass_every: int = DEFAULT_ROOM_TONE_PASS_EVERY, room_tone_pass_seconds: float = DEFAULT_ROOM_TONE_PASS_SECONDS,
-                 room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, splitter: Optional[TrackSplitter] = None,
+    def __init__(self, deck: AudioDeck, client, listening: ListeningSettings, splitter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, start_seconds: float = 0.0, wall: Callable[[], float] = time.monotonic,
                  strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
-            cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds: The RollingCutter's settings (see there).
-            room_tone_pass_every: After this many rounds in a row with no speech, listen once for lyrics and room tone.
-                A whole number of at least 0; 0 turns the room-tone pass off.
-            room_tone_pass_seconds: How much recent audio the room-tone pass listens to, above 0.
-            room_tone_memory: How many recent bits of room tone to remember, a whole number of at least 1.
+            listening: The `[listening]` section: `room_tone_pass_every` (after this many rounds in a row with no speech, listen once for
+                lyrics and room tone; 0 turns the pass off), `room_tone_pass_seconds` (how much recent audio that pass listens to),
+                `room_tone_memory` (how many recent bits of room tone to remember), and the RollingCutter's own settings (see there).
             splitter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
             start_seconds: Where the stream clock begins, 0 or more: 0 for a first room, and for one that replaces a room that stopped, what the old
@@ -123,16 +113,10 @@ class Eavesdropper:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, EavesdropperError, DEBUG, strict)
         self._deck, self._client = deck, client
-        self._room_tone_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
-                                          lambda v: _is_whole(v, 0), "a whole number of at least 0")
-        self._room_tone_pass_seconds = self._setting(room_tone_pass_seconds, "room_tone_pass_seconds", DEFAULT_ROOM_TONE_PASS_SECONDS,
-                                            lambda v: _is_number(v) and v > 0, "a number above 0")
-        memory = self._setting(room_tone_memory, "room_tone_memory", DEFAULT_ROOM_TONE_MEMORY,
-                               lambda v: _is_whole(v, 1), "a whole number of at least 1")
+        self.listening = listening
         self._splitter = splitter if splitter is not None else TrackSplitter()
-        self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict,
-                                                                                 bookkeeper=bookkeeper)
-        self._recent_room_tone = collections.deque(maxlen=memory)
+        self._cutter = cutter if cutter is not None else RollingCutter(client, listening, strict=strict, bookkeeper=bookkeeper)
+        self._recent_room_tone = collections.deque(maxlen=listening.room_tone_memory)
         self._last_words = ""
         self._last_room_tone: Tuple[str, ...] = ()
         self._quiet_steps = 0
@@ -229,10 +213,10 @@ class Eavesdropper:
                 yield item
         if segments:
             self._quiet_steps = 0
-        elif self._room_tone_every and not self._whisper_down and not self._paused.is_set():
+        elif self.listening.room_tone_pass_every and not self._whisper_down and not self._paused.is_set():
             self._quiet_steps += 1
-            if self._quiet_steps % self._room_tone_every == 0:
-                text = self._client.text(self._cutter.recent(self._room_tone_pass_seconds), vad=False)
+            if self._quiet_steps % self.listening.room_tone_pass_every == 0:
+                text = self._client.text(self._cutter.recent(self.listening.room_tone_pass_seconds), vad=False)
                 item = self._news(self._splitter.split(text, plain_text=False), self._cutter.total_seconds)
                 if item is not None:
                     yield item

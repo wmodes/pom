@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from pom.defaults import ConductorSettings, OracleSettings, PrintingSettings
+from pom.defaults import ConductorSettings, MonitorSettings, OracleSettings, PrintingSettings
 from pom.conductor import FloorKeeper, FloorState, TurnOutcome, TurnResult, TurnTaker, TurnTakerError
 from pom.library import Passage
 from pom.monitor import TurnHistory
@@ -20,6 +20,8 @@ from pom.writing import Portent
 SECRET_HINGE = "My neighbor hides a secret."
 SECRET_PORTENT = "The cellar remembers every footstep."
 
+
+MONITOR = MonitorSettings()
 
 class Clock:
     def __init__(self):
@@ -92,7 +94,7 @@ def build(writer_replies=(), terminal=..., writer_takes=0.0, terminal_takes=0.0,
     keeper = FloorKeeper(ConductorSettings(writing_seconds=writing, printing_seconds=printing, recovering_seconds=recovering), clock=clock)
     writer = FakeWriter(*writer_replies, clock=clock, takes=writer_takes)
     the_terminal = FakeTerminal(*terminal_replies, on_call=on_print, clock=clock, takes=terminal_takes) if terminal is ... else terminal
-    the_history = TurnHistory(clock=clock) if history else None
+    the_history = TurnHistory(MONITOR, clock=clock) if history else None
     conductor = ConductorSettings(**{name: options.pop(name) for name in list(options) if name in CONDUCTOR_SETTINGS})
     oracle = OracleSettings(timeout=options.pop("write_attempt_seconds", OracleSettings().timeout))     # one attempt may take the oracle's timeout
     taker = TurnTaker(writer, formatter or PortentFormatter(PrintingSettings()), the_terminal, the_history, conductor=conductor, oracle=oracle,

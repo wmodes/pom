@@ -21,6 +21,7 @@ ctrl-C quits.
 """
 import argparse
 import base64
+import dataclasses
 import itertools
 import json
 import random
@@ -83,8 +84,8 @@ class InventedRoom:
         self.notebook = ChartNotebook(config.chart.window_minutes * 60.0, config.monitor.chart_notebook_max_entries, ticks_source=self.keeper.ticks_between,
                                       silence_shape=silence_shape(config.chart), began_at=0.0)
         # the turns are aged on the stream's own clock (an hour of history is an hour of stream), and a turn stays while its dot is on the chart, as in the Printer
-        self.history = TurnHistory(config.monitor.history_seconds if history_seconds is None else history_seconds, config.monitor.history_max_turns, clock=self.now,
-                                   keep_heard_since=lambda: self.notebook.earliest_at)
+        monitor = config.monitor if history_seconds is None else dataclasses.replace(config.monitor, history_seconds=history_seconds)
+        self.history = TurnHistory(monitor, clock=self.now, keep_heard_since=lambda: self.notebook.earliest_at)
         self.rng, self.speed = rng, speed
         self.window_minutes = config.chart.window_minutes
         self._next_at, self._quiet_until, self._turns = max(20.0, quiet_start_minutes * 60.0), 0.0, 0         # the room is quiet until the first attempt
@@ -144,8 +145,8 @@ def main() -> None:
         if name not in services or state not in {light.value for light in Light}:
             parser.error(f"--light {setting!r}: say NAME=STATE with a name from {', '.join(services)} and a state from {', '.join(light.value for light in Light)}")
         services[name] = Light(state)
+    config = Config.load(ROOT / "config" / "pom.toml")
     if args.chart:
-        config = Config.load(ROOT / "config" / "pom.toml")
         room = InventedRoom(config, rng, args.speed, quiet_start_minutes=args.quiet_start,
                             history_seconds=None if args.history_minutes is None else args.history_minutes * 60.0)
         history = room.history
@@ -156,7 +157,7 @@ def main() -> None:
                                                                attempts_heard=room.heard, attempts_scored=room.scored, services=services,
                                                                algorithm=config.qualifying.algorithm, bar_description=room.keeper.describe()))
     else:
-        history = TurnHistory()
+        history = TurnHistory(config.monitor)
         for n in range(5):
             fake_turn(history, rng, n)
         site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges,

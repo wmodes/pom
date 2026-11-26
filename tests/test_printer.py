@@ -370,7 +370,9 @@ class TestTheMovedSettingsReachTheirParts:
         assert build_printer(config, Options()).parts["whisper"].listening is config.listening
 
     def test_the_service_check_interval(self, tmp_path):
-        assert build(tmp_path, "[monitor]\nservice_check_seconds = 40\n").parts["poller"]._every_seconds == 40.0
+        config = config_from(tmp_path, "[monitor]\nservice_check_seconds = 40\n")
+        poller = build_printer(config, Options()).parts["poller"]
+        assert poller.monitor is config.monitor and poller.monitor.service_check_seconds == 40.0
 
     def test_the_terminal_limits(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "serial"\nmax_typed_line_characters = 80\nrefused_character_retry_seconds = 0.5\n')

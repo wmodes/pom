@@ -15,6 +15,7 @@ Design decisions, and why:
 import threading
 from typing import Callable, Mapping
 
+from pom.defaults import MonitorSettings
 from pom.monitor.light import Light
 from pom.monitor.status_board import StatusBoard
 
@@ -23,17 +24,21 @@ JOIN_SECONDS = 5.0     # how long stopping waits for the thread
 
 
 class ServicePoller:
-    """Runs the checks every `every_seconds` and posts each answer to the board."""
+    """Runs the checks every `[monitor] service_check_seconds` and posts each answer to the board.
 
-    def __init__(self, board: StatusBoard, checks: Mapping[str, Callable[[], Light]], every_seconds: float):
+    Attributes:
+        monitor: The `[monitor]` settings it was handed (it reads `service_check_seconds`).
+    """
+
+    def __init__(self, board: StatusBoard, checks: Mapping[str, Callable[[], Light]], monitor: MonitorSettings):
         """Args:
             board: Where the answers are posted.
             checks: name -> a function returning the Light for that part. The names are the board's.
-            every_seconds: How often to ask, above 0 (setting `monitor.service_check_seconds`).
+            monitor: The `[monitor]` section: `service_check_seconds`, how often to ask.
         """
         self._board = board
         self._checks = dict(checks)
-        self._every_seconds = every_seconds
+        self.monitor = monitor
         self._stop = threading.Event()
         self._thread = None
 
@@ -64,5 +69,5 @@ class ServicePoller:
     def _run(self) -> None:
         while not self._stop.is_set():
             self.poll_once()
-            if self._stop.wait(self._every_seconds):
+            if self._stop.wait(self.monitor.service_check_seconds):
                 return

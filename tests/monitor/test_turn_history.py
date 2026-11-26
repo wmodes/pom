@@ -3,10 +3,12 @@ import threading
 
 import pytest
 
+from pom.defaults import MonitorSettings
 from pom.library import Passage
 from pom.monitor import TurnHistory, TurnHistoryError, TurnRecord
-from pom.monitor.turn_history import DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS
 from pom.writing import Portent
+
+MONITOR = MonitorSettings()
 
 
 class Clock:
@@ -24,7 +26,8 @@ def portent(text="The ghosts keep the hours."):
 
 
 def history(clock=None, **options):
-    return TurnHistory(clock=clock or Clock(), **options)
+    return TurnHistory(MonitorSettings(history_seconds=options.pop("max_age_seconds", MONITOR.history_seconds),
+                                history_max_turns=options.pop("max_records", MONITOR.history_max_turns)), clock=clock or Clock(), **options)
 
 
 def add(h, hinge="The dog barks at ghosts.", **extra):
@@ -35,7 +38,7 @@ def add(h, hinge="The dog barks at ghosts.", **extra):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS) == (3600.0, 500)
+        assert (MONITOR.history_seconds, MONITOR.history_max_turns) == (3600.0, 500)
 
     def test_good_settings_are_quiet(self, logged):
         assert logged.of(history()).ok()
@@ -385,36 +388,8 @@ class TestTheLockAndTheMemory:
 
 
 class TestBadSettings:
-    @pytest.mark.parametrize("bad", [0, -1, "3600", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_age_means_the_default_with_a_warning(self, bad, logged):
-        h = history(max_age_seconds=bad)
-        assert len(logged.of(h).warnings()) == 1 and "max_age_seconds" in logged.of(h).warnings()[0]
-        clock = Clock()
-        h = history(clock, max_age_seconds=bad)
-        add(h)
-        clock.now += 3599
-        assert len(h.recent()) == 1
-        clock.now += 2
-        assert h.recent() == []                            # the default hour
-
-    @pytest.mark.parametrize("bad", [0, -1, 2.5, "500", None, True])
-    def test_a_bad_record_limit_means_the_default_with_a_warning(self, bad, logged):
-        h = history(max_records=bad)
-        assert len(logged.of(h).warnings()) == 1 and "max_records" in logged.of(h).warnings()[0]
-        for _ in range(DEFAULT_MAX_RECORDS + 5):
-            add(h)
-        assert len(h.recent()) == DEFAULT_MAX_RECORDS
-
-    @pytest.mark.parametrize("option,bad", [("max_age_seconds", 0), ("max_records", 0)])
-    def test_strict_mode_raises(self, option, bad):
-        with pytest.raises(TurnHistoryError, match=option):
-            history(strict=True, **{option: bad})
-
     def test_strict_mode_with_good_settings_does_not_raise(self, logged):
         assert logged.of(history(strict=True)).ok()
-
-    def test_two_bad_settings_give_two_warnings(self, logged):
-        assert len(logged.of(history(max_age_seconds=0, max_records=0)).warnings()) == 2
 
 
 class TestNothingSaidInTheRoomIsKept:
@@ -465,7 +440,7 @@ class TestTheOutcome:
         clock = Clock()
         h = history(clock)
         record = add(h)
-        clock.now += DEFAULT_MAX_AGE_SECONDS + 1
+        clock.now += MONITOR.history_seconds + 1
         assert h.set_outcome(record.id, "printed") is False and h.set_outcome(999, "printed") is False
         assert h.recent() == [] and logged.of(h).ok()
 

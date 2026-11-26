@@ -33,12 +33,11 @@ from dataclasses import dataclass, replace
 from typing import Callable, Deque, List, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import MonitorSettings
 from pom.writing.portent_writer import Portent
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_MAX_AGE_SECONDS = 3600.0
-DEFAULT_MAX_RECORDS = 500
 
 
 class TurnHistoryError(ValueError):
@@ -79,16 +78,16 @@ class TurnHistory:
     """Keeps the recent turns, newest first.
 
     Attributes:
+        monitor: The `[monitor]` settings it was handed (it reads `history_seconds` and `history_max_turns`).
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         total_added: How many records have been accepted since the history was made, expired ones included.
     """
 
-    def __init__(self, max_age_seconds: float = DEFAULT_MAX_AGE_SECONDS, max_records: int = DEFAULT_MAX_RECORDS,
-                 clock: Callable[[], float] = time.time, strict: bool = False,
+    def __init__(self, monitor: MonitorSettings, clock: Callable[[], float] = time.time, strict: bool = False,
                  keep_heard_since: Optional[Callable[[], Optional[float]]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            max_age_seconds: How long a record is kept, above 0 (3600 is an hour), unless `keep_heard_since` keeps it longer.
-            max_records: The most records kept, a whole number of at least 1; the oldest go first.
+            monitor: The `[monitor]` section: `history_seconds` (how long a record is kept, unless `keep_heard_since` keeps it longer) and
+                `history_max_turns` (the most records kept; the oldest go first).
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise TurnHistoryError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
@@ -97,14 +96,8 @@ class TurnHistory:
                 something that is not a number, the age limit alone decides.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnHistoryError, DEBUG, strict)
-        if not (_is_number(max_age_seconds) and max_age_seconds > 0):
-            self.logger.warning("max_age_seconds must be a number above 0, got %r; using %g", max_age_seconds, DEFAULT_MAX_AGE_SECONDS)
-            max_age_seconds = DEFAULT_MAX_AGE_SECONDS
-        if not (isinstance(max_records, int) and not isinstance(max_records, bool) and max_records >= 1):
-            self.logger.warning("max_records must be a whole number of at least 1, got %r; using %s", max_records, DEFAULT_MAX_RECORDS)
-            max_records = DEFAULT_MAX_RECORDS
-        self._max_age = float(max_age_seconds)
-        self._records: Deque[TurnRecord] = deque(maxlen=max_records)       # oldest first
+        self.monitor = monitor
+        self._records: Deque[TurnRecord] = deque(maxlen=monitor.history_max_turns)       # oldest first
         self._clock = clock
         self._keep_heard_since = keep_heard_since
         self._lock = threading.Lock()
@@ -114,7 +107,7 @@ class TurnHistory:
     @property
     def max_age_seconds(self) -> float:
         """How long a record is kept, in seconds."""
-        return self._max_age
+        return self.monitor.history_seconds
 
     def add(self, hinge: str, score: float, bar: Optional[float], window_size: int, heard_at: float,
             portent: Optional[Portent] = None) -> Optional[TurnRecord]:
@@ -183,7 +176,7 @@ class TurnHistory:
 
     def _forget_old(self, keep_from: Optional[float] = None) -> None:
         """Drops the records older than the age limit, except those heard at or after `keep_from`. The caller holds the lock."""
-        cutoff = self._clock() - self._max_age
+        cutoff = self._clock() - self.monitor.history_seconds
         kept = [record for record in self._records if record.at >= cutoff or (keep_from is not None and record.heard_at >= keep_from)]
         if len(kept) != len(self._records):
             self._records = deque(kept, maxlen=self._records.maxlen)

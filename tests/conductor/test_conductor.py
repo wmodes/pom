@@ -9,6 +9,7 @@ import time
 
 import pytest
 
+from pom.defaults import ConductorSettings
 from pom.conductor import Conductor, ConductorError, FloorKeeper, FloorState, NoSoundSource
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
@@ -131,7 +132,7 @@ class FakeTurnTaker:
 
 class Rig:
     def __init__(self, rooms, taker=None, keyboard=None, recovering=0.05, writing=300.0, **options):
-        self.floor = FloorKeeper(writing, 180.0, recovering)
+        self.floor = FloorKeeper(ConductorSettings(writing_seconds=writing, printing_seconds=180.0, recovering_seconds=recovering))
         self.rooms = list(rooms)
         self.factory_calls = 0
         self.keyboard = keyboard
@@ -455,20 +456,20 @@ class TestStopping:
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
     def test_a_bad_check_time_is_the_default_with_a_warning(self, bad, logged):
-        conductor = Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), check_seconds=bad)
+        conductor = Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), check_seconds=bad)
         assert len(logged.of(conductor).warnings()) == 1 and "check_seconds" in logged.of(conductor).warnings()[0]
 
     @pytest.mark.parametrize("bad", [-1, "x", None])
     def test_a_bad_restart_pause_is_the_default_with_a_warning(self, bad, logged):
-        conductor = Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), restart_pause_seconds=bad)
+        conductor = Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), restart_pause_seconds=bad)
         assert len(logged.of(conductor).warnings()) == 1
 
     def test_a_restart_pause_of_zero_is_allowed(self, logged):
-        assert logged.of(Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), restart_pause_seconds=0)).ok()
+        assert logged.of(Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), restart_pause_seconds=0)).ok()
 
     def test_in_strict_mode_a_bad_setting_raises(self):
         with pytest.raises(ConductorError):
-            Conductor(FloorKeeper(), FakeTurnTaker(), lambda: room(), check_seconds=0, strict=True)
+            Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), check_seconds=0, strict=True)
 
 
 class TestTheLogs:

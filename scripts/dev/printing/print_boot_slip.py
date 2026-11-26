@@ -47,7 +47,7 @@ def main():
     else:
         terminal = ConsoleTerminal(terminal_settings)
     formatter = PortentFormatter(printing)
-    floor = FloorKeeper(conductor.writing_seconds, conductor.printing_seconds, conductor.recovering_seconds)
+    floor = FloorKeeper(conductor)
     if args.no_network:
         find = lambda: []                                    # noqa: E731
     elif args.address:

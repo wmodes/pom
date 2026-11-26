@@ -7,10 +7,13 @@ import time
 
 import pytest
 
+from pom.defaults import ConductorSettings
 from pom.conductor import FloorKeeper, FloorKeeperError, FloorState, Turn
-from pom.conductor.floor_keeper import (DEFAULT_PRINTING_SECONDS, DEFAULT_RECOVERING_SECONDS, DEFAULT_WRITING_SECONDS)
 
 LISTENING, WRITING, PRINTING, RECOVERING = FloorState.LISTENING, FloorState.WRITING, FloorState.PRINTING, FloorState.RECOVERING
+
+
+CONDUCTOR = ConductorSettings()
 
 
 class Clock:
@@ -28,13 +31,14 @@ class Clock:
 
 def keeper(writing=100.0, printing=50.0, recovering=3.0, **options):
     clock = Clock()
-    return FloorKeeper(writing, printing, recovering, clock=clock, **options), clock
+    settings = ConductorSettings(writing_seconds=writing, printing_seconds=printing, recovering_seconds=recovering)
+    return FloorKeeper(settings, clock=clock, **options), clock
 
 
 class TestTheDefaults:
     def test_the_limits_cover_the_longest_likely_run(self):
-        # writing: longer than the oracle's own timeout (120 s) with room for a slower one; printing: the longest portent (about 90 s)
-        assert DEFAULT_WRITING_SECONDS >= 300.0 and DEFAULT_PRINTING_SECONDS >= 180.0 and DEFAULT_RECOVERING_SECONDS == 3.0
+        # writing: longer than the oracle's own timeout with room for a slower one; printing: the longest portent (about 90 s)
+        assert CONDUCTOR.writing_seconds >= 300.0 and CONDUCTOR.printing_seconds >= 180.0 and CONDUCTOR.recovering_seconds == 3.0
 
     def test_it_starts_listening_with_nobody_holding_the_floor(self):
         k, _ = keeper()
@@ -44,7 +48,7 @@ class TestTheDefaults:
         assert logged.of(keeper()[0]).ok()
 
     def test_with_no_settings_given_it_uses_the_defaults_and_a_real_clock(self, logged):
-        k = FloorKeeper()
+        k = FloorKeeper(CONDUCTOR)
         assert logged.of(k).ok() and k.state is LISTENING
 
 
@@ -405,33 +409,9 @@ class TestTheLogs:
 
 
 class TestBadSettings:
-    @pytest.mark.parametrize("name", ["writing_seconds", "printing_seconds"])
-    @pytest.mark.parametrize("bad", [0, -1, float("nan"), float("inf"), "x", None, True])
-    def test_a_bad_limit_is_the_default_with_a_warning(self, name, bad, logged):
-        k = FloorKeeper(**{name: bad}, clock=Clock())
-        assert len(logged.of(k).warnings()) == 1 and name in logged.of(k).warnings()[0]
-        k.take_floor("room")
-
-    @pytest.mark.parametrize("bad", [-1, float("nan"), "x", None, True])
-    def test_a_bad_recovery_is_the_default_with_a_warning(self, bad, logged):
-        k = FloorKeeper(recovering_seconds=bad, clock=Clock())
-        assert len(logged.of(k).warnings()) == 1 and "recovering_seconds" in logged.of(k).warnings()[0]
-
     def test_a_clock_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
-        k = FloorKeeper(clock=5)
+        k = FloorKeeper(CONDUCTOR, clock=5)
         assert len(logged.of(k).warnings()) == 1 and "clock" in logged.of(k).warnings()[0] and k.state is LISTENING
-
-    def test_in_strict_mode_a_bad_setting_raises(self):
-        with pytest.raises(FloorKeeperError):
-            FloorKeeper(writing_seconds=-1, strict=True)
-
-    def test_a_default_is_used_when_a_limit_is_bad(self):
-        k = FloorKeeper(writing_seconds=-1, clock=(clock := Clock()))
-        k.take_floor("room")
-        clock.advance(DEFAULT_WRITING_SECONDS - 1)
-        assert k.state is WRITING
-        clock.advance(2)
-        assert k.state is RECOVERING
 
 
 class TestAStuckLock:
@@ -488,7 +468,7 @@ class TestAStuckLock:
             if calls["n"] > 2:
                 raise RuntimeError("clock broke")
             return 1000.0
-        k = FloorKeeper(clock=clock)
+        k = FloorKeeper(CONDUCTOR, clock=clock)
         with pytest.raises(RuntimeError):
             k.take_floor("room")
         assert k._lock.acquire(timeout=0.5)
@@ -502,7 +482,7 @@ class TestManyThreads:
         def lurching_clock():
             time.sleep(0.001)                      # inside the lock: gives a rival thread every chance to barge in
             return slow()
-        k = FloorKeeper(clock=lurching_clock)
+        k = FloorKeeper(CONDUCTOR, clock=lurching_clock)
         winners, barrier = [], threading.Barrier(20)
 
         def ask(number):
@@ -518,7 +498,7 @@ class TestManyThreads:
         assert len(winners) == 1 and k.turns_taken == 1
 
     def test_the_room_and_the_keyboard_taking_turns_never_overlap(self):
-        k = FloorKeeper(recovering_seconds=0)
+        k = FloorKeeper(ConductorSettings(recovering_seconds=0))
         inside, overlaps = [0], [0]
         guard = threading.Lock()
 

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from pom.defaults import PrintingSettings
+from pom.defaults import ConductorSettings, PrintingSettings
 from pom.conductor import FloorKeeper, FloorState, TurnOutcome, TurnResult, TurnTaker, TurnTakerError
 from pom.library import Passage
 from pom.monitor import TurnHistory
@@ -84,7 +84,7 @@ class EmptyFormatter:
 def build(writer_replies=(), terminal=..., writer_takes=0.0, terminal_takes=0.0, writing=300.0, printing=50.0, recovering=3.0,
           history=True, formatter=None, terminal_replies=(), on_print=None, **options):
     clock = Clock()
-    keeper = FloorKeeper(writing, printing, recovering, clock=clock)
+    keeper = FloorKeeper(ConductorSettings(writing_seconds=writing, printing_seconds=printing, recovering_seconds=recovering), clock=clock)
     writer = FakeWriter(*writer_replies, clock=clock, takes=writer_takes)
     the_terminal = FakeTerminal(*terminal_replies, on_call=on_print, clock=clock, takes=terminal_takes) if terminal is ... else terminal
     the_history = TurnHistory(clock=clock) if history else None

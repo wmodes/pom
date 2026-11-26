@@ -69,12 +69,10 @@ from enum import Enum
 from typing import Callable, Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ConductorSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_WRITING_SECONDS = 300.0       # longer than the oracle client's timeout (120 s now; a long portent may need more), with room to spare
-DEFAULT_PRINTING_SECONDS = 180.0      # the longest portent (300 tokens, about 1,400 characters) is typed in about 90 s at 16 characters a second
-DEFAULT_RECOVERING_SECONDS = 3.0      # for the terminal's last sounds to die away
 LOCK_TIMEOUT_SECONDS = 5.0            # the longest a call waits for the lock; the work inside it takes microseconds
 UNKNOWN_WHO = "unknown"
 
@@ -89,10 +87,6 @@ class FloorState(Enum):
     WRITING = "writing"
     PRINTING = "printing"
     RECOVERING = "recovering"
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class Turn:
@@ -135,26 +129,23 @@ class FloorKeeper:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        conductor: The `[conductor]` settings it was handed (it reads `writing_seconds`, `printing_seconds` and `recovering_seconds`).
         overruns: How many turns lost the floor to the watchdog.
         turns_taken: How many turns have been given out.
     """
 
-    def __init__(self, writing_seconds: float = DEFAULT_WRITING_SECONDS, printing_seconds: float = DEFAULT_PRINTING_SECONDS,
-                 recovering_seconds: float = DEFAULT_RECOVERING_SECONDS, clock: Optional[Callable[[], float]] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, conductor: ConductorSettings, clock: Optional[Callable[[], float]] = None, strict: bool = False,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            writing_seconds: The longest the oracle model may take to write one portent, above 0 (see the limits above).
-            printing_seconds: The longest the formatting and typing of one portent may take, above 0.
-            recovering_seconds: How long the ears stay shut after a turn, 0 or more (0 means none).
+            conductor: The `[conductor]` section: `writing_seconds` (the longest the oracle model may take to write one portent, see the
+                limits above), `printing_seconds` (the longest the formatting and typing of one portent may take) and `recovering_seconds`
+                (how long the ears stay shut after a turn; 0 means none).
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
             strict: Raise FloorKeeperError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, FloorKeeperError, DEBUG, strict)
-        self._writing_seconds = self._valid(writing_seconds, "writing_seconds", DEFAULT_WRITING_SECONDS, lambda v: v > 0, "above 0")
-        self._printing_seconds = self._valid(printing_seconds, "printing_seconds", DEFAULT_PRINTING_SECONDS, lambda v: v > 0, "above 0")
-        self._recovering_seconds = self._valid(recovering_seconds, "recovering_seconds", DEFAULT_RECOVERING_SECONDS, lambda v: v >= 0,
-                                               "at least 0")
+        self.conductor = conductor
         if clock is None:
             clock = time.monotonic
         elif not callable(clock):
@@ -169,13 +160,6 @@ class FloorKeeper:
         self._turn_began = 0.0             # when the turn took the floor
         self.overruns = 0
         self.turns_taken = 0
-
-    def _valid(self, value, name: str, default: float, is_good, wanted: str) -> float:
-        """A number that passes `is_good`, or the default with a warning."""
-        if _is_number(value) and is_good(value):
-            return float(value)
-        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
-        return default
 
     # --- Questions ------------------------------------------------------------------
 
@@ -278,11 +262,11 @@ class FloorKeeper:
         """Clears whatever has run out: a turn over its limit loses the floor, and a recovery that is done ends. Lock held."""
         now = self._clock()
         elapsed = max(0.0, now - self._since)
-        if self._state is FloorState.WRITING and elapsed > self._writing_seconds:
-            self._overrun("writing", self._writing_seconds)
-        elif self._state is FloorState.PRINTING and elapsed > self._printing_seconds:
-            self._overrun("printing", self._printing_seconds)
-        elif self._state is FloorState.RECOVERING and elapsed >= self._recovering_seconds:
+        if self._state is FloorState.WRITING and elapsed > self.conductor.writing_seconds:
+            self._overrun("writing", self.conductor.writing_seconds)
+        elif self._state is FloorState.PRINTING and elapsed > self.conductor.printing_seconds:
+            self._overrun("printing", self.conductor.printing_seconds)
+        elif self._state is FloorState.RECOVERING and elapsed >= self.conductor.recovering_seconds:
             self._enter(FloorState.LISTENING)
             self._who = ""
 

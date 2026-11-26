@@ -75,11 +75,12 @@ class TestTheWiring:
         assert warmer.warmed is False                      # building contacts no server: nothing has been started
 
     def test_the_conductor_settings_reach_the_floor_and_the_turn_taker(self, tmp_path):
-        p = build(tmp_path, "[conductor]\nwriting_seconds = 500\nprinting_seconds = 400\nrecovering_seconds = 7\nfreshness_seconds = 99\n"
-                            "write_attempts = 2\nwrite_pause_seconds = 4\nwrite_budget_seconds = 450\nprint_pause_seconds = 3\n"
-                            "restart_pause_seconds = 8\ncheck_seconds = 0.5\n")
+        config = config_from(tmp_path, "[conductor]\nwriting_seconds = 500\nprinting_seconds = 400\nrecovering_seconds = 7\nfreshness_seconds = 99\n"
+                                       "write_attempts = 2\nwrite_pause_seconds = 4\nwrite_budget_seconds = 450\nprint_pause_seconds = 3\n"
+                                       "restart_pause_seconds = 8\ncheck_seconds = 0.5\n")
+        p = build_printer(config, Options())
         floor, taker, conductor = p.floor, p.parts["turn_taker"], p.conductor
-        assert (floor._writing_seconds, floor._printing_seconds, floor._recovering_seconds) == (500.0, 400.0, 7.0)
+        assert floor.conductor is config.conductor
         assert (taker._freshness, taker._write_attempts, taker._write_pause, taker._write_budget, taker._print_pause) == (99.0, 2, 4.0, 450.0, 3.0)
         assert (conductor._restart_pause, conductor._check) == (8.0, 0.5)
 

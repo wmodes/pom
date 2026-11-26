@@ -233,8 +233,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                              silence_shape=silence_shape(config.chart), began_at=stream_started_at, bookkeeper=bookkeeper)
     # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
     history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at, bookkeeper=bookkeeper)
-    floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds,
-                        bookkeeper=bookkeeper)
+    floor = FloorKeeper(conductor_settings, bookkeeper=bookkeeper)
     turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
                            write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,
                            write_attempt_seconds=oracle.timeout, write_budget_seconds=conductor_settings.write_budget_seconds,

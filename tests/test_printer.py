@@ -253,8 +253,8 @@ class TestWhereSoundComesFrom:
             return real(scorer_settings, **options)
         monkeypatch.setattr(printer_module, "ScorerModelClient", recording)
         config = config_from(tmp_path, '[scorer]\nurl = "http://pi.test:9000/v1/chat/completions"\n[terminal]\nmode = "none"\n')
-        build_printer(config, Options())
-        assert handed == [config.scorer]
+        printer = build_printer(config, Options())
+        assert handed == [config.scorer] and printer.parts["scorer"].scorer_settings is config.scorer
 
     def test_each_room_s_eavesdropper_is_handed_the_listening_settings(self, tmp_path):
         config = config_from(tmp_path, '[listening]\nroom_tone_memory = 2\n[terminal]\nmode = "none"\n')

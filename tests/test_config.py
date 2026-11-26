@@ -394,11 +394,6 @@ def test_scorer_defaults_when_nothing_is_set():
 
 
 def test_the_scorer_defaults_match_the_scorers_own():
-    from pom.scoring import clip_scorer
-    assert ScorerSettings().clip_filter_score == clip_scorer.DEFAULT_CLIP_FILTER_SCORE
-    assert ScorerSettings().min_content_words == clip_scorer.DEFAULT_MIN_CONTENT_WORDS
-    assert ScorerSettings().failure_limit == clip_scorer.DEFAULT_FAILURE_LIMIT
-    assert ScorerSettings().retry_seconds == clip_scorer.DEFAULT_RETRY_SECONDS
     assert ScorerSettings().url.startswith("http://")
 
 
@@ -490,9 +485,7 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
                             post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
                                 {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
     scorer = ClipScorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
-                                      stopwords={"the"}),
-                    clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
-                    failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
+                                      stopwords={"the"}), settings)
     assert client.available and logged.of(scorer).ok()
     assert scorer.score_text("The lamp hums.").score == 6.0
     assert scorer.score_text("The").scored_by is ScoredBy.CLIP_FILTER and scorer.score_text("The").score == 2.0

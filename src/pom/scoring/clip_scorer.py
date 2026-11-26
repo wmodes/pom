@@ -42,13 +42,10 @@ from typing import Callable, Iterable, Optional
 from pom.scoring.word_tagger import WordTagger
 from pom.listening.take_cutter import Clip, ClipLevel
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ScorerSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_CLIP_FILTER_SCORE = 1.0
-DEFAULT_MIN_CONTENT_WORDS = 1
-DEFAULT_FAILURE_LIMIT = 3
-DEFAULT_RETRY_SECONDS = 30.0
 
 
 class ClipScorerError(ValueError):
@@ -87,20 +84,18 @@ class ClipScorer:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        scorer_settings: The `[scorer]` settings it was handed (it reads `clip_filter_score`, `min_content_words`, `failure_limit` and
+            `retry_seconds`).
     """
 
-    def __init__(self, scorer_model_client, word_tagger: WordTagger, clip_filter_score: float = DEFAULT_CLIP_FILTER_SCORE,
-                 min_content_words: int = DEFAULT_MIN_CONTENT_WORDS,
-                 failure_limit: int = DEFAULT_FAILURE_LIMIT,
-                 retry_seconds: float = DEFAULT_RETRY_SECONDS,
+    def __init__(self, scorer_model_client, word_tagger: WordTagger, scorer_settings: ScorerSettings,
                  clock: Callable[[], float] = time.monotonic, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer_model_client: A ScorerModelClient (anything with score(text), warm_up() and available).
             word_tagger: The WordTagger that tags each word of a clip.
-            clip_filter_score: The score for a clip the clip_filter keeps from the model.
-            min_content_words: Clips with fewer content words skip the model (0 = never skip).
-            failure_limit: Model failures in a row that open the circuit breaker.
-            retry_seconds: How long the breaker stays open before the model gets another try.
+            scorer_settings: The `[scorer]` section: `clip_filter_score` (the score for a clip the clip_filter keeps from the model),
+                `min_content_words` (clips with fewer content words skip the model; 0 never skips), `failure_limit` (model failures in a
+                row that open the circuit breaker) and `retry_seconds` (how long the breaker stays open before the model gets another try).
             clock: Returns seconds; injected so tests need not wait.
             strict: Raise ClipScorerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
@@ -108,11 +103,7 @@ class ClipScorer:
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ClipScorerError, DEBUG, strict)
         self._scorer_model_client, self._word_tagger, self._clock = (
             scorer_model_client, word_tagger, clock)
-        self._clip_filter_score = self._number(clip_filter_score, "clip_filter_score",
-                                                      DEFAULT_CLIP_FILTER_SCORE, minimum=0.0)
-        self._min_content = self._whole(min_content_words, "min_content_words", DEFAULT_MIN_CONTENT_WORDS, minimum=0)
-        self._failure_limit = self._whole(failure_limit, "failure_limit", DEFAULT_FAILURE_LIMIT, minimum=1)
-        self._retry_seconds = self._number(retry_seconds, "retry_seconds", DEFAULT_RETRY_SECONDS, minimum=0.0)
+        self.scorer_settings = scorer_settings
         self._failures = 0
         self._reopen_at: Optional[float] = None       # None while the breaker is closed
         self._counts = {scored_by: 0 for scored_by in ScoredBy}
@@ -120,29 +111,13 @@ class ClipScorer:
             self.logger.warning("the scorer model is not available (the client logged why); every "
                              "clip that passes the filter will go unscored")
 
-    # --- Settings -------------------------------------------------------------------
-
-    def _number(self, value, name, default, minimum):
-        """A non-negative number, or the default with a warning."""
-        if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
-            return float(value)
-        self.logger.warning("%s must be a number of at least %g, got %r; using %g", name, minimum, value, default)
-        return default
-
-    def _whole(self, value, name, default, minimum):
-        """A whole number of at least `minimum`, or the default with a warning."""
-        if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
-            return value
-        self.logger.warning("%s must be a whole number of at least %s, got %r; using %s", name, minimum, value, default)
-        return default
-
     # --- Scoring --------------------------------------------------------------------
 
     def score(self, clip: Clip) -> ScoredClip:
         """Scores one clip. Always returns a result; see `scored_by` for how it was made."""
         content = [word for word in self._word_tagger.tag(clip.text) if word.is_content]
         if self._skips_model(clip.text, content):
-            return self._result(clip, self._clip_filter_score, ScoredBy.CLIP_FILTER)
+            return self._result(clip, self.scorer_settings.clip_filter_score, ScoredBy.CLIP_FILTER)
         if self._model_allowed():
             value = self._scorer_model_client.score(clip.text)
             if value is not None:
@@ -157,7 +132,7 @@ class ClipScorer:
 
     def _skips_model(self, text: str, content: list) -> bool:
         """The filter rule, in one place: nothing to ask about, or fewer content words than the setting needs."""
-        return not text.strip() or len(content) < self._min_content
+        return not text.strip() or len(content) < self.scorer_settings.min_content_words
 
     def score_text(self, text: str, heard_at: float = 0.0) -> ScoredClip:
         """Scores plain text as a one-sentence clip (for testbenches and tests)."""
@@ -204,10 +179,10 @@ class ClipScorer:
     def _model_failed(self) -> None:
         """Counts a failure and opens the breaker once there have been enough in a row."""
         self._failures += 1
-        if self._failures >= self._failure_limit:
-            self._reopen_at = self._clock() + self._retry_seconds
+        if self._failures >= self.scorer_settings.failure_limit:
+            self._reopen_at = self._clock() + self.scorer_settings.retry_seconds
             self.logger.warning("the scorer model failed %s times in a row; leaving clips unscored and trying the model again in %g s",
-                                self._failures, self._retry_seconds)
+                                self._failures, self.scorer_settings.retry_seconds)
 
     def _model_worked(self) -> None:
         """A success closes the breaker and clears the failure count."""

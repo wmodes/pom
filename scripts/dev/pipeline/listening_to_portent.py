@@ -144,9 +144,7 @@ def main() -> None:
 
     nltk_dir = ROOT / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring, explain_prompt=scoring.prompt_debug)
-    scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
-                    clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
-                    failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
+    scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None), scoring)
     bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the stream begins at 0
     finder = HingeFinder(eavesdropper, TakeCutter(listening), scorer, bar_keeper, listening)
 

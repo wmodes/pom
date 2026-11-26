@@ -1,9 +1,10 @@
 """Tests for pom.scoring.clip_scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
+import dataclasses
 
 import pytest
 
-from pom.scoring.clip_scorer import (DEFAULT_FAILURE_LIMIT, DEFAULT_CLIP_FILTER_SCORE,
-                              DEFAULT_RETRY_SECONDS, ScoredBy, ScoredClip, ClipScorer, ClipScorerError)
+from pom.defaults import ScorerSettings
+from pom.scoring.clip_scorer import ScoredBy, ScoredClip, ClipScorer, ClipScorerError
 from pom.scoring.word_tagger import WordTagger
 from pom.listening.take_cutter import Clip, ClipLevel
 
@@ -53,10 +54,16 @@ class Clock:
         return self.now
 
 
+SCORER = ScorerSettings()
+SETTINGS = {f.name for f in dataclasses.fields(ScorerSettings)}
+
+
 def make(client=None, **options):
+    """A ClipScorer; options named like a [scorer] setting go into its settings object, the rest to the ClipScorer."""
     options.setdefault("clock", Clock())
     options.setdefault("strict", False)
-    return ClipScorer(client or FakeClient(), words(), **options)
+    settings = ScorerSettings(**{name: options.pop(name) for name in list(options) if name in SETTINGS})
+    return ClipScorer(client or FakeClient(), words(), settings, **options)
 
 
 def clip(text, heard_at=0.0):
@@ -113,7 +120,7 @@ class TestFilter:
     def test_all_filler_is_not_sent_to_the_model(self):
         client = FakeClient()
         result = make(client).score_text("Yeah, okay.")
-        assert (result.score, result.scored_by) == (DEFAULT_CLIP_FILTER_SCORE, ScoredBy.CLIP_FILTER)
+        assert (result.score, result.scored_by) == (SCORER.clip_filter_score, ScoredBy.CLIP_FILTER)
         assert client.calls == []
 
     def test_only_stopwords_and_numbers_is_filtered(self):
@@ -187,7 +194,7 @@ class TestUnscored:
 
     def test_the_filter_still_comes_first(self):
         result = self.scorer_without_model().score_text("Yeah, okay.")
-        assert (result.score, result.scored_by) == (DEFAULT_CLIP_FILTER_SCORE, ScoredBy.CLIP_FILTER)
+        assert (result.score, result.scored_by) == (SCORER.clip_filter_score, ScoredBy.CLIP_FILTER)
 
     def test_ranked_puts_unscored_clips_last(self):
         class Sometimes(FakeClient):
@@ -214,16 +221,16 @@ class TestCircuitBreaker:
     def test_a_few_failures_do_not_open_it(self, logged):
         client = FakeClient(None)
         scorer = make(client)
-        for _ in range(DEFAULT_FAILURE_LIMIT - 1):
+        for _ in range(SCORER.failure_limit - 1):
             scorer.score_text("The lamp hums.")
         assert not scorer.degraded and logged.of(scorer).ok()
         scorer.score_text("The lamp hums.")
-        assert len(client.calls) == DEFAULT_FAILURE_LIMIT
+        assert len(client.calls) == SCORER.failure_limit
 
     def test_enough_failures_in_a_row_open_it_and_the_model_is_left_alone(self, logged):
         client = FakeClient(None)
         scorer = make(client)
-        for _ in range(DEFAULT_FAILURE_LIMIT):
+        for _ in range(SCORER.failure_limit):
             scorer.score_text("The lamp hums.")
         assert scorer.degraded and len(logged.of(scorer).warnings()) == 1
         calls = len(client.calls)
@@ -234,10 +241,10 @@ class TestCircuitBreaker:
     def test_after_the_wait_one_attempt_is_made(self):
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
-        for _ in range(DEFAULT_FAILURE_LIMIT):
+        for _ in range(SCORER.failure_limit):
             scorer.score_text("The lamp hums.")
         calls = len(client.calls)
-        clock.now += DEFAULT_RETRY_SECONDS - 1
+        clock.now += SCORER.retry_seconds - 1
         scorer.score_text("The lamp hums.")
         assert len(client.calls) == calls                       # not yet
         clock.now += 1
@@ -247,9 +254,9 @@ class TestCircuitBreaker:
     def test_a_failed_retry_closes_the_door_again_at_once(self):
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
-        for _ in range(DEFAULT_FAILURE_LIMIT):
+        for _ in range(SCORER.failure_limit):
             scorer.score_text("The lamp hums.")
-        clock.now += DEFAULT_RETRY_SECONDS
+        clock.now += SCORER.retry_seconds
         scorer.score_text("The lamp hums.")                     # the retry, which fails
         calls = len(client.calls)
         scorer.score_text("The lamp hums.")
@@ -258,10 +265,10 @@ class TestCircuitBreaker:
     def test_a_successful_retry_closes_the_breaker(self):
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
-        for _ in range(DEFAULT_FAILURE_LIMIT):
+        for _ in range(SCORER.failure_limit):
             scorer.score_text("The lamp hums.")
         client.value = 6.0
-        clock.now += DEFAULT_RETRY_SECONDS
+        clock.now += SCORER.retry_seconds
         assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL
         assert not scorer.degraded
         assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL
@@ -269,10 +276,10 @@ class TestCircuitBreaker:
     def test_recovery_is_announced_once(self, logged):
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
-        for _ in range(DEFAULT_FAILURE_LIMIT):
+        for _ in range(SCORER.failure_limit):
             scorer.score_text("The lamp hums.")
         client.value = 6.0
-        clock.now += DEFAULT_RETRY_SECONDS
+        clock.now += SCORER.retry_seconds
         for _ in range(3):
             scorer.score_text("The lamp hums.")
         assert logged.text().count("answering again") == 1
@@ -294,12 +301,12 @@ class TestCircuitBreaker:
     def test_a_success_resets_the_count_of_failures(self):
         client = FakeClient(None)
         scorer = make(client)
-        for _ in range(DEFAULT_FAILURE_LIMIT - 1):
+        for _ in range(SCORER.failure_limit - 1):
             scorer.score_text("The lamp hums.")
         client.value = 5.0
         scorer.score_text("The lamp hums.")
         client.value = None
-        for _ in range(DEFAULT_FAILURE_LIMIT - 1):
+        for _ in range(SCORER.failure_limit - 1):
             scorer.score_text("The lamp hums.")
         assert not scorer.degraded
 
@@ -341,22 +348,8 @@ class TestWarmUp:
 
 
 class TestSettings:
-    @pytest.mark.parametrize("name,bad", [("clip_filter_score", -1), ("clip_filter_score", "x"),
-                                          ("clip_filter_score", True), ("clip_filter_score", None),
-                                          ("min_content_words", -1), ("min_content_words", 1.5),
-                                          ("min_content_words", True), ("failure_limit", 0),
-                                          ("failure_limit", 2.5), ("retry_seconds", -5), ("retry_seconds", "soon")])
-    def test_bad_settings_fall_back_with_a_warning(self, name, bad, logged):
-        scorer = make(**{name: bad})
-        assert len(logged.of(scorer).warnings()) == 1
-        assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL     # still works
-
     def test_defaults_are_quiet(self, logged):
         assert logged.of(make()).ok()
-
-    def test_strict_mode_raises_on_a_bad_setting(self):
-        with pytest.raises(ClipScorerError):
-            make(failure_limit=0, strict=True)
 
     def test_strict_mode_raises_when_the_breaker_opens(self):
         scorer = make(FakeClient(None), failure_limit=1, strict=True)

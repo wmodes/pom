@@ -7,7 +7,6 @@ import logging
 
 import pytest
 
-from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.keyboard import TypedLineScorer, TypedLineScorerError
 from pom.qualifying import Attempt, BarKeeper, PercentileBar, Ruling
 from pom.scoring import ScoredBy, ScoredClip
@@ -18,7 +17,7 @@ class FakeScorer:
     """Scores a text with the number it was told (3.0 if it was not told) and keeps a record of what it was asked."""
 
     def __init__(self, scores=None, scored_by=ScoredBy.MODEL):
-        self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], ReportRecorder()
+        self.scores, self.scored_by, self.asked = dict(scores or {}), scored_by, []
 
     def score_text(self, text, heard_at=0.0):
         from pom.listening.take_cutter import Clip, ClipLevel
@@ -97,9 +96,9 @@ class TestTheScoreMultiplier:
         made, _, _, _ = typed({"x": 4.0}, score_multiplier=1)
         assert made.score("x").score == 4.0
 
-    def test_a_score_multiplier_of_zero_is_allowed(self):
+    def test_a_score_multiplier_of_zero_is_allowed(self, logged):
         made, _, _, _ = typed({"x": 9.0}, score_multiplier=0)
-        assert made.score("x").score == 0.0 and made.report.ok
+        assert made.score("x").score == 0.0 and logged.of(made).ok()
 
     def test_a_score_multiplier_can_carry_a_dull_line_over_the_bar(self):
         made, _, _, _ = typed({"x": 4.5}, bar_level=6.0)
@@ -183,15 +182,15 @@ class TestWhatTheBarIsHanded:
 
 class TestTheBarInfluence:
     @pytest.mark.parametrize("influence", [1.1, 2, -0.1, 0])
-    def test_the_influence_is_not_limited_to_zero_to_one(self, influence):
+    def test_the_influence_is_not_limited_to_zero_to_one(self, influence, logged):
         made, _, _, _ = typed({"x": 2.0}, bar_influence=influence)
-        assert made.report.ok and made.score("x").score == 3.0
+        assert logged.of(made).ok() and made.score("x").score == 3.0
 
     @pytest.mark.parametrize("bad", ["1", None, True, [1], float("nan"), float("inf")])
-    def test_an_influence_that_is_not_a_number_is_nothing_with_a_warning(self, bad):
+    def test_an_influence_that_is_not_a_number_is_nothing_with_a_warning(self, bad, logged):
         made, _, shared, _ = typed({"x": 2.0}, bar_influence=bad)
         made.score("x")
-        assert len(made.report.warnings) == 1 and made._bar_influence == 0.0
+        assert len(logged.of(made).warnings()) == 1 and made._bar_influence == 0.0
 
 
 class TestWhenThereIsNoScore:
@@ -225,16 +224,16 @@ class TestWhenThereIsNoScore:
 
 class TestTheScoreMultiplierIsChecked:
     @pytest.mark.parametrize("bad", [-1, -0.1, "1.5", None, True, [1.5], float("nan"), float("inf")])
-    def test_a_bad_score_multiplier_is_the_default_with_a_warning(self, bad):
+    def test_a_bad_score_multiplier_is_the_default_with_a_warning(self, bad, logged):
         made, _, _, _ = typed({"x": 4.0}, score_multiplier=bad)
-        assert made.score("x").score == 6.0 and len(made.report.warnings) == 1
+        assert made.score("x").score == 6.0 and len(logged.of(made).warnings()) == 1
 
     def test_strict_raises_instead(self):
         with pytest.raises(TypedLineScorerError):
             typed(score_multiplier=-1, strict=True)
 
-    def test_a_good_score_multiplier_gives_no_warning(self):
-        assert typed(score_multiplier=2)[0].report.ok
+    def test_a_good_score_multiplier_gives_no_warning(self, logged):
+        assert logged.of(typed(score_multiplier=2)[0]).ok()
 
 
 class TestWhatIsKept:
@@ -244,7 +243,7 @@ class TestWhatIsKept:
             made.score("the secret words")
         assert "secret" not in caplog.text
 
-    def test_the_typed_text_is_never_in_the_report(self):
+    def test_the_typed_text_is_never_in_the_report(self, logged):
         made, _, _, _ = typed(score_multiplier=-1)
         made.score("the secret words")
-        assert "secret" not in " ".join(made.report.lines())
+        assert "secret" not in " ".join(logged.of(made).lines())

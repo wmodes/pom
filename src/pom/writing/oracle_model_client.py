@@ -11,7 +11,7 @@ would type. The model chooses its own words: unlike the scorer, the request is n
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or answering oddly gives
-    None and a warning in `report`, never an exception. `strict=True` raises OracleModelClientError instead, for
+    None and a warning in the log, never an exception. `strict=True` raises OracleModelClientError instead, for
     tests and dev tools.
   * Neither the prompt (it holds the hinge) nor the portent is logged or put in a ReportRecorder message: nothing
     that was said in the room is kept. Logs and reports hold counts and timings.
@@ -28,11 +28,9 @@ import time
 import urllib.request
 from typing import Callable, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_TIMEOUT = 240.0
 DEFAULT_MAX_TOKENS = 300
@@ -59,14 +57,14 @@ class OracleModelClient:
     """Asks a language model served by llama-server for a consult.
 
     Attributes:
-        report: Problems met (server down, odd reply, bad setting). Never holds the prompt or the consult.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         last_seconds: How long the most recent request took, or None before the first.
         last_cut_off: True if the most recent consult stopped because it reached `max_tokens`.
     """
 
     def __init__(self, url: str, timeout: float = DEFAULT_TIMEOUT, max_tokens: int = DEFAULT_MAX_TOKENS,
                  temperature: float = DEFAULT_TEMPERATURE, post: Optional[Callable[[str, dict, float], dict]] = None,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             url: The server's chat-completions address, e.g. http://127.0.0.1:8099/v1/chat/completions.
             timeout: Seconds to wait for one portent.
@@ -74,8 +72,9 @@ class OracleModelClient:
             temperature: How adventurous the word choice is, 0 or more.
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
             strict: Raise OracleModelClientError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=OracleModelClientError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, OracleModelClientError, DEBUG, strict)
         self._url = url
         self._timeout = self._valid(timeout, "timeout", DEFAULT_TIMEOUT, lambda v: _is_number(v) and v > 0,
                                     "a positive number of seconds")
@@ -89,7 +88,7 @@ class OracleModelClient:
         self.last_cut_off = False
         self._usable = True
         if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
-            self.report.warn(f"the oracle address must start with http:// or https://, got {url!r}; "
+            self.logger.warning(f"the oracle address must start with http:// or https://, got {url!r}; "
                              f"the model will not be asked")
             self._usable = False
 
@@ -97,7 +96,7 @@ class OracleModelClient:
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return value
-        self.report.warn(f"the oracle {name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"the oracle {name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
     @property
@@ -108,7 +107,7 @@ class OracleModelClient:
     def consult(self, prompt: str) -> Optional[str]:
         """The model's portent for this prompt, or None if it wrote none.
 
-        None means no portent could be had; the reason is in `report`. Never raises (except in strict mode).
+        None means no portent could be had; the reason is in the log. Never raises (except in strict mode).
         """
         if not self._usable or not isinstance(prompt, str) or not prompt.strip():
             return None
@@ -124,13 +123,13 @@ class OracleModelClient:
             text = choice["message"]["content"].strip()
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
-            self.report.warn(f"the oracle model did not answer ({type(error).__name__}); no portent this time")
+            self.logger.warning(f"the oracle model did not answer ({type(error).__name__}); no portent this time")
             return None
         self.last_seconds = time.perf_counter() - started
         self.last_cut_off = choice.get("finish_reason") == "length"
         if not text:
-            self.report.warn("the oracle model's reply was empty; no portent this time")
+            self.logger.warning("the oracle model's reply was empty; no portent this time")
             return None
-        self.report.debug("portent of %d characters in %.1f s%s", len(text), self.last_seconds,
+        self.logger.debug("portent of %d characters in %.1f s%s", len(text), self.last_seconds,
                           " (cut off at max_tokens)" if self.last_cut_off else "")
         return text

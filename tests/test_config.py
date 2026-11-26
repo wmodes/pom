@@ -998,7 +998,7 @@ def test_the_local_file_overrides_one_oracle_key_and_keeps_the_rest(tmp_path):
     assert (oracle.temperature, oracle.max_tokens, oracle.prompt) == (1.0, 100, "Main. {hinge}")
 
 
-def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accepts(tmp_path):
+def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accepts(tmp_path, logged):
     from pathlib import Path
     from pom.writing import PromptBuilder
     sample = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
@@ -1006,7 +1006,7 @@ def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accep
     copy.write_text(sample.read_text(encoding="utf-8"), encoding="utf-8")
     config = Config.load(copy, environ={})
     assert config.report.ok and config.oracle.prompt.strip()
-    assert PromptBuilder(config.oracle.prompt, selector=None).report.ok
+    assert logged.of(PromptBuilder(config.oracle.prompt, selector=None)).ok()
 
 
 @pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"yes"', True), ('"off"', False)])

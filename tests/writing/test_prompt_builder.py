@@ -107,11 +107,11 @@ class TestBracesAreJustText:
 
 
 class TestExemplars:
-    def test_a_prompt_without_the_exemplars_place_draws_none(self):
+    def test_a_prompt_without_the_exemplars_place_draws_none(self, logged):
         built, selector = builder("Only this: {hinge}")
         prompt = built.build("h")
         assert selector.draws == 0 and prompt.exemplars == () and prompt.text == "Only this: " + theme("h")
-        assert built.report.ok
+        assert logged.of(built).ok()
 
     def test_each_build_draws_once(self):
         built, selector = builder()
@@ -119,12 +119,12 @@ class TestExemplars:
         built.build("b")
         assert selector.draws == 2
 
-    def test_nothing_to_draw_still_builds_and_is_reported(self):
+    def test_nothing_to_draw_still_builds_and_is_reported(self, logged):
         built, _ = builder(passages=[])
         prompt = built.build("h")
         assert prompt.text.startswith("Speak as the oracle.\n\nExamples:\n\n\nThey said: **Theme**")
         assert "**Style Example" not in prompt.text
-        assert prompt.exemplars == () and len(built.report.warnings) == 1
+        assert prompt.exemplars == () and len(logged.of(built).warnings()) == 1
 
     def test_nothing_to_draw_raises_in_strict_mode(self):
         built, _ = builder(passages=[], strict=True)
@@ -134,24 +134,24 @@ class TestExemplars:
 
 class TestBadInput:
     @pytest.mark.parametrize("hinge", ["", "   \n", None, 42])
-    def test_an_empty_or_odd_hinge_gives_none_and_a_warning(self, hinge):
+    def test_an_empty_or_odd_hinge_gives_none_and_a_warning(self, hinge, logged):
         built, selector = builder()
         assert built.build(hinge) is None
-        assert len(built.report.warnings) == 1 and selector.draws == 0
+        assert len(logged.of(built).warnings()) == 1 and selector.draws == 0
 
     @pytest.mark.parametrize("prompt", ["", "  \n ", None, 7])
-    def test_no_prompt_means_unavailable(self, prompt):
+    def test_no_prompt_means_unavailable(self, prompt, logged):
         built, selector = builder(prompt)
         assert not built.available and built.build("h") is None
-        assert len(built.report.warnings) == 1 and selector.draws == 0
+        assert len(logged.of(built).warnings()) == 1 and selector.draws == 0
 
-    def test_a_prompt_without_the_hinge_place_is_reported(self):
+    def test_a_prompt_without_the_hinge_place_is_reported(self, logged):
         built, _ = builder("Examples: {exemplars}")
-        assert built.available and len(built.report.warnings) == 1
-        assert "hinge" in built.report.warnings[0]
+        assert built.available and len(logged.of(built).warnings()) == 1
+        assert "hinge" in logged.of(built).warnings()[0]
 
-    def test_a_good_prompt_is_quiet(self):
-        assert builder()[0].report.ok
+    def test_a_good_prompt_is_quiet(self, logged):
+        assert logged.of(builder()[0]).ok()
 
     def test_strict_mode_raises_for_the_bad_inputs(self):
         with pytest.raises(PromptBuilderError):
@@ -168,13 +168,13 @@ class TestBadInput:
 
 
 class TestPrivacy:
-    def test_the_hinge_never_reaches_the_report_or_the_log(self, caplog):
+    def test_the_hinge_never_reaches_the_report_or_the_log(self, caplog, logged):
         caplog.set_level(logging.DEBUG)
         built, _ = builder(passages=[])
         built.build("a secret about the neighbor")
         built.build("   ")
         assert "secret" not in caplog.text and "neighbor" not in caplog.text
-        assert all("secret" not in line for line in built.report.lines())
+        assert all("secret" not in line for line in logged.of(built).lines())
 
 
 def real_selector(seed=None):

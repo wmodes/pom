@@ -222,8 +222,9 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     rng = random.Random()                                  # one generator for the Bibliomancer and the writer, so a draw can be seeded
     selector = Bibliomancer(Catalog.load(passages), Circulation.from_file(passages / "circulation.json"), rng,
                             exemplar_range=config.exemplar_range, redraw_limit=oracle.exemplar_redraws)
-    writer = PortentWriter(PromptBuilder(oracle.prompt, selector),
-                           OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature), rng)
+    writer = PortentWriter(PromptBuilder(oracle.prompt, selector, bookkeeper=bookkeeper),
+                           OracleModelClient(oracle.url, oracle.timeout, oracle.max_tokens, oracle.temperature, bookkeeper=bookkeeper), rng,
+                           bookkeeper=bookkeeper)
     printing = config.printing
     formatter = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
                                  printing.composed_characters_kept)
@@ -253,7 +254,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     keyboard = None
     if terminal is not None and mode == "serial" and options.keyboard:
         typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, qualifying.typed_lines_score_multiplier,
-                                qualifying.typed_lines_bar_influence)
+                                qualifying.typed_lines_bar_influence, bookkeeper=bookkeeper)
         keyboard = KeyboardWatcher(terminal, typed)
 
     # what the monitoring site is told: numbers only, from every attempt

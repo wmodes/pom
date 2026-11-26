@@ -18,21 +18,19 @@ Design decisions, and why:
     run backwards. The Conductor passes the clock it uses for listening.
   * Nothing here may stop the oracle (see pom/__init__.py). A line the Scorer cannot score, or that is blank, gives an unscored
     sentence the BarKeeper ignores; a bad score multiplier is replaced by its default with a warning (`strict` raises instead).
-  * What was typed is never logged or put in a report: the text lives only in the sentence this returns.
+  * What was typed is never logged: the text lives only in the sentence this returns.
   * The Scorer, the BarKeeper and the clock are passed in, already built (the entry point takes the score multiplier and `bar_influence` from
     `config.qualifying`); this module never reads Config. It adds no lock: the BarKeeper is shared with the HingeFinder's thread and
     has a lock of its own, so the two may call it at once. Which of them gets the floor is the Conductor's job.
 """
 import math
-from typing import Callable
+from typing import Callable, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.attempt import Attempt
 from pom.scoring.clip_scorer import ScoredBy
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 TYPED = "typed"
 DEFAULT_SCORE_MULTIPLIER = 1.5
@@ -46,7 +44,7 @@ class TypedLineScorer:
     """Scores the lines typed at the keyboard and says which of them the Printer should answer."""
 
     def __init__(self, scorer, bar_keeper, clock: Callable[[], float], score_multiplier: float = DEFAULT_SCORE_MULTIPLIER,
-                 bar_influence: float = 0.0, strict: bool = False):
+                 bar_influence: float = 0.0, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer: A Scorer (anything with score_text(text, heard_at) giving a score and scored_by).
             bar_keeper: The BarKeeper the room's sentences also meet (anything with bar_at, window_size_at,
@@ -56,8 +54,9 @@ class TypedLineScorer:
             bar_influence: How far up from the bar to the typed score it goes into the bar: 1 is the score itself, 0 is the bar itself.
                 Any number (not limited to 0 to 1).
             strict: Raise TypedLineScorerError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=TypedLineScorerError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TypedLineScorerError, DEBUG, strict)
         self._scorer = scorer
         self._bar_keeper = bar_keeper
         self._clock = clock
@@ -68,14 +67,14 @@ class TypedLineScorer:
         """Any finite number (it is not limited to 0 to 1), or 0 with a warning: the bar stays the room's."""
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
             return float(value)
-        self.report.warn(f"bar_influence must be a number, got {value!r}; using 0")
+        self.logger.warning(f"bar_influence must be a number, got {value!r}; using 0")
         return 0.0
 
     def _valid_score_multiplier(self, value) -> float:
         """A number of 0 or more, or the default with a warning."""
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0.0:
             return float(value)
-        self.report.warn(f"score_multiplier must be a number of at least 0, got {value!r}; using {DEFAULT_SCORE_MULTIPLIER:g}")
+        self.logger.warning(f"score_multiplier must be a number of at least 0, got {value!r}; using {DEFAULT_SCORE_MULTIPLIER:g}")
         return DEFAULT_SCORE_MULTIPLIER
 
     def score(self, line: str) -> Attempt:
@@ -92,5 +91,5 @@ class TypedLineScorer:
         result = self._scorer.score_text(text, now)
         multiplied = None if result.score is None else result.score * self._score_multiplier
         ruling = self._bar_keeper.rule_typed(multiplied, now, bar_influence=self._bar_influence)
-        self.report.debug("scored a typed line of %d words: %s", len(text.split()), ruling.value)
+        self.logger.debug("scored a typed line of %d words: %s", len(text.split()), ruling.value)
         return Attempt(text, TYPED, multiplied, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)

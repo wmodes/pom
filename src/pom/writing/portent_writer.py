@@ -7,9 +7,9 @@ one call the Conductor makes when a hinge qualifies.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). If the prompt cannot be built or the model writes nothing,
-    `write` returns None and the reason is in the report of the part that met the problem. `strict=True` raises
+    `write` returns None and the part that met the problem logged why. `strict=True` raises
     PortentWriterError for the writer's own problem; the builder and the client have a strict mode of their own.
-  * The hinge and the portent are never logged or put in a report: nothing that was said in the room is kept.
+  * The hinge and the portent are never logged: nothing that was said in the room is kept.
   * The parts are passed in, already built, so a test can give the writer fakes and a dev tool can build them from
     the config again for each hinge (to see prompt edits at once). This module never reads Config.
   * REPEATABLE EXEMPLARS. `write(hinge, seed=N)` seeds the random generator before the exemplars are drawn, so the
@@ -23,13 +23,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 from pom.library.catalog import Passage
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.writing.prompt_builder import PromptBuilder
 from pom.writing.oracle_model_client import OracleModelClient
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 
 class PortentWriterError(ValueError):
@@ -61,18 +59,19 @@ class PortentWriter:
     """Writes the portent for one hinge.
 
     Attributes:
-        report: The writer's own problems (a seed it could not use).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, builder: PromptBuilder, client: OracleModelClient, rng: Optional[random.Random] = None,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             builder: Draws the exemplars and builds the prompt.
             client: Sends the prompt to the oracle model.
             rng: The random generator the builder's Bibliomancer was built with; needed only for seeded writes.
             strict: Raise PortentWriterError on the writer's own problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=PortentWriterError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PortentWriterError, DEBUG, strict)
         self._builder = builder
         self._client = client
         self._rng = rng
@@ -85,11 +84,11 @@ class PortentWriter:
             seed: Seeds the exemplar draw so the same hinge and seed show the same exemplars. None leaves it random.
 
         Returns None if there is no prompt, the hinge is empty, or the model wrote nothing; the part that met the
-        problem says why in its report. Never raises (except in strict mode).
+        problem logged why. Never raises (except in strict mode).
         """
         if seed is not None:
             if self._rng is None:
-                self.report.warn("a seed was given but the writer has no random generator, so the exemplars stay random")
+                self.logger.warning("a seed was given but the writer has no random generator, so the exemplars stay random")
             else:
                 self._rng.seed(seed)
         prompt = self._builder.build(hinge)
@@ -98,5 +97,5 @@ class PortentWriter:
         text = self._client.consult(prompt.text)
         if text is None:
             return None
-        self.report.debug("wrote a portent of %d words from %d exemplar(s)", len(text.split()), len(prompt.exemplars))
+        self.logger.debug("wrote a portent of %d words from %d exemplar(s)", len(text.split()), len(prompt.exemplars))
         return Portent(text, prompt.exemplars, self._client.last_seconds, self._client.last_cut_off)

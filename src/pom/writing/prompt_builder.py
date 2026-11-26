@@ -26,7 +26,7 @@ so it can be tuned in one place.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing prompt, an empty hinge, or a selector with
-    nothing to draw is recorded in `report` and `build` carries on if it can (no exemplars) or returns None if
+    nothing to draw is logged and `build` carries on if it can (no exemplars) or returns None if
     it cannot. `strict=True` raises PromptBuilderError instead, for tests and dev tools.
   * The hinge is never logged or put in a ReportRecorder message: nothing that was said in the room is kept.
     Logs and reports hold counts only.
@@ -49,11 +49,9 @@ from typing import Optional
 
 from pom.library.catalog import Passage
 from pom.library.bibliomancer import Bibliomancer
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 PLACES = re.compile(r"\{(exemplars|hinge)\}")
 EXEMPLAR_SEPARATOR = "\n\n"
@@ -87,27 +85,28 @@ class PromptBuilder:
     """Builds the oracle's prompt for one hinge.
 
     Attributes:
-        report: Problems met (no prompt, an empty hinge, nothing to draw).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         available: True if there is a prompt to build from.
     """
 
-    def __init__(self, prompt: str, selector: Bibliomancer, strict: bool = False):
+    def __init__(self, prompt: str, selector: Bibliomancer, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             prompt: The oracle prompt, with `{exemplars}` and `{hinge}` marking where those go.
             selector: Where the exemplars are drawn from.
             strict: Raise PromptBuilderError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=PromptBuilderError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PromptBuilderError, DEBUG, strict)
         self._selector = selector
         self._prompt = prompt.strip() if isinstance(prompt, str) else ""
         self._wants_exemplars = False
         if not self._prompt:
-            self.report.warn("no oracle prompt was given, so no prompt can be built")
+            self.logger.warning("no oracle prompt was given, so no prompt can be built")
             return
         places = set(PLACES.findall(self._prompt))
         self._wants_exemplars = "exemplars" in places
         if "hinge" not in places:
-            self.report.warn("the oracle prompt has no {hinge}, so the model would never be shown the hinge")
+            self.logger.warning("the oracle prompt has no {hinge}, so the model would never be shown the hinge")
 
     @property
     def available(self) -> bool:
@@ -123,14 +122,14 @@ class PromptBuilder:
         if not self.available:
             return None
         if not isinstance(hinge, str) or not hinge.strip():
-            self.report.warn("the hinge is empty, so no prompt was built")
+            self.logger.warning("the hinge is empty, so no prompt was built")
             return None
         exemplars = tuple(self._selector.draw()) if self._wants_exemplars else ()
         if self._wants_exemplars and not exemplars:
-            self.report.warn("no exemplars could be drawn; the prompt was built without them")
+            self.logger.warning("no exemplars could be drawn; the prompt was built without them")
         values = {"exemplars": EXEMPLAR_SEPARATOR.join(_fenced(f"{EXEMPLAR_LABEL} {number}", passage.text)
                                                        for number, passage in enumerate(exemplars, start=1)),
                   "hinge": _fenced(HINGE_LABEL, hinge.strip())}
         text = PLACES.sub(lambda place: values[place.group(1)], self._prompt)
-        self.report.debug("built a prompt of %d characters with %d exemplar(s)", len(text), len(exemplars))
+        self.logger.debug("built a prompt of %d characters with %d exemplar(s)", len(text), len(exemplars))
         return OraclePrompt(text, exemplars)

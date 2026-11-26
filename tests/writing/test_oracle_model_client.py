@@ -76,10 +76,10 @@ class TestAskingForAPortent:
         client(post, temperature=0).consult(PROMPT)
         assert post.calls[0][1]["temperature"] == 0
 
-    def test_a_good_client_is_quiet(self):
+    def test_a_good_client_is_quiet(self, logged):
         c = client()
         c.consult(PROMPT)
-        assert c.report.ok and c.available
+        assert logged.of(c).ok() and c.available
 
     def test_the_time_taken_is_recorded(self):
         c = client()
@@ -101,16 +101,16 @@ class TestWhenTheModelFails:
         OSError("connection refused"), TimeoutError("slow"), ValueError("not json"),
         {}, {"choices": []}, {"choices": [{}]}, {"choices": [{"message": {}}]},
         {"choices": [{"message": {"content": None}}]}, "not a dict"])
-    def test_a_dead_or_odd_server_gives_none_and_a_warning(self, result):
+    def test_a_dead_or_odd_server_gives_none_and_a_warning(self, result, logged):
         c = client(FakePost(result))
         assert c.consult(PROMPT) is None
-        assert len(c.report.warnings) == 1 and c.last_seconds is not None
+        assert len(logged.of(c).warnings()) == 1 and c.last_seconds is not None
 
     @pytest.mark.parametrize("text", ["", "   \n"])
-    def test_an_empty_reply_gives_none_and_a_warning(self, text):
+    def test_an_empty_reply_gives_none_and_a_warning(self, text, logged):
         c = client(FakePost(reply(text)))
         assert c.consult(PROMPT) is None
-        assert len(c.report.warnings) == 1 and "empty" in c.report.warnings[0]
+        assert len(logged.of(c).warnings()) == 1 and "empty" in logged.of(c).warnings()[0]
 
     def test_it_works_again_after_a_failure(self):
         post = FakePost(OSError("down"))
@@ -147,11 +147,11 @@ class TestCutOff:
 
 class TestSettings:
     @pytest.mark.parametrize("url", ["", "ftp://x/y", "file:///etc/passwd", "127.0.0.1:8099", None, 5])
-    def test_a_bad_address_means_the_model_is_never_asked(self, url):
+    def test_a_bad_address_means_the_model_is_never_asked(self, url, logged):
         post = FakePost()
         c = OracleModelClient(url, post=post)
         assert not c.available and c.consult(PROMPT) is None and post.calls == []
-        assert len(c.report.warnings) == 1
+        assert len(logged.of(c).warnings()) == 1
 
     def test_https_is_accepted(self):
         assert OracleModelClient("https://example.test/v1/chat/completions").available
@@ -160,20 +160,20 @@ class TestSettings:
         ("timeout", 0), ("timeout", -1), ("timeout", "slow"), ("timeout", True), ("timeout", None),
         ("max_tokens", 0), ("max_tokens", 2.5), ("max_tokens", "300"), ("max_tokens", True),
         ("temperature", -0.1), ("temperature", "hot"), ("temperature", True), ("temperature", None)])
-    def test_a_bad_setting_is_replaced_by_its_default_with_a_warning(self, name, value):
+    def test_a_bad_setting_is_replaced_by_its_default_with_a_warning(self, name, value, logged):
         post = FakePost()
         c = client(post, **{name: value})
         c.consult(PROMPT)
         _, body, timeout = post.calls[0]
         assert (body["max_tokens"], body["temperature"], timeout) == (DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TIMEOUT)
-        assert len(c.report.warnings) == 1 and f"oracle {name}" in c.report.warnings[0]
+        assert len(logged.of(c).warnings()) == 1 and f"oracle {name}" in logged.of(c).warnings()[0]
 
-    def test_the_smallest_allowed_settings_are_accepted(self):
+    def test_the_smallest_allowed_settings_are_accepted(self, logged):
         post = FakePost()
         c = client(post, timeout=0.1, max_tokens=1, temperature=0)
         c.consult(PROMPT)
         _, body, timeout = post.calls[0]
-        assert (body["max_tokens"], body["temperature"], timeout) == (1, 0, 0.1) and c.report.ok
+        assert (body["max_tokens"], body["temperature"], timeout) == (1, 0, 0.1) and logged.of(c).ok()
 
     def test_strict_mode_raises_for_a_bad_setting(self):
         with pytest.raises(OracleModelClientError):
@@ -183,7 +183,7 @@ class TestSettings:
 
 
 class TestPrivacy:
-    def test_neither_the_prompt_nor_the_portent_reaches_the_report_or_the_log(self, caplog):
+    def test_neither_the_prompt_nor_the_portent_reaches_the_report_or_the_log(self, caplog, logged):
         caplog.set_level(logging.DEBUG)
         c = client()
         c.consult("They said: a secret about the neighbor.")
@@ -191,4 +191,4 @@ class TestPrivacy:
         failed = client(FakePost(OSError("down")))
         failed.consult("They said: a secret about the neighbor.")
         assert "secret" not in caplog.text and "neighbor" not in caplog.text and "ghosts" not in caplog.text
-        assert all("secret" not in line and "ghosts" not in line for line in failed.report.lines())
+        assert all("secret" not in line and "ghosts" not in line for line in logged.of(failed).lines())

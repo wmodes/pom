@@ -198,15 +198,15 @@ class TestRepeatableExemplars:
 
 
 class TestASeedThatCannotBeUsed:
-    def test_a_seed_without_a_generator_is_recorded_and_the_portent_is_still_written(self):
+    def test_a_seed_without_a_generator_is_recorded_and_the_portent_is_still_written(self, logged):
         written, _, _ = writer()
         assert written.write("A hinge.", seed=3).text == "The ghosts keep the hours."
-        assert any("seed" in line for line in written.report.lines())
+        assert any("seed" in line for line in logged.of(written).lines())
 
-    def test_no_seed_without_a_generator_is_no_problem(self):
+    def test_no_seed_without_a_generator_is_no_problem(self, logged):
         written, _, _ = writer()
         written.write("A hinge.")
-        assert written.report.lines() == []
+        assert logged.of(written).lines() == []
 
     def test_strict_raises_for_it(self):
         with pytest.raises(PortentWriterError):

@@ -397,7 +397,8 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **LOGMUTE line**: The second line the log muter writes under a line it lets through when it has something to say: `LOGMUTE: Last message
   repeating and muted`, `LOGMUTE: Last message repeated N times so far, still muted`, or `LOGMUTE: Last message repeated N times`. Searching for
   `^LOGMUTE` finds every one.
-- **fault recorder**: Keeps a module's faults (WARNING means recovered, CRITICAL means the module cannot do its job). The Printer never
+- **fault recorder**: Keeps a module's faults (WARNING means recovered, CRITICAL means the module cannot do its job) and logs every one; it
+  keeps the first `limit` for reading and counts the rest, and mutes nothing (the log muter does that, for every module at once). The Printer never
   stops because of a fault. Example: `FaultRecorder` (was/still)
 
 **Watching**

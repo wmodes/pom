@@ -21,9 +21,9 @@ STRICT MODE exists for development: with strict=True every fault is raised immed
 module's own error type. Tests and dev tools run strict so a typo is loud while you work; the
 runtime never does.
 
-A FaultRecorder keeps the first `limit` faults and counts the rest, so one corrupt 70,000-line file
-cannot flood the log or exhaust memory; past the limit it logs a single line saying so. Critical
-faults are always kept and always logged.
+A FaultRecorder logs EVERY fault, and keeps the first `limit` of them (and every critical one) for reading, counting the rest, so
+a long outage cannot exhaust memory. It does no muting of its own: a fault that keeps repeating is muted by the log itself, in one
+place (pom.bookkeeper.log_muter), not by each module's recorder.
 """
 import logging
 from dataclasses import dataclass
@@ -58,8 +58,8 @@ class FaultRecorder:
     Args:
         strict: If true, every fault is raised at once as `error` (development only).
         error: The exception type raised in strict mode; defaults to ValueError.
-        limit: How many faults to keep; further ones are only counted.
-        logger: If given, every kept fault is logged as it is recorded.
+        limit: How many faults to keep for reading (`warnings`, `lines()`); further ones are only counted. Every fault is logged either way.
+        logger: If given, every fault is logged as it is recorded.
     """
 
     def __init__(self, strict: bool = False, error: type = ValueError, limit: int = 50,
@@ -88,19 +88,16 @@ class FaultRecorder:
         self._suppressed += other.suppressed
 
     def _add(self, fault: Fault) -> None:
-        """Raises in strict mode; otherwise keeps the fault, or counts it past the limit."""
+        """Raises in strict mode; otherwise keeps the fault (or counts it past the limit) and logs it."""
         if self._strict:
             raise self._error(fault.message)
         # A critical fault is always kept: it is rare, and it must never be hidden behind
-        # a flood of warnings.
+        # a flood of warnings. Every fault is logged; only the list kept for reading is limited.
         if fault.severity is Severity.CRITICAL or len(self._faults) < self._limit:
             self._faults.append(fault)
-            self._log(fault)
         else:
-            if self._suppressed == 0:
-                self._log(Fault(Severity.WARNING, f"more than {self._limit} faults; the rest are "
-                                                   f"counted but not logged"))
             self._suppressed += 1
+        self._log(fault)
 
     def _log(self, fault: Fault) -> None:
         """Logs a fault at the matching level, if a logger was given."""

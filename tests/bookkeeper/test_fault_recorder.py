@@ -146,14 +146,29 @@ def test_issues_are_logged_at_the_matching_level(caplog):
         (logging.WARNING, "recovered"), (logging.CRITICAL, "cannot continue")]
 
 
-def test_past_the_limit_one_line_says_the_rest_are_not_logged(caplog):
+def test_every_fault_is_logged_even_past_the_limit_and_the_recorder_mutes_nothing(caplog):
     report = FaultRecorder(limit=2, logger=logging.getLogger("pom.test"))
     with caplog.at_level(logging.DEBUG, logger="pom.test"):
         for i in range(6):
             report.warn(f"w{i}")
-    messages = [r.message for r in caplog.records]
-    assert messages[:2] == ["w0", "w1"]
-    assert len(messages) == 3 and "more than 2 faults" in messages[2]
+    assert [r.message for r in caplog.records] == [f"w{i}" for i in range(6)]       # the log's LogMuter mutes repeats, not the recorder
+
+
+def test_past_the_limit_the_list_for_reading_keeps_the_first_ones_and_counts_the_rest():
+    report = FaultRecorder(limit=2, logger=logging.getLogger("pom.test"))
+    for i in range(6):
+        report.warn(f"w{i}")
+    assert report.warnings == ["w0", "w1"] and report.suppressed == 4
+    assert report.lines()[-1] == "... and 4 more"
+
+
+def test_a_new_kind_of_fault_past_the_limit_is_still_logged(caplog):
+    report = FaultRecorder(limit=1, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        for _ in range(5):
+            report.warn("whisper did not answer")
+        report.warn("whisper's reply was not text")
+    assert caplog.records[-1].message == "whisper's reply was not text"
 
 
 def test_a_critical_past_the_limit_is_still_logged(caplog):

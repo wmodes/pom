@@ -50,7 +50,7 @@ _MARK = "_pom_handler"
 
 def configure_logging(level: str = "INFO", stream: Optional[TextIO] = None,
                       debug: bool = False, local_logs: bool = False,
-                      log_dir: Union[str, Path] = LOG_DIR) -> logging.Logger:
+                      log_dir: Union[str, Path] = LOG_DIR, muter: Optional[logging.Filter] = None) -> logging.Logger:
     """Sends the `pom` logger's output to a stream (stdout by default), and optionally a file.
 
     Args:
@@ -60,6 +60,8 @@ def configure_logging(level: str = "INFO", stream: Optional[TextIO] = None,
             any module that has overridden the flag to False).
         local_logs: Also write the log to `<log_dir>/pom.log` (development only).
         log_dir: Where the local log file goes; created if missing.
+        muter: A LogMuter (see pom.bookkeeper.log_muter), attached to every handler so a message that keeps repeating is muted. None means
+            nothing is muted. Handed in by the entry point, which builds it from the config.
 
     Returns:
         The configured `pom` logger. Never raises: if the log file cannot be opened, a warning
@@ -70,24 +72,29 @@ def configure_logging(level: str = "INFO", stream: Optional[TextIO] = None,
         if getattr(handler, _MARK, False):
             logger.removeHandler(handler)
             handler.close()
-    _add_handler(logger, logging.StreamHandler(stream if stream is not None else sys.stdout), FORMAT)
+    _add_handler(logger, logging.StreamHandler(stream if stream is not None else sys.stdout), FORMAT, muter)
     resolved = logging.getLevelName(str(level).upper())
     logger.setLevel(logging.DEBUG if debug
                     else resolved if isinstance(resolved, int) else logging.INFO)
     logger.propagate = False   # the pom handler is the only output; no duplicates via root
     if local_logs:
-        _add_file_handler(logger, Path(log_dir))
+        _add_file_handler(logger, Path(log_dir), muter)
     return logger
 
 
-def _add_handler(logger: logging.Logger, handler: logging.Handler, fmt: str) -> None:
-    """Attaches one of our handlers, marked so a later configure call can find and replace it."""
+def _add_handler(logger: logging.Logger, handler: logging.Handler, fmt: str, muter: Optional[logging.Filter] = None) -> None:
+    """Attaches one of our handlers, marked so a later configure call can find and replace it, with the muter (if any) on it.
+
+    The muter goes on the handler, not the logger: a filter on the `pom` logger would not see the lines of the modules' own child loggers.
+    """
     handler.setFormatter(logging.Formatter(fmt))
+    if muter is not None:
+        handler.addFilter(muter)
     setattr(handler, _MARK, True)
     logger.addHandler(handler)
 
 
-def _add_file_handler(logger: logging.Logger, directory: Path) -> None:
+def _add_file_handler(logger: logging.Logger, directory: Path, muter: Optional[logging.Filter] = None) -> None:
     """Adds the rotating local log file; a failure becomes one warning, not a crash."""
     try:
         directory.mkdir(parents=True, exist_ok=True)
@@ -97,7 +104,7 @@ def _add_file_handler(logger: logging.Logger, directory: Path) -> None:
         logger.warning("cannot open the local log file in %s: %s; continuing without it",
                        directory, error)
         return
-    _add_handler(logger, handler, FILE_FORMAT)
+    _add_handler(logger, handler, FILE_FORMAT, muter)
 
 
 def get_logger(name: str, debug: Optional[bool] = None) -> logging.Logger:

@@ -40,6 +40,21 @@ local_logs = false
 # of a long outage; lower is quieter.
 device_search_log_limit = 50
 
+# MUTING A MESSAGE THAT KEEPS REPEATING (see src/pom/bookkeeper/log_muter.py). Two lines are the same message when they come from the same part at the
+# same level and say the same thing once every run of digits is read as one ("not found after 49s" and "not found after 50s" are the same). DEBUG lines are
+# never muted. The first `logmute_after_repeats` lines of a message are logged; under the last a line says LOGMUTE: Last message repeating and muted, and
+# the rest are dropped. A whole number of at least 1. Higher logs more of each repeating message before muting it; lower mutes sooner (1 logs it once).
+logmute_after_repeats = 50
+
+# While a message is muted, one line in this many is logged anyway, with LOGMUTE: Last message repeated N times so far, still muted under it, so a long
+# outage leaves a trail. A whole number of at least 1. Higher is quieter; lower reminds more often (1 logs every repeat).
+logmute_remind_every_repeats = 500
+
+# How many seconds a message must be silent before it is logged again (the next line then says LOGMUTE: Last message repeated N times, and the counting
+# starts over). Every repeat, muted or not, restarts this clock, so a message that keeps coming more often than this stays muted. Above 0. Higher keeps
+# a flapping fault muted longer; lower lets it speak up again sooner.
+logmute_quiet_seconds = 300
+
 
 # ================================================
 # SCORER: how interesting each sentence is

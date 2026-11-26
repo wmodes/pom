@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from pom.bookkeeper.log_muter import LogMuter
 from pom import printer as printer_module
 from pom.config import Config
 from pom.conductor import BootSlipper, Conductor, FloorKeeper, KeyboardWatcher, TurnTaker
@@ -838,6 +839,23 @@ class TestMain:
         handlers[signal.SIGTERM](signal.SIGTERM, None)                     # systemd stopping the service
         assert conductor.stopped == 1
         assert any("report: a problem" in r.getMessage() for r in caplog.records)
+
+    def test_the_log_muter_is_built_from_the_three_logmute_settings_and_given_to_the_logging(self, monkeypatch, tmp_path):
+        fake = assembled(None, None, FakeConductor())
+        monkeypatch.setattr(printer_module, "build_printer", lambda config, options: fake)
+        configured = []
+        monkeypatch.setattr(printer_module, "configure_logging", lambda *a, **k: configured.append(k))
+        monkeypatch.setattr(signal, "signal", lambda *a: None)
+        path = tmp_path / "pom.toml"
+        path.write_text("logmute_after_repeats = 7\nlogmute_remind_every_repeats = 9\nlogmute_quiet_seconds = 42\n", encoding="utf-8")
+        printer_module.main(["--config", str(path)])
+        muter = configured[0]["muter"]
+        assert isinstance(muter, LogMuter)
+        lines = []
+        for _ in range(8):                                   # the seventh line reaches the limit, the eighth is dropped
+            record = logging.LogRecord("pom.x", logging.WARNING, "f.py", 1, "same", (), None)
+            lines.append(muter.filter(record) and record.getMessage())
+        assert lines[6].endswith("Last message repeating and muted") and lines[7] is False
 
     def test_config_problems_are_in_the_log(self, monkeypatch, tmp_path, caplog):
         fake = assembled(None, None, FakeConductor())

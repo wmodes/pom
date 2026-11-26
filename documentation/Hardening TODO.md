@@ -60,6 +60,7 @@
 
 - [ ] The service lights on the monitor page do not refresh while the page is open.
 - [ ] Explain to Wes why `src/pom/config.py` is not in the config folder (asked 2026-11-25). An explanation first, not a move.
+- [ ] Check that no specially built muting or counting rules for repeated messages are left for the microphone, the printer (terminal) or any other device or service, once the `LogMuter` is in (asked 2026-11-25). Known ones: `DeviceFinder`'s `log_limit` (retired in step 2), the `FaultRecorder`'s 50-fault cap and its "counted but not logged" line (step 3), the "(%d so far)" counters in some messages. Grep for any others.
 - [ ] A boot "starting…" page, so the screen is not black while the Printer starts.
 - [ ] The live hot-plug tests, listed as "not tried" in [Robust Testing.md](Robust Testing.md): unplug and replug the microphone; then the serial adapter mid-portent with the real printer; then paper-out and printer-off (the handshake); then power, network, monitor, killing `pom`. Wes will do some of these at home; Claude watches `journalctl -u pom -f` on pom1 and records the result.
 

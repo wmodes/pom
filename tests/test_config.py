@@ -100,6 +100,40 @@ def test_a_bad_device_search_log_limit_is_the_default_with_a_warning(tmp_path, b
     assert len(config.report.warnings) == 1 and "device_search_log_limit" in config.report.warnings[0]
 
 
+LOGMUTE = [  # key, a good value in TOML, what it reads as, the setting's default, bad values
+    ("logmute_after_repeats", "7", 7, 50, ["0", "-3", "2.5", '"ten"', "true", "[1]"]),
+    ("logmute_remind_every_repeats", "9", 9, 500, ["0", "-3", "2.5", '"ten"', "true", "[1]"]),
+    ("logmute_quiet_seconds", "42.5", 42.5, 300.0, ["0", "-3", '"ten"', "true", "[1]"]),
+]
+
+
+@pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
+def test_each_logmute_setting_has_its_default(key, text, expected, default, bad):
+    config = Config.load(environ={})
+    assert getattr(config, key) == default and config.report.ok
+
+
+@pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
+def test_each_logmute_setting_is_read_from_the_file(tmp_path, key, text, expected, default, bad):
+    config = Config.load(write(tmp_path, f"{key} = {text}\n"), environ={})
+    assert getattr(config, key) == expected and config.report.ok
+
+
+@pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
+def test_a_bad_logmute_setting_is_the_default_with_one_warning(tmp_path, key, text, expected, default, bad):
+    for value in bad:
+        config = Config.load(write(tmp_path, f"{key} = {value}\n"), environ={})
+        assert getattr(config, key) == default, value
+        assert len(config.report.warnings) == 1 and key in config.report.warnings[0], value
+
+
+@pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
+def test_the_shipped_config_sets_each_logmute_setting(key, text, expected, default, bad):
+    import tomllib
+    path = Path(__file__).parent.parent / "config" / "pom.toml"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))[key] == default
+
+
 def test_the_shipped_config_sets_the_device_search_log_limit():
     import tomllib
     path = Path(__file__).parent.parent / "config" / "pom.toml"

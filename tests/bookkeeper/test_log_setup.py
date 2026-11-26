@@ -284,3 +284,55 @@ def test_reconfiguring_closes_the_old_log_file(tmp_path):
     assert old.stream is not None
     configure_logging("INFO", io.StringIO(), local_logs=False)
     assert old.stream is None   # closed
+
+
+# --- the log muter is attached to every handler ------------------------------------------------
+
+def test_a_muter_given_to_configure_logging_mutes_what_the_modules_log():
+    from pom.bookkeeper.log_muter import LogMuter
+    stream = io.StringIO()
+    configure_logging("INFO", stream, muter=LogMuter(2, 100, 300.0))
+    for _ in range(5):
+        logging.getLogger("pom.mic").warning("the microphone stopped")
+    assert stream.getvalue() == ("WARNING pom.mic: the microphone stopped\n"
+                                 "WARNING pom.mic: the microphone stopped\nLOGMUTE: Last message repeating and muted\n")
+
+
+def test_without_a_muter_nothing_is_muted():
+    stream = io.StringIO()
+    configure_logging("INFO", stream)
+    for _ in range(5):
+        logging.getLogger("pom.mic").warning("the microphone stopped")
+    assert stream.getvalue().count("the microphone stopped") == 5
+
+
+def test_the_stream_and_the_local_file_get_the_same_lines_and_the_muter_counts_each_line_once(tmp_path):
+    from pom.bookkeeper.log_muter import LogMuter
+    stream = io.StringIO()
+    configure_logging("INFO", stream, local_logs=True, log_dir=tmp_path, muter=LogMuter(2, 100, 300.0))
+    for _ in range(5):
+        logging.getLogger("pom.mic").warning("the microphone stopped")
+    for handler in logging.getLogger(LOGGER_NAME).handlers:
+        handler.flush()
+    in_file = (tmp_path / LOG_FILE).read_text(encoding="utf-8")
+    assert in_file.count("the microphone stopped") == 2 and "LOGMUTE: Last message repeating and muted" in in_file
+    assert stream.getvalue().count("the microphone stopped") == 2
+
+
+def test_debug_lines_are_not_muted_through_configure_logging():
+    from pom.bookkeeper.log_muter import LogMuter
+    stream = io.StringIO()
+    configure_logging("DEBUG", stream, debug=True, muter=LogMuter(1, 1, 300.0))
+    for _ in range(5):
+        logging.getLogger("pom.mic").debug("scored a clip of 5 words")
+    assert stream.getvalue().count("scored a clip") == 5
+
+
+def test_configuring_again_with_a_new_muter_replaces_the_old_one():
+    from pom.bookkeeper.log_muter import LogMuter
+    first, second = io.StringIO(), io.StringIO()
+    configure_logging("INFO", first, muter=LogMuter(1, 100, 300.0))
+    configure_logging("INFO", second, muter=LogMuter(3, 100, 300.0))
+    for _ in range(5):
+        logging.getLogger("pom.mic").warning("the microphone stopped")
+    assert second.getvalue().count("the microphone stopped") == 3 and first.getvalue() == ""

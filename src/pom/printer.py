@@ -42,6 +42,7 @@ from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
+from pom.bookkeeper.log_muter import LogMuter
 from pom.bookkeeper.log_setup import configure_logging, get_logger
 from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
@@ -338,7 +339,8 @@ def main(argv=None) -> int:
     """Reads the options and the config, builds the Printer and runs it until it is stopped. Returns the exit code."""
     options = parse_options(argv)
     config = Config.load(options.config_path)
-    configure_logging(config.log_level, debug=config.debug, local_logs=config.local_logs)
+    muter = LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds)
+    configure_logging(config.log_level, debug=config.debug, local_logs=config.local_logs, muter=muter)
     for line in config.report.lines():
         logging.getLogger("pom").warning("config: %s", line)
     printer = build_printer(config, options)

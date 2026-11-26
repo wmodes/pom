@@ -386,6 +386,17 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **bookkeeper**: The module (`src/pom/bookkeeper/`) that keeps the Printer's books: what a module recovered from (`FaultRecorder`, in
   `fault_recorder.py`) and where everything it logs goes (`log_setup.py`). Example: `pom.bookkeeper.FaultRecorder` (was: `pom.fault_recorder`,
   `pom.log_setup`, loose at the top of `pom/`)
+- **log muter**: The one filter, on every log handler, that lets a message that keeps repeating through a few times and then mutes it, for every
+  module at once, so no module counts its own repeats. Example: `LogMuter` (settings `logmute_after_repeats`, `logmute_remind_every_repeats`,
+  `logmute_quiet_seconds`)
+- **the same message**: Two log lines from the same logger at the same level that say the same thing once every run of digits is read as `#`
+  ("not found after 49s" and "not found after 50s" are one message). The digits decide only what counts as the same; a line that goes
+  through prints its own numbers.
+- **mute, muted**: A message that has repeated `logmute_after_repeats` times is muted: its lines are dropped, except one in every
+  `logmute_remind_every_repeats`, until it has been quiet for `logmute_quiet_seconds`.
+- **LOGMUTE line**: The second line the log muter writes under a line it lets through when it has something to say: `LOGMUTE: Last message
+  repeating and muted`, `LOGMUTE: Last message repeated N times so far, still muted`, or `LOGMUTE: Last message repeated N times`. Searching for
+  `^LOGMUTE` finds every one.
 - **fault recorder**: Keeps a module's faults (WARNING means recovered, CRITICAL means the module cannot do its job). The Printer never
   stops because of a fault. Example: `FaultRecorder` (was/still)
 

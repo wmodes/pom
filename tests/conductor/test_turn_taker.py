@@ -54,10 +54,6 @@ class FakeWriter:
             raise reply
         return reply
 
-    def report_lines(self):
-        return ["writer: a problem the writer met"]
-
-
 class FakeTerminal:
     """Answers each transmit with the next scripted reply (a PrintResult, or an exception), then with a good print. Keeps what it was given."""
 
@@ -516,8 +512,8 @@ class TestTheLogs:
 
 
 class TestReporting:
-    def test_report_lines_include_the_writers_problems(self):
+    def test_a_turn_the_oracle_wrote_nothing_for_is_in_the_log(self, caplog):
         rig = build(writer_replies=[None, None, None])
-        take(rig)
-        lines = rig.taker.report_lines()
-        assert "writer: a problem the writer met" in lines and any("the oracle wrote nothing" in line for line in lines)
+        with caplog.at_level(logging.WARNING):
+            take(rig)
+        assert any("the oracle wrote nothing" in r.getMessage() for r in caplog.records)

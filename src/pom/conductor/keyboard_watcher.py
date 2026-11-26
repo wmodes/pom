@@ -122,8 +122,3 @@ class KeyboardWatcher:
                 self._sleep(self._error_pause)
                 continue
             yield attempt
-
-    def report_lines(self) -> list:
-        """The problems met by the watcher and by the typed-line scorer under it, as lines to show."""
-        under = getattr(self._typed_scorer, "report", None)
-        return [*self.report.lines(), *(under.lines() if under is not None else [])]

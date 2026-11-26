@@ -131,8 +131,6 @@ def main() -> None:
                 print("\n".join(exemplar_columns(list(portent.exemplars), shutil.get_terminal_size().columns)) or "exemplars: none")
                 print(f"\n{portent.text}\n")
                 print(f"({portent.words} words, {portent.seconds:.1f} s{', cut off at max_tokens' if portent.cut_off else ''})")
-            for line in writer.report_lines():
-                print(line)
     except KeyboardInterrupt:
         print()
     finally:

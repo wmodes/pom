@@ -209,7 +209,7 @@ def main() -> None:
             if history is not None:
                 history.add(sentence.text, sentence.score, sentence.bar, sentence.window_size, sentence.heard_at, portent)
             if portent is None:
-                print("  >>> no portent this time:", *writer.report_lines(), sep="\n      ")
+                print("  >>> no portent this time (why is in the log above)")
                 continue
             portents += 1
             print("\n" + "\n".join("      " + line for line in textwrap.wrap(portent.text, PAPER_WIDTH)) + "\n")
@@ -227,8 +227,7 @@ def main() -> None:
         finder.close()
         if site is not None:
             site.stop()
-    lines = [*deck.report.lines(), *finder.report_lines(), *scorer_client.report.lines(),
-             *(writer.report_lines() if writer is not None else [])]
+    lines = [*deck.report.lines(), *scorer_client.report.lines()]            # the other parts' problems were logged when they happened
     for line in lines:
         print(line)
 

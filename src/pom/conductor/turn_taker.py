@@ -126,7 +126,7 @@ class TurnTaker:
                  print_pause_seconds: float = DEFAULT_PRINT_PAUSE_SECONDS, clock: Optional[Callable[[], float]] = None,
                  sleep: Optional[Callable[[float], None]] = None, strict: bool = False):
         """Args:
-            writer: A PortentWriter (anything with write(hinge) returning a Portent or None, and report_lines()).
+            writer: A PortentWriter (anything with write(hinge) returning a Portent or None).
             formatter: A PortentFormatter (anything with format(text)).
             terminal: Anything with transmit(text) returning a PrintResult, or None for no printer by design.
             history: A TurnHistory (add, set_outcome), or None to keep no record.
@@ -300,7 +300,3 @@ class TurnTaker:
     def _set_outcome(self, record_id: Optional[int], outcome) -> None:
         if self._history is not None and record_id is not None:
             self._history.set_outcome(record_id, outcome.value if isinstance(outcome, TurnOutcome) else outcome)
-
-    def report_lines(self) -> list:
-        """The problems met by the TurnTaker and by the writer (and the prompt builder and model client under it), as lines to show."""
-        return [*self.report.lines(), *self._writer.report_lines()]

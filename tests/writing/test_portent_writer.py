@@ -134,15 +134,17 @@ class TestWhenThereIsNoPortent:
     def test_a_model_that_writes_nothing_gives_none(self):
         assert writer(FakePost(reply("   ")))[0].write("A hinge.") is None
 
-    def test_the_part_that_met_the_problem_says_so_in_the_report_lines(self):
+    def test_the_part_that_met_the_problem_says_so_in_the_log(self, caplog):
         written, _, _ = writer(FakePost(ConnectionError("down")))
-        written.write("A hinge.")
-        assert any("did not answer" in line for line in written.report_lines())
+        with caplog.at_level(logging.WARNING):
+            written.write("A hinge.")
+        assert any("did not answer" in r.getMessage() for r in caplog.records)
 
-    def test_an_empty_hinge_is_in_the_report_lines(self):
+    def test_an_empty_hinge_is_in_the_log(self, caplog):
         written, _, _ = writer()
-        written.write("")
-        assert any("hinge is empty" in line for line in written.report_lines())
+        with caplog.at_level(logging.WARNING):
+            written.write("")
+        assert any("hinge is empty" in r.getMessage() for r in caplog.records)
 
     def test_a_good_write_after_a_bad_one_still_works(self):
         written, post, _ = writer(FakePost(ConnectionError("down")))
@@ -150,10 +152,11 @@ class TestWhenThereIsNoPortent:
         post.result = reply()
         assert written.write("two").text == "The ghosts keep the hours."
 
-    def test_there_is_nothing_to_report_when_all_went_well(self):
+    def test_there_is_nothing_to_report_when_all_went_well(self, caplog):
         written, _, _ = writer()
-        written.write("A hinge.")
-        assert written.report_lines() == []
+        with caplog.at_level(logging.WARNING):
+            written.write("A hinge.")
+        assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
 
 class TestRepeatableExemplars:
@@ -209,10 +212,11 @@ class TestASeedThatCannotBeUsed:
         with pytest.raises(PortentWriterError):
             writer(strict=True)[0].write("A hinge.", seed=3)
 
-    def test_the_report_lines_include_the_writers_own_problem(self):
+    def test_the_writers_own_problem_is_in_the_log(self, caplog):
         written, _, _ = writer()
-        written.write("A hinge.", seed=3)
-        assert any("seed" in line for line in written.report_lines())
+        with caplog.at_level(logging.WARNING):
+            written.write("A hinge.", seed=3)
+        assert any("seed" in r.getMessage() for r in caplog.records)
 
 
 class TestNothingSaidInTheRoomIsKept:
@@ -221,5 +225,5 @@ class TestNothingSaidInTheRoomIsKept:
         written, _, _ = writer(FakePost(reply("the neighbor keeps secret hours")))
         written.write("my secret about the ghosts", seed=1)
         written.write("   ")
-        text = caplog.text + "\n".join(written.report_lines())
+        text = caplog.text
         assert "secret" not in text and "neighbor" not in text and "ghosts" not in text

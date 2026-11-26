@@ -97,7 +97,7 @@ def main():
         print()
     finally:
         finder.close()
-    for line in [*deck.report.lines(), *finder.report_lines(), *scorer_client.report.lines()]:
+    for line in [*deck.report.lines(), *scorer_client.report.lines()]:        # the hinge finder's problems were logged when they happened
         print(line)
 
 

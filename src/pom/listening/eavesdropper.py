@@ -132,8 +132,6 @@ class Eavesdropper:
                                lambda v: _is_whole(v, 1), "a whole number of at least 1")
         self._splitter = splitter if splitter is not None else TrackSplitter()
         self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict)
-        if cutter is None:
-            self.report.extend(self._cutter.report)
         self._recent_room_tone = collections.deque(maxlen=memory)
         self._last_words = ""
         self._last_room_tone: Tuple[str, ...] = ()

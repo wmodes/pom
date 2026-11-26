@@ -158,10 +158,6 @@ class Printer:
         """Stops the Printer. Safe from a signal handler or another thread, and safe to repeat."""
         self.conductor.stop()
 
-    def report_lines(self) -> list:
-        """Every problem the parts have recorded, as lines to show."""
-        return self.conductor.report_lines()
-
 
 def build_printer(config: Config, options: Optional[Options] = None, root: Path = ROOT, bookkeeper: Optional[Bookkeeper] = None) -> Printer:
     """Builds every part from `config` and `options` and joins them in a Conductor. Contacts no server and opens no port or microphone."""
@@ -354,9 +350,7 @@ def main(argv=None) -> int:
     signal.signal(signal.SIGTERM, stop_cleanly)
     signal.signal(signal.SIGINT, stop_cleanly)
     logger.info("the Printer starts (terminal: %s)", printer.parts["mode"])
-    printer.run()
-    for line in printer.report_lines():
-        logger.warning("report: %s", line)
+    printer.run()                                    # every problem was logged when it happened; nothing is logged a second time here
     return 0
 
 

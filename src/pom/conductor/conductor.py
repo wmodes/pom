@@ -303,10 +303,3 @@ class Conductor:
             callback(*args)
         except Exception as problem:               # a bad callback must not stop the Printer
             self.report.warn(f"a callback raised ({type(problem).__name__}); it was ignored")
-
-    def report_lines(self) -> list:
-        """The problems met by the Conductor and the parts under it, as lines to show."""
-        lines = [*self.report.lines(), *self._floor.report.lines()]
-        for part in (self._turn_taker, self._keyboard):
-            lines.extend(part.report_lines() if hasattr(part, "report_lines") else [])
-        return lines

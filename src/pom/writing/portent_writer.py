@@ -17,8 +17,6 @@ Design decisions, and why:
     generator must be the very one the Bibliomancer was built with, passed in as `rng`; the writer cannot reach it
     any other way. Without a seed, draws stay random, which is what the Printer does. A seed given to a writer that
     has no `rng` is recorded, since it would otherwise be silently ignored.
-  * The report of the writer, the builder and the client are read together with `report_lines()`, so whoever shows
-    them needs only one call.
 """
 import random
 from dataclasses import dataclass
@@ -102,7 +100,3 @@ class PortentWriter:
             return None
         self.report.debug("wrote a portent of %d words from %d exemplar(s)", len(text.split()), len(prompt.exemplars))
         return Portent(text, prompt.exemplars, self._client.last_seconds, self._client.last_cut_off)
-
-    def report_lines(self) -> list[str]:
-        """The problems met by the writer, the prompt builder and the model client, as lines to show."""
-        return [*self.report.lines(), *self._builder.report.lines(), *self._client.report.lines()]

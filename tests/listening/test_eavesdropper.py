@@ -348,9 +348,11 @@ class TestSettings:
     def test_zero_room_tone_passes_is_allowed(self):
         assert make(5, room_tone_pass_every=0)[0].report.ok
 
-    def test_the_cutters_settings_are_checked_too_and_reported_here(self):
-        eavesdropper = make(5, cut_every_seconds=0)[0]
-        assert len(eavesdropper.report.warnings) == 1 and "cut_every_seconds" in eavesdropper.report.warnings[0]
+    def test_the_cutters_settings_are_checked_too_and_logged_once(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            make(5, cut_every_seconds=0)
+        about_it = [r for r in caplog.records if "cut_every_seconds" in r.getMessage()]
+        assert len(about_it) == 1 and about_it[0].levelno == logging.WARNING
 
     def test_the_hold_is_passed_to_the_cutter(self):
         close_to_the_end = seg(3.5, 4.4, "Close to the end.")

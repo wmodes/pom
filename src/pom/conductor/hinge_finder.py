@@ -87,8 +87,3 @@ class HingeFinder:
     def close(self) -> None:
         """Stops listening. Safe to call more than once."""
         self._eavesdropper.close()
-
-    def report_lines(self) -> list[str]:
-        """The problems met by the eavesdropper, the take cutter, the scorer and the BarKeeper, as lines to show."""
-        return [*self._eavesdropper.report.lines(), *self._take_cutter.report.lines(), *self._scorer.report.lines(),
-                *self._bar_keeper.report.lines()]

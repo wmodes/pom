@@ -81,6 +81,10 @@ released yet, so everything is under Unreleased. Update this file in the same co
   `OutputSettings.line_width` gives it. 35 mutants checked.
 - **The playground `scripts/dev/output/format_text_for_typewriter.py`** shows the formatter between rulers (`--cpi`, `--width`, `--indent`, `--feeds`).
 
+### Removed
+
+- **The shutdown copy of every problem, and the six `report_lines()` methods that gathered it** (`Printer`, `Conductor`, `TurnTaker`, `HingeFinder`, `KeyboardWatcher`, `PortentWriter`), and the eavesdropper's copy of its cutter's problems (`extend`). Every problem is logged once, when it happens; at shutdown the Printer used to log every kept problem again as `report: …` (on pom1, "the room ended" was 150 lines live and 150 more at shutdown). The dev scripts that printed the gathered lines at the end no longer do; their problems are in the log above.
+
 ### Changed
 
 - **The entry point builds ONE Bookkeeper and hands it on** (`printer.py`): `main` builds the Bookkeeper with the LogMuter from the `logmute_` settings, sets up the log once, logs the config's problems (read before the log existed), and hands the same Bookkeeper to `build_printer`, which hands it to the `Printer`. The entry point's own lines now come from `bookkeeper.logger_for(__name__, debug=DEBUG)`. A module whose `DEBUG` line is None no longer resets its logger's level when a class is built (so a level set elsewhere stands). `test_debug_overrides.py` accepts both forms while the classes move over: the old module-level `get_logger(__name__, DEBUG)`, and `logger_for(__name__, …, DEBUG)`, found by reading the code (ast), not the text.

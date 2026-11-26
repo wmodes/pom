@@ -251,21 +251,11 @@ class TestClosingAndReporting:
         made.close()
         assert eavesdropper.closed == 2
 
-    def test_the_report_lines_gather_the_four_parts_problems(self):
-        eavesdropper, scorer = FakeEavesdropper([]), FakeScorer()
-        take_cutter, the_bar_keeper = TakeCutter(), bar_keeper()
-        eavesdropper.report.warn("eavesdropper trouble")
-        scorer.report.warn("scorer trouble")
-        take_cutter.report.warn("take cutter trouble")
-        the_bar_keeper.report.warn("BarKeeper trouble")
-        lines = HingeFinder(eavesdropper, take_cutter, scorer, the_bar_keeper).report_lines()
-        for word in ("eavesdropper", "take cutter", "scorer", "BarKeeper"):
-            assert any(f"{word} trouble" in line for line in lines)
-
-    def test_there_is_nothing_to_report_when_all_went_well(self):
+    def test_there_is_nothing_to_report_when_all_went_well(self, caplog):
         made, _, _ = finder([segment("Hello there.")])
-        found(made)
-        assert made.report_lines() == []
+        with caplog.at_level(logging.WARNING):
+            found(made)
+        assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
 
 
 class TestNothingSaidInTheRoomIsKept:
@@ -274,7 +264,7 @@ class TestNothingSaidInTheRoomIsKept:
         made, _, _ = finder([segment("My secret is the neighbor.", 10.0, room_tone=("(a secret gunshot)",))],
                             score_room_tone=True)
         found(made)
-        text = caplog.text + "\n".join(made.report_lines())
+        text = caplog.text
         assert "secret" not in text and "neighbor" not in text and "gunshot" not in text
 
 

@@ -195,14 +195,3 @@ class TestBadSettings:
             KeyboardWatcher(FakeKeyboard(), FakeTypedScorer(), poll_seconds=0, strict=True)
 
 
-class TestReporting:
-    def test_report_lines_include_the_typed_line_scorers_problems(self):
-        watcher, _, scorer, _ = watcher_over()
-        scorer.report.warn("the scorer met a problem")
-        assert "warning: the scorer met a problem" in watcher.report_lines()
-
-    def test_a_scorer_with_no_report_is_fine(self):
-        class Plain:
-            def score(self, line):
-                raise AssertionError
-        assert KeyboardWatcher(FakeKeyboard(), Plain()).report_lines() == []

@@ -132,10 +132,6 @@ class FakeTurnTaker:
                 raise self.fail
         return f"result for {turn.holder}"
 
-    def report_lines(self):
-        return ["taker: a line"]
-
-
 class Rig:
     def __init__(self, rooms, taker=None, keyboard=None, recovering=0.05, writing=300.0, **options):
         self.floor = FloorKeeper(writing, 180.0, recovering)
@@ -515,10 +511,3 @@ class TestTheLogs:
             assert word not in text
 
 
-class TestReporting:
-    def test_report_lines_include_the_floor_and_the_parts_under_it(self):
-        rig = Rig([room()], keyboard=FakeKeyboard())
-        rig.floor.report.warn("the floor met a problem")
-        rig.conductor.report.warn("the conductor met a problem")
-        lines = rig.conductor.report_lines()
-        assert "warning: the floor met a problem" in lines and "warning: the conductor met a problem" in lines and "taker: a line" in lines

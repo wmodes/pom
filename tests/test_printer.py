@@ -675,10 +675,6 @@ class FakeConductor:
     def stop(self):
         self.stopped += 1
 
-    def report_lines(self):
-        return ["a problem"]
-
-
 class FakeTerminalClose:
     def __init__(self):
         self.closed = 0
@@ -837,10 +833,6 @@ class TestRunningAndStopping:
         printer.stop()
         assert conductor.stopped == 2
 
-    def test_report_lines_come_from_the_conductor(self):
-        assert assembled().report_lines() == ["a problem"]
-
-
 class TestMain:
     def test_it_builds_installs_the_signal_handlers_runs_and_reports(self, monkeypatch, tmp_path, caplog):
         conductor = FakeConductor()
@@ -859,7 +851,7 @@ class TestMain:
         assert set(handlers) == {signal.SIGTERM, signal.SIGINT}
         handlers[signal.SIGTERM](signal.SIGTERM, None)                     # systemd stopping the service
         assert conductor.stopped == 1
-        assert any("report: a problem" in r.getMessage() for r in caplog.records)
+        assert not any(r.getMessage().startswith("report:") for r in caplog.records)   # problems are logged when they happen, not again at the end
 
     def test_one_bookkeeper_is_built_with_the_log_muter_from_the_three_logmute_settings_and_handed_to_the_build(self, monkeypatch, tmp_path):
         fake = assembled(None, None, FakeConductor())

@@ -193,3 +193,113 @@ def test_strict_report_helper_passes_the_logger_on(caplog):
     with caplog.at_level(logging.DEBUG, logger="pom.test"):
         report.warn("via helper")
     assert [r.message for r in caplog.records] == ["via helper"]
+
+
+# --- the five ways to say something: debug, info, warn, error, critical -------------------------------------
+
+LEVEL_CASES = [("debug", logging.DEBUG), ("info", logging.INFO), ("warn", logging.WARNING), ("error", logging.ERROR), ("critical", logging.CRITICAL)]
+
+
+@pytest.mark.parametrize("method, level", LEVEL_CASES)
+def test_each_way_of_saying_something_logs_at_its_own_level_through_the_recorders_logger(caplog, method, level):
+    report = FaultRecorder(logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        getattr(report, method)("something happened")
+    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [(level, "something happened")]
+
+
+@pytest.mark.parametrize("method, level", LEVEL_CASES)
+def test_each_takes_percent_arguments_like_a_logger_does(caplog, method, level):
+    report = FaultRecorder(logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        getattr(report, method)("scored %d clips in %.1f s", 3, 2.5)
+    assert caplog.records[0].getMessage() == "scored 3 clips in 2.5 s"
+
+
+@pytest.mark.parametrize("method", ["debug", "info", "warn", "error", "critical"])
+def test_a_message_that_does_not_fit_its_arguments_is_logged_as_written_and_never_raises(caplog, method):
+    report = FaultRecorder(logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        getattr(report, method)("needs a number %d", "not a number")
+    assert caplog.records[0].getMessage() == "needs a number %d"
+
+
+def test_debug_and_info_are_only_logged_so_they_are_not_faults(caplog):
+    report = FaultRecorder(logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        for _ in range(100):
+            report.debug("d")
+            report.info("i")
+    assert report.ok and len(report) == 0 and report.lines() == [] and report.suppressed == 0 and not report.has_critical
+
+
+@pytest.mark.parametrize("method", ["debug", "info"])
+def test_debug_and_info_do_not_raise_in_strict_mode_and_are_still_logged(caplog, method):
+    report = FaultRecorder(strict=True, error=FakeError, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        getattr(report, method)("fine")
+    assert [r.getMessage() for r in caplog.records] == ["fine"]
+
+
+@pytest.mark.parametrize("method", ["debug", "info"])
+def test_debug_and_info_with_no_logger_do_nothing(caplog, method):
+    with caplog.at_level(logging.DEBUG):
+        getattr(FaultRecorder(), method)("quiet")
+    assert caplog.records == []
+
+
+def test_error_is_a_fault_kept_and_counted_like_a_warning_but_not_a_critical():
+    report = FaultRecorder(limit=2)
+    report.error("a request failed and was skipped")
+    report.error("another")
+    report.error("a third")
+    assert not report.ok and report.errors == ["a request failed and was skipped", "another"] and report.suppressed == 1
+    assert report.warnings == [] and report.criticals == [] and not report.has_critical
+    assert report.lines()[0] == "error: a request failed and was skipped" and report.lines()[-1] == "... and 1 more"
+
+
+def test_error_raises_in_strict_mode_and_logs_nothing(caplog):
+    report = FaultRecorder(strict=True, error=FakeError, logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        with pytest.raises(FakeError):
+            report.error("x")
+    assert caplog.records == []
+
+
+def test_the_message_of_a_fault_kept_for_reading_is_the_formatted_one():
+    report = FaultRecorder()
+    report.warn("got %r, using %d", "abc", 5)
+    report.error("tried %d times", 3)
+    assert report.warnings == ["got 'abc', using 5"] and report.errors == ["tried 3 times"]
+
+
+def test_the_lines_go_through_the_log_muter_like_any_other_but_debug_is_never_muted():
+    import io
+    from pom.bookkeeper.log_muter import LogMuter
+    stream = io.StringIO()
+    logger = logging.getLogger("pom.test.muted")
+    logger.propagate = False
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+    handler.addFilter(LogMuter(2, 100, 300.0))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    try:
+        report = FaultRecorder(logger=logger)
+        for _ in range(5):
+            report.info("same")
+            report.error("same")
+            report.debug("same")
+    finally:
+        logger.removeHandler(handler)
+    text = stream.getvalue()
+    assert text.count("INFO same") == 2 and text.count("ERROR same") == 2 and text.count("DEBUG same") == 5
+    assert text.count("LOGMUTE: Last message repeating and muted") == 2
+
+
+@pytest.mark.parametrize("method", ["debug", "info", "warn", "error", "critical"])
+def test_a_message_with_no_arguments_is_left_as_written_like_a_logger_does(caplog, method):
+    report = FaultRecorder(logger=logging.getLogger("pom.test"))
+    with caplog.at_level(logging.DEBUG, logger="pom.test"):
+        getattr(report, method)("100%% sure")
+    assert caplog.records[0].getMessage() == "100%% sure"

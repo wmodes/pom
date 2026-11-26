@@ -6,13 +6,19 @@ these may crash the oracle in a gallery. A module that meets a problem it can re
 recovers (it falls back to a default, skips the bad entry) and records what it did here, so a
 person can fix it later. Nothing is raised at the point of the problem.
 
-LOGGING: a FaultRecorder can be given a logger, and then every fault is also logged the moment it is
-recorded (WARNING for warnings, CRITICAL for criticals). The service's stdout goes to journald,
-so `journalctl -u pom` shows these without any caller having to remember to print them.
-Modules never configure logging themselves; the entry point does that once (pom.bookkeeper.log_setup).
+LOGGING: a FaultRecorder can be given a logger, and then everything said through it is logged the moment it is
+said. It is the ONE way a module says anything: five methods, each at its own level, all going through the
+same logger and so all subject to the log's muting (pom.bookkeeper.log_muter), except DEBUG, which is never muted:
+  * debug, info:  not problems. They are only logged: never kept, never counted, never raised in strict mode.
+  * warn, error, critical:  faults (below). They are logged, kept for reading, and raised in strict mode.
+Every method takes a message and optional %-arguments, like a logger does.
+The service's stdout goes to journald, so `journalctl -u pom` shows these without any caller having to
+remember to print them. Modules never configure logging themselves; the entry point does that once
+(pom.bookkeeper.log_setup).
 
-Two severities:
+Three severities of fault:
   * WARNING:  recovered. The module carried on with a default or skipped something.
+  * ERROR:    something failed and was skipped or tried again, but the module still does its job.
   * CRITICAL: the module cannot do its job at all (for example, there are no passages to draw
               from). It still does not raise; it returns an empty result and says so, and the
               Conductor decides how to degrade (stay quiet and keep listening, say so in the log).
@@ -34,7 +40,21 @@ from typing import Iterator, Optional
 class Severity(Enum):
     """How bad a fault is."""
     WARNING = "warning"
+    ERROR = "error"
     CRITICAL = "critical"
+
+
+_LEVELS = {Severity.WARNING: logging.WARNING, Severity.ERROR: logging.ERROR, Severity.CRITICAL: logging.CRITICAL}
+
+
+def _text(message: str, args: tuple) -> str:
+    """The message with its %-arguments filled in. A message that does not fit its arguments is kept as written: saying it must never raise."""
+    if not args:
+        return message
+    try:
+        return message % args
+    except Exception:
+        return message
 
 
 @dataclass(frozen=True)
@@ -42,7 +62,7 @@ class Fault:
     """One recorded problem.
 
     Attributes:
-        severity: WARNING (recovered) or CRITICAL (cannot do its job).
+        severity: WARNING (recovered), ERROR (failed and was skipped or retried; still does its job) or CRITICAL (cannot do its job).
         message: A short human-readable description, naming the file or entry if there is one.
     """
     severity: Severity
@@ -73,13 +93,30 @@ class FaultRecorder:
 
     # --- Recording ------------------------------------------------------------------
 
-    def warn(self, message: str) -> None:
-        """Records a recovered problem."""
-        self._add(Fault(Severity.WARNING, message))
+    def debug(self, message: str, *args) -> None:
+        """Logs a line of detail. Not a fault: never kept, counted or raised, and never muted."""
+        self._say(logging.DEBUG, message, args)
 
-    def critical(self, message: str) -> None:
+    def info(self, message: str, *args) -> None:
+        """Logs a normal event. Not a fault: never kept, counted or raised."""
+        self._say(logging.INFO, message, args)
+
+    def warn(self, message: str, *args) -> None:
+        """Records a recovered problem."""
+        self._add(Fault(Severity.WARNING, _text(message, args)))
+
+    def error(self, message: str, *args) -> None:
+        """Records a failure that was skipped or tried again, while the module still does its job."""
+        self._add(Fault(Severity.ERROR, _text(message, args)))
+
+    def critical(self, message: str, *args) -> None:
         """Records a problem the module could not recover from."""
-        self._add(Fault(Severity.CRITICAL, message))
+        self._add(Fault(Severity.CRITICAL, _text(message, args)))
+
+    def _say(self, level: int, message: str, args: tuple) -> None:
+        """Logs a line that is not a fault, if a logger was given."""
+        if self._logger is not None:
+            self._logger.log(level, _text(message, args))
 
     def extend(self, other: "FaultRecorder") -> None:
         """Adds every fault from another report (for example a sub-module's)."""
@@ -102,8 +139,7 @@ class FaultRecorder:
     def _log(self, fault: Fault) -> None:
         """Logs a fault at the matching level, if a logger was given."""
         if self._logger is not None:
-            level = logging.CRITICAL if fault.severity is Severity.CRITICAL else logging.WARNING
-            self._logger.log(level, fault.message)
+            self._logger.log(_LEVELS[fault.severity], fault.message)
 
     # --- Reading --------------------------------------------------------------------
 
@@ -116,6 +152,11 @@ class FaultRecorder:
     def warnings(self) -> list[str]:
         """Messages of the WARNING faults."""
         return [i.message for i in self._faults if i.severity is Severity.WARNING]
+
+    @property
+    def errors(self) -> list[str]:
+        """Messages of the ERROR faults."""
+        return [i.message for i in self._faults if i.severity is Severity.ERROR]
 
     @property
     def criticals(self) -> list[str]:

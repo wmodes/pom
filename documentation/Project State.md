@@ -62,7 +62,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   they may import `pom`, and `pom` never imports them. `src/pom/` never imports from `experiments/`.
 - **The Printer must never stop because of a typo or a recoverable fault** (a gallery cannot crash).
   A problem a module can recover from is recovered from and recorded in a `pom.bookkeeper.fault_recorder.FaultRecorder`
-  (WARNING = recovered, CRITICAL = cannot do its job, and even then nothing raises). `strict=True`
+  (WARNING = recovered, ERROR = failed and skipped or retried, CRITICAL = cannot do its job, and even then nothing raises). The same `report` is the one way a module logs: `debug`, `info`, `warn`, `error`, `critical`. `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
   (for example `BarKeeper(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`).

@@ -192,7 +192,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     def sound_arrived() -> None:
         board.post("mic", Light.UP)
 
-    card_finder = CaptureCardFinder(listening.device_lookup_seconds, bookkeeper=bookkeeper)     # turns `auto` into the microphone's card, looked up again at each start of listening
+    card_finder = CaptureCardFinder(listening, bookkeeper=bookkeeper)     # turns `auto` into the microphone's card, looked up again at each start of listening
 
     def make_deck():
         if options.wav:

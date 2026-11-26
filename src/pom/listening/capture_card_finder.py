@@ -20,6 +20,7 @@ import subprocess
 from typing import Callable, List, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 from pom.device_finder import AUTO, Device, DeviceFinder, DeviceFinderError
 
 
@@ -34,20 +35,24 @@ class CaptureCardFinderError(DeviceFinderError):
 
 
 class CaptureCardFinder(DeviceFinder):
-    """Turns the microphone setting into a device `arecord -D` can open."""
+    """Turns the microphone setting into a device `arecord -D` can open.
+
+    Attributes:
+        listening: The `[listening]` settings it was handed (it reads `device_lookup_seconds`).
+    """
     KIND = "sound card"
 
-    def __init__(self, timeout_seconds: float, arecord: str = "arecord",
+    def __init__(self, listening: ListeningSettings, arecord: str = "arecord",
                  lister: Optional[Callable[[], str]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            timeout_seconds: How long to wait for `arecord -l` before giving up, above 0 (setting `listening.device_lookup_seconds`).
+            listening: The `[listening]` section: `device_lookup_seconds`, how long to wait for `arecord -l` before giving up.
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             lister: Returns the text `arecord -l` prints. Defaults to running the program.
             strict: Raise CaptureCardFinderError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         super().__init__(strict=strict, error=CaptureCardFinderError, bookkeeper=bookkeeper)
-        self._timeout_seconds = timeout_seconds          # validated once, by the config module
+        self.listening = listening
         self._arecord = arecord
         self._lister = lister if lister is not None else self._run_arecord
 
@@ -66,6 +71,6 @@ class CaptureCardFinder(DeviceFinder):
         program = shutil.which(self._arecord) if isinstance(self._arecord, str) else None
         if program is None:
             raise FileNotFoundError(self._arecord)
-        done = subprocess.run([program, "-l"], capture_output=True, text=True, timeout=self._timeout_seconds, check=False,
+        done = subprocess.run([program, "-l"], capture_output=True, text=True, timeout=self.listening.device_lookup_seconds, check=False,
                               env={**os.environ, "LC_ALL": "C"})
         return done.stdout

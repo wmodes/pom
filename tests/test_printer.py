@@ -82,7 +82,7 @@ class TestTheWiring:
         floor, taker, conductor = p.floor, p.parts["turn_taker"], p.conductor
         assert floor.conductor is config.conductor
         assert taker.conductor is config.conductor and taker.oracle is config.oracle
-        assert (conductor._restart_pause, conductor._check) == (8.0, 0.5)
+        assert conductor.conductor_settings is config.conductor
 
     def test_the_oracles_own_timeout_is_what_one_write_attempt_is_allowed(self, tmp_path):
         assert build(tmp_path, "[oracle]\ntimeout = 123\n[conductor]\nwriting_seconds = 999\n").parts["turn_taker"].oracle.timeout == 123.0

@@ -1326,13 +1326,6 @@ def test_the_committed_config_s_conductor_fits_its_own_limits():
     assert Config.load(path, environ={}).problems.ok                      # no warning: the shipped limits fit the shipped settings
 
 
-def test_the_conductor_defaults_in_the_code_are_the_ones_the_parts_use():
-    from pom import defaults as settings
-    from pom.conductor import conductor
-    assert (settings.ConductorSettings().restart_pause_seconds, settings.ConductorSettings().check_seconds) == (
-        conductor.DEFAULT_RESTART_PAUSE_SECONDS, conductor.DEFAULT_CHECK_SECONDS)
-
-
 class TestTheLimitsFitTheirSettings:
     """A watchdog shorter than what it watches cuts off healthy turns, so the limits are checked against the settings they depend on."""
 

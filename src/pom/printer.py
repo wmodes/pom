@@ -288,8 +288,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         logger.info("turn over: %s", result.outcome.value)
 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
-                          restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds,
-                          bookkeeper=bookkeeper)
+                          conductor_settings=conductor_settings, bookkeeper=bookkeeper)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
              "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
              "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller}

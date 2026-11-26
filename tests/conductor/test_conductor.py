@@ -138,10 +138,9 @@ class Rig:
         self.keyboard = keyboard
         self.taker = taker or FakeTurnTaker()
         self.seen, self.turned = [], []
-        options.setdefault("check_seconds", 0.01)
-        options.setdefault("restart_pause_seconds", 0.01)
+        settings = ConductorSettings(check_seconds=options.pop("check_seconds", 0.01), restart_pause_seconds=options.pop("restart_pause_seconds", 0.01))
         self.conductor = Conductor(self.floor, self.taker, self.factory, keyboard, on_attempt=self.seen.append,
-                                   on_turn=lambda a, r: self.turned.append((a.text, r)), **options)
+                                   on_turn=lambda a, r: self.turned.append((a.text, r)), conductor_settings=settings, **options)
 
     def factory(self):
         self.factory_calls += 1
@@ -453,23 +452,24 @@ class TestStopping:
         assert "skip_ahead" not in ears.events and rig.conductor._shut is True
 
 
-class TestBadSettings:
-    @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
-    def test_a_bad_check_time_is_the_default_with_a_warning(self, bad, logged):
-        conductor = Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), check_seconds=bad)
-        assert len(logged.of(conductor).warnings()) == 1 and "check_seconds" in logged.of(conductor).warnings()[0]
+class TestThePace:
+    def test_the_watching_thread_looks_at_the_floor_as_often_as_check_seconds_says(self):
+        looks = []
 
-    @pytest.mark.parametrize("bad", [-1, "x", None])
-    def test_a_bad_restart_pause_is_the_default_with_a_warning(self, bad, logged):
-        conductor = Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), restart_pause_seconds=bad)
-        assert len(logged.of(conductor).warnings()) == 1
+        class CountingFloor(FloorKeeper):
+            @property
+            def state(self):
+                looks.append(1)
+                return super().state
 
-    def test_a_restart_pause_of_zero_is_allowed(self, logged):
-        assert logged.of(Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), restart_pause_seconds=0)).ok()
-
-    def test_in_strict_mode_a_bad_setting_raises(self):
-        with pytest.raises(ConductorError):
-            Conductor(FloorKeeper(ConductorSettings()), FakeTurnTaker(), lambda: room(), check_seconds=0, strict=True)
+        conductor = Conductor(CountingFloor(ConductorSettings()), FakeTurnTaker(), lambda: room(),
+                              conductor_settings=ConductorSettings(check_seconds=0.01, restart_pause_seconds=0.01))
+        thread = threading.Thread(target=conductor.run, daemon=True)
+        thread.start()
+        time.sleep(0.3)
+        conductor.stop()
+        thread.join(10)
+        assert len(looks) >= 10                         # about thirty looks in 0.3 s; checking once a second would make none
 
 
 class TestTheLogs:

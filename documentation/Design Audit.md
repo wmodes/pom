@@ -65,6 +65,16 @@ Each of these is behaviour nobody approved or that a code edit alone can change.
 
 ## D5. Defaults and checks written twice (the biggest pattern)
 
+**The agreed design (Wes, 2026-11-26)**, from the well-known pattern (Django's `global_settings.py`, pydantic-settings' settings model, Hydra's structured configs): one central, typed config schema; the file is read over it; each part is handed what it needs.
+
+- **`src/pom/defaults.py`**: the shadow of `config/pom.toml`, not a user-serviceable part. Every section as a frozen dataclass (`ConductorSettings`, ...), each setting written once with its default, its check and a short comment. No `DEFAULT_...` shadow names: the field's name is the setting's name, and `ConductorSettings().freshness_seconds` is its default. Organised by `pom.toml`'s sections, not by packages (they do not line up, and nothing assumes they do).
+- **`src/pom/config.py`**: only the reader. It lays `pom.toml` and `pom.local.toml` over `defaults.py` and warns for any key that is missing (D5.8), unknown or bad, naming the key and the default used. Then it builds `Config`.
+- **`printer.py`**: hands each class the section object(s) it reads. One rule: a class that needs values from two sections is handed both objects (`TurnTaker(..., conductor, oracle)`); its constructor names them, so its needs are visible.
+- **Classes** hold no defaults and check nothing; they read `self.<section>.<setting>`. A test builds only what it changes: `ConductorSettings(freshness_seconds=5)`.
+- **A test** keeps `defaults.py` and the shipped `pom.toml` to exactly the same keys.
+- Rejected: per-package `defaults.py` (sections do not match packages; a setting used by two packages would have two defaults or live in the wrong folder); a shadow `defaults.toml` (another file to read and keep in step; `pom.toml` already is the complete shipped file); pydantic-settings (it raises on a bad value; our rule is the default with a warning, so it would mean fighting the library).
+- Steps: (1) `defaults.py` and the reader, behaviour the same apart from the new missing-key warnings; (2) one class at a time onto its section object(s), its copies and checks deleted; (3) a guard test: no `DEFAULT_` constant and no `_is_number` outside `defaults.py`/`config.py`.
+
 The rule: config.py is the one place a setting is defaulted and validated; classes trust the frozen settings they are handed. In practice nearly every class keeps its own copy of the defaults and checks the values again.
 
 - [ ] **D5.1 Classes repeat config's defaults** (verified): `DEFAULT_*` constants in 31 modules outside config.py. They already drift: `floor_keeper.py:75` says the oracle timeout is "120 s now"; it is 240. `DEFAULT_STARTING_BAR = 6.8` is written four times (config and all three bars). The typed-line bar influence falls back to 0 in four places.
@@ -74,6 +84,7 @@ The rule: config.py is the one place a setting is defaulted and validated; class
 - [ ] **D5.5 Which bars exist is defined three times** (verified): `config.py:136-137` (`BAR_ALGORITHMS`, default), `bar_keeper_factory.py:25-30` (`ALGORITHMS`, default), and `bar_keeper.py:93` builds a `PercentileBar` itself when none is handed in. One registry; the BarKeeper requires its bar.
 - [ ] **D5.6 Settings split across sections and renamed** (reported): `[oracle] exemplars_min/max` and `exemplar_redraws` configure the Library, arrive as `config.exemplar_range` (not on `config.oracle`) and `config.oracle.exemplar_redraws`, and the code calls it `redraw_limit`.
 - [ ] **D5.7 Environment overrides follow no rule** (reported): 8 keys can be overridden (`POM_SCORER_URL`, `POM_WHISPER_URL`, not the oracle's); whisper's is read mid-`load`; `pom.toml:3-4` doesn't list `POM_WHISPER_URL`.
+- [ ] **D5.8 A setting missing from `pom.toml` falls back to its default without a word** (verified 2026-11-26; asked by Wes). `config.py` warns about an unknown key and a bad value, but a missing key quietly takes the default, so a line cut from one section and pasted into another loses its value silently (the new spot warns as unknown; the old spot says nothing). The global rule says a default in code "is only the fallback for a missing or bad value, and it warns". *Direction:* every missing key is a warning naming the key and the default used; one test, worked out from the settings objects, checks the shipped `pom.toml` has exactly every key, none missing and none extra.
 
 ## D6. Hidden values still in code (the config rule; not in H27)
 

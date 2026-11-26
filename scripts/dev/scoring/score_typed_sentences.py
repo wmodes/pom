@@ -100,7 +100,7 @@ def main():
                 handle(line)
         except (EOFError, KeyboardInterrupt):
             print()
-    for line in [*client.report.lines(), *bar_keeper.report.lines()]:
+    for line in client.report.lines():                      # the BarKeeper's problems are in the log above
         print(line)
 
 

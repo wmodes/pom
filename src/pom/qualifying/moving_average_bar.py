@@ -14,7 +14,7 @@ This is the way the Printer first decided, restored beside the newer bars so it 
     nothing could qualify until ten had counted.)
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
+  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad
     input to `add` is ignored. `strict=True` raises MovingAverageBarError instead, for tests and dev tools.
   * Decay is by score, as it always was, not by time, so silence leaves the average where it was.
   * A qualifying score joins the average like any other (the original did, and there is no opt-out).
@@ -24,12 +24,10 @@ Design decisions, and why:
 import math
 from typing import Optional, Sequence
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_FRACTION = 0.25
 DEFAULT_HALF_LIFE_SCORES = 10.0
@@ -50,13 +48,13 @@ class MovingAverageBar(Bar):
     """A decaying average of the scores above a floor, with the bar a fraction above it.
 
     Attributes:
-        report: Problems met (a bad setting replaced by its default).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         counted: How many scores have counted (reached the floor) so far.
     """
 
     def __init__(self, fraction: float = DEFAULT_FRACTION, half_life_scores: float = DEFAULT_HALF_LIFE_SCORES,
                  floor_fraction: float = DEFAULT_FLOOR_FRACTION, starting_bar: float = DEFAULT_STARTING_BAR,
-                 score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: bool = False):
+                 score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             fraction: How far above the average the bar sits, 0 or more (0.25 is 25% above).
             half_life_scores: How many more scores it takes for a score's influence on the average to halve, above 0.
@@ -64,8 +62,9 @@ class MovingAverageBar(Bar):
             starting_bar: The bar before any score has counted.
             score_range: (lowest, highest) possible score; the lowest must be below the highest.
             strict: Raise MovingAverageBarError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=MovingAverageBarError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MovingAverageBarError, DEBUG, strict)
         self._fraction = self._valid(fraction, "average_fraction", DEFAULT_FRACTION, lambda v: _is_number(v) and v >= 0,
                                      "a number of at least 0")
         half_life = self._valid(half_life_scores, "average_half_life_scores", DEFAULT_HALF_LIFE_SCORES,
@@ -81,18 +80,18 @@ class MovingAverageBar(Bar):
         self.counted = 0
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False) -> "MovingAverageBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "MovingAverageBar":
         """Builds the bar from an object with `average_fraction`, `average_half_life_scores`, `average_floor_fraction`
         and `starting_bar`.
         `started_at` is the stream time the bar begins; this bar has no clock to start, and takes it so the factory can build any bar the same way."""
         return cls(settings.average_fraction, settings.average_half_life_scores, settings.average_floor_fraction,
-                   settings.starting_bar, strict=strict)
+                   settings.starting_bar, strict=strict, bookkeeper=bookkeeper)
 
     def _valid(self, value, name: str, default, is_good, wanted: str) -> float:
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return float(value)
-        self.report.warn(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
     def _valid_range(self, value) -> tuple:
@@ -103,7 +102,7 @@ class MovingAverageBar(Bar):
                 return float(low), float(high)
         except (TypeError, ValueError):
             pass
-        self.report.warn(f"score_range must be (lowest, highest) with the lowest below the highest, got {value!r}; "
+        self.logger.warning(f"score_range must be (lowest, highest) with the lowest below the highest, got {value!r}; "
                          f"using {DEFAULT_SCORE_RANGE}")
         return DEFAULT_SCORE_RANGE
 
@@ -132,4 +131,4 @@ class MovingAverageBar(Bar):
             return
         self._average += self._weight * (score - self._average)
         self.counted += 1
-        self.report.debug("average now %.3f after %d counted", self._average, self.counted)
+        self.logger.debug("average now %.3f after %d counted", self._average, self.counted)

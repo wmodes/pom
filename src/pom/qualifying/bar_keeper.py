@@ -23,7 +23,7 @@ parts every way shares:
 A clip that has no score (None), or one the bar ignores (a score under a floor), is NO_MARK and stays out of everything here.
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad input to
+  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad input to
     `rule` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
   * THE QUALIFIER'S INFLUENCE IS THE BARKEEPER'S, NOT EACH BAR'S. How much a score that stood above the bar influences the bar is one
     dial, `qualifier_bar_influence`, a plain number that is not limited to 0 to 1 (an experiment may want 1.1 or -0.1): the BarKeeper changes
@@ -47,13 +47,11 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import Iterator, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.percentile_bar import PercentileBar
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_COOLDOWN_SECONDS = 60.0
 DEFAULT_QUALIFIER_BAR_INFLUENCE = 0.5     # a score that stood above the bar goes into the bar half way up from the bar to the score
@@ -76,25 +74,26 @@ class BarKeeper:
     """Decides whether a new score stands out from the room's recent scores, using a bar and a cooldown.
 
     Attributes:
-        report: Problems met (a bad setting replaced by its default).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         counted: How many scores have counted so far.
     """
 
     def __init__(self, bar: Optional[Bar] = None, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
-                 qualifier_bar_influence: float = DEFAULT_QUALIFIER_BAR_INFLUENCE, strict: bool = False):
+                 qualifier_bar_influence: float = DEFAULT_QUALIFIER_BAR_INFLUENCE, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             bar: The Bar that works out where the bar sits. None means a PercentileBar with its defaults.
             cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 means no cooldown).
             qualifier_bar_influence: How far up from the bar to the score a score that stood above the bar goes into the bar: 1 is the score
                 itself, 0 is the bar itself. Any number (not limited to 0 to 1).
             strict: Raise BarKeeperError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=BarKeeperError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, BarKeeperError, DEBUG, strict)
         if bar is None:
-            bar = PercentileBar()
+            bar = PercentileBar(bookkeeper=bookkeeper)
         elif not isinstance(bar, Bar):
-            self.report.warn(f"bar must be a Bar, got {type(bar).__name__}; using the default PercentileBar")
-            bar = PercentileBar()
+            self.logger.warning(f"bar must be a Bar, got {type(bar).__name__}; using the default PercentileBar")
+            bar = PercentileBar(bookkeeper=bookkeeper)
         self._bar = bar
         self._lock = threading.Lock()      # held for the whole of each public call that reads or changes the bar or the clock
         self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
@@ -107,14 +106,14 @@ class BarKeeper:
         """A number of 0 or more, or the default with a warning."""
         if self._is_number(value) and value >= 0.0:
             return float(value)
-        self.report.warn(f"cooldown_seconds must be a number of at least 0, got {value!r}; using {DEFAULT_COOLDOWN_SECONDS:g}")
+        self.logger.warning(f"cooldown_seconds must be a number of at least 0, got {value!r}; using {DEFAULT_COOLDOWN_SECONDS:g}")
         return DEFAULT_COOLDOWN_SECONDS
 
     def _valid_influence(self, value) -> float:
         """Any finite number, or the default with a warning."""
         if self._is_number(value):
             return float(value)
-        self.report.warn(f"qualifier_bar_influence must be a number, got {value!r}; using {DEFAULT_QUALIFIER_BAR_INFLUENCE:g}")
+        self.logger.warning(f"qualifier_bar_influence must be a number, got {value!r}; using {DEFAULT_QUALIFIER_BAR_INFLUENCE:g}")
         return DEFAULT_QUALIFIER_BAR_INFLUENCE
 
     @staticmethod
@@ -136,7 +135,7 @@ class BarKeeper:
         """Takes the lock for the length of the `with`, yielding True; or yields False (and records a fault) if it waited too long."""
         got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
         if not got:
-            self.report.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if it had nothing")
+            self.logger.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if it had nothing")
         try:
             yield got
         finally:
@@ -197,7 +196,7 @@ class BarKeeper:
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
-            self.report.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
+            self.logger.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
             return ruling
 
     def rule_typed(self, score: Optional[float], now: float, bar_influence: float = 0.0) -> Ruling:
@@ -221,5 +220,5 @@ class BarKeeper:
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY
-            self.report.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
+            self.logger.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
             return ruling

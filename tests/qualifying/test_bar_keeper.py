@@ -58,12 +58,12 @@ class TestTheDefaults:
     def test_the_starting_value(self):
         assert DEFAULT_COOLDOWN_SECONDS == 60.0
 
-    def test_with_no_bar_given_it_uses_a_percentile_bar(self):
+    def test_with_no_bar_given_it_uses_a_percentile_bar(self, logged):
         t = BarKeeper()
-        assert isinstance(t._bar, PercentileBar) and t.report.ok
+        assert isinstance(t._bar, PercentileBar) and logged.of(t).ok()
 
-    def test_good_settings_are_quiet(self):
-        assert BarKeeper(FakeBar(), cooldown_seconds=0).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(BarKeeper(FakeBar(), cooldown_seconds=0)).ok()
 
 
 class TestQualifying:
@@ -256,16 +256,16 @@ class TestTheQuestions:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [-1, -0.1, "60", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_cooldown_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_cooldown_means_the_default_with_a_warning(self, bad, logged):
         t, _ = bar_keeper(level=5.0, cooldown=bad)
-        assert len(t.report.warnings) == 1 and "cooldown_seconds" in t.report.warnings[0]
+        assert len(logged.of(t).warnings()) == 1 and "cooldown_seconds" in logged.of(t).warnings()[0]
         assert t.rule(9, 5) is Ruling.QUALIFIED and t.rule(9, 30) is Ruling.HELD     # the default 60 s
 
     @pytest.mark.parametrize("not_a_bar", ["percentile", 5, [PercentileBar()], object()])
-    def test_something_that_is_not_a_bar_means_the_default_bar_with_a_warning(self, not_a_bar):
+    def test_something_that_is_not_a_bar_means_the_default_bar_with_a_warning(self, not_a_bar, logged):
         t = BarKeeper(not_a_bar)
         assert isinstance(t._bar, PercentileBar)
-        assert len(t.report.warnings) == 1 and "bar" in t.report.warnings[0]
+        assert len(logged.of(t).warnings()) == 1 and "bar" in logged.of(t).warnings()[0]
 
     def test_strict_mode_raises(self):
         with pytest.raises(BarKeeperError, match="cooldown_seconds"):
@@ -273,8 +273,8 @@ class TestBadSettings:
         with pytest.raises(BarKeeperError, match="bar"):
             BarKeeper("nope", strict=True)
 
-    def test_strict_mode_with_good_settings_does_not_raise(self):
-        assert BarKeeper(FakeBar(), strict=True).report.ok
+    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
+        assert logged.of(BarKeeper(FakeBar(), strict=True)).ok()
 
 
 class TestOverARealPercentileBar:
@@ -628,12 +628,12 @@ class TestAStuckLock:
         assert t.bar_at(1.0) is None and t.window_size_at(1.0) == 0
         assert bar.asked == [] and bar.sizes == []
 
-    def test_each_give_up_is_a_critical_fault_that_names_the_call(self, stuck):
+    def test_each_give_up_is_a_critical_fault_that_names_the_call(self, stuck, logged):
         t, _ = stuck
         t.rule(9.0, 1.0)
         t.bar_at(1.0)
-        assert len(t.report.criticals) == 2
-        assert "rule" in t.report.criticals[0] and "bar_at" in t.report.criticals[1]
+        assert len(logged.of(t).criticals()) == 2
+        assert "rule" in logged.of(t).criticals()[0] and "bar_at" in logged.of(t).criticals()[1]
 
     def test_in_strict_mode_it_raises(self, monkeypatch):
         monkeypatch.setattr("pom.qualifying.bar_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
@@ -666,15 +666,15 @@ class TestAStuckLock:
 
 class TestTheQualifierBarInfluenceIsChecked:
     @pytest.mark.parametrize("bad", [None, "0.5", True, False, [0.5], float("nan"), float("inf"), float("-inf")])
-    def test_a_value_that_is_not_a_number_is_the_default_with_a_warning(self, bad):
+    def test_a_value_that_is_not_a_number_is_the_default_with_a_warning(self, bad, logged):
         t = BarKeeper(FakeBar(), cooldown_seconds=0, qualifier_bar_influence=bad)
-        assert t._qualifier_bar_influence == DEFAULT_QUALIFIER_BAR_INFLUENCE and len(t.report.warnings) == 1
-        assert "qualifier_bar_influence" in t.report.warnings[0]
+        assert t._qualifier_bar_influence == DEFAULT_QUALIFIER_BAR_INFLUENCE and len(logged.of(t).warnings()) == 1
+        assert "qualifier_bar_influence" in logged.of(t).warnings()[0]
 
     @pytest.mark.parametrize("good", [0, 0.0, 0.25, 1, 1.1, -0.1, 7])
-    def test_any_finite_number_is_kept_and_is_not_clamped(self, good):
+    def test_any_finite_number_is_kept_and_is_not_clamped(self, good, logged):
         t = BarKeeper(FakeBar(), cooldown_seconds=0, qualifier_bar_influence=good)
-        assert t._qualifier_bar_influence == float(good) and t.report.ok
+        assert t._qualifier_bar_influence == float(good) and logged.of(t).ok()
 
     def test_strict_raises_instead(self):
         with pytest.raises(BarKeeperError):
@@ -732,7 +732,7 @@ class TestTheTicksForAChart:
         t.ticks_between(0.0, 3600.0)
         assert t.counted == 0 and t.rule(9.0, 3601.0) is Ruling.QUALIFIED
 
-    def test_a_stuck_lock_gives_none_and_a_critical_fault(self, monkeypatch):
+    def test_a_stuck_lock_gives_none_and_a_critical_fault(self, monkeypatch, logged):
         monkeypatch.setattr("pom.qualifying.bar_keeper.LOCK_TIMEOUT_SECONDS", 0.05)
         class Listing(FakeBar):
             def ticks_between(self, start, end):
@@ -743,4 +743,4 @@ class TestTheTicksForAChart:
             assert t.ticks_between(0.0, 1000.0) == []                       # not the bar's list: it was not asked
         finally:
             t._lock.release()
-        assert len(t.report.criticals) == 1 and "ticks_between" in t.report.criticals[0]
+        assert len(logged.of(t).criticals()) == 1 and "ticks_between" in logged.of(t).criticals()[0]

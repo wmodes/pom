@@ -14,7 +14,7 @@ beside it:
     `min_scores` things, the bar is the room's own.
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
+  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad
     input to `add` is ignored. `strict=True` raises PercentileBarError instead, for tests and dev tools.
   * Only the scores in the window are kept (never fewer than `min_scores`), so memory is bounded however long the room talks.
   * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
@@ -23,12 +23,10 @@ import math
 from collections import deque
 from typing import Deque, List, Optional, Tuple
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_BAR_PERCENTILE = 99.5
 DEFAULT_WINDOW_SECONDS = 300.0
@@ -49,11 +47,11 @@ class PercentileBar(Bar):
     """A nearest-rank percentile of the recent window.
 
     Attributes:
-        report: Problems met (a bad setting replaced by its default).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, bar_percentile: float = DEFAULT_BAR_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
-                 min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR, strict: bool = False):
+                 min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             bar_percentile: How much of the window the bar sits above, above 0 and at most 100.
             window_seconds: How many seconds of recent scores the bar is drawn from, above 0.
@@ -61,8 +59,9 @@ class PercentileBar(Bar):
                 `starting_bar`; a whole number of at least 2.
             starting_bar: The bar until `min_scores` scores have been heard.
             strict: Raise PercentileBarError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=PercentileBarError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PercentileBarError, DEBUG, strict)
         self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE,
                                        lambda v: _is_number(v) and 0 < v <= 100, "a number above 0 and at most 100", float)
         self._window_seconds = self._valid(window_seconds, "window_seconds", DEFAULT_WINDOW_SECONDS,
@@ -74,16 +73,16 @@ class PercentileBar(Bar):
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False) -> "PercentileBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "PercentileBar":
         """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores` and `starting_bar`.
         `started_at` is the stream time the bar begins; this bar has no clock to start, and takes it so the factory can build any bar the same way."""
-        return cls(settings.bar_percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict)
+        return cls(settings.bar_percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict, bookkeeper=bookkeeper)
 
     def _valid(self, value, name: str, default, is_good, wanted: str, convert):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return convert(value)
-        self.report.warn(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
     # --- The Bar questions ---------------------------------------------------

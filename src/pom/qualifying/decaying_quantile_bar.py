@@ -22,7 +22,7 @@ room goes quiet nothing buries them any more, and the bar settles toward the anc
 quantile: they are never judged, never qualify, never start a cooldown, and are not counted as scores (`window_size_at` leaves them out).
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and recorded in `report`; bad
+  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad
     input to `add` is ignored. `strict=True` raises DecayingQuantileBarError instead, for tests and dev tools.
   * Decay is by time, not by number of scores, so a quiet room and a busy one both remember "the last few minutes".
   * Scores, and ticks, older than `discard_scores_older_than_minutes` are dropped, so memory stays bounded however long the room talks. It is a setting
@@ -43,12 +43,10 @@ import math
 from collections import deque
 from typing import Deque, Optional, Tuple
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_BAR_PERCENTILE = 99.5
 DEFAULT_HALF_LIFE_SECONDS = 300.0
@@ -72,14 +70,14 @@ class DecayingQuantileBar(Bar):
     """A weighted, interpolated high quantile of the recent scores.
 
     Attributes:
-        report: Problems met (a bad setting replaced by its default).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, bar_percentile: float = DEFAULT_BAR_PERCENTILE, half_life_seconds: float = DEFAULT_HALF_LIFE_SECONDS,
                  starting_bar: float = DEFAULT_STARTING_BAR, starting_bar_weight: float = DEFAULT_STARTING_BAR_WEIGHT,
                  anchor_score: float = DEFAULT_ANCHOR_SCORE, anchor_interval_minutes: float = DEFAULT_ANCHOR_INTERVAL_MINUTES,
                  discard_scores_older_than_minutes: float = DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES, started_at: float = DEFAULT_STARTED_AT,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             bar_percentile: How much of the weighted scores the bar sits above, above 0 and at most 100.
             half_life_seconds: Seconds for a score's weight to halve, above 0.
@@ -91,8 +89,9 @@ class DecayingQuantileBar(Bar):
             started_at: The stream time at which the bar begins, in the same seconds as the times it is given: the tick grid and the starting bar's fade both run
                 from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
             strict: Raise DecayingQuantileBarError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=DecayingQuantileBarError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, DecayingQuantileBarError, DEBUG, strict)
         self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE, lambda v: _is_number(v) and 0 < v <= 100,
                                        "a number above 0 and at most 100")
         self._half_life = self._valid(half_life_seconds, "half_life_seconds", DEFAULT_HALF_LIFE_SECONDS,
@@ -109,19 +108,19 @@ class DecayingQuantileBar(Bar):
         self._started_at = self._valid(started_at, "started_at", DEFAULT_STARTED_AT, _is_number, "a number")
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False) -> "DecayingQuantileBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "DecayingQuantileBar":
         """Builds the bar from an object with `bar_percentile`, `half_life_seconds`, `starting_bar`, `anchor_score`, `anchor_interval_minutes`,
         `discard_scores_older_than_minutes` and `starting_bar_weight`."""
         return cls(settings.bar_percentile, settings.half_life_seconds, settings.starting_bar, anchor_score=settings.anchor_score,
                    anchor_interval_minutes=settings.anchor_interval_minutes,
                    discard_scores_older_than_minutes=settings.discard_scores_older_than_minutes,
-                   starting_bar_weight=settings.starting_bar_weight, started_at=started_at, strict=strict)
+                   starting_bar_weight=settings.starting_bar_weight, started_at=started_at, strict=strict, bookkeeper=bookkeeper)
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return float(value)
-        self.report.warn(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
     # --- The Bar questions ---------------------------------------------------

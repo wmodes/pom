@@ -36,10 +36,10 @@ class TestTheDefaults:
     def test_the_starting_values(self):
         assert (DEFAULT_BAR_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_STARTING_BAR) == (99.5, 300.0, 20, 6.8)
 
-    def test_good_settings_are_quiet(self):
-        assert PercentileBar().report.ok
-        assert bar(bar_percentile=0.001, window_seconds=0.5, min_scores=2).report.ok
-        assert bar(bar_percentile=100, starting_bar=-2).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(PercentileBar()).ok()
+        assert logged.of(bar(bar_percentile=0.001, window_seconds=0.5, min_scores=2)).ok()
+        assert logged.of(bar(bar_percentile=100, starting_bar=-2)).ok()
 
     def test_it_is_a_bar(self):
         assert isinstance(PercentileBar(), Bar)
@@ -233,27 +233,27 @@ class TestDescribing:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, 100.1, 101, "99", None, True, [99], float("nan"), float("inf")])
-    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad, logged):
         b = bar(bar_percentile=bad)
-        assert len(b.report.warnings) == 1 and "bar_percentile" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "bar_percentile" in logged.of(b).warnings()[0]
         assert b._bar_percentile == DEFAULT_BAR_PERCENTILE
 
     @pytest.mark.parametrize("bad", [0, -1, "60", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_window_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_window_means_the_default_with_a_warning(self, bad, logged):
         b = bar(window_seconds=bad)
-        assert len(b.report.warnings) == 1 and "window_seconds" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "window_seconds" in logged.of(b).warnings()[0]
         assert b._window_seconds == DEFAULT_WINDOW_SECONDS
 
     @pytest.mark.parametrize("bad", [0, 1, -1, 2.5, "5", None, True, [5]])
-    def test_a_bad_minimum_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_minimum_means_the_default_with_a_warning(self, bad, logged):
         b = bar(min_scores=bad)
-        assert len(b.report.warnings) == 1 and "min_scores" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "min_scores" in logged.of(b).warnings()[0]
         assert b._min_scores == DEFAULT_MIN_SCORES
 
     @pytest.mark.parametrize("bad", ["6.8", None, True, [6.8], float("nan"), float("inf")])
-    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad, logged):
         b = bar(starting_bar=bad)
-        assert len(b.report.warnings) == 1 and "starting_bar" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "starting_bar" in logged.of(b).warnings()[0]
         assert b.level_at(0.0) == DEFAULT_STARTING_BAR
 
     def test_a_negative_starting_bar_is_allowed(self):
@@ -264,23 +264,23 @@ class TestBadSettings:
         with pytest.raises(PercentileBarError, match=option):
             bar(strict=True, **{option: bad})
 
-    def test_strict_mode_with_good_settings_does_not_raise(self):
-        assert bar(strict=True).report.ok
+    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
+        assert logged.of(bar(strict=True)).ok()
 
-    def test_two_bad_settings_give_two_warnings(self):
-        assert len(PercentileBar(bar_percentile=-1, window_seconds=0).report.warnings) == 2
+    def test_two_bad_settings_give_two_warnings(self, logged):
+        assert len(logged.of(PercentileBar(bar_percentile=-1, window_seconds=0)).warnings()) == 2
 
 
 class TestBuildingFromSettings:
-    def test_it_reads_the_settings_it_needs(self):
+    def test_it_reads_the_settings_it_needs(self, logged):
         settings = SimpleNamespace(bar_percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, other="x")
         b = PercentileBar.from_settings(settings, started_at=0.0)
         assert (b._bar_percentile, b._window_seconds, b._min_scores, b._starting_bar) == (95.0, 120.0, 8, 5.5)
-        assert b.report.ok
+        assert logged.of(b).ok()
 
-    def test_bad_settings_are_replaced_as_usual(self):
+    def test_bad_settings_are_replaced_as_usual(self, logged):
         b = PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5), started_at=0.0)
-        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(b.report.warnings) == 1
+        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(logged.of(b).warnings()) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(PercentileBarError):

@@ -50,9 +50,9 @@ class TestTheDefaults:
     def test_the_starting_values(self):
         assert (DEFAULT_BAR_PERCENTILE, DEFAULT_HALF_LIFE_SECONDS, DEFAULT_STARTING_BAR, DEFAULT_STARTING_BAR_WEIGHT) == (99.5, 300.0, 6.8, 20.0)
 
-    def test_good_settings_are_quiet(self):
-        assert DecayingQuantileBar().report.ok
-        assert DecayingQuantileBar(bar_percentile=100, half_life_seconds=0.001, starting_bar=-3, starting_bar_weight=0.001).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(DecayingQuantileBar()).ok()
+        assert logged.of(DecayingQuantileBar(bar_percentile=100, half_life_seconds=0.001, starting_bar=-3, starting_bar_weight=0.001)).ok()
 
     def test_it_is_a_bar(self):
         assert isinstance(DecayingQuantileBar(), Bar)
@@ -134,18 +134,18 @@ class TestTheStartingLine:
         b.add(2.0, 5000.0)
         assert b.level_at(5000.0) == pytest.approx(2.0, abs=0.01)
 
-    def test_a_bar_with_no_start_given_starts_at_zero(self):
+    def test_a_bar_with_no_start_given_starts_at_zero(self, logged):
         b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
-        assert b._started_at == 0.0 and b.report.ok
+        assert b._started_at == 0.0 and logged.of(b).ok()
 
     @pytest.mark.parametrize("good", [0, 0.0, 12.5, -3, 1e6])
-    def test_a_start_can_be_any_number(self, good):
-        assert DecayingQuantileBar(started_at=good).report.ok and DecayingQuantileBar(started_at=good)._started_at == float(good)
+    def test_a_start_can_be_any_number(self, good, logged):
+        assert logged.of(DecayingQuantileBar(started_at=good)).ok() and DecayingQuantileBar(started_at=good)._started_at == float(good)
 
     @pytest.mark.parametrize("bad", ["0", None, True, [0], float("nan"), float("inf")])
-    def test_a_bad_start_is_zero_with_a_warning(self, bad):
+    def test_a_bad_start_is_zero_with_a_warning(self, bad, logged):
         b = DecayingQuantileBar(started_at=bad)
-        assert b._started_at == 0.0 and len(b.report.warnings) == 1 and "started_at" in b.report.warnings[0]
+        assert b._started_at == 0.0 and len(logged.of(b).warnings()) == 1 and "started_at" in logged.of(b).warnings()[0]
 
     def test_strict_raises_on_a_bad_start(self):
         with pytest.raises(DecayingQuantileBarError):
@@ -329,19 +329,19 @@ class TestTheAnchor:
                 b.add(1.0 + (i * 7) % 9, i * 0.5)                    # 200 scores over 100 s, spread over 1 to 9
         assert 0 <= without.level_at(100.0) - with_ticks.level_at(100.0) < 0.5
 
-    def test_the_default_anchor_is_the_documented_fallback(self):
+    def test_the_default_anchor_is_the_documented_fallback(self, logged):
         b = TickingDecayingQuantileBar()
-        assert (b._anchor_score, b._anchor_interval) == (DEFAULT_ANCHOR_SCORE, 60.0 * DEFAULT_ANCHOR_INTERVAL_MINUTES) and b.report.ok
+        assert (b._anchor_score, b._anchor_interval) == (DEFAULT_ANCHOR_SCORE, 60.0 * DEFAULT_ANCHOR_INTERVAL_MINUTES) and logged.of(b).ok()
 
     @pytest.mark.parametrize("bad", ["5", None, True, [5], float("nan"), float("inf")])
-    def test_a_bad_anchor_score_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_anchor_score_means_the_default_with_a_warning(self, bad, logged):
         b = TickingDecayingQuantileBar(anchor_score=bad)
-        assert len(b.report.warnings) == 1 and "anchor_score" in b.report.warnings[0] and b._anchor_score == DEFAULT_ANCHOR_SCORE
+        assert len(logged.of(b).warnings()) == 1 and "anchor_score" in logged.of(b).warnings()[0] and b._anchor_score == DEFAULT_ANCHOR_SCORE
 
     @pytest.mark.parametrize("bad", [0, -1, "1", None, True, float("nan"), float("inf")])
-    def test_a_bad_anchor_interval_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_anchor_interval_means_the_default_with_a_warning(self, bad, logged):
         b = TickingDecayingQuantileBar(anchor_interval_minutes=bad)
-        assert len(b.report.warnings) == 1 and "anchor_interval_minutes" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "anchor_interval_minutes" in logged.of(b).warnings()[0]
         assert b._anchor_interval == 60.0 * DEFAULT_ANCHOR_INTERVAL_MINUTES
 
     @pytest.mark.parametrize("option,bad", [("anchor_score", None), ("anchor_interval_minutes", 0)])
@@ -349,22 +349,22 @@ class TestTheAnchor:
         with pytest.raises(DecayingQuantileBarError):
             TickingDecayingQuantileBar(strict=True, **{option: bad})
 
-    def test_the_default_discard_age_is_the_documented_fallback(self):
+    def test_the_default_discard_age_is_the_documented_fallback(self, logged):
         b = TickingDecayingQuantileBar()
-        assert b._discard_seconds == 60.0 * DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES and b.report.ok
+        assert b._discard_seconds == 60.0 * DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES and logged.of(b).ok()
 
     @pytest.mark.parametrize("bad", [0, -1, "60", None, True, float("nan"), float("inf")])
-    def test_a_bad_discard_age_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_discard_age_means_the_default_with_a_warning(self, bad, logged):
         b = TickingDecayingQuantileBar(discard_scores_older_than_minutes=bad)
-        assert len(b.report.warnings) == 1 and "discard_scores_older_than_minutes" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "discard_scores_older_than_minutes" in logged.of(b).warnings()[0]
         assert b._discard_seconds == 60.0 * DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES
 
     def test_strict_mode_raises_on_a_bad_discard_age(self):
         with pytest.raises(DecayingQuantileBarError):
             TickingDecayingQuantileBar(strict=True, discard_scores_older_than_minutes=0)
 
-    def test_negative_and_zero_anchor_scores_are_fine(self):
-        assert TickingDecayingQuantileBar(anchor_score=-2).report.ok and TickingDecayingQuantileBar(anchor_score=0).report.ok
+    def test_negative_and_zero_anchor_scores_are_fine(self, logged):
+        assert logged.of(TickingDecayingQuantileBar(anchor_score=-2)).ok() and logged.of(TickingDecayingQuantileBar(anchor_score=0)).ok()
 
 
 class TestTheDecay:
@@ -505,27 +505,27 @@ class TestDescribing:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, 100.1, "99", None, True, [99], float("nan"), float("inf")])
-    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad, logged):
         b = DecayingQuantileBar(bar_percentile=bad)
-        assert len(b.report.warnings) == 1 and "bar_percentile" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "bar_percentile" in logged.of(b).warnings()[0]
         assert b._bar_percentile == DEFAULT_BAR_PERCENTILE
 
     @pytest.mark.parametrize("bad", [0, -5, "300", None, True, float("nan"), float("inf")])
-    def test_a_bad_half_life_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_half_life_means_the_default_with_a_warning(self, bad, logged):
         b = DecayingQuantileBar(half_life_seconds=bad)
-        assert len(b.report.warnings) == 1 and "half_life_seconds" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "half_life_seconds" in logged.of(b).warnings()[0]
         assert b._half_life == DEFAULT_HALF_LIFE_SECONDS
 
     @pytest.mark.parametrize("bad", ["6.8", None, True, [6.8], float("nan"), float("inf")])
-    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad, logged):
         b = DecayingQuantileBar(starting_bar=bad)
-        assert len(b.report.warnings) == 1 and "starting_bar" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "starting_bar" in logged.of(b).warnings()[0]
         assert b.level_at(0.0) == pytest.approx(DEFAULT_STARTING_BAR)
 
     @pytest.mark.parametrize("bad", [0, -1, "20", None, True, float("nan")])
-    def test_a_bad_starting_weight_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_starting_weight_means_the_default_with_a_warning(self, bad, logged):
         b = DecayingQuantileBar(starting_bar_weight=bad)
-        assert len(b.report.warnings) == 1 and "starting_bar_weight" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "starting_bar_weight" in logged.of(b).warnings()[0]
         assert b._starting_bar_weight == DEFAULT_STARTING_BAR_WEIGHT
 
     def test_a_negative_starting_bar_is_allowed(self):
@@ -536,27 +536,27 @@ class TestBadSettings:
         with pytest.raises(DecayingQuantileBarError, match=option):
             DecayingQuantileBar(strict=True, **{option: bad})
 
-    def test_strict_mode_with_good_settings_does_not_raise(self):
-        assert DecayingQuantileBar(strict=True).report.ok
+    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
+        assert logged.of(DecayingQuantileBar(strict=True)).ok()
 
-    def test_two_bad_settings_give_two_warnings(self):
-        assert len(DecayingQuantileBar(bar_percentile=0, half_life_seconds=0).report.warnings) == 2
+    def test_two_bad_settings_give_two_warnings(self, logged):
+        assert len(logged.of(DecayingQuantileBar(bar_percentile=0, half_life_seconds=0)).warnings()) == 2
 
 
 class TestBuildingFromSettings:
-    def test_it_reads_the_settings_it_needs(self):
+    def test_it_reads_the_settings_it_needs(self, logged):
         settings = SimpleNamespace(bar_percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
                                    discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5, unrelated="x")
         b = DecayingQuantileBar.from_settings(settings, started_at=0.0)
         assert (b._bar_percentile, b._half_life, b._starting_bar, b._anchor_score, b._anchor_interval, b._discard_seconds,
                 b._starting_bar_weight) == (95.0, 120.0, 5.5, 4.5, 150.0, 5400.0, 7.5)
-        assert b.report.ok
+        assert logged.of(b).ok()
 
-    def test_bad_settings_are_replaced_as_usual(self):
+    def test_bad_settings_are_replaced_as_usual(self, logged):
         settings = SimpleNamespace(bar_percentile=500, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
                                    discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5)
         b = DecayingQuantileBar.from_settings(settings, started_at=0.0)
-        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(b.report.warnings) == 1
+        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(logged.of(b).warnings()) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(DecayingQuantileBarError):

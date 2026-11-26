@@ -25,9 +25,9 @@ class TestTheDefaults:
         assert (DEFAULT_FRACTION, DEFAULT_HALF_LIFE_SCORES, DEFAULT_FLOOR_FRACTION, DEFAULT_STARTING_BAR) == (0.25, 10.0, 0.05, 6.8)
         assert DEFAULT_SCORE_RANGE == (0.0, 9.0)
 
-    def test_good_settings_are_quiet(self):
-        assert MovingAverageBar().report.ok
-        assert MovingAverageBar(fraction=0, half_life_scores=0.001, floor_fraction=0, starting_bar=-1).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(MovingAverageBar()).ok()
+        assert logged.of(MovingAverageBar(fraction=0, half_life_scores=0.001, floor_fraction=0, starting_bar=-1)).ok()
 
     def test_it_is_a_bar(self):
         assert isinstance(MovingAverageBar(), Bar)
@@ -146,37 +146,37 @@ class TestDescribing:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [-0.1, "0.25", None, True, [1], float("nan"), float("inf")])
-    def test_a_bad_fraction_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_fraction_means_the_default_with_a_warning(self, bad, logged):
         b = MovingAverageBar(fraction=bad)
-        assert len(b.report.warnings) == 1 and "average_fraction" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "average_fraction" in logged.of(b).warnings()[0]
         assert b._fraction == DEFAULT_FRACTION
 
     @pytest.mark.parametrize("bad", [0, -1, "10", None, True, float("nan"), float("inf")])
-    def test_a_bad_half_life_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_half_life_means_the_default_with_a_warning(self, bad, logged):
         b = MovingAverageBar(half_life_scores=bad)
-        assert len(b.report.warnings) == 1 and "average_half_life_scores" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "average_half_life_scores" in logged.of(b).warnings()[0]
         assert b._weight == pytest.approx(1 - 0.5 ** (1 / DEFAULT_HALF_LIFE_SCORES))
 
     @pytest.mark.parametrize("bad", [-0.01, 1, 1.5, "0.05", None, True, float("nan")])
-    def test_a_bad_floor_fraction_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_floor_fraction_means_the_default_with_a_warning(self, bad, logged):
         b = MovingAverageBar(floor_fraction=bad)
-        assert len(b.report.warnings) == 1 and "average_floor_fraction" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "average_floor_fraction" in logged.of(b).warnings()[0]
         assert b._floor == pytest.approx(0.45)
 
     @pytest.mark.parametrize("bad", ["6.8", None, True, [6.8], float("nan"), float("inf")])
-    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad, logged):
         b = MovingAverageBar(starting_bar=bad)
-        assert len(b.report.warnings) == 1 and "starting_bar" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "starting_bar" in logged.of(b).warnings()[0]
         assert b.level_at(0.0) == pytest.approx(DEFAULT_STARTING_BAR)
 
     @pytest.mark.parametrize("bad", [(5, 5), (9, 0), "09", None, (1,), (None, 9), (0, float("nan")), 5])
-    def test_a_bad_score_range_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_score_range_means_the_default_with_a_warning(self, bad, logged):
         b = MovingAverageBar(score_range=bad)
-        assert len(b.report.warnings) == 1 and "score_range" in b.report.warnings[0]
+        assert len(logged.of(b).warnings()) == 1 and "score_range" in logged.of(b).warnings()[0]
         assert b._floor == pytest.approx(0.45)
 
-    def test_a_good_floor_of_zero_and_a_fraction_of_zero_are_fine(self):
-        assert MovingAverageBar(floor_fraction=0, fraction=0).report.ok
+    def test_a_good_floor_of_zero_and_a_fraction_of_zero_are_fine(self, logged):
+        assert logged.of(MovingAverageBar(floor_fraction=0, fraction=0)).ok()
 
     @pytest.mark.parametrize("option,bad", [("fraction", -1), ("half_life_scores", 0), ("floor_fraction", 1), ("starting_bar", None),
                                             ("score_range", (3, 3))])
@@ -184,24 +184,24 @@ class TestBadSettings:
         with pytest.raises(MovingAverageBarError):
             MovingAverageBar(strict=True, **{option: bad})
 
-    def test_strict_mode_with_good_settings_does_not_raise(self):
-        assert MovingAverageBar(strict=True).report.ok
+    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
+        assert logged.of(MovingAverageBar(strict=True)).ok()
 
-    def test_two_bad_settings_give_two_warnings(self):
-        assert len(MovingAverageBar(fraction=-1, half_life_scores=0).report.warnings) == 2
+    def test_two_bad_settings_give_two_warnings(self, logged):
+        assert len(logged.of(MovingAverageBar(fraction=-1, half_life_scores=0)).warnings()) == 2
 
 
 class TestBuildingFromSettings:
-    def test_it_reads_the_settings_it_needs(self):
+    def test_it_reads_the_settings_it_needs(self, logged):
         settings = SimpleNamespace(average_fraction=0.5, average_half_life_scores=4.0, average_floor_fraction=0.1, starting_bar=5.0, other="x")
         b = MovingAverageBar.from_settings(settings, started_at=0.0)
         assert (b._fraction, b._floor) == (0.5, pytest.approx(0.9))
-        assert b.level_at(0.0) == pytest.approx(5.0) and b._weight == pytest.approx(1 - 0.5 ** 0.25) and b.report.ok
+        assert b.level_at(0.0) == pytest.approx(5.0) and b._weight == pytest.approx(1 - 0.5 ** 0.25) and logged.of(b).ok()
 
-    def test_bad_settings_are_replaced_as_usual(self):
+    def test_bad_settings_are_replaced_as_usual(self, logged):
         b = MovingAverageBar.from_settings(SimpleNamespace(average_fraction=-3, average_half_life_scores=4.0, average_floor_fraction=0.1,
                                                            starting_bar=5.0), started_at=0.0)
-        assert b._fraction == DEFAULT_FRACTION and len(b.report.warnings) == 1
+        assert b._fraction == DEFAULT_FRACTION and len(logged.of(b).warnings()) == 1
 
     def test_strict_is_passed_on(self):
         with pytest.raises(MovingAverageBarError):

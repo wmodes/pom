@@ -766,26 +766,26 @@ def test_the_qualifying_section_merges_key_by_key_with_the_local_file(tmp_path):
     assert Config.load(main, environ={}).qualifying == QualifyingSettings(bar_percentile=90.0, min_scores=8, algorithm="moving_average")
 
 
-def test_the_qualifying_settings_plug_straight_into_the_bar_keeper(tmp_path):
+def test_the_qualifying_settings_plug_straight_into_the_bar_keeper(tmp_path, logged):
     from pom.qualifying import bar_keeper_from_settings, Ruling
     text = "[qualifying]\nbar_percentile = 60\nwindow_seconds = 60\nmin_scores = 5\nstarting_bar = 1000\ncooldown_seconds = 0\n"
     settings = Config.load(write(tmp_path, text), environ={}).qualifying
     bar_keeper = bar_keeper_from_settings(settings, started_at=0.0)
-    assert bar_keeper.report.ok
+    assert logged.ok("pom.qualifying")
     assert [bar_keeper.rule(score, now) for now, score in enumerate((1, 2, 3, 4, 5))] == [Ruling.DID_NOT_QUALIFY] * 5
     assert bar_keeper.bar_at(5) == 3.0                     # 60% of five scores 1 to 5: the third
     assert bar_keeper.rule(3.5, 5) is Ruling.QUALIFIED
 
 
 @pytest.mark.parametrize("algorithm", ["percentile", "decaying_quantile", "moving_average"])
-def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm):
+def test_every_algorithm_builds_from_the_settings_the_config_makes(tmp_path, algorithm, logged):
     from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     settings = Config.load(write(tmp_path, f'[qualifying]\nalgorithm = "{algorithm}"\n'), environ={}).qualifying
     bar_keeper = bar_keeper_from_settings(settings, started_at=0.0)
-    assert isinstance(bar_keeper._bar, ALGORITHMS[algorithm]) and bar_keeper.report.ok and bar_keeper._bar.report.ok
+    assert isinstance(bar_keeper._bar, ALGORITHMS[algorithm]) and logged.ok("pom.qualifying")      # the keeper and its bar said nothing
 
 
-def test_the_shipped_config_loads_cleanly_with_usable_qualifying_values():
+def test_the_shipped_config_loads_cleanly_with_usable_qualifying_values(logged):
     """The qualifying values are tuned often, so they are not pinned: only that the shipped file reads without a warning
     and that each algorithm accepts the values."""
     import dataclasses
@@ -794,7 +794,7 @@ def test_the_shipped_config_loads_cleanly_with_usable_qualifying_values():
     assert shipped.report.ok
     for algorithm in ALGORITHMS:
         bar_keeper = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm), started_at=0.0)
-        assert bar_keeper.report.ok and bar_keeper._bar.report.ok
+        assert logged.ok("pom.qualifying")
 
 
 def test_the_shipped_algorithm_is_one_the_factory_knows():

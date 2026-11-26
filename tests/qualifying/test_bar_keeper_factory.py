@@ -29,9 +29,9 @@ class TestTheList:
 class TestBuildingABar:
     @pytest.mark.parametrize("name,kind", [("percentile", PercentileBar), ("decaying_quantile", DecayingQuantileBar),
                                            ("moving_average", MovingAverageBar)])
-    def test_the_name_picks_the_bar(self, name, kind):
+    def test_the_name_picks_the_bar(self, name, kind, logged):
         bar = bar_from_settings(settings(algorithm=name), started_at=0.0)
-        assert type(bar) is kind and bar.report.ok
+        assert type(bar) is kind and logged.of(bar).ok()
 
     def test_the_percentile_bar_gets_its_settings(self):
         bar = bar_from_settings(settings(algorithm="percentile"), started_at=0.0)
@@ -46,27 +46,27 @@ class TestBuildingABar:
         assert bar._fraction == 0.3 and bar._floor == pytest.approx(0.9) and bar._half_life == 6.0
         assert bar.level_at(0.0) == pytest.approx(5.5)
 
-    def test_each_bar_ignores_the_other_algorithms_settings(self):
+    def test_each_bar_ignores_the_other_algorithms_settings(self, logged):
         sparse = SimpleNamespace(algorithm="percentile", bar_percentile=99.0, window_seconds=120.0, min_scores=8, starting_bar=5.5)
-        assert bar_from_settings(sparse, started_at=0.0).report.ok
+        assert logged.of(bar_from_settings(sparse, started_at=0.0)).ok()
 
-    def test_no_algorithm_named_means_the_percentile_bar(self):
+    def test_no_algorithm_named_means_the_percentile_bar(self, logged):
         bar = bar_from_settings(SimpleNamespace(bar_percentile=99.0, window_seconds=120.0, min_scores=8, starting_bar=5.5), started_at=0.0)
-        assert type(bar) is PercentileBar and bar.report.ok
+        assert type(bar) is PercentileBar and logged.of(bar).ok()
 
     @pytest.mark.parametrize("bad", ["median", "", None, 5, True, ["percentile"], "Percentile"])
-    def test_an_unknown_name_means_the_percentile_bar_with_a_warning(self, bad):
+    def test_an_unknown_name_means_the_percentile_bar_with_a_warning(self, bad, logged):
         bar = bar_from_settings(settings(algorithm=bad), started_at=0.0)
         assert type(bar) is PercentileBar
-        assert len(bar.report.warnings) == 1 and "algorithm" in bar.report.warnings[0]
+        assert len(logged.of(bar).warnings()) == 1 and "algorithm" in logged.of(bar).warnings()[0]
 
     def test_strict_mode_raises_for_an_unknown_name(self):
         with pytest.raises(PercentileBarError, match="algorithm"):
             bar_from_settings(settings(algorithm="median"), started_at=0.0, strict=True)
 
-    def test_a_bad_value_is_the_bars_to_report(self):
+    def test_a_bad_value_is_the_bars_to_report(self, logged):
         bar = bar_from_settings(settings(algorithm="decaying_quantile", bar_percentile=500), started_at=0.0)
-        assert len(bar.report.warnings) == 1 and "percentile" in bar.report.warnings[0]
+        assert len(logged.of(bar).warnings()) == 1 and "percentile" in logged.of(bar).warnings()[0]
 
     def test_strict_is_passed_to_the_bar(self):
         with pytest.raises(Exception, match="percentile"):
@@ -74,14 +74,14 @@ class TestBuildingABar:
 
 
 class TestBuildingABarKeeper:
-    def test_it_is_a_bar_keeper_with_the_named_bar_and_the_cooldown(self):
+    def test_it_is_a_bar_keeper_with_the_named_bar_and_the_cooldown(self, logged):
         bar_keeper = bar_keeper_from_settings(settings(algorithm="decaying_quantile", cooldown_seconds=45.0), started_at=0.0)
         assert isinstance(bar_keeper, BarKeeper) and isinstance(bar_keeper._bar, DecayingQuantileBar)
-        assert bar_keeper._cooldown_seconds == 45.0 and bar_keeper.report.ok
+        assert bar_keeper._cooldown_seconds == 45.0 and logged.of(bar_keeper).ok()
 
-    def test_a_bad_cooldown_is_the_bar_keepers_to_report(self):
+    def test_a_bad_cooldown_is_the_bar_keepers_to_report(self, logged):
         bar_keeper = bar_keeper_from_settings(settings(cooldown_seconds=-5), started_at=0.0)
-        assert len(bar_keeper.report.warnings) == 1 and "cooldown_seconds" in bar_keeper.report.warnings[0]
+        assert len(logged.of(bar_keeper).warnings()) == 1 and "cooldown_seconds" in logged.of(bar_keeper).warnings()[0]
 
     def test_strict_is_passed_to_the_bar_keeper(self):
         with pytest.raises(BarKeeperError):
@@ -121,8 +121,8 @@ class TestTheStart:
         assert bar_keeper_from_settings(settings(algorithm="decaying_quantile"), started_at=77.0)._bar._started_at == 77.0
 
     @pytest.mark.parametrize("name", ["percentile", "moving_average"])
-    def test_the_bars_without_a_clock_take_it_and_ignore_it(self, name):
-        assert bar_from_settings(settings(algorithm=name), started_at=500.0).report.ok
+    def test_the_bars_without_a_clock_take_it_and_ignore_it(self, name, logged):
+        assert logged.of(bar_from_settings(settings(algorithm=name), started_at=500.0)).ok()
 
     @pytest.mark.parametrize("bar_class", [PercentileBar, DecayingQuantileBar, MovingAverageBar])
     def test_a_bar_built_from_settings_needs_its_start(self, bar_class):

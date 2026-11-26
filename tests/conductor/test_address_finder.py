@@ -1,5 +1,4 @@
 """Tests for pom.conductor.address_finder: the machine's usable IPv4 addresses, from a described network (no real one needed)."""
-import logging
 import socket
 from types import SimpleNamespace
 
@@ -63,12 +62,11 @@ class TestMoreThanOne:
 
 
 class TestItNeverRaises:
-    def test_a_failing_lookup_is_no_addresses_and_a_warning(self, caplog):
+    def test_a_failing_lookup_is_no_addresses_and_a_warning(self, logged):
         def broken():
             raise OSError("no permission")
-        with caplog.at_level(logging.WARNING, logger="pom.conductor.address_finder"):
-            assert AddressFinder(broken).find() == []
-        assert any("OSError" in r.getMessage() for r in caplog.records)
+        assert AddressFinder(broken).find() == []
+        assert any("OSError" in line for line in logged.messages())
 
     def test_a_record_of_the_wrong_shape_is_no_addresses_not_a_crash(self):
         assert finder_for({"x": [object()]}).find() == []

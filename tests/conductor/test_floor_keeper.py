@@ -2,7 +2,6 @@
 
 The clock is a small fake the test moves by hand, so a 5-minute watchdog is tested without waiting.
 """
-import logging
 import threading
 import time
 
@@ -339,73 +338,67 @@ class TestAStaleTurn:
 class TestTheLogs:
     """A problem has to be readable afterwards in the logs: states, who, how long. Never words."""
 
-    def lines(self, caplog):
-        return [r.getMessage() for r in caplog.records if r.name == "pom.conductor.floor_keeper"]
+    def lines(self, logged):
+        return logged.messages("pom.conductor.floor_keeper")
 
-    def test_every_change_of_state_is_logged_with_who_and_how_long(self, caplog):
+    def test_every_change_of_state_is_logged_with_who_and_how_long(self, logged):
         k, clock = keeper(printing=100)
-        with caplog.at_level(logging.INFO, logger="pom.conductor.floor_keeper"):
-            turn = k.take_floor("room")
-            clock.advance(41.25)
-            turn.start_printing()
-            clock.advance(63.0)
-            turn.finish()
-            clock.advance(3.0)
-            k.state
-        lines = self.lines(caplog)
+        turn = k.take_floor("room")
+        clock.advance(41.25)
+        turn.start_printing()
+        clock.advance(63.0)
+        turn.finish()
+        clock.advance(3.0)
+        k.state
+        lines = self.lines(logged)
         assert "floor: listening -> writing (room) after 0.0 s" in lines[0]
         assert "floor: writing -> printing (room) after 41.2 s" in lines[1] or "after 41.3 s" in lines[1]
         assert "floor: printing -> recovering (room) after 63.0 s" in lines[2]
         assert "the room's turn is over after 104.2 s in all" in lines[3] or "after 104.3 s in all" in lines[3]
         assert "floor: recovering -> listening (room) after 3.0 s" in lines[4]
 
-    def test_a_refused_ask_is_logged_with_who_holds_the_floor(self, caplog):
+    def test_a_refused_ask_is_logged_with_who_holds_the_floor(self, logged):
         k, _ = keeper()
         k.take_floor("room")
-        with caplog.at_level(logging.INFO, logger="pom.conductor.floor_keeper"):
-            k.take_floor("keyboard")
-        assert any("the keyboard asked for the floor but it is writing (held by the room)" in line for line in self.lines(caplog))
+        k.take_floor("keyboard")
+        assert any("the keyboard asked for the floor but it is writing (held by the room)" in line for line in self.lines(logged))
 
-    def test_a_refused_ask_during_the_recovery_says_so(self, caplog):
+    def test_a_refused_ask_during_the_recovery_says_so(self, logged):
         k, _ = keeper()
         k.take_floor("room").finish()
-        with caplog.at_level(logging.INFO, logger="pom.conductor.floor_keeper"):
-            k.take_floor("keyboard")
-        assert any("it is recovering (nobody's, recovering)" in line for line in self.lines(caplog))
+        k.take_floor("keyboard")
+        assert any("it is recovering (nobody's, recovering)" in line for line in self.lines(logged))
 
-    def test_an_overrun_is_a_warning_in_the_log(self, caplog):
+    def test_an_overrun_is_a_warning_in_the_log(self, logged):
         k, clock = keeper(writing=10)
         k.take_floor("room")
         clock.advance(11)
-        with caplog.at_level(logging.INFO, logger="pom.conductor.floor_keeper"):
-            k.state
-        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
-        assert len(warnings) == 1 and "the room's turn lost the floor" in warnings[0].getMessage()
+        k.state
+        warnings = logged.warnings()
+        assert len(warnings) == 1 and "the room's turn lost the floor" in warnings[0]
 
-    def test_a_late_call_from_a_turn_that_lost_the_floor_is_logged(self, caplog):
+    def test_a_late_call_from_a_turn_that_lost_the_floor_is_logged(self, logged):
         k, clock = keeper(writing=10)
         slow = k.take_floor("room")
         clock.advance(11)
-        with caplog.at_level(logging.INFO, logger="pom.conductor.floor_keeper"):
-            slow.finish()
-        assert any("the room's turn called finish after it lost the floor; ignored" in line for line in self.lines(caplog))
+        slow.finish()
+        assert any("the room's turn called finish after it lost the floor; ignored" in line for line in self.lines(logged))
 
-    def test_a_repeated_finish_of_a_normal_turn_is_not_news(self, caplog):
+    def test_a_repeated_finish_of_a_normal_turn_is_not_news(self, logged):
         k, _ = keeper()
         turn = k.take_floor("room")
         turn.finish()
-        with caplog.at_level(logging.INFO, logger="pom.conductor.floor_keeper"):
-            turn.finish()
-        assert self.lines(caplog) == []
+        before = list(self.lines(logged))
+        turn.finish()
+        assert self.lines(logged) == before                   # the second finish added nothing
 
-    def test_only_labels_and_seconds_are_logged(self, caplog):
+    def test_only_labels_and_seconds_are_logged(self, logged):
         k, clock = keeper()
-        with caplog.at_level(logging.DEBUG, logger="pom.conductor.floor_keeper"):
-            with k.take_floor("room") as turn:
-                turn.start_printing()
-            clock.advance(3)
-            k.state
-        text = " ".join(self.lines(caplog))
+        with k.take_floor("room") as turn:
+            turn.start_printing()
+        clock.advance(3)
+        k.state
+        text = " ".join(self.lines(logged))
         assert set(text.replace(".", " ").split()) <= {"floor:", "listening", "writing", "printing", "recovering", "->", "(room)", "(-)",
                                                       "after", "s", "0", "the", "room's", "turn", "is", "over", "in", "all"} | set(
             str(n) for n in range(100))

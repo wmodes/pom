@@ -1,5 +1,4 @@
 """Tests for pom.qualifying.moving_average_bar: a decaying average of the scores above a floor, with the bar a fraction above it."""
-import logging
 from types import SimpleNamespace
 
 import pytest
@@ -210,8 +209,7 @@ class TestBuildingFromSettings:
 
 
 class TestLogging:
-    def test_only_numbers_are_logged(self, caplog):
-        with caplog.at_level(logging.DEBUG):
-            b = MovingAverageBar()
-            feed(b, [3.0, 4.0])
-        assert "secret" not in caplog.text
+    def test_only_numbers_are_logged(self, logged):
+        b = MovingAverageBar()
+        feed(b, [3.0, 4.0])
+        assert "secret" not in logged.text()

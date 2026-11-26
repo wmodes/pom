@@ -1,5 +1,4 @@
 """Tests for pom.monitor.turn_history: the last hour of turns, in memory only."""
-import logging
 import threading
 
 import pytest
@@ -419,13 +418,12 @@ class TestBadSettings:
 
 
 class TestNothingSaidInTheRoomIsKept:
-    def test_neither_the_hinge_nor_the_portent_reaches_the_log_or_the_report(self, caplog, logged):
-        caplog.set_level(logging.DEBUG)
+    def test_neither_the_hinge_nor_the_portent_reaches_the_log_or_the_report(self, logged):
         h = history()
         add(h, "My secret is the neighbor.", portent=portent("the neighbor keeps secret hours"))
         add(h, "", portent=None)
         add(h, "A hinge.", score="not a number")
-        text = caplog.text + "\n".join(logged.of(h).lines())
+        text = logged.text() + "\n".join(logged.of(h).lines())
         assert "secret" not in text and "neighbor" not in text and "hinge" not in text.replace("without a hinge", "")
 
 

@@ -1,5 +1,4 @@
 """Tests for pom.scoring.scorer_model_client: scoring one clip through a fake llama-server."""
-import logging
 import math
 
 import pytest
@@ -149,14 +148,13 @@ class TestRecovery:
         with pytest.raises(ScorerModelClientError):
             client(FakePost(reply(("Sorry", 1.0))), strict=True).score("hello")
 
-    def test_nothing_said_in_the_room_reaches_a_report_or_log(self, caplog, logged):
+    def test_nothing_said_in_the_room_reaches_a_report_or_log(self, logged):
         secret = "my secret clip about the funeral"
         c = client(FakePost(OSError(f"failed on {secret}")))
-        with caplog.at_level(logging.DEBUG):
-            c.score(secret)
-            client(FakePost()).score(secret)
+        c.score(secret)
+        client(FakePost()).score(secret)
         assert all(secret not in message for message in logged.of(c).warnings())
-        assert secret not in caplog.text and "funeral" not in caplog.text
+        assert secret not in logged.text() and "funeral" not in logged.text()
 
 
 class TestSetup:
@@ -311,14 +309,13 @@ class TestExplain:
             c.explain("hello there")
             assert post.calls[0][2] == DEFAULT_EXPLAIN_TIMEOUT and len(logged.of(c).warnings()) == count     # one more warning for each bad value
 
-    def test_what_was_said_never_reaches_a_report_or_a_log(self, caplog, logged):
+    def test_what_was_said_never_reaches_a_report_or_a_log(self, logged):
         secret = "my secret clip about the funeral"
         c = ScorerModelClient(URL, PROMPT, post=FakePost(OSError(f"failed on {secret}")), explain_prompt=EXPLAIN_PROMPT)
-        with caplog.at_level(logging.DEBUG):
-            c.explain(secret)
-            explainer("7.0, a funeral")[0].explain(secret)
+        c.explain(secret)
+        explainer("7.0, a funeral")[0].explain(secret)
         assert all("funeral" not in w for w in logged.of(c).warnings())
-        assert "funeral" not in caplog.text
+        assert "funeral" not in logged.text()
 
 
 class TestParseWrittenScore:

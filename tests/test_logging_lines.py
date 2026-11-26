@@ -56,3 +56,14 @@ def test_every_log_line_is_written_in_python_s_lazy_percent_style():
     """One style for every line: `logger.warning("got %r", value)`, never `logger.warning(f"got {value!r}")` (Python's own pattern: the text is
     built only if the line is shown)."""
     assert f_string_messages() == [], "write the message with %s/%r/%g and pass the values after it"
+
+
+TESTS = Path(__file__).resolve().parent
+
+
+def test_every_test_reads_the_log_through_logged_except_the_bookkeeper_s_own():
+    """One way for a test to read the log: the `logged` fixture (tests/conftest.py). The bookkeeper's tests test the logging itself, so they read
+    pytest's `caplog` directly; no other test does."""
+    readers = [path.relative_to(TESTS).as_posix() for path in sorted(TESTS.rglob("test_*.py"))
+               if "bookkeeper" not in path.parts and path.name != "test_logging_lines.py" and "caplog" in path.read_text(encoding="utf-8")]
+    assert readers == [], "read the log with the `logged` fixture"

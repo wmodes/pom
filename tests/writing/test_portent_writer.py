@@ -4,7 +4,6 @@ The PromptBuilder and the OracleModelClient are the real ones, with a small fake
 so these tests check how the writer joins them. Where the point is repeatable exemplars, the selector is a real
 Bibliomancer with a random generator the writer is given.
 """
-import logging
 import random
 
 import pytest
@@ -134,17 +133,15 @@ class TestWhenThereIsNoPortent:
     def test_a_model_that_writes_nothing_gives_none(self):
         assert writer(FakePost(reply("   ")))[0].write("A hinge.") is None
 
-    def test_the_part_that_met_the_problem_says_so_in_the_log(self, caplog):
+    def test_the_part_that_met_the_problem_says_so_in_the_log(self, logged):
         written, _, _ = writer(FakePost(ConnectionError("down")))
-        with caplog.at_level(logging.WARNING):
-            written.write("A hinge.")
-        assert any("did not answer" in r.getMessage() for r in caplog.records)
+        written.write("A hinge.")
+        assert any("did not answer" in line for line in logged.messages())
 
-    def test_an_empty_hinge_is_in_the_log(self, caplog):
+    def test_an_empty_hinge_is_in_the_log(self, logged):
         written, _, _ = writer()
-        with caplog.at_level(logging.WARNING):
-            written.write("")
-        assert any("hinge is empty" in r.getMessage() for r in caplog.records)
+        written.write("")
+        assert any("hinge is empty" in line for line in logged.messages())
 
     def test_a_good_write_after_a_bad_one_still_works(self):
         written, post, _ = writer(FakePost(ConnectionError("down")))
@@ -152,11 +149,10 @@ class TestWhenThereIsNoPortent:
         post.result = reply()
         assert written.write("two").text == "The ghosts keep the hours."
 
-    def test_there_is_nothing_to_report_when_all_went_well(self, caplog):
+    def test_there_is_nothing_to_report_when_all_went_well(self, logged):
         written, _, _ = writer()
-        with caplog.at_level(logging.WARNING):
-            written.write("A hinge.")
-        assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+        written.write("A hinge.")
+        assert logged.ok()
 
 
 class TestRepeatableExemplars:
@@ -212,18 +208,16 @@ class TestASeedThatCannotBeUsed:
         with pytest.raises(PortentWriterError):
             writer(strict=True)[0].write("A hinge.", seed=3)
 
-    def test_the_writers_own_problem_is_in_the_log(self, caplog):
+    def test_the_writers_own_problem_is_in_the_log(self, logged):
         written, _, _ = writer()
-        with caplog.at_level(logging.WARNING):
-            written.write("A hinge.", seed=3)
-        assert any("seed" in r.getMessage() for r in caplog.records)
+        written.write("A hinge.", seed=3)
+        assert any("seed" in line for line in logged.messages())
 
 
 class TestNothingSaidInTheRoomIsKept:
-    def test_neither_the_hinge_nor_the_portent_reaches_the_report_or_the_log(self, caplog):
-        caplog.set_level(logging.DEBUG)
+    def test_neither_the_hinge_nor_the_portent_reaches_the_report_or_the_log(self, logged):
         written, _, _ = writer(FakePost(reply("the neighbor keeps secret hours")))
         written.write("my secret about the ghosts", seed=1)
         written.write("   ")
-        text = caplog.text
+        text = logged.text()
         assert "secret" not in text and "neighbor" not in text and "ghosts" not in text

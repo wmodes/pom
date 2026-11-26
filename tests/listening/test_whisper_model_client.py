@@ -1,6 +1,5 @@
 """Tests for pom.listening.whisper_model_client, against a small stand-in for whisper-server on a local port."""
 import io
-import logging
 import threading
 import time
 import wave
@@ -202,15 +201,14 @@ class TestWithAFakePost:
         client = WhisperModelClient("http://x.test", post=lambda *args: {"text": "hello"})
         assert client.text(PCM) == "" and client.error == "BadReply" and len(logged.of(client).warnings()) == 1
 
-    def test_what_was_said_never_gets_into_the_report_or_the_log(self, caplog, logged):
+    def test_what_was_said_never_gets_into_the_report_or_the_log(self, logged):
         def post(*args):
             raise RuntimeError("the secret phrase was abracadabra")
 
-        with caplog.at_level(logging.DEBUG):
-            client = WhisperModelClient("http://x.test", post=post)
-            client.text(PCM)
-            WhisperModelClient("http://x.test", post=lambda *args: "abracadabra said the room").text(PCM)
-        assert "abracadabra" not in " ".join(logged.of(client).lines()) and "abracadabra" not in caplog.text
+        client = WhisperModelClient("http://x.test", post=post)
+        client.text(PCM)
+        WhisperModelClient("http://x.test", post=lambda *args: "abracadabra said the room").text(PCM)
+        assert "abracadabra" not in " ".join(logged.of(client).lines()) and "abracadabra" not in logged.text()
 
 
 class TestAudioItCannotSend:

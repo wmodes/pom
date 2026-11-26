@@ -4,7 +4,6 @@ clips, all levels together.
 The module follows the project principle that nothing may stop the oracle: odd input gives an empty
 list or a default, never an exception, unless strict mode (development and tests) is on.
 """
-import logging
 import random
 import string
 
@@ -310,34 +309,31 @@ def test_a_custom_limit_is_used():
 
 # --- Logging ---------------------------------------------------------------------------
 
-def test_problems_are_logged_so_they_reach_journald(caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.listening.take_cutter"):
-        TakeCutter(max_words=0)
-    assert any(r.levelno == logging.WARNING and "max_words must be" in r.message for r in caplog.records)
+def test_problems_are_logged_so_they_reach_journald(logged):
+    TakeCutter(max_words=0)
+    assert any("max_words must be" in line for line in logged.warnings())
 
 
-def test_a_split_is_logged_at_debug_when_the_module_flag_is_on(caplog):
+def test_a_split_is_logged_at_debug_when_the_module_flag_is_on(logged):
     from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.listening.take_cutter", True)
     try:
         take_cutter = TakeCutter()
-        with caplog.at_level(logging.DEBUG):
-            take_cutter.split("One, two. Three.")
+        take_cutter.split("One, two. Three.")
     finally:
         get_logger("pom.listening.take_cutter", None)
-    assert any(r.levelno == logging.DEBUG and "2 sentence(s)" in r.message for r in caplog.records)
+    assert any("2 sentence(s)" in line for line in logged.debugs())
 
 
-def test_a_split_is_not_logged_when_the_module_flag_is_off(caplog):
+def test_a_split_is_not_logged_when_the_module_flag_is_off(logged):
     from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.listening.take_cutter", False)
     try:
         take_cutter = TakeCutter()
-        with caplog.at_level(logging.DEBUG):
-            take_cutter.split("One, two. Three.")
+        take_cutter.split("One, two. Three.")
     finally:
         get_logger("pom.listening.take_cutter", None)
-    assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
+    assert logged.debugs() == []
 
 
 def test_a_window_made_only_of_punctuation_is_not_emitted():

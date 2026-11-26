@@ -4,7 +4,6 @@ The parts under it are small fakes (what they do is tested elsewhere); the Floor
 ears in step with the floor is the point. The threads are real, so the tests wait for things to happen (polling, with a generous limit).
 """
 import contextlib
-import logging
 import threading
 import time
 
@@ -473,38 +472,35 @@ class TestBadSettings:
 
 
 class TestTheLogs:
-    def lines(self, caplog):
-        return [r.getMessage() for r in caplog.records if r.name == "pom.conductor.conductor"]
+    def lines(self, logged):
+        return logged.messages("pom.conductor.conductor")
 
-    def test_the_story_of_a_turn_is_in_the_log(self, caplog):
+    def test_the_story_of_a_turn_is_in_the_log(self, logged):
         finder, ears = room(hinge("H."))
         rig = Rig([(finder, ears)])
-        with caplog.at_level(logging.INFO, logger="pom.conductor.conductor"):
-            with rig.running():
-                assert wait_for(lambda: "skip_ahead" in ears.events)
-        lines = self.lines(caplog)
+        with rig.running():
+            assert wait_for(lambda: "skip_ahead" in ears.events)
+        lines = self.lines(logged)
         assert "conductor: starting" in lines
         assert any("the room's hinge takes the floor (turn 1)" in line for line in lines)
         assert any("the floor is free, so the ears open" in line for line in lines)
         assert any(line.startswith("conductor: stopped (1 turns, 0 hinges dropped)") for line in lines)
 
-    def test_a_dropped_hinge_is_logged_with_the_floor_state(self, caplog):
+    def test_a_dropped_hinge_is_logged_with_the_floor_state(self, logged):
         hold = threading.Event()
         finder, ears = room(hinge("First."), lambda: wait_for(lambda: rig.taker.started.is_set()), hinge("Second."))
         rig = Rig([(finder, ears)], taker=FakeTurnTaker(hold=hold))
-        with caplog.at_level(logging.INFO, logger="pom.conductor.conductor"):
-            with rig.running():
-                assert wait_for(lambda: rig.conductor.hinges_dropped == 1)
-                hold.set()
-        assert any("a hinge from the room was dropped; the floor is writing (1 dropped so far)" in line for line in self.lines(caplog))
+        with rig.running():
+            assert wait_for(lambda: rig.conductor.hinges_dropped == 1)
+            hold.set()
+        assert any("a hinge from the room was dropped; the floor is writing (1 dropped so far)" in line for line in self.lines(logged))
 
-    def test_nothing_said_reaches_a_log_or_a_report(self, caplog, logged):
+    def test_nothing_said_reaches_a_log_or_a_report(self, logged):
         finder, ears = room(attempt(SECRET), hinge(SECRET + " Again."))
         rig = Rig([(finder, ears), room(raises=RuntimeError(SECRET))])
-        with caplog.at_level(logging.DEBUG):
-            with rig.running():
-                assert wait_for(lambda: len(rig.turned) == 1)
-        text = caplog.text + "\n".join(logged.of(rig.conductor).lines())
+        with rig.running():
+            assert wait_for(lambda: len(rig.turned) == 1)
+        text = logged.text() + "\n".join(logged.of(rig.conductor).lines())
         for word in ("neighbor", "secret", "cellar"):
             assert word not in text
 

@@ -1,5 +1,4 @@
 """Tests for pom.device_finder: the one rule that finds the microphone and the terminal, through a small finder that lists what the test says."""
-import logging
 
 import pytest
 
@@ -30,10 +29,6 @@ MIC = gadget("/dev/gadget/mic-1", "MicOne", "Big Studio Mic")
 CAM = gadget("/dev/gadget/cam-2", "WebCam", "Camera Mic")
 
 
-def lines(caplog, level):
-    return [r.getMessage() for r in caplog.records if r.name == LOGGER and r.levelno == level]
-
-
 # --- auto -----------------------------------------------------------------------------------
 
 def test_the_keyword_is_auto():
@@ -56,21 +51,19 @@ def test_auto_with_several_takes_the_first_in_sorted_order_whatever_order_they_w
     assert ListedFinder([CAM, MIC]).resolve("auto") == "/dev/gadget/cam-2"
 
 
-def test_auto_with_several_warns_with_what_was_chosen_and_what_was_there(caplog, logged):
+def test_auto_with_several_warns_with_what_was_chosen_and_what_was_there(logged):
     finder = ListedFinder([MIC, CAM])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        finder.resolve("auto")
-    warnings = lines(caplog, logging.WARNING)
+    finder.resolve("auto")
+    warnings = logged.warnings(LOGGER)
     assert len(warnings) == 1 and "several gadgets" in warnings[0]
     assert "chosen: /dev/gadget/cam-2" in warnings[0] and "/dev/gadget/mic-1" in warnings[0]
     assert len(logged.of(finder).warnings()) == 1
 
 
-def test_auto_with_one_device_has_no_complaints(caplog, logged):
+def test_auto_with_one_device_has_no_complaints(logged):
     finder = ListedFinder([MIC])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        finder.resolve("auto")
-    assert logged.of(finder).ok() and lines(caplog, logging.WARNING) == []
+    finder.resolve("auto")
+    assert logged.of(finder).ok() and logged.warnings(LOGGER) == []
 
 
 # --- a name -----------------------------------------------------------------------------------
@@ -80,43 +73,38 @@ def test_a_name_is_any_part_of_any_of_the_devices_names_whatever_the_case(part):
     assert ListedFinder([CAM, MIC]).resolve(part) == "/dev/gadget/mic-1"
 
 
-def test_a_name_that_matches_one_device_is_not_a_complaint(caplog, logged):
+def test_a_name_that_matches_one_device_is_not_a_complaint(logged):
     finder = ListedFinder([CAM, MIC])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        finder.resolve("Studio")
-    assert logged.of(finder).ok() and lines(caplog, logging.WARNING) == []
+    finder.resolve("Studio")
+    assert logged.of(finder).ok() and logged.warnings(LOGGER) == []
 
 
-def test_a_name_that_matches_several_takes_the_first_in_sorted_order_and_warns(caplog):
+def test_a_name_that_matches_several_takes_the_first_in_sorted_order_and_warns(logged):
     finder = ListedFinder([MIC, CAM])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        assert finder.resolve("mic") == "/dev/gadget/cam-2"          # both have "mic" in a name; the sorted first is the camera
-    assert len(lines(caplog, logging.WARNING)) == 1 and "several gadgets" in lines(caplog, logging.WARNING)[0]
+    assert finder.resolve("mic") == "/dev/gadget/cam-2"          # both have "mic" in a name; the sorted first is the camera
+    assert len(logged.warnings(LOGGER)) == 1 and "several gadgets" in logged.warnings(LOGGER)[0]
 
 
-def test_a_name_that_is_not_found_falls_back_to_whatever_is_there_and_warns(caplog):
+def test_a_name_that_is_not_found_falls_back_to_whatever_is_there_and_warns(logged):
     finder = ListedFinder([MIC])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        assert finder.resolve("Nonesuch") == "/dev/gadget/mic-1"
-    warnings = lines(caplog, logging.WARNING)
+    assert finder.resolve("Nonesuch") == "/dev/gadget/mic-1"
+    warnings = logged.warnings(LOGGER)
     assert len(warnings) == 1 and "'Nonesuch'" in warnings[0] and "/dev/gadget/mic-1" in warnings[0]
 
 
-def test_a_name_that_is_not_found_with_several_there_falls_back_and_says_what_was_chosen_and_what_was_there(caplog):
+def test_a_name_that_is_not_found_with_several_there_falls_back_and_says_what_was_chosen_and_what_was_there(logged):
     finder = ListedFinder([MIC, CAM])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        assert finder.resolve("Nonesuch") == "/dev/gadget/cam-2"
-    text = " ".join(lines(caplog, logging.WARNING))
+    assert finder.resolve("Nonesuch") == "/dev/gadget/cam-2"
+    text = " ".join(logged.warnings(LOGGER))
     assert "'Nonesuch'" in text and "chosen: /dev/gadget/cam-2" in text and "/dev/gadget/mic-1" in text
 
 
 # --- the log ----------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("setting, devices", [("auto", [MIC]), ("Studio", [MIC, CAM]), ("Nonesuch", [MIC])])
-def test_every_lookup_that_finds_something_logs_the_setting_what_was_there_and_what_was_chosen_at_info(caplog, setting, devices):
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        ListedFinder(devices).resolve(setting)
-    infos = lines(caplog, logging.INFO)
+def test_every_lookup_that_finds_something_logs_the_setting_what_was_there_and_what_was_chosen_at_info(logged, setting, devices):
+    ListedFinder(devices).resolve(setting)
+    infos = logged.infos(LOGGER)
     assert len(infos) == 1
     assert f"{setting!r}" in infos[0] and "available:" in infos[0] and "chosen: /dev/gadget/mic-1" in infos[0]
     assert "gadget" in infos[0]
@@ -124,12 +112,11 @@ def test_every_lookup_that_finds_something_logs_the_setting_what_was_there_and_w
         assert device.address in infos[0]
 
 
-def test_each_lookup_that_finds_something_logs_again_so_the_log_shows_every_time_it_looked(caplog):
+def test_each_lookup_that_finds_something_logs_again_so_the_log_shows_every_time_it_looked(logged):
     finder = ListedFinder([MIC])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        finder.resolve("auto")
-        finder.resolve("auto")
-    assert len(lines(caplog, logging.INFO)) == 2
+    finder.resolve("auto")
+    finder.resolve("auto")
+    assert len(logged.infos(LOGGER)) == 2
 
 
 # --- found ----------------------------------------------------------------------------------
@@ -158,38 +145,35 @@ def test_found_is_true_for_a_name_that_fell_back_to_what_is_there_and_false_when
 
 # --- nothing there ----------------------------------------------------------------------------
 
-def test_nothing_there_hands_the_setting_back_as_written_so_opening_it_fails_loudly(caplog):
+def test_nothing_there_hands_the_setting_back_as_written_so_opening_it_fails_loudly():
     finder = ListedFinder([])
     assert finder.resolve("auto") == "auto"
     assert ListedFinder([]).resolve("/dev/ttyACM0") == "/dev/ttyACM0"
 
 
-def test_nothing_there_is_a_warning_every_time_and_the_finder_does_no_muting_of_its_own(caplog):
+def test_nothing_there_is_a_warning_every_time_and_the_finder_does_no_muting_of_its_own(logged):
     finder = ListedFinder([])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        for _ in range(200):                                   # the log's LogMuter mutes the repeats; the finder just says it
-            finder.resolve("auto")
-    warnings = lines(caplog, logging.WARNING)
+    for _ in range(200):                                   # the log's LogMuter mutes the repeats; the finder just says it
+        finder.resolve("auto")
+    warnings = logged.warnings(LOGGER)
     assert len(warnings) == 200 and all("no gadget" in w and "trying again" in w for w in warnings)
     assert not any("not logging" in w for w in warnings)
 
 
-def test_the_finder_counts_nothing_so_coming_back_is_just_the_found_line_after_the_warnings(caplog):
+def test_the_finder_counts_nothing_so_coming_back_is_just_the_found_line_after_the_warnings(logged):
     finder = ListedFinder([])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        for _ in range(4):
-            finder.resolve("auto")
-        finder.devices = [MIC]
+    for _ in range(4):
         finder.resolve("auto")
-    assert not any("tries" in m for m in lines(caplog, logging.INFO) + lines(caplog, logging.WARNING))
-    assert len(lines(caplog, logging.WARNING)) == 4 and len(lines(caplog, logging.INFO)) == 1
+    finder.devices = [MIC]
+    finder.resolve("auto")
+    assert not any("tries" in m for m in logged.infos(LOGGER) + logged.warnings(LOGGER))
+    assert len(logged.warnings(LOGGER)) == 4 and len(logged.infos(LOGGER)) == 1
 
 
-def test_a_problem_is_reported_once_through_the_recorder_not_logged_a_second_way(caplog, logged):
+def test_a_problem_is_reported_once_through_the_recorder_not_logged_a_second_way(logged):
     finder = ListedFinder([])
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        finder.resolve("auto")
-    assert len(lines(caplog, logging.WARNING)) == 1 and len(logged.of(finder).warnings()) == 1
+    finder.resolve("auto")
+    assert len(logged.warnings(LOGGER)) == 1 and len(logged.of(finder).warnings()) == 1
 
 
 def test_a_listing_that_fails_hands_back_a_name_as_written_too():
@@ -201,11 +185,10 @@ def test_a_name_with_spaces_round_it_is_still_a_name_and_gives_no_complaint(logg
     assert finder.resolve("  studio ") == "/dev/gadget/mic-1" and logged.of(finder).ok()
 
 
-def test_a_listing_that_fails_counts_as_nothing_there_and_names_the_kind_of_error_only(caplog):
+def test_a_listing_that_fails_counts_as_nothing_there_and_names_the_kind_of_error_only(logged):
     finder = ListedFinder(OSError("secret detail"))
-    with caplog.at_level(logging.INFO, logger=LOGGER):
-        assert finder.resolve("auto") == "auto"
-    warnings = lines(caplog, logging.WARNING)
+    assert finder.resolve("auto") == "auto"
+    warnings = logged.warnings(LOGGER)
     assert len(warnings) == 1 and "OSError" in warnings[0] and "secret detail" not in warnings[0]
 
 

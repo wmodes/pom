@@ -2,7 +2,6 @@
 
 The terminal and the typed-line scorer are small fakes (what they do is tested elsewhere); what the watcher does with them is the point.
 """
-import logging
 import threading
 
 import pytest
@@ -106,12 +105,11 @@ class TestPausingForATurn:
         watcher.skip_ahead()
         assert not watcher.paused
 
-    def test_a_line_typed_during_a_turn_is_counted_never_kept(self, caplog):
+    def test_a_line_typed_during_a_turn_is_counted_never_kept(self, logged):
         watcher, _, _, _ = watcher_over(SECRET_LINE)
         watcher.pause()
-        with caplog.at_level(logging.DEBUG):
-            list(watcher.watch())
-        assert watcher.dropped_lines == 1 and "neighbor" not in caplog.text and "secret" not in caplog.text
+        list(watcher.watch())
+        assert watcher.dropped_lines == 1 and "neighbor" not in logged.text() and "secret" not in logged.text()
 
     def test_both_calls_return_at_once_and_may_be_repeated_from_another_thread(self):
         watcher, _, _, _ = watcher_over()

@@ -3,7 +3,6 @@
 The Eavesdropper and the Scorer are small fakes (what they do is tested elsewhere); the TakeCutter and the
 BarKeeper are the real ones, because how the finder joins them is the point.
 """
-import logging
 
 import pytest
 
@@ -250,20 +249,18 @@ class TestClosingAndReporting:
         made.close()
         assert eavesdropper.closed == 2
 
-    def test_there_is_nothing_to_report_when_all_went_well(self, caplog):
+    def test_there_is_nothing_to_report_when_all_went_well(self, logged):
         made, _, _ = finder([segment("Hello there.")])
-        with caplog.at_level(logging.WARNING):
-            found(made)
-        assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+        found(made)
+        assert logged.ok()
 
 
 class TestNothingSaidInTheRoomIsKept:
-    def test_what_was_heard_reaches_neither_the_log_nor_the_report(self, caplog):
-        caplog.set_level(logging.DEBUG)
+    def test_what_was_heard_reaches_neither_the_log_nor_the_report(self, logged):
         made, _, _ = finder([segment("My secret is the neighbor.", 10.0, room_tone=("(a secret gunshot)",))],
                             score_room_tone=True)
         found(made)
-        text = caplog.text
+        text = logged.text()
         assert "secret" not in text and "neighbor" not in text and "gunshot" not in text
 
 

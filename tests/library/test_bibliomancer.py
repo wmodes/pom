@@ -7,7 +7,6 @@ The module follows the project principle that nothing may stop the oracle: by de
 logged and the Bibliomancer returns what it can. In strict mode the same problems raise.
 """
 import collections
-import logging
 import random
 from pathlib import Path
 
@@ -433,47 +432,41 @@ def test_layout_drift_is_reported_but_does_not_stop_the_sampler(logged):
     assert any("cooking" in w for w in logged.of(circulation).warnings())
 
 
-def test_building_logs_a_summary_and_problems(caplog):
+def test_building_logs_a_summary_and_problems(logged):
     store = make_store({"red": {"r": 5}, "blue": {"b": 5}})
-    with caplog.at_level(logging.INFO, logger="pom.library.bibliomancer"):
-        Bibliomancer(store, circulation_for(red={"holdings": {"r": 0}}, blue={}))
-    messages = [r.message for r in caplog.records if r.name == "pom.library.bibliomancer"]
+    Bibliomancer(store, circulation_for(red={"holdings": {"r": 0}}, blue={}))
+    messages = logged.messages("pom.library.bibliomancer")
     assert any("no drawable passages" in m for m in messages)
     assert any("selector ready: 5 drawable passage(s) in 1 shelf(s)" in m for m in messages)
 
 
-def test_an_empty_store_logs_a_critical_line(caplog):
-    with caplog.at_level(logging.INFO, logger="pom.library.bibliomancer"):
-        Bibliomancer(Catalog.from_passages([]), Circulation.from_dict({}))
-    assert any(r.levelno == logging.CRITICAL and "nothing to draw from" in r.message
-               for r in caplog.records)
+def test_an_empty_store_logs_a_critical_line(logged):
+    Bibliomancer(Catalog.from_passages([]), Circulation.from_dict({}))
+    assert any("nothing to draw from" in line for line in logged.criticals())
 
 
-def test_draws_are_logged_at_debug_when_the_module_flag_is_on(caplog):
+def test_draws_are_logged_at_debug_when_the_module_flag_is_on(logged):
     from pom.bookkeeper.log_setup import get_logger
     store, circulation = tiles()
     get_logger("pom.library.bibliomancer", True)
     try:
         selector = Bibliomancer(store, circulation, random.Random(1))
-        with caplog.at_level(logging.DEBUG):
-            selector.draw(3)
+        selector.draw(3)
     finally:
         get_logger("pom.library.bibliomancer", None)
-    assert any(r.levelno == logging.DEBUG and r.message.startswith("drew 3 passage(s):")
-               for r in caplog.records)
+    assert any(line.startswith("drew 3 passage(s):") for line in logged.debugs())
 
 
-def test_draws_are_not_logged_when_the_module_flag_is_off(caplog):
+def test_draws_are_not_logged_when_the_module_flag_is_off(logged):
     from pom.bookkeeper.log_setup import get_logger
     store, circulation = tiles()
     get_logger("pom.library.bibliomancer", False)
     try:
         selector = Bibliomancer(store, circulation, random.Random(1))
-        with caplog.at_level(logging.DEBUG):
-            selector.draw(3)
+        selector.draw(3)
     finally:
         get_logger("pom.library.bibliomancer", None)
-    assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
+    assert logged.debugs("pom.library.bibliomancer") == []
 
 
 # --- The committed library --------------------------------------------------------------
@@ -594,21 +587,19 @@ def test_a_bad_redraw_limit_raises_in_strict_mode():
         Bibliomancer(store, circulation, random.Random(5), strict=True, redraw_limit=-1)
 
 
-def test_the_debug_log_counts_the_redraws_without_any_text(caplog):
+def test_the_debug_log_counts_the_redraws_without_any_text(logged):
     store, circulation = unfinished_store()
     selector = Bibliomancer(store, circulation, random.Random(6))
-    with caplog.at_level(logging.DEBUG, logger="pom.library.bibliomancer"):
-        selector.draw(1)
-    line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("drew"))
+    selector.draw(1)
+    line = next(line for line in logged.debugs() if line.startswith("drew"))
     assert "pick(s) redone for an unfinished ending" in line
     assert LEAD_IN not in line and CUT not in line
 
 
-def test_the_startup_line_says_how_many_are_unfinished(caplog):
+def test_the_startup_line_says_how_many_are_unfinished(logged):
     store, circulation = unfinished_store()
-    with caplog.at_level(logging.INFO, logger="pom.library.bibliomancer"):
-        Bibliomancer(store, circulation, random.Random(6))
-    assert any("2 end unfinished and are drawn again" in r.getMessage() for r in caplog.records)
+    Bibliomancer(store, circulation, random.Random(6))
+    assert any("2 end unfinished and are drawn again" in line for line in logged.messages())
 
 
 class ScriptedRandom(random.Random):
@@ -622,10 +613,9 @@ class ScriptedRandom(random.Random):
         return self._values.pop(0)
 
 
-def test_the_debug_log_counts_exactly_how_many_picks_were_redone(caplog):
+def test_the_debug_log_counts_exactly_how_many_picks_were_redone(logged):
     store, circulation = unfinished_store()                  # the table runs cut, good, lead: each a third of the odds
     selector = Bibliomancer(store, circulation, ScriptedRandom([0.1, 0.9, 0.5]))     # cut, lead, then good
-    with caplog.at_level(logging.DEBUG, logger="pom.library.bibliomancer"):
-        assert [p.id for p in selector.draw(1)] == ["good#0"]
-    line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("drew"))
+    assert [p.id for p in selector.draw(1)] == ["good#0"]
+    line = next(line for line in logged.debugs() if line.startswith("drew"))
     assert "(2 pick(s) redone for an unfinished ending)" in line

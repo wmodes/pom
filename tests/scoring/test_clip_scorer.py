@@ -1,5 +1,4 @@
 """Tests for pom.scoring.clip_scorer: filter, model, unscored results and circuit breaker, with fakes throughout."""
-import logging
 
 import pytest
 
@@ -267,17 +266,16 @@ class TestCircuitBreaker:
         assert not scorer.degraded
         assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL
 
-    def test_recovery_is_announced_once(self, caplog):
+    def test_recovery_is_announced_once(self, logged):
         client, clock = FakeClient(None), Clock()
         scorer = make(client, clock=clock)
         for _ in range(DEFAULT_FAILURE_LIMIT):
             scorer.score_text("The lamp hums.")
         client.value = 6.0
         clock.now += DEFAULT_RETRY_SECONDS
-        with caplog.at_level(logging.INFO):
-            for _ in range(3):
-                scorer.score_text("The lamp hums.")
-        assert caplog.text.count("answering again") == 1
+        for _ in range(3):
+            scorer.score_text("The lamp hums.")
+        assert logged.text().count("answering again") == 1
 
     def test_the_defaults_are_three_failures_thirty_seconds_floor_one_and_one_content_word(self):
         client, clock = FakeClient(None), Clock()
@@ -367,11 +365,10 @@ class TestSettings:
 
 
 class TestPrivacy:
-    def test_nothing_said_reaches_a_report_or_a_log(self, caplog, logged):
+    def test_nothing_said_reaches_a_report_or_a_log(self, logged):
         secret = "the funeral was held on a rainy tuesday"
         scorer = make(FakeClient(None), failure_limit=1)
-        with caplog.at_level(logging.DEBUG):
-            scorer.score_text(secret)
-            make(FakeClient(5.0)).score_text(secret)
+        scorer.score_text(secret)
+        make(FakeClient(5.0)).score_text(secret)
         assert all("funeral" not in message for message in logged.of(scorer).warnings())
-        assert "funeral" not in caplog.text and "rainy" not in caplog.text
+        assert "funeral" not in logged.text() and "rainy" not in logged.text()

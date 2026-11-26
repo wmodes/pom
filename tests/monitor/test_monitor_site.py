@@ -4,7 +4,6 @@ The pages are read with Flask's test client; one test starts the real server on 
 """
 import base64
 import json
-import logging
 import urllib.error
 import urllib.request
 
@@ -104,12 +103,11 @@ class TestThePassword:
         with pytest.raises(MonitorSiteError, match="password"):
             MonitorSite(TurnHistory(), "", strict=True)
 
-    def test_the_password_is_never_in_a_report_or_a_log(self, caplog, logged):
-        caplog.set_level(logging.DEBUG)
+    def test_the_password_is_never_in_a_report_or_a_log(self, logged):
         site = MonitorSite(TurnHistory(), "")
         _, _, client, _ = make()
         client.get("/", headers=basic(password="wrong-guess-1234"))
-        assert PASSWORD not in caplog.text and "wrong-guess-1234" not in caplog.text
+        assert PASSWORD not in logged.text() and "wrong-guess-1234" not in logged.text()
         assert "wrong-guess-1234" not in "\n".join(logged.of(site).lines())
 
 
@@ -861,19 +859,17 @@ class TestRunningForReal:
         finally:
             site.stop()
 
-    def test_the_pages_polling_leaves_no_line_in_the_log_or_on_the_console_at_info(self, caplog, capfd):
-        with caplog.at_level(logging.INFO, logger="pom.monitor.monitor_site"):
-            self.poll_once()
+    def test_the_pages_polling_leaves_no_line_in_the_log_or_on_the_console_at_info(self, logged, capfd):
+        self.poll_once()
         seen = capfd.readouterr()
         assert "/api/turns" not in seen.out + seen.err                          # not werkzeug's own line on the console either
-        assert not [r for r in caplog.records if "/api/turns" in r.getMessage()]
+        assert not any("/api/turns" in line for line in logged.infos() + logged.problems())     # at INFO and above: nothing
 
-    def test_at_debug_each_request_is_one_debug_line_from_this_module_and_nothing_else(self, caplog, capfd):
-        with caplog.at_level(logging.DEBUG, logger="pom.monitor.monitor_site"):
-            self.poll_once()
-        lines = [r for r in caplog.records if r.name == "pom.monitor.monitor_site" and "/api/turns" in r.getMessage()]
-        assert len(lines) == 1 and lines[0].levelno == logging.DEBUG
-        assert '"GET /api/turns HTTP/1.1" 200' in lines[0].getMessage()
+    def test_at_debug_each_request_is_one_debug_line_from_this_module_and_nothing_else(self, logged, capfd):
+        self.poll_once()
+        lines = [line for line in logged.messages() if "/api/turns" in line]
+        assert len(lines) == 1 and lines == [line for line in logged.debugs("pom.monitor.monitor_site") if "/api/turns" in line]
+        assert '"GET /api/turns HTTP/1.1" 200' in lines[0]
         seen = capfd.readouterr()
         assert "/api/turns" not in seen.out + seen.err                          # not also werkzeug's own line
 
@@ -919,14 +915,13 @@ class TestRunningForReal:
 
 
 class TestNothingSaidInTheRoomIsLogged:
-    def test_hinges_and_portents_reach_neither_the_log_nor_the_report(self, caplog, logged):
-        caplog.set_level(logging.DEBUG)
+    def test_hinges_and_portents_reach_neither_the_log_nor_the_report(self, logged):
         site, history, client, _ = make(status=lambda: 1 / 0)
         record = add(history, "My secret is the neighbour.", portent=portent("the neighbour keeps secret hours"))
         get(client, "/")
         get(client, f"/turn/{record.id}")
         get(client, "/api/turns")
-        text = caplog.text + "\n".join(logged.of(site).lines())
+        text = logged.text() + "\n".join(logged.of(site).lines())
         assert "secret" not in text and "neighbour" not in text
 
 

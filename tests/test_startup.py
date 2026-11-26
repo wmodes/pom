@@ -1,5 +1,4 @@
 """Tests for pom.startup: the startup runner and the list of planned duties."""
-import logging
 
 import pytest
 
@@ -119,11 +118,10 @@ class TestSummary:
         text = run([Fake("a", StepOutcome(StepStatus.FAILED), critical=True)]).summary()
         assert text.endswith("NOT READY")
 
-    def test_the_summary_and_each_step_are_logged(self, caplog):
-        with caplog.at_level(logging.INFO, logger="pom.startup"):
-            run([Fake("mic"), Fake("scorer", StepOutcome(StepStatus.FAILED, "no answer"))])
-        assert "step mic: done" in caplog.text and "step scorer: failed" in caplog.text
-        assert "startup: 1 done, 0 skipped, 1 failed; ready" in caplog.text
+    def test_the_summary_and_each_step_are_logged(self, logged):
+        run([Fake("mic"), Fake("scorer", StepOutcome(StepStatus.FAILED, "no answer"))])
+        assert "step mic: done" in logged.text() and "step scorer: failed" in logged.text()
+        assert "startup: 1 done, 0 skipped, 1 failed; ready" in logged.text()
 
 
 class TestPlannedSteps:

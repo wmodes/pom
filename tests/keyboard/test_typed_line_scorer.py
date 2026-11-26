@@ -3,7 +3,6 @@
 The Scorer is a small fake (what it does is tested elsewhere); the BarKeeper is the real one over a PercentileBar, because
 how the typed line meets the room's bar is the point.
 """
-import logging
 
 import pytest
 
@@ -237,11 +236,10 @@ class TestTheScoreMultiplierIsChecked:
 
 
 class TestWhatIsKept:
-    def test_the_typed_text_is_never_logged(self, caplog):
+    def test_the_typed_text_is_never_logged(self, logged):
         made, _, _, _ = typed({"the secret words": 9.0})
-        with caplog.at_level(logging.DEBUG):
-            made.score("the secret words")
-        assert "secret" not in caplog.text
+        made.score("the secret words")
+        assert "secret" not in logged.text()
 
     def test_the_typed_text_is_never_in_the_report(self, logged):
         made, _, _, _ = typed(score_multiplier=-1)

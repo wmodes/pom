@@ -8,7 +8,6 @@ Everything runs against tiny in-memory documents or temp files, except the last 
 check of the committed circulation file.
 """
 import json
-import logging
 from pathlib import Path
 
 import pytest
@@ -148,17 +147,14 @@ def test_many_problems_at_once_never_raise_and_all_are_reported(logged):
     assert circulation.share("news") == 1.0
 
 
-def test_problems_are_logged_so_they_reach_journald(caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.library.circulation"):
-        Circulation.from_dict(doc(news={"share": "oops"}))
-    assert any(r.levelno == logging.WARNING and "shelf 'news' share" in r.message
-               for r in caplog.records)
+def test_problems_are_logged_so_they_reach_journald(logged):
+    Circulation.from_dict(doc(news={"share": "oops"}))
+    assert any("shelf 'news' share" in line for line in logged.warnings())
 
 
-def test_a_clean_file_logs_no_warnings(caplog):
-    with caplog.at_level(logging.DEBUG, logger="pom.library.circulation"):
-        Circulation.from_dict(doc(news={"share": 2}))
-    assert [r for r in caplog.records if r.levelno >= logging.WARNING] == []
+def test_a_clean_file_logs_no_warnings(logged):
+    Circulation.from_dict(doc(news={"share": 2}))
+    assert logged.ok()
 
 
 @pytest.fixture
@@ -169,26 +165,23 @@ def module_debug():
     get_logger("pom.library.circulation", None)
 
 
-def test_debug_lines_appear_only_when_the_module_flag_is_on(caplog, module_debug):
+def test_debug_lines_appear_only_when_the_module_flag_is_on(logged, module_debug):
     module_debug(True)
-    with caplog.at_level(logging.DEBUG, logger="pom.library.circulation"):
-        Circulation.from_dict(doc(news={"share": 2})).shares_for(["news"])
-    debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    Circulation.from_dict(doc(news={"share": 2})).shares_for(["news"])
+    debug = logged.debugs()
     assert any("parsed 1 shelf share" in m for m in debug)
     assert any("normalized shares" in m for m in debug)
 
 
-def test_debug_lines_are_hidden_when_the_module_flag_is_off(caplog, module_debug):
+def test_debug_lines_are_hidden_when_the_module_flag_is_off(logged, module_debug):
     module_debug(False)
-    with caplog.at_level(logging.DEBUG):   # root only: naming the logger would reset its level
-        Circulation.from_dict(doc(news={"share": 2}))
-    assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
+    Circulation.from_dict(doc(news={"share": 2}))
+    assert logged.debugs() == []
 
 
-def test_check_problems_are_logged_too(caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.library.circulation"):
-        Circulation.from_dict(doc(news={"holdings": {"ads": 1}})).check(LAYOUT)
-    assert any("not in circulation file" in r.message for r in caplog.records)
+def test_check_problems_are_logged_too(logged):
+    Circulation.from_dict(doc(news={"holdings": {"ads": 1}})).check(LAYOUT)
+    assert any("not in circulation file" in line for line in logged.messages())
 
 
 # --- The same problems in strict mode (development and tests) --------------------------

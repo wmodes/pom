@@ -1,5 +1,4 @@
 """Tests for pom.writing.oracle_model_client: asking for a portent through a fake llama-server."""
-import logging
 
 import pytest
 
@@ -183,12 +182,11 @@ class TestSettings:
 
 
 class TestPrivacy:
-    def test_neither_the_prompt_nor_the_portent_reaches_the_report_or_the_log(self, caplog, logged):
-        caplog.set_level(logging.DEBUG)
+    def test_neither_the_prompt_nor_the_portent_reaches_the_report_or_the_log(self, logged):
         c = client()
         c.consult("They said: a secret about the neighbor.")
         client(FakePost(OSError("a secret about the neighbor"))).consult("They said: a secret about the neighbor.")
         failed = client(FakePost(OSError("down")))
         failed.consult("They said: a secret about the neighbor.")
-        assert "secret" not in caplog.text and "neighbor" not in caplog.text and "ghosts" not in caplog.text
+        assert "secret" not in logged.text() and "neighbor" not in logged.text() and "ghosts" not in logged.text()
         assert all("secret" not in line and "ghosts" not in line for line in logged.of(failed).lines())

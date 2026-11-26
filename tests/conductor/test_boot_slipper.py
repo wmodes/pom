@@ -3,7 +3,6 @@
 The terminal is a fake the test scripts (offline for a while, then online, a port that dies); the FloorKeeper and the formatter are the
 real ones, because how the slip takes the floor and is set for the paper is the point. Waiting is real but zero seconds long.
 """
-import logging
 import threading
 from types import SimpleNamespace
 
@@ -61,10 +60,9 @@ class TestTheSlip:
         slipper_for(terminal, [])[0].run()
         assert "LINE 1 ....... 127.0.0.1\n" in terminal.typed[0]
 
-    def test_the_log_says_the_loopback_address_when_there_is_no_network(self, caplog):
-        with caplog.at_level(logging.INFO, logger="pom.conductor.boot_slipper"):
-            slipper_for(FakeTerminal(), [])[0].run()
-        assert any("address 127.0.0.1" in r.getMessage() for r in caplog.records)
+    def test_the_log_says_the_loopback_address_when_there_is_no_network(self, logged):
+        slipper_for(FakeTerminal(), [])[0].run()
+        assert any("address 127.0.0.1" in line for line in logged.messages())
 
     def test_every_address_is_listed_when_there_is_more_than_one(self):
         terminal = FakeTerminal()
@@ -97,11 +95,10 @@ class TestTheSlip:
         slipper_for(terminal, ["10.0.0.5"], template="MODE {terminal} {address}")[0].run()
         assert terminal.typed[0].startswith("MODE (terminal) 10.0.0.5")      # the print wheel has no braces, so the formatter types parentheses
 
-    def test_the_addresses_are_logged_and_no_other_text(self, caplog):
+    def test_the_addresses_are_logged_and_no_other_text(self, logged):
         terminal = FakeTerminal()
-        with caplog.at_level(logging.INFO, logger="pom.conductor.boot_slipper"):
-            slipper_for(terminal, ["192.168.1.23"])[0].run()
-        messages = [r.getMessage() for r in caplog.records]
+        slipper_for(terminal, ["192.168.1.23"])[0].run()
+        messages = logged.messages()
         assert any("192.168.1.23" in m for m in messages) and not any("CADETWRITER" in m for m in messages)
 
 
@@ -247,13 +244,12 @@ class TestWhenTheTypewriterFails:
         assert slipper.run() is True
         assert len(terminal.typed) == 2 and slipper.typed is True
 
-    def test_a_typewriter_that_fails_part_way_is_not_typed_to_again(self, caplog):
+    def test_a_typewriter_that_fails_part_way_is_not_typed_to_again(self, logged):
         terminal = FakeTerminal(results=[PrintResult(12, 0.0, False)])
         slipper, _ = slipper_for(terminal, ["10.0.0.5"])
-        with caplog.at_level(logging.WARNING, logger="pom.conductor.boot_slipper"):
-            assert slipper.run() is False
+        assert slipper.run() is False
         assert len(terminal.typed) == 1 and slipper.typed is False
-        assert any("not typed again" in r.getMessage() for r in caplog.records)
+        assert any("not typed again" in line for line in logged.messages())
 
     def test_the_floor_is_given_back_after_a_failure(self):
         terminal = FakeTerminal(results=[PrintResult(12, 0.0, False)])
@@ -263,16 +259,15 @@ class TestWhenTheTypewriterFails:
 
 
 class TestItNeverStopsThePrinter:
-    def test_an_error_in_the_thread_is_a_warning_not_a_crash(self, caplog):
+    def test_an_error_in_the_thread_is_a_warning_not_a_crash(self, logged):
         class Broken(FakeTerminal):
             def online(self):
                 raise RuntimeError("boom")
         slipper, _ = slipper_for(Broken(), ["10.0.0.5"])
-        with caplog.at_level(logging.WARNING, logger="pom.conductor.boot_slipper"):
-            slipper.start()
-            slipper._thread.join(timeout=3)
+        slipper.start()
+        slipper._thread.join(timeout=3)
         assert slipper.typed is False
-        assert any("RuntimeError" in r.getMessage() for r in caplog.records)
+        assert any("RuntimeError" in line for line in logged.messages())
 
     def test_stop_is_safe_to_repeat_and_before_start(self):
         slipper, _ = slipper_for(FakeTerminal(), [])

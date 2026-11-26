@@ -1,6 +1,5 @@
 """Tests for the TerminalPort and the ConsoleTerminal: typing paced to a serial port, and the keyboard coming back."""
 import io
-import logging
 import os
 import threading
 import time
@@ -774,12 +773,11 @@ class TestAHeldMachine:
         port, serial_port, _, opened = stalled_port({1: TimeoutError("slow")})
         assert port.transmit("abc").completed is True and serial_port.written == b"abc" and len(opened) == 1
 
-    def test_a_stall_is_a_warning_when_it_begins_and_a_line_in_the_log_when_typing_goes_on(self, caplog, logged):
+    def test_a_stall_is_a_warning_when_it_begins_and_a_line_in_the_log_when_typing_goes_on(self, logged):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 12)})
-        with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
-            port.transmit("abcdef")
+        port.transmit("abcdef")
         assert "stopped taking characters" in logged.of(port).warnings()[0] and "2 of 6" in logged.of(port).warnings()[0]
-        assert any("typing again after" in r.getMessage() for r in caplog.records)
+        assert any("typing again after" in line for line in logged.messages())
 
     def test_every_try_after_the_first_says_the_terminal_is_still_not_typing_and_the_log_mutes_the_repeats(self, logged):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 12)})          # ten refusals in a row
@@ -839,11 +837,10 @@ class TestAHeldMachine:
         assert port.transmit("abc").completed is False
         assert port.transmit("xyz").completed is True
 
-    def test_neither_the_text_nor_the_state_of_the_wait_leaks_words(self, caplog, logged):
+    def test_neither_the_text_nor_the_state_of_the_wait_leaks_words(self, logged):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 200)}, stall_patience_seconds=100)
-        with caplog.at_level(logging.DEBUG):
-            port.transmit("zebra-secret portent")
-        assert "zebra" not in caplog.text and all("zebra" not in line for line in logged.of(port).lines())
+        port.transmit("zebra-secret portent")
+        assert "zebra" not in logged.text() and all("zebra" not in line for line in logged.of(port).lines())
 
 
 class QueuedSerial(FakeSerial):
@@ -885,15 +882,14 @@ class TestAMachineThatHoldsTheEndOfThePortent:
         assert report.completed is True and logged.of(port).ok()
         assert clock.now >= 5 - 1                                  # it waited for the machine, a pause at a time, not in a busy loop
 
-    def test_a_held_machine_that_is_released_in_time_finishes_the_portent(self, caplog, logged):
+    def test_a_held_machine_that_is_released_in_time_finishes_the_portent(self, logged):
         port, serial_port, _ = queued_port(lambda now: 40 if now < 90 else 0)
-        with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
-            report = port.transmit("abcdef")
+        report = port.transmit("abcdef")
         assert report.completed is True and report.characters == 6 and serial_port.closed is False
         assert len(logged.of(port).warnings()) >= 2 and not logged.of(port).criticals()
         assert "stopped taking characters" in logged.of(port).warnings()[0]
         assert all("still not typing" in line for line in logged.of(port).warnings()[1:])    # every later try says so; the log mutes the repeats
-        assert any("typing again after" in r.getMessage() for r in caplog.records)
+        assert any("typing again after" in line for line in logged.messages())
 
     def test_the_heartbeat_is_called_while_the_end_waits(self):
         port, _, _ = queued_port(lambda now: 40 if now < 30 else 0)
@@ -939,11 +935,10 @@ class TestAMachineThatHoldsTheEndOfThePortent:
         port, fake, _, _ = make()                                  # a FakeSerial has no out_waiting
         assert port.transmit("abc").completed is True and logged.of(port).ok()
 
-    def test_the_wait_leaks_no_words(self, caplog, logged):
+    def test_the_wait_leaks_no_words(self, logged):
         port, _, _ = queued_port(lambda now: 4, stall_patience_seconds=30)
-        with caplog.at_level(logging.DEBUG):
-            port.transmit("zebra-secret portent")
-        assert "zebra" not in caplog.text and all("zebra" not in line for line in logged.of(port).lines())
+        port.transmit("zebra-secret portent")
+        assert "zebra" not in logged.text() and all("zebra" not in line for line in logged.of(port).lines())
 
 
 class TestAPortThatIsLost:
@@ -1118,7 +1113,7 @@ class TestThePortIsFoundByItsFinder:
 
 
 class TestAPortThatWillNotOpen:
-    def test_it_is_one_warning_however_many_tries_and_a_line_in_the_log_when_it_opens(self, caplog, logged):
+    def test_it_is_one_warning_however_many_tries_and_a_line_in_the_log_when_it_opens(self, logged):
         clock = FakeClock()
         up = []
 
@@ -1131,9 +1126,8 @@ class TestAPortThatWillNotOpen:
             assert port.transmit("a").completed is False
         assert len(logged.of(port).warnings()) == 1
         up.append(1)
-        with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
-            assert port.transmit("a").completed is True
-        assert any("is open again" in r.getMessage() for r in caplog.records)
+        assert port.transmit("a").completed is True
+        assert any("is open again" in line for line in logged.messages())
 
     def test_a_second_stretch_of_trouble_is_a_new_warning(self, logged):
         clock = FakeClock()

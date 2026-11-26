@@ -1,8 +1,10 @@
 """Shared test helpers.
 
 `logged`: what the code under test logged, read from pytest's `caplog` (Python's standard way for a test to read the log). Every class says what
-it has to say through its logger (from the Bookkeeper) and keeps nothing, so a test that wants to know what a class said reads the log. It covers
-lines logged while a fixture was building the object, as well as during the test itself.
+it has to say through its logger (from the Bookkeeper) and keeps nothing, so a test that wants to know what a class said reads the log. It is the
+one way a test reads the log (the bookkeeper's own tests, which test the logging itself, read `caplog` directly). It catches every line, DEBUG
+included, from the start of the test, so no test has to switch catching on; and it covers lines logged while a fixture was building the object, as
+well as during the test itself. A module whose own DEBUG line is False still hides its DEBUG lines: its logger drops them before they are caught.
 """
 import logging
 
@@ -30,6 +32,18 @@ class LoggedLines:
 
     def _messages(self, level, name):
         return [r.getMessage() for r in self._records(name) if r.levelno == level]
+
+    def messages(self, name=None):
+        """Every line, at every level, in the order logged."""
+        return [r.getMessage() for r in self._records(name)]
+
+    def text(self, name=None):
+        """Every line, at every level, as one text (for checking that something was never logged)."""
+        return "\n".join(self.messages(name))
+
+    def debugs(self, name=None):
+        """The `debug` lines."""
+        return self._messages(logging.DEBUG, name)
 
     def infos(self, name=None):
         """The `info` lines."""
@@ -62,6 +76,6 @@ class LoggedLines:
 
 @pytest.fixture
 def logged(caplog):
-    """What the code under test logged (see LoggedLines)."""
-    caplog.set_level(logging.INFO)
+    """What the code under test logged, every level from DEBUG up (see LoggedLines)."""
+    caplog.set_level(logging.DEBUG)
     return LoggedLines(caplog)

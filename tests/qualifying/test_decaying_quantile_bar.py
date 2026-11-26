@@ -1,5 +1,4 @@
 """Tests for pom.qualifying.decaying_quantile_bar: a weighted, interpolated high quantile with a fading starting line."""
-import logging
 import math
 from types import SimpleNamespace
 
@@ -565,12 +564,11 @@ class TestBuildingFromSettings:
 
 
 class TestLogging:
-    def test_only_numbers_are_kept_and_nothing_is_logged_by_default(self, caplog):
-        with caplog.at_level(logging.DEBUG):
-            b = DecayingQuantileBar()
-            feed(b, [1.0, 2.0, 9.0])
-            b.level_at(3.0)
-        assert "secret" not in caplog.text
+    def test_only_numbers_are_kept_and_nothing_is_logged_by_default(self, logged):
+        b = DecayingQuantileBar()
+        feed(b, [1.0, 2.0, 9.0])
+        b.level_at(3.0)
+        assert "secret" not in logged.text()
 
 
 class TestTheBarAsItStood:

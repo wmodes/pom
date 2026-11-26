@@ -3,7 +3,6 @@
 The writer and the terminal are small fakes the test scripts; the formatter, the TurnHistory and the FloorKeeper are the real ones,
 because how the TurnTaker joins them is the point. One clock moves everything, and "sleeping" just moves it.
 """
-import logging
 from types import SimpleNamespace
 
 import pytest
@@ -469,52 +468,46 @@ class TestBadSettings:
 class TestTheLogs:
     """A problem has to be readable afterwards in the logs. Numbers and labels only: never what was heard or written."""
 
-    def lines(self, caplog):
-        return [r.getMessage() for r in caplog.records if r.name == "pom.conductor.turn_taker"]
+    def lines(self, logged):
+        return logged.messages("pom.conductor.turn_taker")
 
-    def test_a_good_turn_is_told_in_three_lines(self, caplog):
+    def test_a_good_turn_is_told_in_three_lines(self, logged):
         rig = build(writer_takes=42.0, terminal_takes=17.0)
-        with caplog.at_level(logging.INFO, logger="pom.conductor.turn_taker"):
-            take(rig)
-        lines = self.lines(caplog)
+        take(rig)
+        lines = self.lines(logged)
         assert lines[0] == "turn: the room's hinge scored 7.5 against a bar of 6.8"
         assert lines[1] == "turn: a portent of 5 words was written in 42.0 s (1 attempt)"
         assert lines[2] == "turn: printed (writing 42.0 s, printing 17.0 s, 5 words, %d characters)" % len(rig.terminal.texts[0])
 
-    def test_a_retry_of_the_oracle_is_logged(self, caplog):
+    def test_a_retry_of_the_oracle_is_logged(self, logged):
         rig = build(writer_replies=[None, portent()])
-        with caplog.at_level(logging.INFO, logger="pom.conductor.turn_taker"):
-            take(rig)
-        assert any("the oracle gave nothing (attempt 1 of 3); trying again in 10 s" in line for line in self.lines(caplog))
+        take(rig)
+        assert any("the oracle gave nothing (attempt 1 of 3); trying again in 10 s" in line for line in self.lines(logged))
 
-    def test_every_try_at_a_printer_that_cannot_print_yet_is_logged_and_the_log_mutes_the_repeats(self, caplog):
+    def test_every_try_at_a_printer_that_cannot_print_yet_is_logged_and_the_log_mutes_the_repeats(self, logged):
         rig = build(terminal_replies=[NOTHING_TYPED] * 100)
-        with caplog.at_level(logging.INFO, logger="pom.conductor.turn_taker"):
-            take(rig)
-        waits = [line for line in self.lines(caplog) if "cannot print yet" in line]
+        take(rig)
+        waits = [line for line in self.lines(logged) if "cannot print yet" in line]
         assert len(waits) == len(rig.terminal.texts) and [f"(try {n})" in line for n, line in enumerate(waits, start=1)] == [True] * len(waits)
 
-    def test_the_end_of_a_failed_turn_is_logged_with_its_outcome(self, caplog):
+    def test_the_end_of_a_failed_turn_is_logged_with_its_outcome(self, logged):
         rig = build(terminal_replies=[NOTHING_TYPED] * 100)
-        with caplog.at_level(logging.INFO, logger="pom.conductor.turn_taker"):
-            take(rig)
-        assert self.lines(caplog)[-1].startswith("turn: too late to print (writing 0.0 s")
+        take(rig)
+        assert self.lines(logged)[-1].startswith("turn: too late to print (writing 0.0 s")
 
-    def test_nothing_that_was_said_or_written_reaches_a_log_or_a_report(self, caplog, logged):
+    def test_nothing_that_was_said_or_written_reaches_a_log_or_a_report(self, logged):
         rig = build(writer_replies=[None, portent()], terminal_replies=[NOTHING_TYPED, PrintResult(10, 1.0, False)])
-        with caplog.at_level(logging.DEBUG):
-            take(rig)
-            rig.clock.advance(10)
-            rig2 = build(writer_replies=[RuntimeError(SECRET_HINGE)])
-            take(rig2)
-        text = caplog.text + "\n".join(logged.of(rig.taker).lines() + logged.of(rig2.taker).lines())
+        take(rig)
+        rig.clock.advance(10)
+        rig2 = build(writer_replies=[RuntimeError(SECRET_HINGE)])
+        take(rig2)
+        text = logged.text() + "\n".join(logged.of(rig.taker).lines() + logged.of(rig2.taker).lines())
         for word in ("neighbor", "secret", "cellar", "footstep"):
             assert word not in text
 
 
 class TestReporting:
-    def test_a_turn_the_oracle_wrote_nothing_for_is_in_the_log(self, caplog):
+    def test_a_turn_the_oracle_wrote_nothing_for_is_in_the_log(self, logged):
         rig = build(writer_replies=[None, None, None])
-        with caplog.at_level(logging.WARNING):
-            take(rig)
-        assert any("the oracle wrote nothing" in r.getMessage() for r in caplog.records)
+        take(rig)
+        assert any("the oracle wrote nothing" in line for line in logged.messages())

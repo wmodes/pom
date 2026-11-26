@@ -1,5 +1,4 @@
 """Tests for pom.scoring.scorer_warmer: one throwaway request to the scorer once its server answers."""
-import logging
 
 import pytest
 
@@ -74,20 +73,17 @@ class TestWarmingOnceTheServerIsUp:
 
 
 class TestWhatItSaysInTheLog:
-    def test_a_warm_up_is_logged_with_the_seconds_it_took(self, caplog):
+    def test_a_warm_up_is_logged_with_the_seconds_it_took(self, logged):
         times = iter([100.0, 115.7])
         warmer = warmer_for(FakeScorer(True), FakeServer(True), clock=lambda: next(times))
-        with caplog.at_level(logging.INFO, logger="pom.scoring.scorer_warmer"):
-            warmer.run()
-        assert any("warmed up" in r.getMessage() and r.getMessage().endswith("): 15.7 s") and r.levelno == logging.INFO
-                   for r in caplog.records)
+        warmer.run()
+        assert any("warmed up" in line and line.endswith("): 15.7 s") for line in logged.infos())
 
-    def test_giving_up_is_a_warning_that_counts_the_requests(self, caplog):
-        with caplog.at_level(logging.INFO, logger="pom.scoring.scorer_warmer"):
-            warmer_for(FakeScorer(False), FakeServer(True), attempts=2).run()
-        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
-        assert len(warnings) == 1 and "2 warm-up requests" in warnings[0].getMessage()
-        assert not any("warmed up" in r.getMessage() for r in caplog.records)
+    def test_giving_up_is_a_warning_that_counts_the_requests(self, logged):
+        warmer_for(FakeScorer(False), FakeServer(True), attempts=2).run()
+        warnings = logged.warnings()
+        assert len(warnings) == 1 and "2 warm-up requests" in warnings[0]
+        assert not any("warmed up" in line for line in logged.messages())
 
 
 class TestInTheBackground:
@@ -133,13 +129,12 @@ class TestInTheBackground:
         warmer.stop()
         warmer.stop()
 
-    def test_an_error_in_the_thread_is_a_warning_and_never_raises(self, caplog):
+    def test_an_error_in_the_thread_is_a_warning_and_never_raises(self, logged):
         def broken():
             raise RuntimeError("boom with some words")
         warmer = warmer_for(FakeScorer(True), broken)
-        with caplog.at_level(logging.WARNING, logger="pom.scoring.scorer_warmer"):
-            warmer.start()
-            warmer._thread.join(timeout=5)
-        messages = [r.getMessage() for r in caplog.records]
+        warmer.start()
+        warmer._thread.join(timeout=5)
+        messages = logged.messages()
         assert not warmer._thread.is_alive() and warmer.warmed is False
         assert len(messages) == 1 and "RuntimeError" in messages[0] and "boom" not in messages[0]

@@ -550,10 +550,9 @@ class TestTheBootSlip:
 
 
 class TestTheMonitoringSite:
-    def test_it_is_on_by_default_but_does_not_run_without_a_password_and_says_so(self, tmp_path, caplog):
-        with caplog.at_level(logging.WARNING, logger="pom.printer"):
-            assert build(tmp_path).site is None
-        assert any("no password" in r.getMessage() for r in caplog.records if r.name == "pom.printer")
+    def test_it_is_on_by_default_but_does_not_run_without_a_password_and_says_so(self, tmp_path, logged):
+        assert build(tmp_path).site is None
+        assert any("no password" in line for line in logged.messages("pom.printer"))
 
     def test_a_password_alone_does_not_switch_it_on(self, tmp_path):
         assert build(tmp_path, '[monitor]\nenabled = false\npassword = "pw"\n').site is None
@@ -562,10 +561,9 @@ class TestTheMonitoringSite:
         p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n')
         assert isinstance(p.site, MonitorSite)
 
-    def test_enabled_without_a_password_is_a_warning_and_no_site_not_a_stop(self, tmp_path, caplog):
-        with caplog.at_level(logging.WARNING, logger="pom.printer"):
-            p = build(tmp_path, "[monitor]\nenabled = true\n")
-        assert p.site is None and any("no password" in r.getMessage() for r in caplog.records)
+    def test_enabled_without_a_password_is_a_warning_and_no_site_not_a_stop(self, tmp_path, logged):
+        p = build(tmp_path, "[monitor]\nenabled = true\n")
+        assert p.site is None and any("no password" in line for line in logged.messages())
 
     def test_the_history_keeps_a_turn_while_the_notebook_still_holds_its_attempt(self, tmp_path):
         from pom.qualifying import Attempt, Ruling
@@ -763,12 +761,11 @@ class TestRunningAndStopping:
             assembled(site, terminal, FakeConductor(raises=RuntimeError("boom"))).run()
         assert site.stopped and terminal.closed == 1
 
-    def test_a_site_that_will_not_start_is_dropped_and_the_run_goes_on(self, caplog):
+    def test_a_site_that_will_not_start_is_dropped_and_the_run_goes_on(self, logged):
         site, conductor = FakeSite(starts=False), FakeConductor()
         printer = assembled(site, None, conductor)
-        with caplog.at_level(logging.WARNING, logger="pom.printer"):
-            printer.run()
-        assert conductor.ran and printer.site is None and any("did not start" in r.getMessage() for r in caplog.records)
+        printer.run()
+        assert conductor.ran and printer.site is None and any("did not start" in line for line in logged.messages())
 
     def test_no_site_and_no_terminal_is_fine(self):
         conductor = FakeConductor()
@@ -785,11 +782,10 @@ class TestRunningAndStopping:
         build_printer(config_from(tmp_path, '[terminal]\nmode = "none"\n'), Options(), bookkeeper=keeper)
         assert keeper.asked.count("pom.printer") == 2                               # one for the build itself, one for the Printer it built
 
-    def test_the_services_that_do_not_answer_are_in_the_log_but_do_not_stop_it(self, caplog):
+    def test_the_services_that_do_not_answer_are_in_the_log_but_do_not_stop_it(self, logged):
         conductor = FakeConductor()
-        with caplog.at_level(logging.INFO, logger="pom.printer"):
-            assembled(None, None, conductor).run()
-        assert conductor.ran and any("whisper up, scorer down" in r.getMessage() for r in caplog.records)
+        assembled(None, None, conductor).run()
+        assert conductor.ran and any("whisper up, scorer down" in line for line in logged.messages())
 
     def test_the_status_poller_polls_once_for_the_log_line_then_runs_for_the_whole_run(self):
         events = []
@@ -832,7 +828,7 @@ class TestRunningAndStopping:
         assert conductor.stopped == 2
 
 class TestMain:
-    def test_it_builds_installs_the_signal_handlers_runs_and_reports(self, monkeypatch, tmp_path, caplog):
+    def test_it_builds_installs_the_signal_handlers_runs_and_reports(self, monkeypatch, tmp_path, logged):
         conductor = FakeConductor()
         fake = assembled(None, None, conductor)
         fake.parts["mode"] = "none"
@@ -843,13 +839,12 @@ class TestMain:
         monkeypatch.setattr(signal, "signal", lambda number, handler: handlers.update({number: handler}))
         path = tmp_path / "pom.toml"
         path.write_text("", encoding="utf-8")
-        with caplog.at_level(logging.INFO):
-            assert printer_module.main(["--config", str(path), "--terminal", "none"]) == 0
+        assert printer_module.main(["--config", str(path), "--terminal", "none"]) == 0
         assert conductor.ran and built[0].terminal == "none"
         assert set(handlers) == {signal.SIGTERM, signal.SIGINT}
         handlers[signal.SIGTERM](signal.SIGTERM, None)                     # systemd stopping the service
         assert conductor.stopped == 1
-        assert not any(r.getMessage().startswith("report:") for r in caplog.records)   # problems are logged when they happen, not again at the end
+        assert not any(line.startswith("report:") for line in logged.messages())   # problems are logged when they happen, not again at the end
 
     def test_one_bookkeeper_is_built_with_the_log_muter_from_the_three_logmute_settings_and_handed_to_the_build(self, monkeypatch, tmp_path):
         fake = assembled(None, None, FakeConductor())
@@ -879,16 +874,15 @@ class TestMain:
             lines.append(muter.filter(record) and record.getMessage())
         assert lines[6].endswith("Last message repeating and muted") and lines[7] is False
 
-    def test_config_problems_are_in_the_log(self, monkeypatch, tmp_path, caplog):
+    def test_config_problems_are_in_the_log(self, monkeypatch, tmp_path, logged):
         fake = assembled(None, None, FakeConductor())
         monkeypatch.setattr(printer_module, "build_printer", lambda config, options, **kept: fake)
         monkeypatch.setattr(printer_module.Bookkeeper, "set_up", lambda self, *a, **k: None)      # leave the test's log alone
         monkeypatch.setattr(signal, "signal", lambda *a: None)
         path = tmp_path / "pom.toml"
         path.write_text("[conductor]\nwriting_seconds = -1\n", encoding="utf-8")
-        with caplog.at_level(logging.WARNING):
-            printer_module.main(["--config", str(path)])
-        assert any("config:" in r.getMessage() and "conductor.writing_seconds" in r.getMessage() for r in caplog.records)
+        printer_module.main(["--config", str(path)])
+        assert any("config:" in line and "conductor.writing_seconds" in line for line in logged.messages())
 
 
 class TestTheServiceChecks:

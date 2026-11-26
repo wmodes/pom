@@ -4,7 +4,6 @@ The Bibliomancer is a small fake where only the PromptBuilder is under test, and
 random generator where the point is that the same hinge can get the same exemplars.
 """
 import hashlib
-import logging
 import random
 
 import pytest
@@ -168,12 +167,11 @@ class TestBadInput:
 
 
 class TestPrivacy:
-    def test_the_hinge_never_reaches_the_report_or_the_log(self, caplog, logged):
-        caplog.set_level(logging.DEBUG)
+    def test_the_hinge_never_reaches_the_report_or_the_log(self, logged):
         built, _ = builder(passages=[])
         built.build("a secret about the neighbor")
         built.build("   ")
-        assert "secret" not in caplog.text and "neighbor" not in caplog.text
+        assert "secret" not in logged.text() and "neighbor" not in logged.text()
         assert all("secret" not in line for line in logged.of(built).lines())
 
 

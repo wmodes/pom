@@ -1,5 +1,4 @@
 """Tests for pom.monitor.chart_notebook: every attempt as numbers, in memory only."""
-import logging
 import threading
 
 import pytest
@@ -245,13 +244,12 @@ class TestBadSettings:
 
 
 class TestNothingIsLogged:
-    def test_no_value_reaches_the_log_or_the_report(self, caplog, logged):
-        caplog.set_level(logging.DEBUG)
+    def test_no_value_reaches_the_log_or_the_report(self, logged):
         t = notebook()
         t.add(7.123456, 6.654321, 99.0, True)
         t.add("secret", 1.0, 1.0)
-        assert "7.123456" not in caplog.text + "\n".join(logged.of(t).lines())
-        assert "secret" not in caplog.text + "\n".join(logged.of(t).lines())
+        assert "7.123456" not in logged.text() + "\n".join(logged.of(t).lines())
+        assert "secret" not in logged.text() + "\n".join(logged.of(t).lines())
 
 
 class TestEarliestAt:

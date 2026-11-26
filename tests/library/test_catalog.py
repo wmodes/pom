@@ -9,7 +9,6 @@ hands the layout to Circulation, which is how the two modules are meant to meet.
 """
 import dataclasses
 import json
-import logging
 from pathlib import Path
 
 import pytest
@@ -322,12 +321,11 @@ def test_every_bad_line_of_a_corrupt_file_is_logged_and_the_catalog_keeps_none_o
     assert len(logged.of(store).warnings()) == 5000 and len(store) == 0 and not hasattr(store, "report")
 
 
-def test_problems_are_logged_so_they_reach_journald(tmp_path, caplog):
+def test_problems_are_logged_so_they_reach_journald(tmp_path, logged):
     write(tmp_path, "news", "ads", None, raw="{bad\n")
-    with caplog.at_level(logging.WARNING, logger="pom.library.catalog"):
-        Catalog.load(tmp_path)
-    assert any(r.levelno == logging.WARNING and "not valid JSON" in r.message for r in caplog.records)
-    assert any(r.levelno == logging.CRITICAL and "nothing to say" in r.message for r in caplog.records)
+    Catalog.load(tmp_path)
+    assert any("not valid JSON" in line for line in logged.warnings())
+    assert any("nothing to say" in line for line in logged.criticals())
 
 
 def test_loading_never_raises_whatever_is_wrong(tmp_path):
@@ -346,30 +344,28 @@ def test_an_empty_in_memory_store_is_critical(logged):
     assert bool(logged.of(Catalog.from_passages([])).criticals())
 
 
-def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(library, caplog):
+def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(library, logged):
     from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.library.catalog", True)
     try:
-        with caplog.at_level(logging.DEBUG, logger="pom.library.catalog"):
-            Catalog.load(library)
+        Catalog.load(library)
     finally:
         get_logger("pom.library.catalog", None)
-    info = [r.message for r in caplog.records if r.levelno == logging.INFO]
-    debug = [r.message for r in caplog.records if r.levelno == logging.DEBUG]
+    info = logged.infos()
+    debug = logged.debugs()
     assert info == ["loaded 6 passages from 3 holding(s) in 2 shelf(s)"]
     assert any("news/ads.jsonl: 2 passage(s)" in m for m in debug)
 
 
-def test_per_file_detail_is_hidden_when_the_module_flag_is_off(library, caplog):
+def test_per_file_detail_is_hidden_when_the_module_flag_is_off(library, logged):
     from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.library.catalog", False)
     try:
-        with caplog.at_level(logging.DEBUG):   # root only: naming the logger would reset its level
-            Catalog.load(library)
+        Catalog.load(library)
     finally:
         get_logger("pom.library.catalog", None)
-    assert [r for r in caplog.records if r.levelno == logging.DEBUG] == []
-    assert any(r.levelno == logging.INFO for r in caplog.records)   # the summary still shows
+    assert logged.debugs() == []
+    assert bool(logged.infos())   # the summary still shows
 
 
 # --- The same problems in strict mode (development and tests) --------------------------

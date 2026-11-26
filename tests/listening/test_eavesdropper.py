@@ -1,5 +1,4 @@
 """Tests for pom.listening.eavesdropper, with a scripted deck and a stand-in for whisper."""
-import logging
 import threading
 
 import pytest
@@ -348,11 +347,10 @@ class TestSettings:
     def test_zero_room_tone_passes_is_allowed(self, logged):
         assert logged.of(make(5, room_tone_pass_every=0)[0]).ok()
 
-    def test_the_cutters_settings_are_checked_too_and_logged_once(self, caplog):
-        with caplog.at_level(logging.WARNING):
-            make(5, cut_every_seconds=0)
-        about_it = [r for r in caplog.records if "cut_every_seconds" in r.getMessage()]
-        assert len(about_it) == 1 and about_it[0].levelno == logging.WARNING
+    def test_the_cutters_settings_are_checked_too_and_logged_once(self, logged):
+        make(5, cut_every_seconds=0)
+        assert [line for line in logged.messages() if "cut_every_seconds" in line] == \
+            [line for line in logged.warnings() if "cut_every_seconds" in line] and len(logged.warnings()) == 1
 
     def test_the_hold_is_passed_to_the_cutter(self):
         close_to_the_end = seg(3.5, 4.4, "Close to the end.")
@@ -401,11 +399,10 @@ class TestSettings:
 
 
 class TestPrivacy:
-    def test_what_was_said_never_gets_into_the_report_or_the_log(self, caplog, logged):
-        with caplog.at_level(logging.DEBUG):
-            eavesdropper, _, _ = make(12, [seg(0.5, 3.0, "abracadabra says the room")], failing=[1])
-            hear(eavesdropper)
-        assert "abracadabra" not in " ".join(logged.of(eavesdropper).lines()) and "abracadabra" not in caplog.text
+    def test_what_was_said_never_gets_into_the_report_or_the_log(self, logged):
+        eavesdropper, _, _ = make(12, [seg(0.5, 3.0, "abracadabra says the room")], failing=[1])
+        hear(eavesdropper)
+        assert "abracadabra" not in " ".join(logged.of(eavesdropper).lines()) and "abracadabra" not in logged.text()
 
 
 class TestWithARealCutterAndSorter:

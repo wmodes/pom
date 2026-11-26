@@ -2,7 +2,6 @@
 
 Most tests use a fake bar the test controls, so only the BarKeeper is under test. The last classes run the BarKeeper over each real bar.
 """
-import logging
 import random
 import threading
 import time
@@ -441,17 +440,15 @@ class TestOverARealMovingAverageBar:
 
 
 class TestLogging:
-    def test_only_numbers_are_logged(self, caplog):
-        with caplog.at_level(logging.DEBUG):
-            t, _ = bar_keeper(level=5.0)
-            t.rule(9.0, 1.0)
-        assert "bar 5.000" in caplog.text and "qualified" in caplog.text
+    def test_only_numbers_are_logged(self, logged):
+        t, _ = bar_keeper(level=5.0)
+        t.rule(9.0, 1.0)
+        assert "bar 5.000" in logged.text() and "qualified" in logged.text()
 
-    def test_a_missing_bar_level_is_logged_as_none(self, caplog):
-        with caplog.at_level(logging.DEBUG):
-            t, _ = bar_keeper(level=None)
-            t.rule(9.0, 1.0)
-        assert "bar none" in caplog.text
+    def test_a_missing_bar_level_is_logged_as_none(self, logged):
+        t, _ = bar_keeper(level=None)
+        t.rule(9.0, 1.0)
+        assert "bar none" in logged.text()
 
 
 class TestRuleTyped:

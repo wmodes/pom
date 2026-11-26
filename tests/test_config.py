@@ -1,5 +1,4 @@
 """Tests for pom.config: shared settings from a TOML file and the environment, never raising."""
-import logging
 import re
 from pathlib import Path
 
@@ -333,11 +332,10 @@ def test_config_problems_hold_messages_in_order_and_hand_out_copies():
     assert problems.warnings == ["first", "second"] and problems.lines() == ["warning: first", "warning: second"]
 
 
-def test_problems_are_held_for_the_entry_point_to_log_once_the_log_exists(tmp_path, caplog):
+def test_problems_are_held_for_the_entry_point_to_log_once_the_log_exists(tmp_path, logged):
     """The config is read before the log is set up, so it logs nothing itself; main logs `config.problems` (see test_printer's TestMain)."""
-    with caplog.at_level(logging.DEBUG):
-        config = Config.load(write(tmp_path, "log_level = 5"), environ={})
-    assert caplog.records == []
+    config = Config.load(write(tmp_path, "log_level = 5"), environ={})
+    assert logged.messages() == []
     assert any("log_level must be one of" in line for line in config.problems.lines())
     assert config.problems.lines()[0].startswith("warning: ")
 

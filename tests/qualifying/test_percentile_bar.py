@@ -1,5 +1,4 @@
 """Tests for pom.qualifying.percentile_bar: a nearest-rank percentile of a window of time, with a starting line."""
-import logging
 import random
 from types import SimpleNamespace
 
@@ -288,9 +287,8 @@ class TestBuildingFromSettings:
 
 
 class TestLogging:
-    def test_nothing_is_logged_by_default(self, caplog):
-        with caplog.at_level(logging.DEBUG):
-            b = PercentileBar()
-            feed(b, [1.0, 2.0, 9.0])
-            b.level_at(3.0)
-        assert caplog.text == ""
+    def test_nothing_is_logged_by_default(self, logged):
+        b = PercentileBar()
+        feed(b, [1.0, 2.0, 9.0])
+        b.level_at(3.0)
+        assert logged.text() == ""

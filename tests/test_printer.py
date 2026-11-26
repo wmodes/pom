@@ -202,8 +202,8 @@ class TestTheWiring:
         made, asked = [], []
 
         class StandInFinder:
-            def __init__(self, search_pattern, bookkeeper=None):
-                made.append(search_pattern)
+            def __init__(self, terminal, bookkeeper=None):
+                made.append(terminal.port_search)
 
             def resolve(self, setting):
                 asked.append(setting)
@@ -310,14 +310,14 @@ class TestWhatItPrintsOn:
         assert isinstance(p.parts["keyboard"], KeyboardWatcher) and p.parts["mode"] == "serial"
 
     def test_the_serial_port_gets_every_terminal_setting(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nport = "/dev/ttyACM*"\nbaud = 19200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
-                            "characters_per_second = 12\nfinish_wait_seconds = 1\nechoplex = false\ntype_during_printing = true\n"
-                            "stall_patience_seconds = 90\nreconnect_seconds = 0.5\ndata_bits = 7\nparity = \"even\"\nstop_bits = 2\n")
-        t = p.terminal
-        assert (t._port_name, t._baud, t._flow_control, t._end_of_line) == ("/dev/ttyACM*", 19200, "rts_cts", "\n")
-        assert (t._data_bits, t._parity, t._stop_bits) == (7, "even", 2)
-        assert (t._seconds_per_character, t._finish_wait, t._echoplex, t._type_during_printing) == (1 / 12, 1, False, True)
-        assert (t._stall_patience, t._reconnect) == (90.0, 0.5)
+        config = config_from(tmp_path, '[terminal]\nport = "/dev/ttyACM*"\nbaud = 19200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
+                                       "characters_per_second = 12\nfinish_wait_seconds = 1\nechoplex = false\ntype_during_printing = true\n"
+                                       "stall_patience_seconds = 90\nreconnect_seconds = 0.5\ndata_bits = 7\nparity = \"even\"\nstop_bits = 2\n")
+        assert build_printer(config, Options()).terminal.terminal is config.terminal
+
+    def test_the_console_gets_the_terminal_pace(self, tmp_path):
+        config = config_from(tmp_path, '[terminal]\nmode = "console"\ncharacters_per_second = 12\n')
+        assert build_printer(config, Options()).terminal.terminal.characters_per_second == 12.0
 
     def test_console_mode_types_on_the_screen_and_has_no_keyboard_watcher(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "console"\n')
@@ -373,7 +373,7 @@ class TestTheMovedSettingsReachTheirParts:
 
     def test_the_terminal_limits(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "serial"\nmax_typed_line_characters = 80\nrefused_character_retry_seconds = 0.5\n')
-        assert (p.terminal._max_typed_line, p.terminal._refused_retry) == (80, 0.5)
+        assert (p.terminal.terminal.max_typed_line_characters, p.terminal.terminal.refused_character_retry_seconds) == (80, 0.5)
 
     def test_the_chart(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "x"\n[chart]\nwindow_minutes = 12\nbar_line_width = 2\n')

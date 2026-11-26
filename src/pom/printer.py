@@ -305,13 +305,9 @@ def _make_terminal(mode: str, settings, bookkeeper: Optional[Bookkeeper] = None)
     if mode == "none":
         return None
     if mode == "console":
-        return ConsoleTerminal(characters_per_second=settings.characters_per_second, bookkeeper=bookkeeper)
-    finder = TerminalPortFinder(settings.port_search, bookkeeper=bookkeeper)
-    return TerminalPort(settings.port, settings.baud, settings.flow_control, settings.end_of_line, settings.characters_per_second,
-                        settings.finish_wait_seconds, settings.echoplex, settings.type_during_printing, settings.stall_patience_seconds,
-                        settings.reconnect_seconds, max_typed_line_characters=settings.max_typed_line_characters,
-                        refused_character_retry_seconds=settings.refused_character_retry_seconds,
-                        data_bits=settings.data_bits, parity=settings.parity, stop_bits=settings.stop_bits, finder=finder, bookkeeper=bookkeeper)
+        return ConsoleTerminal(settings, bookkeeper=bookkeeper)
+    finder = TerminalPortFinder(settings, bookkeeper=bookkeeper)
+    return TerminalPort(settings, finder=finder, bookkeeper=bookkeeper)
 
 
 def parse_options(argv=None) -> Options:

@@ -1260,21 +1260,12 @@ def test_every_standard_baud_rate_is_accepted(tmp_path, baud):
     assert Config.load(write(tmp_path, f"[terminal]\nbaud = {baud}\n"), environ={}).terminal.baud == baud
 
 
-def test_the_terminal_choices_and_defaults_are_the_ones_the_port_uses():
+def test_every_terminal_choice_the_config_accepts_has_the_ports_translation():
+    """Every parity and line ending the config accepts has the port's translation for it (pyserial's letter, the bytes sent)."""
     from pom import defaults as settings
     from pom.printing import terminal_port as port
-    assert settings.TERMINAL_BAUD_RATES == port.BAUD_RATES and settings.TERMINAL_FLOW_CONTROLS == port.FLOW_CONTROLS
     assert settings.TERMINAL_END_OF_LINES == tuple(port.END_OF_LINES)
-    assert settings.TERMINAL_DATA_BITS == port.DATA_BITS and settings.TERMINAL_PARITIES == tuple(port.PARITIES)
-    assert settings.TERMINAL_STOP_BITS == port.STOP_BITS
-    assert (settings.TerminalSettings().data_bits, settings.TerminalSettings().parity, settings.TerminalSettings().stop_bits) == (
-        port.DEFAULT_DATA_BITS, port.DEFAULT_PARITY, port.DEFAULT_STOP_BITS)
-    assert (settings.TerminalSettings().baud, settings.TerminalSettings().flow_control, settings.TerminalSettings().end_of_line) == (
-        port.DEFAULT_BAUD, port.DEFAULT_FLOW_CONTROL, port.DEFAULT_END_OF_LINE)
-    assert (settings.TerminalSettings().characters_per_second, settings.TerminalSettings().finish_wait_seconds) == (
-        port.DEFAULT_CHARACTERS_PER_SECOND, port.DEFAULT_FINISH_WAIT_SECONDS)
-    assert (settings.TerminalSettings().stall_patience_seconds, settings.TerminalSettings().reconnect_seconds) == (
-        port.DEFAULT_STALL_PATIENCE_SECONDS, port.DEFAULT_RECONNECT_SECONDS)
+    assert settings.TERMINAL_PARITIES == tuple(port.PARITIES)
 
 
 def test_a_config_built_without_terminal_settings_has_the_defaults():

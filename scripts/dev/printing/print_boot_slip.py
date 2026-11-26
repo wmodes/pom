@@ -13,6 +13,7 @@ Usage:
     print_boot_slip.py --port /dev/ttyACM0   # on the real machine (waits for it to be online)
 """
 import argparse
+import dataclasses
 import os
 import sys
 
@@ -37,17 +38,14 @@ def main():
     configure_logging("INFO")
     config = Config.load(CONFIG_PATH)
     printing, terminal_settings, slip, conductor = config.printing, config.terminal, config.boot_slip, config.conductor
-    cps = 1e9 if args.fast else terminal_settings.characters_per_second
-    finish_wait = 0.0 if args.fast else terminal_settings.finish_wait_seconds
+    if args.fast:
+        terminal_settings = dataclasses.replace(terminal_settings, characters_per_second=1e9, finish_wait_seconds=0.0)
 
     if args.port:
-        terminal = TerminalPort(args.port, terminal_settings.baud, terminal_settings.flow_control, terminal_settings.end_of_line, cps,
-                                finish_wait, terminal_settings.echoplex, terminal_settings.type_during_printing,
-                                data_bits=terminal_settings.data_bits, parity=terminal_settings.parity, stop_bits=terminal_settings.stop_bits,
-                                finder=TerminalPortFinder(terminal_settings.port_search))
+        terminal_settings = dataclasses.replace(terminal_settings, port=args.port)
+        terminal = TerminalPort(terminal_settings, finder=TerminalPortFinder(terminal_settings))
     else:
-        terminal = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
-                                   type_during_printing=terminal_settings.type_during_printing)
+        terminal = ConsoleTerminal(terminal_settings)
     formatter = PortentFormatter(printing)
     floor = FloorKeeper(conductor.writing_seconds, conductor.printing_seconds, conductor.recovering_seconds)
     if args.no_network:

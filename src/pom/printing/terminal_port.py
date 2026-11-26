@@ -59,6 +59,7 @@ Design decisions, and why:
     the ConsoleTerminal (the stand-in for development) is this same code writing to the terminal.
 """
 import collections
+import dataclasses
 import os
 import select
 import sys
@@ -68,28 +69,12 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import TerminalSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-FLOW_CONTROLS = ("xon_xoff", "rts_cts", "none")
-DATA_BITS = (5, 6, 7, 8)
 PARITIES = {"none": "N", "even": "E", "odd": "O"}         # the setting's word -> pyserial's letter
-STOP_BITS = (1, 2)
 END_OF_LINES = {"cr": "\r", "crlf": "\r\n", "lf": "\n", "lfcr": "\n\r"}
-BAUD_RATES = (50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 76800,
-              115200, 230400)
-DEFAULT_BAUD = 9600
-DEFAULT_FLOW_CONTROL = "xon_xoff"
-DEFAULT_DATA_BITS = 8
-DEFAULT_PARITY = "none"
-DEFAULT_STOP_BITS = 1
-DEFAULT_END_OF_LINE = "crlf"
-DEFAULT_CHARACTERS_PER_SECOND = 16.0
-DEFAULT_FINISH_WAIT_SECONDS = 2.0
-DEFAULT_STALL_PATIENCE_SECONDS = 600.0   # how long a portent under way is waited for if the machine stops or goes away
-DEFAULT_RECONNECT_SECONDS = 2.0          # how often a lost port is tried again
-DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS = 1.0   # the pause before sending a character the machine refused (the write itself waits too)
-DEFAULT_MAX_TYPED_LINE_CHARACTERS = 500         # a typed line this long is ended there, so a stuck key cannot grow it without limit
 _READ_SLICE_SECONDS = 0.1   # one look at the port; the lock is free between looks, so a portent can start
 
 
@@ -123,34 +108,18 @@ class TerminalPort:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        terminal: The `[terminal]` settings it was handed.
     """
 
-    def __init__(self, port: str, baud: int = DEFAULT_BAUD, flow_control: str = DEFAULT_FLOW_CONTROL,
-                 end_of_line: str = DEFAULT_END_OF_LINE, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
-                 finish_wait_seconds: float = DEFAULT_FINISH_WAIT_SECONDS,
-                 echoplex: bool = True, type_during_printing: bool = False,
-                 stall_patience_seconds: float = DEFAULT_STALL_PATIENCE_SECONDS, reconnect_seconds: float = DEFAULT_RECONNECT_SECONDS,
-                 max_typed_line_characters: int = DEFAULT_MAX_TYPED_LINE_CHARACTERS,
-                 refused_character_retry_seconds: float = DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS,
-                 data_bits: int = DEFAULT_DATA_BITS, parity: str = DEFAULT_PARITY, stop_bits: int = DEFAULT_STOP_BITS,
-                 opener: Optional[Callable[[str, int, str, int, str, int], object]] = None, clock: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep, finder: Optional[object] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, terminal: TerminalSettings, opener: Optional[Callable[[str, int, str, int, str, int], object]] = None,
+                 clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep, finder: Optional[object] = None,
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            port: The port setting: a device name such as /dev/ttyACM0, or `auto` or part of a name for the finder to look up each time it is opened.
-            baud: The speed; only the RS-232 port uses it (USB ignores it). One of BAUD_RATES.
-            flow_control: "xon_xoff", "rts_cts" or "none".
-            end_of_line: What a newline is sent as: "cr", "crlf", "lf" or "lfcr". Must match the CadetWriter's setting.
-            characters_per_second: The fastest the text is sent, above 0.
-            finish_wait_seconds: How long to wait after the last byte for the machine to finish, 0 or more.
-            echoplex: True to echo each key typed on the typewriter back to it (the CadetWriter must be in full duplex).
-            type_during_printing: False to throw away keys typed while a portent is being typed; True keeps them for the next read.
-            stall_patience_seconds: How long to wait, once typing has begun, for a machine that stopped or went away, above 0.
-            reconnect_seconds: How often to try a lost port again, above 0.
-            max_typed_line_characters: A line typed on the keyboard is ended at this many characters, a whole number of at least 1.
-            refused_character_retry_seconds: The pause before a character the machine refused is sent again, above 0.
-            data_bits: Bits in each character, one of DATA_BITS. Must match the machine's setting.
-            parity: "none", "even" or "odd". Must match the machine's setting.
-            stop_bits: 1 or 2. Must match the machine's setting.
+            terminal: The `[terminal]` section: the `port` (a device name such as /dev/ttyACM0, or `auto` or part of a name for the finder
+                to look up each time it is opened), the line's `baud`, `data_bits`, `parity`, `stop_bits`, `flow_control` and `end_of_line`
+                (each must match the machine's own setting), the pace (`characters_per_second`, `finish_wait_seconds`), the keyboard
+                (`echoplex`, `type_during_printing`, `max_typed_line_characters`) and the waits (`stall_patience_seconds`,
+                `reconnect_seconds`, `refused_character_retry_seconds`).
             finder: Anything with `resolve(setting) -> device name` (a TerminalPortFinder), asked each time the port is opened. None opens `port` as written.
             opener: A function (port, baud, flow_control, data_bits, parity, stop_bits) -> an object with write(bytes), close(), read(size)
                 and reset_input_buffer(), and optionally `out_waiting` (the bytes accepted but not yet taken). Default: the real serial port.
@@ -160,44 +129,16 @@ class TerminalPort:
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TerminalPortError, DEBUG, strict)
+        self.terminal = terminal
+        port = terminal.port
         self._port_name = port
-        self._baud = self._valid(baud, "baud", DEFAULT_BAUD, lambda v: v in BAUD_RATES, "one of the standard baud rates")
-        self._flow_control = self._valid(flow_control, "flow_control", DEFAULT_FLOW_CONTROL,
-                                         lambda v: v in FLOW_CONTROLS, f"one of {', '.join(FLOW_CONTROLS)}")
-        self._data_bits = self._valid(data_bits, "data_bits", DEFAULT_DATA_BITS,
-                                      lambda v: isinstance(v, int) and v in DATA_BITS,                    # (True is 1, which is not in DATA_BITS)
-                                      f"one of {', '.join(str(bits) for bits in DATA_BITS)}")
-        self._parity = self._valid(parity, "parity", DEFAULT_PARITY, lambda v: v in PARITIES, f"one of {', '.join(PARITIES)}")
-        self._stop_bits = self._valid(stop_bits, "stop_bits", DEFAULT_STOP_BITS,
-                                      lambda v: isinstance(v, int) and not isinstance(v, bool) and v in STOP_BITS,
-                                      f"one of {', '.join(str(bits) for bits in STOP_BITS)}")
-        self._end_of_line = END_OF_LINES[self._valid(end_of_line, "end_of_line", DEFAULT_END_OF_LINE,
-                                                     lambda v: v in END_OF_LINES, f"one of {', '.join(END_OF_LINES)}")]
-        self._seconds_per_character = 1.0 / self._valid(
-            characters_per_second, "characters_per_second", DEFAULT_CHARACTERS_PER_SECOND,
-            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
-        self._finish_wait = self._valid(
-            finish_wait_seconds, "finish_wait_seconds", DEFAULT_FINISH_WAIT_SECONDS,
-            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0, "a number of at least 0")
-        self._stall_patience = self._valid(
-            stall_patience_seconds, "stall_patience_seconds", DEFAULT_STALL_PATIENCE_SECONDS,
-            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
-        self._reconnect = self._valid(
-            reconnect_seconds, "reconnect_seconds", DEFAULT_RECONNECT_SECONDS,
-            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
-        self._max_typed_line = self._valid(
-            max_typed_line_characters, "max_typed_line_characters", DEFAULT_MAX_TYPED_LINE_CHARACTERS,
-            lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= 1, "a whole number of at least 1")
-        self._refused_retry = self._valid(
-            refused_character_retry_seconds, "refused_character_retry_seconds", DEFAULT_REFUSED_CHARACTER_RETRY_SECONDS,
-            lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0, "a number above 0")
+        self._end_of_line = END_OF_LINES[terminal.end_of_line]
+        self._seconds_per_character = 1.0 / terminal.characters_per_second
         self._finder = finder
         self._connect_failing = False            # the port has been unavailable since a warning was given
         self._opener = opener if opener is not None else _open_serial
         self._clock = clock
         self._sleep = sleep
-        self._echoplex = bool(echoplex)
-        self._type_during_printing = bool(type_during_printing)
         self._serial = None
         self._lock = threading.Lock()            # one use of the line at a time: a portent, or a look for keys
         self._received: collections.deque = collections.deque()   # bytes read but not yet handled
@@ -206,13 +147,6 @@ class TerminalPort:
         self._usable = isinstance(port, str) and bool(port.strip())
         if not self._usable:
             self.logger.warning("the terminal port must be a device name, got %r; nothing will be typed", port)
-
-    def _valid(self, value, name: str, default, is_good, wanted: str):
-        """The value if it passes `is_good`, otherwise the default with a warning."""
-        if is_good(value):
-            return value
-        self.logger.warning("the typewriter %s must be %s, got %r; using %s", name, wanted, value, default)
-        return default
 
     @property
     def available(self) -> bool:
@@ -273,8 +207,8 @@ class TerminalPort:
                 return PrintResult(sent, self._clock() - started, False)
             if left:                                 # the patience ran out (reported, and the port closed, by the wait)
                 return PrintResult(max(0, sent - left), self._clock() - started, False)
-            if self._finish_wait:
-                self._sleep(self._finish_wait)
+            if self.terminal.finish_wait_seconds:
+                self._sleep(self.terminal.finish_wait_seconds)
             self._discard_input()
             seconds = self._clock() - started
             self.logger.debug("typed %d characters in %.1f s", sent, seconds)
@@ -305,7 +239,7 @@ class TerminalPort:
                                            still_alive):
                     return queued
             else:
-                self._sleep(self._refused_retry)     # going down, or the first look: give it a moment and look again
+                self._sleep(self.terminal.refused_character_retry_seconds)     # going down, or the first look: give it a moment and look again
             previous = queued
 
     @staticmethod
@@ -328,12 +262,12 @@ class TerminalPort:
             trouble.begin(now)
             self.logger.warning("the terminal %s after %s of %s characters (%s); waiting for it for up to %g s",
                                 "stopped taking characters (held, out of paper or busy)" if stalled else "port was lost", sent, total,
-                                type(error).__name__, self._stall_patience)
+                                type(error).__name__, self.terminal.stall_patience_seconds)
         while True:
             now = self._clock()
-            if now - trouble.since >= self._stall_patience:
+            if now - trouble.since >= self.terminal.stall_patience_seconds:
                 self.logger.critical("the terminal did not come back within %g s, after %s of %s characters; the rest was not typed",
-                                     self._stall_patience, sent, total)
+                                     self.terminal.stall_patience_seconds, sent, total)
                 self.close()
                 return False
             if still_alive is not None:
@@ -345,11 +279,11 @@ class TerminalPort:
                 self.logger.warning("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
             first = False
             if stalled:
-                self._sleep(self._refused_retry)
+                self._sleep(self.terminal.refused_character_retry_seconds)
                 return True                          # the port is open: send the same character again
             # the port was lost: close it and open it again, every few seconds
             self.close()
-            self._sleep(self._reconnect)
+            self._sleep(self.terminal.reconnect_seconds)
             if self._connect(quiet=True):
                 return True
 
@@ -372,14 +306,14 @@ class TerminalPort:
             pause = None                             # set when the port is not there: the wait is done after the lock is let go
             with self._lock:
                 if not self._usable or not self._connect():
-                    pause = self._reconnect if deadline is None else max(0.0, deadline - self._clock())
+                    pause = self.terminal.reconnect_seconds if deadline is None else max(0.0, deadline - self._clock())
                 else:
                     try:
                         data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
                     except Exception as error:       # a dead port must never stop the oracle
                         self.logger.warning("the terminal port failed while listening for the keyboard (%s); try again later", type(error).__name__)
                         self.close()
-                        pause = self._reconnect if deadline is None else max(0.0, min(self._reconnect, deadline - self._clock()))   # no hot loop on a dead port
+                        pause = self.terminal.reconnect_seconds if deadline is None else max(0.0, min(self.terminal.reconnect_seconds, deadline - self._clock()))   # no hot loop on a dead port
             if pause is not None:
                 self._sleep(pause)                   # not under the lock: a held lock reads as "being typed on", so the printer would look online
                 return None
@@ -414,7 +348,7 @@ class TerminalPort:
         if 32 <= code <= 126:
             self._line.append(chr(code))
             self._echo(chr(code))
-            if len(self._line) >= self._max_typed_line:
+            if len(self._line) >= self.terminal.max_typed_line_characters:
                 line, self._line = "".join(self._line), []
                 self._echo(self._end_of_line)
                 return line
@@ -422,7 +356,7 @@ class TerminalPort:
 
     def _echo(self, text: str) -> None:
         """Sends the keyboard's echo to the typewriter at once (a person types slowly; no pacing). A failure is recorded."""
-        if not self._echoplex or self._serial is None:      # no echo wanted, or the port just failed (already reported)
+        if not self.terminal.echoplex or self._serial is None:      # no echo wanted, or the port just failed (already reported)
             return
         with self._lock:
             try:
@@ -433,7 +367,7 @@ class TerminalPort:
 
     def _discard_input(self) -> None:
         """If keys are not wanted during a portent: forget everything typed and still unread, and any half-typed line."""
-        if self._type_during_printing:
+        if self.terminal.type_during_printing:
             return
         self._received.clear()
         self._line.clear()
@@ -454,7 +388,7 @@ class TerminalPort:
         name = self._port_name
         try:
             name = self._resolve()                   # inside the try: a finder that breaks is a port that will not open, not a crash
-            self._serial = self._opener(name, self._baud, self._flow_control, self._data_bits, self._parity, self._stop_bits)
+            self._serial = self._opener(name, self.terminal.baud, self.terminal.flow_control, self.terminal.data_bits, self.terminal.parity, self.terminal.stop_bits)
         except Exception as error:
             if not self._connect_failing and not quiet:
                 self.logger.warning("the terminal port %r would not open (%s); nothing was typed", self._port_name, type(error).__name__)
@@ -540,21 +474,17 @@ class ConsoleTerminal(TerminalPort):
     the log lines are exactly the real ones. Anything that takes a TerminalPort takes this.
 
     Args:
+        terminal: The `[terminal]` section: the pace (`characters_per_second`, `finish_wait_seconds`) and `type_during_printing` are
+            the real ones; the port is the console and a line ends with a plain line feed.
         stream: Where to transmit; default standard output.
         input_stream: Where the "keyboard" is: what is typed there is what `read_line` returns; default standard input.
-        characters_per_second: The pace; 16 like the real one. A big number types at once.
-        finish_wait_seconds: Wait after the last character; default none.
-        echoplex: Echo the keys back; off by default because the terminal already shows what is typed.
-        type_during_printing: False throws away keys typed while it types, like the real one.
+        echoplex: Echo the keys back; off by default because a screen already shows what is typed.
     """
 
-    def __init__(self, stream=None, input_stream=None, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
-                 finish_wait_seconds: float = 0.0, echoplex: bool = False, type_during_printing: bool = False,
+    def __init__(self, terminal: TerminalSettings, stream=None, input_stream=None, echoplex: bool = False,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep,
                  strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         sink = _StreamSink(stream if stream is not None else sys.stdout,
                            input_stream if input_stream is not None else sys.stdin)
-        super().__init__("console", end_of_line="lf", characters_per_second=characters_per_second,
-                         finish_wait_seconds=finish_wait_seconds, echoplex=echoplex,
-                         type_during_printing=type_during_printing, opener=lambda *line: sink,
+        super().__init__(dataclasses.replace(terminal, port="console", end_of_line="lf", echoplex=echoplex), opener=lambda *line: sink,
                          clock=clock, sleep=sleep, strict=strict, bookkeeper=bookkeeper)

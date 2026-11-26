@@ -14,6 +14,7 @@ Usage:
     type_text_on_typewriter.py --reply 30 "A portent."       # then wait 30 s for a line typed back (on the screen: type it and press Enter)
 """
 import argparse
+import dataclasses
 import os
 import sys
 
@@ -38,19 +39,18 @@ def main():
     configure_logging("WARNING")
     config = Config.load(CONFIG_PATH)
     printing, terminal = config.printing, config.terminal
-    cps = 1e9 if args.fast else (args.cps or terminal.characters_per_second)
-    finish_wait = 0.0 if args.fast else terminal.finish_wait_seconds
+    if args.fast:
+        terminal = dataclasses.replace(terminal, characters_per_second=1e9, finish_wait_seconds=0.0)
+    elif args.cps:
+        terminal = dataclasses.replace(terminal, characters_per_second=args.cps)
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
     text = PortentFormatter(printing).format(raw)
     if args.port:
-        typewriter = TerminalPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
-                                    terminal.echoplex, terminal.type_during_printing, data_bits=terminal.data_bits,
-                                    parity=terminal.parity, stop_bits=terminal.stop_bits,
-                                    finder=TerminalPortFinder(terminal.port_search))
+        terminal = dataclasses.replace(terminal, port=args.port)
+        typewriter = TerminalPort(terminal, finder=TerminalPortFinder(terminal))
     else:
-        typewriter = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
-                                       type_during_printing=terminal.type_during_printing)
+        typewriter = ConsoleTerminal(terminal)
 
     done = typewriter.transmit(text)
     print(f"--- {done.characters} characters in {done.seconds:.1f} s, {'all typed' if done.completed else 'NOT all typed'}")

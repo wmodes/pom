@@ -58,8 +58,7 @@ def main():
     if args.reply:
         typed_back = typewriter.read_line(args.reply)
         print(f"--- typed back: {typed_back!r}" if typed_back is not None else "--- nothing typed back")
-    for line in typewriter.report.lines():
-        print(f"    {line}")
+    # the terminal's problems were logged as they happened, above
 
 
 if __name__ == "__main__":

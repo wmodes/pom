@@ -49,7 +49,7 @@ def a_sound_card_is_there(monkeypatch):
     class FoundCard:
         found = True
 
-        def __init__(self, timeout_seconds):
+        def __init__(self, timeout_seconds, bookkeeper=None):
             pass
 
         def resolve(self, device):
@@ -99,7 +99,7 @@ class TestTheWiring:
         opened, asked = [], []
 
         class StandInFinder:
-            def __init__(self, timeout_seconds):
+            def __init__(self, timeout_seconds, bookkeeper=None):
                 asked.append(("timeout", timeout_seconds))
 
             found = True
@@ -181,7 +181,7 @@ class TestTheWiring:
         class StandInFinder:
             found = False
 
-            def __init__(self, timeout_seconds):
+            def __init__(self, timeout_seconds, bookkeeper=None):
                 pass
 
             def resolve(self, device):
@@ -202,7 +202,7 @@ class TestTheWiring:
         made, asked = [], []
 
         class StandInFinder:
-            def __init__(self, search_pattern):
+            def __init__(self, search_pattern, bookkeeper=None):
                 made.append(search_pattern)
 
             def resolve(self, setting):

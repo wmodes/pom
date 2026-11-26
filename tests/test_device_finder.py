@@ -45,10 +45,10 @@ def test_auto_takes_the_only_device_there_is():
 
 
 @pytest.mark.parametrize("written", ["auto", "Auto", " AUTO ", "", "   "])
-def test_auto_is_not_fussy_about_case_or_spaces_and_a_blank_setting_means_auto(written):
+def test_auto_is_not_fussy_about_case_or_spaces_and_a_blank_setting_means_auto(written, logged):
     finder = ListedFinder([MIC, CAM])
     assert finder.resolve(written) == "/dev/gadget/cam-2"
-    assert len(finder.report.warnings) == 1 and "several gadgets" in finder.report.warnings[0]       # the only complaint is that there are two
+    assert len(logged.of(finder).warnings()) == 1 and "several gadgets" in logged.of(finder).warnings()[0]       # the only complaint is that there are two
 
 
 def test_auto_with_several_takes_the_first_in_sorted_order_whatever_order_they_were_listed_in():
@@ -56,21 +56,21 @@ def test_auto_with_several_takes_the_first_in_sorted_order_whatever_order_they_w
     assert ListedFinder([CAM, MIC]).resolve("auto") == "/dev/gadget/cam-2"
 
 
-def test_auto_with_several_warns_with_what_was_chosen_and_what_was_there(caplog):
+def test_auto_with_several_warns_with_what_was_chosen_and_what_was_there(caplog, logged):
     finder = ListedFinder([MIC, CAM])
     with caplog.at_level(logging.INFO, logger=LOGGER):
         finder.resolve("auto")
     warnings = lines(caplog, logging.WARNING)
     assert len(warnings) == 1 and "several gadgets" in warnings[0]
     assert "chosen: /dev/gadget/cam-2" in warnings[0] and "/dev/gadget/mic-1" in warnings[0]
-    assert len(finder.report.warnings) == 1
+    assert len(logged.of(finder).warnings()) == 1
 
 
-def test_auto_with_one_device_has_no_complaints(caplog):
+def test_auto_with_one_device_has_no_complaints(caplog, logged):
     finder = ListedFinder([MIC])
     with caplog.at_level(logging.INFO, logger=LOGGER):
         finder.resolve("auto")
-    assert finder.report.ok and lines(caplog, logging.WARNING) == []
+    assert logged.of(finder).ok() and lines(caplog, logging.WARNING) == []
 
 
 # --- a name -----------------------------------------------------------------------------------
@@ -80,11 +80,11 @@ def test_a_name_is_any_part_of_any_of_the_devices_names_whatever_the_case(part):
     assert ListedFinder([CAM, MIC]).resolve(part) == "/dev/gadget/mic-1"
 
 
-def test_a_name_that_matches_one_device_is_not_a_complaint(caplog):
+def test_a_name_that_matches_one_device_is_not_a_complaint(caplog, logged):
     finder = ListedFinder([CAM, MIC])
     with caplog.at_level(logging.INFO, logger=LOGGER):
         finder.resolve("Studio")
-    assert finder.report.ok and lines(caplog, logging.WARNING) == []
+    assert logged.of(finder).ok() and lines(caplog, logging.WARNING) == []
 
 
 def test_a_name_that_matches_several_takes_the_first_in_sorted_order_and_warns(caplog):
@@ -185,20 +185,20 @@ def test_the_finder_counts_nothing_so_coming_back_is_just_the_found_line_after_t
     assert len(lines(caplog, logging.WARNING)) == 4 and len(lines(caplog, logging.INFO)) == 1
 
 
-def test_a_problem_is_reported_once_through_the_recorder_not_logged_a_second_way(caplog):
+def test_a_problem_is_reported_once_through_the_recorder_not_logged_a_second_way(caplog, logged):
     finder = ListedFinder([])
     with caplog.at_level(logging.INFO, logger=LOGGER):
         finder.resolve("auto")
-    assert len(lines(caplog, logging.WARNING)) == 1 and len(finder.report.warnings) == 1
+    assert len(lines(caplog, logging.WARNING)) == 1 and len(logged.of(finder).warnings()) == 1
 
 
 def test_a_listing_that_fails_hands_back_a_name_as_written_too():
     assert ListedFinder(OSError("x")).resolve("Studio") == "Studio"
 
 
-def test_a_name_with_spaces_round_it_is_still_a_name_and_gives_no_complaint():
+def test_a_name_with_spaces_round_it_is_still_a_name_and_gives_no_complaint(logged):
     finder = ListedFinder([MIC, CAM])
-    assert finder.resolve("  studio ") == "/dev/gadget/mic-1" and finder.report.ok
+    assert finder.resolve("  studio ") == "/dev/gadget/mic-1" and logged.of(finder).ok()
 
 
 def test_a_listing_that_fails_counts_as_nothing_there_and_names_the_kind_of_error_only(caplog):

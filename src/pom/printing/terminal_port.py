@@ -8,10 +8,10 @@ back, and each finished line (the C Rtn key) is returned.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A port that is missing, will not open or fails halfway gives
-    a PrintResult that says the text was not all typed, and a warning in `report`; never an exception. `strict=True`
+    a PrintResult that says the text was not all typed, and a warning in the log; never an exception. `strict=True`
     raises TerminalPortError instead, for tests and dev tools. The port is opened on the first call and reopened
     after a failure, so a typewriter that is switched on late is found.
-  * The portent is never logged or put in a report: nothing that was said in the room is kept. Reports hold counts
+  * The portent is never logged: nothing that was said in the room is kept. The log holds counts
     and timings.
   * LINE ENDINGS. The CadetWriter expects CR+LF by default; a bare LF only feeds the paper and does not return the
     carriage, so every line would step down the page. A newline is sent as `end_of_line` ("crlf" by default), which
@@ -53,7 +53,7 @@ Design decisions, and why:
     port name is opened as written. The wait between tries for a port that is not there is `reconnect_seconds`, for ever.
   * A port that cannot be opened is one warning for the whole stretch it stays unavailable, not one per try, and a line in the log when it
     opens again.
-  * What is typed in the room is room content: like the portent it is never logged or put in a report.
+  * What is typed in the room is room content: like the portent it is never logged.
   * The settings are passed in (the entry point takes them from `config.terminal`); this module never reads Config.
   * The way to open the port, the clock and the sleep are injected, so tests run with a fake and need no machine, and
     the ConsoleTerminal (the stand-in for development) is this same code writing to the terminal.
@@ -67,11 +67,9 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 FLOW_CONTROLS = ("xon_xoff", "rts_cts", "none")
 DATA_BITS = (5, 6, 7, 8)
@@ -125,7 +123,7 @@ class TerminalPort:
     """Sends formatted text to the typewriter over a serial port, paced.
 
     Attributes:
-        report: Problems met (port will not open, write failed, bad setting). Never holds the text.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, port: str, baud: int = DEFAULT_BAUD, flow_control: str = DEFAULT_FLOW_CONTROL,
@@ -138,7 +136,7 @@ class TerminalPort:
                  wait_log_reminder_seconds: float = DEFAULT_WAIT_LOG_REMINDER_SECONDS,
                  data_bits: int = DEFAULT_DATA_BITS, parity: str = DEFAULT_PARITY, stop_bits: int = DEFAULT_STOP_BITS,
                  opener: Optional[Callable[[str, int, str, int, str, int], object]] = None, clock: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep, finder: Optional[object] = None, strict: bool = False):
+                 sleep: Callable[[float], None] = time.sleep, finder: Optional[object] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             port: The port setting: a device name such as /dev/ttyACM0, or `auto` or part of a name for the finder to look up each time it is opened.
             baud: The speed; only the RS-232 port uses it (USB ignores it). One of BAUD_RATES.
@@ -162,8 +160,9 @@ class TerminalPort:
             clock: Returns seconds, steadily increasing.
             sleep: Waits for that many seconds.
             strict: Raise TerminalPortError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=TerminalPortError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TerminalPortError, DEBUG, strict)
         self._port_name = port
         self._baud = self._valid(baud, "baud", DEFAULT_BAUD, lambda v: v in BAUD_RATES, "one of the standard baud rates")
         self._flow_control = self._valid(flow_control, "flow_control", DEFAULT_FLOW_CONTROL,
@@ -212,13 +211,13 @@ class TerminalPort:
         self._after_cr = False                   # the last byte handled was a CR, so a following LF is its pair
         self._usable = isinstance(port, str) and bool(port.strip())
         if not self._usable:
-            self.report.warn(f"the terminal port must be a device name, got {port!r}; nothing will be typed")
+            self.logger.warning(f"the terminal port must be a device name, got {port!r}; nothing will be typed")
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return value
-        self.report.warn(f"the typewriter {name} must be {wanted}, got {value!r}; using {default}")
+        self.logger.warning(f"the typewriter {name} must be {wanted}, got {value!r}; using {default}")
         return default
 
     @property
@@ -242,7 +241,7 @@ class TerminalPort:
     def transmit(self, text: str, still_alive: Optional[Callable[[], object]] = None) -> PrintResult:
         """Types the text and returns when the typewriter has had time to finish. Never raises (except in strict mode).
 
-        `completed` is False if any of it was not sent; the reason is in `report`. Text with nothing to type is
+        `completed` is False if any of it was not sent; the reason is in the log. Text with nothing to type is
         completed at once, without opening the port. A port that will not open returns at once with nothing typed. Once typing has
         begun, a machine that stops or goes away is waited for (see STAYING WITH THE PORTENT), up to `stall_patience_seconds`;
         `still_alive`, if given, is called every few seconds while waiting.
@@ -271,11 +270,11 @@ class TerminalPort:
                     continue
                 sent += 1
                 if trouble.since is not None:
-                    self.report.info("the terminal is typing again after %.0f s", trouble.over(self._clock()))
+                    self.logger.info("the terminal is typing again after %.0f s", trouble.over(self._clock()))
             try:
                 left = self._wait_until_taken(sent, len(data), trouble, still_alive)
             except Exception as error:               # a dead port must never stop the oracle
-                self.report.warn(f"the terminal port failed at the end, after all {sent} characters were sent "
+                self.logger.warning(f"the terminal port failed at the end, after all {sent} characters were sent "
                                  f"({type(error).__name__})")
                 self.close()
                 return PrintResult(sent, self._clock() - started, False)
@@ -285,7 +284,7 @@ class TerminalPort:
                 self._sleep(self._finish_wait)
             self._discard_input()
             seconds = self._clock() - started
-            self.report.debug("typed %d characters in %.1f s", sent, seconds)
+            self.logger.debug("typed %d characters in %.1f s", sent, seconds)
             return PrintResult(sent, seconds, True)
 
     def _queued(self) -> int:
@@ -297,7 +296,7 @@ class TerminalPort:
 
         `write` returns when the bytes are in the port's queue, not when the machine has them, so a held machine does not make a write fail
         for a short portent. A queue that is going down is the machine taking its time; one that is not going down is a stall, waited out
-        exactly like a stalled write. (The count of characters in the report is bytes, so it is a character or two out where a line ends
+        exactly like a stalled write. (The count of characters it logs is bytes, so it is a character or two out where a line ends
         in two bytes.)
         """
         previous = None
@@ -305,7 +304,7 @@ class TerminalPort:
             queued = self._queued()
             stalled = previous is not None and queued >= previous
             if not stalled and trouble.since is not None:
-                self.report.info("the terminal is typing again after %.0f s", trouble.over(self._clock()))     # it is taking them again, or has taken them all
+                self.logger.info("the terminal is typing again after %.0f s", trouble.over(self._clock()))     # it is taking them again, or has taken them all
             if queued == 0:
                 return 0
             if stalled:
@@ -332,13 +331,13 @@ class TerminalPort:
         now = self._clock()
         if trouble.since is None:
             trouble.begin(now)
-            self.report.warn(f"the terminal {'stopped taking characters (held, out of paper or busy)' if stalled else 'port was lost'} "
+            self.logger.warning(f"the terminal {'stopped taking characters (held, out of paper or busy)' if stalled else 'port was lost'} "
                              f"after {sent} of {total} characters ({type(error).__name__}); waiting for it for up to "
                              f"{self._stall_patience:g} s")
         while True:
             now = self._clock()
             if now - trouble.since >= self._stall_patience:
-                self.report.critical(f"the terminal did not come back within {self._stall_patience:g} s, after {sent} of {total} characters; "
+                self.logger.critical(f"the terminal did not come back within {self._stall_patience:g} s, after {sent} of {total} characters; "
                                      f"the rest was not typed")
                 self.close()
                 return False
@@ -349,7 +348,7 @@ class TerminalPort:
                     pass
             if now - trouble.reminded >= self._wait_reminder:
                 trouble.reminded = now
-                self.report.warn("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
+                self.logger.warning("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
             if stalled:
                 self._sleep(self._refused_retry)
                 return True                          # the port is open: send the same character again
@@ -365,7 +364,7 @@ class TerminalPort:
         Waits until C Rtn is pressed (or `timeout` passes; None waits for ever). A line typed halfway when the time ran
         out is kept for the next call. An empty line, from C Rtn alone, is returned as ''. With `echoplex` each key is
         echoed to the paper as it arrives. Keys pressed during a portent wait for it (see type_during_printing). Never
-        raises (except in strict mode); None can also mean the port would not open, with the reason in `report`.
+        raises (except in strict mode); None can also mean the port would not open, with the reason in the log.
         """
         deadline = None if timeout is None else self._clock() + timeout
         while True:
@@ -383,7 +382,7 @@ class TerminalPort:
                     try:
                         data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
                     except Exception as error:       # a dead port must never stop the oracle
-                        self.report.warn(f"the terminal port failed while listening for the keyboard "
+                        self.logger.warning(f"the terminal port failed while listening for the keyboard "
                                          f"({type(error).__name__}); try again later")
                         self.close()
                         pause = self._reconnect if deadline is None else max(0.0, min(self._reconnect, deadline - self._clock()))   # no hot loop on a dead port
@@ -435,7 +434,7 @@ class TerminalPort:
             try:
                 self._serial.write(text.encode("ascii"))
             except Exception as error:               # a dead port must never stop the oracle
-                self.report.warn(f"the terminal port failed while echoing the keyboard ({type(error).__name__})")
+                self.logger.warning(f"the terminal port failed while echoing the keyboard ({type(error).__name__})")
                 self.close()
 
     def _discard_input(self) -> None:
@@ -464,11 +463,11 @@ class TerminalPort:
             self._serial = self._opener(name, self._baud, self._flow_control, self._data_bits, self._parity, self._stop_bits)
         except Exception as error:
             if not self._connect_failing and not quiet:
-                self.report.warn(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); nothing was typed")
+                self.logger.warning(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); nothing was typed")
             self._connect_failing = self._connect_failing or not quiet
             return False
         if self._connect_failing:
-            self.report.info("the terminal port %s is open again", name)
+            self.logger.info("the terminal port %s is open again", name)
         self._connect_failing = False
         return True
 
@@ -545,7 +544,7 @@ class ConsoleTerminal(TerminalPort):
     """A stand-in for the typewriter that types on the terminal at the same pace, for development.
 
     It is the TerminalPort writing to a stream instead of a serial port, so the pacing, the safe-byte filter and
-    the report are exactly the real ones. Anything that takes a TerminalPort takes this.
+    the log lines are exactly the real ones. Anything that takes a TerminalPort takes this.
 
     Args:
         stream: Where to transmit; default standard output.
@@ -559,10 +558,10 @@ class ConsoleTerminal(TerminalPort):
     def __init__(self, stream=None, input_stream=None, characters_per_second: float = DEFAULT_CHARACTERS_PER_SECOND,
                  finish_wait_seconds: float = 0.0, echoplex: bool = False, type_during_printing: bool = False,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         sink = _StreamSink(stream if stream is not None else sys.stdout,
                            input_stream if input_stream is not None else sys.stdin)
         super().__init__("console", end_of_line="lf", characters_per_second=characters_per_second,
                          finish_wait_seconds=finish_wait_seconds, echoplex=echoplex,
                          type_during_printing=type_during_printing, opener=lambda *line: sink,
-                         clock=clock, sleep=sleep, strict=strict)
+                         clock=clock, sleep=sleep, strict=strict, bookkeeper=bookkeeper)

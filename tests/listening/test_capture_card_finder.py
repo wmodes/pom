@@ -46,36 +46,36 @@ def test_the_device_number_is_kept():
 
 
 @pytest.mark.parametrize("name", ["ATR4697USB", "atr4697", "ATR4697-USB", "usb audio", "4697"])
-def test_a_name_is_any_part_of_the_cards_id_description_or_device_name(name):
+def test_a_name_is_any_part_of_the_cards_id_description_or_device_name(name, logged):
     found = finder(PI_LISTING)
-    assert found.resolve(name) == "plughw:CARD=ATR4697USB,DEV=0" and found.report.ok       # one card, found by the name: no fallback warning
+    assert found.resolve(name) == "plughw:CARD=ATR4697USB,DEV=0" and logged.of(found).ok()       # one card, found by the name: no fallback warning
 
 
 @pytest.mark.parametrize("name", ["Camera", "USB Camera", "usb camera"])
-def test_a_name_picks_the_other_card_when_it_names_that_one_by_its_id_or_its_description(name):
+def test_a_name_picks_the_other_card_when_it_names_that_one_by_its_id_or_its_description(name, logged):
     found = finder(TWO_CARDS)
-    assert found.resolve(name) == "plughw:CARD=Camera,DEV=0" and found.report.ok
+    assert found.resolve(name) == "plughw:CARD=Camera,DEV=0" and logged.of(found).ok()
 
 
 def test_a_full_device_string_that_names_a_card_in_the_list_still_works():
     assert finder(TWO_CARDS).resolve("plughw:CARD=Camera,DEV=0") == "plughw:CARD=Camera,DEV=0"
 
 
-def test_a_device_written_by_number_is_not_in_the_list_so_it_falls_back_to_the_card_that_is_there_with_a_warning():
+def test_a_device_written_by_number_is_not_in_the_list_so_it_falls_back_to_the_card_that_is_there_with_a_warning(logged):
     found = finder(PI_LISTING)
     assert found.resolve("plughw:0,0") == "plughw:CARD=ATR4697USB,DEV=0"
-    assert len(found.report.warnings) == 1 and "plughw:0,0" in found.report.warnings[0]
+    assert len(logged.of(found).warnings()) == 1 and "plughw:0,0" in logged.of(found).warnings()[0]
 
 
 def test_with_no_card_at_all_a_device_written_by_number_is_handed_back_as_written():
     assert finder(NO_CARDS).resolve("plughw:0,0") == "plughw:0,0"
 
 
-def test_several_cards_use_the_first_in_sorted_order_and_warn_naming_them_all():
+def test_several_cards_use_the_first_in_sorted_order_and_warn_naming_them_all(logged):
     found = finder(TWO_CARDS)
     assert found.resolve(AUTO) == "plughw:CARD=ATR4697USB,DEV=0"
-    assert len(found.report.warnings) == 1
-    warning = found.report.warnings[0]
+    assert len(logged.of(found).warnings()) == 1
+    warning = logged.of(found).warnings()[0]
     assert "several sound cards" in warning and "plughw:CARD=ATR4697USB,DEV=0" in warning and "plughw:CARD=Camera,DEV=0" in warning
 
 
@@ -85,28 +85,28 @@ def test_the_cards_are_taken_in_sorted_order_not_in_the_order_the_kernel_numbere
     assert finder(listing.replace("card 0: Zeta", "card 5: Zeta")).resolve(AUTO) == "plughw:CARD=Alpha,DEV=0"
 
 
-def test_two_devices_on_one_card_are_one_card_and_do_not_warn():
+def test_two_devices_on_one_card_are_one_card_and_do_not_warn(logged):
     listing = PI_LISTING + "card 2: ATR4697USB [ATR4697-USB], device 1: USB Audio [USB Audio #1]\n"
     found = finder(listing)
-    assert found.resolve(AUTO) == "plughw:CARD=ATR4697USB,DEV=0" and found.report.ok
+    assert found.resolve(AUTO) == "plughw:CARD=ATR4697USB,DEV=0" and logged.of(found).ok()
 
 
-def test_no_card_hands_the_keyword_back_and_warns():
+def test_no_card_hands_the_keyword_back_and_warns(logged):
     found = finder(NO_CARDS)
     assert found.resolve(AUTO) == AUTO
-    assert len(found.report.warnings) == 1 and "no sound card" in found.report.warnings[0]
+    assert len(logged.of(found).warnings()) == 1 and "no sound card" in logged.of(found).warnings()[0]
 
 
 def test_an_empty_listing_is_no_card():
     assert finder("").resolve(AUTO) == AUTO
 
 
-def test_a_failing_listing_hands_the_keyword_back_and_warns_without_the_error_text():
+def test_a_failing_listing_hands_the_keyword_back_and_warns_without_the_error_text(logged):
     def lister():
         raise OSError("secret detail")
     found = CaptureCardFinder(5.0, lister=lister)
     assert found.resolve(AUTO) == AUTO
-    assert len(found.report.warnings) == 1 and "OSError" in found.report.warnings[0] and "secret detail" not in found.report.warnings[0]
+    assert len(logged.of(found).warnings()) == 1 and "OSError" in logged.of(found).warnings()[0] and "secret detail" not in logged.of(found).warnings()[0]
 
 
 def test_it_looks_again_each_time_so_a_microphone_plugged_in_later_is_found():
@@ -151,14 +151,14 @@ def test_it_asks_in_english_whatever_the_machines_language_because_it_reads_the_
     assert CaptureCardFinder(5.0, arecord=program).resolve(AUTO) == "plughw:CARD=Mic,DEV=0"
 
 
-def test_a_missing_arecord_is_a_warning_not_a_crash(tmp_path):
+def test_a_missing_arecord_is_a_warning_not_a_crash(tmp_path, logged):
     found = CaptureCardFinder(5.0, arecord=str(tmp_path / "no-such-program"))
     assert found.resolve(AUTO) == AUTO
-    assert len(found.report.warnings) == 1 and "FileNotFoundError" in found.report.warnings[0]
+    assert len(logged.of(found).warnings()) == 1 and "FileNotFoundError" in logged.of(found).warnings()[0]
 
 
-def test_a_listing_that_hangs_is_given_up_on_after_the_timeout(tmp_path):
+def test_a_listing_that_hangs_is_given_up_on_after_the_timeout(tmp_path, logged):
     program = fake_arecord(tmp_path, "time.sleep(30)")
     found = CaptureCardFinder(0.3, arecord=program)
     assert found.resolve(AUTO) == AUTO
-    assert len(found.report.warnings) == 1 and "TimeoutExpired" in found.report.warnings[0]
+    assert len(logged.of(found).warnings()) == 1 and "TimeoutExpired" in logged.of(found).warnings()[0]

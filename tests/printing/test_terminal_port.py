@@ -90,11 +90,11 @@ def make(fake=None, clock=None, **settings):
 
 # --- Typing -------------------------------------------------------------------------------
 
-def test_the_text_is_sent_a_character_at_a_time_and_reported():
+def test_the_text_is_sent_a_character_at_a_time_and_reported(logged):
     port, fake, _, _ = make()
     report = port.transmit("Hi there")
     assert fake.written == b"Hi there" and report.characters == 8 and report.completed is True
-    assert fake.flushes == 0 and port.report.ok                  # never flush(): it has no time limit, so a held machine would hang it for ever
+    assert fake.flushes == 0 and logged.of(port).ok()                  # never flush(): it has no time limit, so a held machine would hang it for ever
 
 
 @pytest.mark.parametrize("setting, ending", [("cr", b"\r"), ("crlf", b"\r\n"), ("lf", b"\n"), ("lfcr", b"\n\r")])
@@ -181,13 +181,13 @@ def test_the_port_is_opened_on_the_first_use_with_its_settings_and_only_once():
     assert opened == [("/dev/ttyTEST", 115200, "rts_cts", 8, "none", 1)]
 
 
-def test_a_port_that_will_not_open_gives_an_incomplete_report_and_a_warning_never_an_exception():
+def test_a_port_that_will_not_open_gives_an_incomplete_report_and_a_warning_never_an_exception(logged):
     clock = FakeClock()
     port = TerminalPort("/dev/none", opener=lambda *a: (_ for _ in ()).throw(OSError("no such device")),
                           clock=clock, sleep=clock.sleep)
     report = port.transmit("a secret portent")
     assert report == PrintResult(0, 0.0, False)
-    assert len(port.report.warnings) == 1 and "/dev/none" in port.report.warnings[0] and "OSError" in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and "/dev/none" in logged.of(port).warnings()[0] and "OSError" in logged.of(port).warnings()[0]
 
 
 def test_a_port_that_would_not_open_is_tried_again_on_the_next_call():
@@ -206,7 +206,7 @@ def test_a_port_that_would_not_open_is_tried_again_on_the_next_call():
     assert port.transmit("a").completed is True and fake.written == b"a"
 
 
-def test_a_write_that_fails_halfway_is_waited_for_and_typing_goes_on_where_it_stopped():
+def test_a_write_that_fails_halfway_is_waited_for_and_typing_goes_on_where_it_stopped(logged):
     clock = FakeClock()
     first = FakeSerial(clock, fail_write_after=2)
     second = FakeSerial(clock)
@@ -215,23 +215,23 @@ def test_a_write_that_fails_halfway_is_waited_for_and_typing_goes_on_where_it_st
     report = port.transmit("abcde")
     assert report.characters == 5 and report.completed is True and first.closed is True
     assert first.written == b"ab" and second.written == b"cde"                # nothing repeated, nothing missed
-    assert len(port.report.warnings) == 1 and "2 of 5" in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and "2 of 5" in logged.of(port).warnings()[0]
     assert port.transmit("xy").completed is True and second.written == b"cdexy"
 
 
-def test_neither_the_text_nor_the_keys_typed_are_ever_put_in_the_report():
+def test_neither_the_text_nor_the_keys_typed_are_ever_put_in_the_report(logged):
     clock = FakeClock()
     port = TerminalPort("/dev/x", opener=lambda *a: FakeSerial(clock, fail_write_after=1), clock=clock, sleep=clock.sleep)
     port.transmit("zebra-secret portent")
-    assert all("zebra" not in line for line in port.report.lines())
+    assert all("zebra" not in line for line in logged.of(port).lines())
 
 
-def test_a_port_name_that_is_not_a_device_name_means_nothing_is_typed():
+def test_a_port_name_that_is_not_a_device_name_means_nothing_is_typed(logged):
     clock = FakeClock()
     opened = []
-    for name in ("", "   ", None, 7):
+    for count, name in enumerate(("", "   ", None, 7), start=1):
         port = TerminalPort(name, opener=lambda *a: opened.append(a), clock=clock, sleep=clock.sleep)
-        assert port.available is False and len(port.report.warnings) == 1
+        assert port.available is False and len(logged.of(port).warnings()) == count      # one more warning for each bad name
         assert port.transmit("a").completed is False
     assert opened == []
 
@@ -244,9 +244,9 @@ def test_a_good_port_name_is_available():
                                           ("end_of_line", "x"), ("characters_per_second", 0), ("characters_per_second", -3),
                                           ("characters_per_second", True), ("finish_wait_seconds", -1),
                                           ("finish_wait_seconds", "soon")])
-def test_a_bad_setting_means_the_default_with_a_warning(setting, bad):
+def test_a_bad_setting_means_the_default_with_a_warning(setting, bad, logged):
     port, fake, clock, opened = make(**{setting: bad})
-    assert len(port.report.warnings) == 1 and setting in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and setting in logged.of(port).warnings()[0]
     report = port.transmit("ab\n")
     assert report.completed is True and opened == [("/dev/ttyTEST", 9600, "xon_xoff", 8, "none", 1)]
     assert fake.written == b"ab\r\n"                                   # the default line ending
@@ -318,9 +318,9 @@ def test_the_line_settings_reach_the_opener():
 @pytest.mark.parametrize("setting, bad", [("data_bits", 4), ("data_bits", 9), ("data_bits", "7"), ("data_bits", 7.0), ("data_bits", True),
                                           ("parity", "x"), ("parity", "E"), ("parity", None), ("parity", 0),
                                           ("stop_bits", 0), ("stop_bits", 3), ("stop_bits", "1"), ("stop_bits", True)])
-def test_a_bad_line_setting_means_the_default_with_a_warning(setting, bad):
+def test_a_bad_line_setting_means_the_default_with_a_warning(setting, bad, logged):
     port, _, _, opened = make(**{setting: bad})
-    assert len(port.report.warnings) == 1 and setting in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and setting in logged.of(port).warnings()[0]
     port.transmit("a")
     assert opened == [("/dev/ttyTEST", 9600, "xon_xoff", 8, "none", 1)]
 
@@ -439,9 +439,9 @@ def test_the_typed_line_limit_is_a_setting():
                                         ("max_typed_line_characters", "500"), ("refused_character_retry_seconds", 0),
                                         ("refused_character_retry_seconds", -1), ("refused_character_retry_seconds", "1"),
                                         ("wait_log_reminder_seconds", 0), ("wait_log_reminder_seconds", None), ("wait_log_reminder_seconds", True)])
-def test_a_bad_limit_means_the_default_with_a_warning(option, bad):
+def test_a_bad_limit_means_the_default_with_a_warning(option, bad, logged):
     port = TerminalPort("/dev/x", **{option: bad})
-    assert len(port.report.warnings) == 1 and option in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and option in logged.of(port).warnings()[0]
 
 
 @pytest.mark.parametrize("option", ["max_typed_line_characters", "refused_character_retry_seconds", "wait_log_reminder_seconds"])
@@ -457,11 +457,11 @@ def test_a_line_ended_by_the_limit_is_echoed_a_line_ending_like_any_other():
     assert fake.written.endswith(b"x\r\n")
 
 
-def test_a_port_that_will_not_open_gives_none_after_waiting_the_timeout_not_a_hot_loop():
+def test_a_port_that_will_not_open_gives_none_after_waiting_the_timeout_not_a_hot_loop(logged):
     clock = FakeClock()
     port = TerminalPort("/dev/none", opener=lambda *a: (_ for _ in ()).throw(OSError()), clock=clock, sleep=clock.sleep)
     assert port.read_line(3) is None
-    assert clock.now == pytest.approx(3) and len(port.report.warnings) == 1
+    assert clock.now == pytest.approx(3) and len(logged.of(port).warnings()) == 1
 
 
 def test_waiting_for_ever_on_a_port_that_will_not_open_still_gives_up_each_time_after_a_pause_that_is_the_reconnect_setting():
@@ -523,34 +523,34 @@ def test_a_read_that_fails_pauses_for_the_reconnect_setting_before_it_gives_up()
     assert port.read_line() is None and clock.now == pytest.approx(3.0)
 
 
-def test_a_read_that_fails_gives_none_and_a_warning_and_the_port_is_reopened_next_time():
+def test_a_read_that_fails_gives_none_and_a_warning_and_the_port_is_reopened_next_time(logged):
     clock = FakeClock()
     broken, good = FakeSerial(clock), FakeSerial(clock)
     broken.read = lambda size=1: (_ for _ in ()).throw(OSError("unplugged"))
     ports = [broken, good]
     port = TerminalPort("/dev/x", opener=lambda *a: ports.pop(0), clock=clock, sleep=clock.sleep, echoplex=False)
     assert port.read_line(1) is None and broken.closed is True
-    assert len(port.report.warnings) == 1 and "keyboard" in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and "keyboard" in logged.of(port).warnings()[0]
     good.incoming += b"ok\r"
     assert port.read_line(1) == "ok"
 
 
-def test_a_failed_echo_is_reported_once_and_the_line_still_comes_back():
+def test_a_failed_echo_is_reported_once_and_the_line_still_comes_back(logged):
     clock = FakeClock()
     fake = FakeSerial(clock, fail_write_after=0)
     port = TerminalPort("/dev/x", opener=lambda *a: fake, clock=clock, sleep=clock.sleep)
     fake.incoming += b"abc\r"
     assert port.read_line(1) == "abc"
-    assert len(port.report.warnings) == 1 and "echo" in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and "echo" in logged.of(port).warnings()[0]
 
 
-def test_the_keys_typed_are_never_put_in_the_report():
+def test_the_keys_typed_are_never_put_in_the_report(logged):
     clock = FakeClock()
     fake = FakeSerial(clock, fail_write_after=0)
     port = TerminalPort("/dev/x", opener=lambda *a: fake, clock=clock, sleep=clock.sleep)
     fake.incoming += b"zebra-secret\r"
     port.read_line(1)
-    assert all("zebra" not in line for line in port.report.lines())
+    assert all("zebra" not in line for line in logged.of(port).lines())
 
 
 def test_strict_mode_raises_for_a_failed_read_and_a_failed_echo():
@@ -662,10 +662,10 @@ def console(**kwargs):
     return ConsoleTerminal(stream, **kwargs), stream
 
 
-def test_the_console_typewriter_types_on_the_stream_with_plain_newlines():
+def test_the_console_typewriter_types_on_the_stream_with_plain_newlines(logged):
     typewriter, stream = console(input_stream=io.StringIO(""))
     report = typewriter.transmit("ab\ncd")
-    assert stream.getvalue() == "ab\ncd" and report.completed is True and typewriter.report.ok
+    assert stream.getvalue() == "ab\ncd" and report.completed is True and logged.of(typewriter).ok()
 
 
 def test_the_console_terminal_is_a_terminal_port_with_the_same_filter():
@@ -775,11 +775,11 @@ class TestAHeldMachine:
         port, serial_port, _, opened = stalled_port({1: TimeoutError("slow")})
         assert port.transmit("abc").completed is True and serial_port.written == b"abc" and len(opened) == 1
 
-    def test_it_is_one_warning_for_the_whole_stall_and_a_line_in_the_log_when_typing_goes_on(self, caplog):
+    def test_it_is_one_warning_for_the_whole_stall_and_a_line_in_the_log_when_typing_goes_on(self, caplog, logged):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 12)})
         with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
             port.transmit("abcdef")
-        assert len(port.report.warnings) == 1 and "stopped taking characters" in port.report.warnings[0] and "2 of 6" in port.report.warnings[0]
+        assert len(logged.of(port).warnings()) == 1 and "stopped taking characters" in logged.of(port).warnings()[0] and "2 of 6" in logged.of(port).warnings()[0]
         assert any("typing again after" in r.getMessage() for r in caplog.records)
 
     def test_a_long_stall_is_mentioned_in_the_log_every_minute(self, caplog):
@@ -824,12 +824,12 @@ class TestAHeldMachine:
         assert gap > 50                                                       # the long wait
         assert serial_port.write_times[3] - serial_port.write_times[2] == pytest.approx(1 / 16)       # then the usual pace, not a flood
 
-    def test_a_machine_held_for_ever_is_given_up_after_the_patience_with_how_far_it_got(self):
+    def test_a_machine_held_for_ever_is_given_up_after_the_patience_with_how_far_it_got(self, logged):
         port, serial_port, clock, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 100000)}, stall_patience_seconds=300)
         report = port.transmit("abcdef")
         assert report.characters == 2 and report.completed is False and serial_port.closed is True
         assert 300 <= clock.now < 310
-        assert len(port.report.criticals) == 1 and "300 s" in port.report.criticals[0] and "2 of 6" in port.report.criticals[0]
+        assert len(logged.of(port).criticals()) == 1 and "300 s" in logged.of(port).criticals()[0] and "2 of 6" in logged.of(port).criticals()[0]
 
     def test_the_next_text_after_giving_up_opens_the_port_again(self):
         clock = FakeClock()
@@ -839,11 +839,11 @@ class TestAHeldMachine:
         assert port.transmit("abc").completed is False
         assert port.transmit("xyz").completed is True
 
-    def test_neither_the_text_nor_the_state_of_the_wait_leaks_words(self, caplog):
+    def test_neither_the_text_nor_the_state_of_the_wait_leaks_words(self, caplog, logged):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 200)}, stall_patience_seconds=100)
         with caplog.at_level(logging.DEBUG):
             port.transmit("zebra-secret portent")
-        assert "zebra" not in caplog.text and all("zebra" not in line for line in port.report.lines())
+        assert "zebra" not in caplog.text and all("zebra" not in line for line in logged.of(port).lines())
 
 
 class QueuedSerial(FakeSerial):
@@ -872,27 +872,27 @@ def queued_port(level, **settings):
 class TestAMachineThatHoldsTheEndOfThePortent:
     """Every character was accepted by the port, but the machine has not taken them (held, no paper): the end waits, like a stalled write."""
 
-    def test_a_queue_that_empties_by_itself_is_not_trouble(self):
+    def test_a_queue_that_empties_by_itself_is_not_trouble(self, logged):
         levels = iter([30, 20, 10, 0])
         port, serial_port, _ = queued_port(lambda now: next(levels))
         report = port.transmit("abc")
-        assert report.completed is True and report.characters == 3 and port.report.ok and serial_port.flushes == 0
+        assert report.completed is True and report.characters == 3 and logged.of(port).ok() and serial_port.flushes == 0
 
-    def test_a_queue_going_down_with_the_clock_is_given_time_and_is_not_called_a_stall(self):
+    def test_a_queue_going_down_with_the_clock_is_given_time_and_is_not_called_a_stall(self, logged):
         """A machine taking one byte a second: the wait must let time pass between looks, or the queue would look unchanged and held."""
         port, serial_port, clock = queued_port(lambda now: max(0, 5 - int(now)))
         report = port.transmit("abc")
-        assert report.completed is True and port.report.ok
+        assert report.completed is True and logged.of(port).ok()
         assert clock.now >= 5 - 1                                  # it waited for the machine, a pause at a time, not in a busy loop
 
-    def test_a_held_machine_that_is_released_in_time_finishes_the_portent(self, caplog):
+    def test_a_held_machine_that_is_released_in_time_finishes_the_portent(self, caplog, logged):
         port, serial_port, _ = queued_port(lambda now: 40 if now < 90 else 0)
         with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
             report = port.transmit("abcdef")
         assert report.completed is True and report.characters == 6 and serial_port.closed is False
-        assert len(port.report.warnings) == 2 and not port.report.criticals
-        assert "stopped taking characters" in port.report.warnings[0]
-        assert "still not typing" in port.report.warnings[1]               # the reminder is a warning like any other, through the recorder
+        assert len(logged.of(port).warnings()) == 2 and not logged.of(port).criticals()
+        assert "stopped taking characters" in logged.of(port).warnings()[0]
+        assert "still not typing" in logged.of(port).warnings()[1]               # the reminder is a warning like any other, through the recorder
         assert any("typing again after" in r.getMessage() for r in caplog.records)
 
     def test_the_heartbeat_is_called_while_the_end_waits(self):
@@ -901,31 +901,31 @@ class TestAMachineThatHoldsTheEndOfThePortent:
         port.transmit("abc", still_alive=lambda: beats.append(1))
         assert len(beats) >= 25
 
-    def test_a_machine_held_for_ever_is_given_up_after_the_patience_and_the_port_is_closed(self):
+    def test_a_machine_held_for_ever_is_given_up_after_the_patience_and_the_port_is_closed(self, logged):
         port, serial_port, clock = queued_port(lambda now: 4, stall_patience_seconds=300)
         report = port.transmit("abcdef")
         assert report.completed is False and serial_port.closed is True and serial_port.flushes == 0
         assert 300 <= clock.now < 310
-        assert len(port.report.criticals) == 1 and "300 s" in port.report.criticals[0]
+        assert len(logged.of(port).criticals()) == 1 and "300 s" in logged.of(port).criticals()[0]
 
-    def test_the_characters_counted_are_the_ones_the_machine_took_not_the_ones_the_port_accepted(self):
+    def test_the_characters_counted_are_the_ones_the_machine_took_not_the_ones_the_port_accepted(self, logged):
         port, _, _ = queued_port(lambda now: 4, stall_patience_seconds=30)
         report = port.transmit("abcdef")
-        assert report.characters == 2 and "2 of 6" in port.report.criticals[0]
+        assert report.characters == 2 and "2 of 6" in logged.of(port).criticals()[0]
 
     def test_text_the_machine_took_none_of_counts_as_nothing_typed_so_the_caller_may_try_it_again(self):
         port, _, _ = queued_port(lambda now: 6, stall_patience_seconds=30)
         report = port.transmit("abcdef")
         assert report.characters == 0 and report.completed is False
 
-    def test_the_patience_counts_from_the_last_time_the_machine_took_something(self):
+    def test_the_patience_counts_from_the_last_time_the_machine_took_something(self, logged):
         # held 60 s, takes one byte, held 60 s more, then released: 120 s in all, but never 100 s without progress
         def level(now):
             if now >= 125:
                 return 0
             return 5 if now < 62 else 4
         port, _, _ = queued_port(level, stall_patience_seconds=100)
-        assert port.transmit("abc").completed is True and not port.report.criticals
+        assert port.transmit("abc").completed is True and not logged.of(port).criticals()
 
     def test_the_next_text_after_giving_up_opens_the_port_again(self):
         clock = FakeClock()
@@ -935,15 +935,15 @@ class TestAMachineThatHoldsTheEndOfThePortent:
         assert port.transmit("abc").completed is False
         assert port.transmit("xyz").completed is True
 
-    def test_a_port_that_cannot_say_how_much_is_queued_is_taken_to_have_taken_it_all(self):
+    def test_a_port_that_cannot_say_how_much_is_queued_is_taken_to_have_taken_it_all(self, logged):
         port, fake, _, _ = make()                                  # a FakeSerial has no out_waiting
-        assert port.transmit("abc").completed is True and port.report.ok
+        assert port.transmit("abc").completed is True and logged.of(port).ok()
 
-    def test_the_wait_leaks_no_words(self, caplog):
+    def test_the_wait_leaks_no_words(self, caplog, logged):
         port, _, _ = queued_port(lambda now: 4, stall_patience_seconds=30)
         with caplog.at_level(logging.DEBUG):
             port.transmit("zebra-secret portent")
-        assert "zebra" not in caplog.text and all("zebra" not in line for line in port.report.lines())
+        assert "zebra" not in caplog.text and all("zebra" not in line for line in logged.of(port).lines())
 
 
 class TestAPortThatIsLost:
@@ -967,7 +967,7 @@ class TestAPortThatIsLost:
         assert report.completed is True and first.written == b"abc" and second.written == b"defg"
         assert len(attempts) == 5 and clock.sleeps.count(2.0) == 4          # a try every 2 s
 
-    def test_one_warning_for_the_stretch_not_one_per_try(self):
+    def test_one_warning_for_the_stretch_not_one_per_try(self, logged):
         clock = FakeClock()
         first, second = ScriptedSerial(clock, {1: OSError("unplugged")}), ScriptedSerial(clock)
         tries = []
@@ -981,9 +981,9 @@ class TestAPortThatIsLost:
             return second
         port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
         port.transmit("abc")
-        assert len(port.report.warnings) == 1 and "port was lost" in port.report.warnings[0]
+        assert len(logged.of(port).warnings()) == 1 and "port was lost" in logged.of(port).warnings()[0]
 
-    def test_a_port_that_never_comes_back_is_given_up_after_the_patience(self):
+    def test_a_port_that_never_comes_back_is_given_up_after_the_patience(self, logged):
         clock = FakeClock()
         first = ScriptedSerial(clock, {2: OSError("unplugged")})
         opened = []
@@ -996,7 +996,7 @@ class TestAPortThatIsLost:
         port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0, stall_patience_seconds=120)
         report = port.transmit("abcdef")
         assert report.characters == 2 and report.completed is False
-        assert len(port.report.criticals) == 1 and "120 s" in port.report.criticals[0]
+        assert len(logged.of(port).criticals()) == 1 and "120 s" in logged.of(port).criticals()[0]
         assert 120 <= clock.now < 126
 
     def test_the_heartbeat_is_called_each_time_it_tries_again(self):
@@ -1082,7 +1082,7 @@ class TestThePortIsFoundByItsFinder:
         port.transmit("b")
         assert finder.asked == ["auto"]
 
-    def test_a_finder_that_found_nothing_hands_the_setting_back_and_the_port_will_not_open_with_one_warning(self):
+    def test_a_finder_that_found_nothing_hands_the_setting_back_and_the_port_will_not_open_with_one_warning(self, logged):
         clock = FakeClock()
         finder = StandInFinder("auto")
 
@@ -1091,17 +1091,17 @@ class TestThePortIsFoundByItsFinder:
         port = TerminalPort("auto", opener=opener, clock=clock, sleep=clock.sleep, finder=finder)
         for _ in range(3):
             assert port.transmit("a") == PrintResult(0, 0.0, False)
-        assert len(port.report.warnings) == 1 and "would not open" in port.report.warnings[0]
+        assert len(logged.of(port).warnings()) == 1 and "would not open" in logged.of(port).warnings()[0]
         assert finder.asked == ["auto"] * 3                               # and it looked again each time
 
-    def test_a_finder_that_breaks_is_a_port_that_will_not_open_not_a_crash(self):
+    def test_a_finder_that_breaks_is_a_port_that_will_not_open_not_a_crash(self, logged):
         class BrokenFinder:
             def resolve(self, setting):
                 raise RuntimeError("a bug in the finder")
         clock = FakeClock()
         port = TerminalPort("auto", opener=lambda *a: FakeSerial(clock), clock=clock, sleep=clock.sleep, finder=BrokenFinder())
         assert port.transmit("a") == PrintResult(0, 0.0, False)
-        assert len(port.report.warnings) == 1 and "would not open" in port.report.warnings[0]
+        assert len(logged.of(port).warnings()) == 1 and "would not open" in logged.of(port).warnings()[0]
 
     def test_without_a_finder_the_port_is_opened_as_written(self):
         clock = FakeClock()
@@ -1116,7 +1116,7 @@ class TestThePortIsFoundByItsFinder:
 
 
 class TestAPortThatWillNotOpen:
-    def test_it_is_one_warning_however_many_tries_and_a_line_in_the_log_when_it_opens(self, caplog):
+    def test_it_is_one_warning_however_many_tries_and_a_line_in_the_log_when_it_opens(self, caplog, logged):
         clock = FakeClock()
         up = []
 
@@ -1127,13 +1127,13 @@ class TestAPortThatWillNotOpen:
         port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
         for _ in range(5):
             assert port.transmit("a").completed is False
-        assert len(port.report.warnings) == 1
+        assert len(logged.of(port).warnings()) == 1
         up.append(1)
         with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
             assert port.transmit("a").completed is True
         assert any("is open again" in r.getMessage() for r in caplog.records)
 
-    def test_a_second_stretch_of_trouble_is_a_new_warning(self):
+    def test_a_second_stretch_of_trouble_is_a_new_warning(self, logged):
         clock = FakeClock()
         state = {"up": False}
 
@@ -1148,7 +1148,7 @@ class TestAPortThatWillNotOpen:
         port.close()
         state["up"] = False
         port.transmit("a")
-        assert len(port.report.warnings) == 2
+        assert len(logged.of(port).warnings()) == 2
 
 
 class TestOnline:
@@ -1158,12 +1158,12 @@ class TestOnline:
         port, fake, _, opened = make()
         assert port.online() is True and fake.written == b"" and len(opened) == 1
 
-    def test_a_port_that_will_not_open_is_offline_quietly_however_often_it_is_asked(self):
+    def test_a_port_that_will_not_open_is_offline_quietly_however_often_it_is_asked(self, logged):
         def opener(*a):
             raise OSError("not plugged in")
         port = TerminalPort("/dev/x", opener=opener, finish_wait_seconds=0)
         assert [port.online() for _ in range(5)] == [False] * 5
-        assert port.report.ok
+        assert logged.of(port).ok()
 
     def test_it_turns_online_when_the_typewriter_is_plugged_in(self):
         clock = FakeClock()
@@ -1234,11 +1234,11 @@ class TestOnlineWithoutWaiting:
         port, fake, _, opened = make()
         assert port.online(wait=False) is True and len(opened) == 1 and fake.written == b""
 
-    def test_a_port_that_will_not_open_is_offline_when_nothing_is_typing(self):
+    def test_a_port_that_will_not_open_is_offline_when_nothing_is_typing(self, logged):
         def opener(*a):
             raise OSError("not plugged in")
         port = TerminalPort("/dev/x", opener=opener, finish_wait_seconds=0)
-        assert port.online(wait=False) is False and port.report.ok
+        assert port.online(wait=False) is False and logged.of(port).ok()
 
     def test_a_port_name_that_cannot_be_used_is_offline_when_nothing_is_typing(self):
         assert TerminalPort("", opener=lambda *a: FakeSerial(), finish_wait_seconds=0).online(wait=False) is False
@@ -1268,6 +1268,6 @@ class TestOnlineWithoutWaiting:
 
 @pytest.mark.parametrize("setting", ["stall_patience_seconds", "reconnect_seconds"])
 @pytest.mark.parametrize("bad", [0, -1, "x", None, True, float("nan")])
-def test_a_bad_patience_or_reconnect_is_the_default_with_a_warning(setting, bad):
+def test_a_bad_patience_or_reconnect_is_the_default_with_a_warning(setting, bad, logged):
     port, _, _, _ = make(**{setting: bad})
-    assert len(port.report.warnings) == 1 and setting in port.report.warnings[0]
+    assert len(logged.of(port).warnings()) == 1 and setting in logged.of(port).warnings()[0]

@@ -14,8 +14,9 @@ pom/device_finder.py. What is particular to serial ports is here:
 """
 import glob
 import os
-from typing import Callable, List
+from typing import Callable, List, Optional
 
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.device_finder import AUTO, Device, DeviceFinder, DeviceFinderError
 from pom.bookkeeper.log_setup import get_logger
 
@@ -34,14 +35,15 @@ class TerminalPortFinder(DeviceFinder):
     KIND = "serial port"
 
     def __init__(self, search_pattern: str, lister: Callable[[str], list] = glob.glob,
-                 real_path: Callable[[str], str] = os.path.realpath, strict: bool = False):
+                 real_path: Callable[[str], str] = os.path.realpath, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             search_pattern: Where the serial devices are looked for (setting `terminal.port_search`), a glob such as /dev/serial/by-id/*.
             lister: A function pattern -> list of matching paths. Default: glob.glob. Tests give a fake.
             real_path: A function path -> the real device it points to. Default: os.path.realpath. Tests give a fake.
             strict: Raise TerminalPortFinderError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        super().__init__(strict=strict, error=TerminalPortFinderError)
+        super().__init__(strict=strict, error=TerminalPortFinderError, bookkeeper=bookkeeper)
         self._search_pattern = search_pattern
         self._lister = lister
         self._real_path = real_path

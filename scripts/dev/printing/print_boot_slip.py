@@ -65,8 +65,7 @@ def main():
     print("--- the slip:")
     typed = slipper.run()
     print(f"--- {'all typed' if typed else 'NOT typed'}")
-    for line in terminal.report.lines():
-        print(f"    {line}")
+    # the terminal's problems were logged as they happened, above
 
 
 if __name__ == "__main__":

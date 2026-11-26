@@ -24,13 +24,11 @@ Design decisions, and why:
   * A finder is asked from one thread at a time (its owner holds a lock, or has one thread), so the count of tries needs no lock of its own.
 """
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 AUTO = "auto"                           # the setting's keyword for "find it yourself"
 
@@ -55,17 +53,18 @@ class DeviceFinder:
     """Turns the device setting into a device that can be opened. A subclass says what is there by implementing `_available`.
 
     Attributes:
-        report: Problems met (nothing there, several there, a name not found, a listing that failed). Never raised outside strict mode.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         found: True if the last lookup found a device to use (False before the first lookup, and when the last one found nothing).
     """
     KIND = "device"                     # what a subclass's devices are called in the log ("sound card", "serial port")
 
-    def __init__(self, strict: bool = False, error: type = DeviceFinderError):
+    def __init__(self, strict: bool = False, error: type = DeviceFinderError, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             strict: Raise `error` on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             error: The exception type strict mode raises (a subclass gives its own).
         """
-        self.report = ReportRecorder(strict=strict, error=error, logger=_log)   # every problem goes through it: logged once, kept for reading
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, error, DEBUG, strict)   # every problem goes through it: logged once, kept for reading
         self.found = False
 
     def _available(self) -> List[Device]:
@@ -94,7 +93,7 @@ class DeviceFinder:
             pool = devices
             self._warn(f"no {self.KIND} matches {setting!r}; using what is there instead. available: {available}; chosen: {pool[0].address}")
         chosen = pool[0].address
-        self.report.info("%s: setting %r; available: %s; chosen: %s", self.KIND, setting, available, chosen)
+        self.logger.info("%s: setting %r; available: %s; chosen: %s", self.KIND, setting, available, chosen)
         if len(pool) > 1:
             which = "auto" if auto else f"{setting!r}"
             self._warn(f"several {self.KIND}s to choose from ({which}), so the first is used. chosen: {chosen}; available: {available}. "
@@ -107,4 +106,4 @@ class DeviceFinder:
 
     def _warn(self, message: str) -> None:
         """Reports a problem through the recorder: raised in strict mode, otherwise logged (once) and kept for reading."""
-        self.report.warn(message)
+        self.logger.warning(message)

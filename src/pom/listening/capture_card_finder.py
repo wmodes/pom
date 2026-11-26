@@ -19,6 +19,7 @@ import shutil
 import subprocess
 from typing import Callable, List, Optional
 
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.device_finder import AUTO, Device, DeviceFinder, DeviceFinderError
 from pom.bookkeeper.log_setup import get_logger
 
@@ -40,14 +41,15 @@ class CaptureCardFinder(DeviceFinder):
     KIND = "sound card"
 
     def __init__(self, timeout_seconds: float, arecord: str = "arecord",
-                 lister: Optional[Callable[[], str]] = None, strict: bool = False):
+                 lister: Optional[Callable[[], str]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             timeout_seconds: How long to wait for `arecord -l` before giving up, above 0 (setting `listening.device_lookup_seconds`).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             lister: Returns the text `arecord -l` prints. Defaults to running the program.
             strict: Raise CaptureCardFinderError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        super().__init__(strict=strict, error=CaptureCardFinderError)
+        super().__init__(strict=strict, error=CaptureCardFinderError, bookkeeper=bookkeeper)
         self._timeout_seconds = timeout_seconds          # validated once, by the config module
         self._arecord = arecord
         self._lister = lister if lister is not None else self._run_arecord

@@ -193,7 +193,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     def sound_arrived() -> None:
         board.post("mic", Light.UP)
 
-    card_finder = CaptureCardFinder(listening.device_lookup_seconds)     # turns `auto` into the microphone's card, looked up again at each start of listening
+    card_finder = CaptureCardFinder(listening.device_lookup_seconds, bookkeeper=bookkeeper)     # turns `auto` into the microphone's card, looked up again at each start of listening
 
     def make_deck():
         if options.wav:
@@ -228,7 +228,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     printing = config.printing
     formatter = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
                                  printing.composed_characters_kept)
-    terminal = _make_terminal(mode, terminal_settings)
+    terminal = _make_terminal(mode, terminal_settings, bookkeeper)
 
     # the turn
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
@@ -302,19 +302,19 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     return Printer(conductor, history, site, terminal, floor, parts, board.lights, warmer, slipper, poller, bookkeeper)
 
 
-def _make_terminal(mode: str, settings):
+def _make_terminal(mode: str, settings, bookkeeper: Optional[Bookkeeper] = None):
     """The terminal for this mode: the real serial port (found by name, looked up again each time it opens), the console stand-in, or None for no printer."""
     if mode == "none":
         return None
     if mode == "console":
-        return ConsoleTerminal(characters_per_second=settings.characters_per_second)
-    finder = TerminalPortFinder(settings.port_search)
+        return ConsoleTerminal(characters_per_second=settings.characters_per_second, bookkeeper=bookkeeper)
+    finder = TerminalPortFinder(settings.port_search, bookkeeper=bookkeeper)
     return TerminalPort(settings.port, settings.baud, settings.flow_control, settings.end_of_line, settings.characters_per_second,
                         settings.finish_wait_seconds, settings.echoplex, settings.type_during_printing, settings.stall_patience_seconds,
                         settings.reconnect_seconds, max_typed_line_characters=settings.max_typed_line_characters,
                         refused_character_retry_seconds=settings.refused_character_retry_seconds,
                         wait_log_reminder_seconds=settings.wait_log_reminder_seconds, data_bits=settings.data_bits, parity=settings.parity,
-                        stop_bits=settings.stop_bits, finder=finder)
+                        stop_bits=settings.stop_bits, finder=finder, bookkeeper=bookkeeper)
 
 
 def parse_options(argv=None) -> Options:

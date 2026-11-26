@@ -817,6 +817,14 @@ class TestAHeldMachine:
             raise RuntimeError("beat broke")
         assert port.transmit("abc", still_alive=broken).completed is True and serial_port.written == b"abc"
 
+    def test_a_heartbeat_that_fails_is_logged_as_a_warning_naming_only_the_kind_of_error(self, logged):
+        port, _, _, _ = stalled_port({1: SerialTimeoutException("held")})
+
+        def broken():
+            raise RuntimeError("beat broke")
+        port.transmit("abc", still_alive=broken)
+        assert "the heartbeat failed (RuntimeError); the wait goes on" in logged.of(port).warnings()
+
     def test_the_pacing_starts_again_from_the_moment_it_goes_on(self):
         port, serial_port, clock, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 62)})
         port.transmit("abcd")

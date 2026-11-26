@@ -76,6 +76,13 @@ class TestTellingThatSoundArrived:
         deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, 3)"), heard=broken)
         assert [value_of(f) for f in collect(deck)] == [1, 2, 3]
 
+    def test_a_callback_that_raises_is_logged_as_a_warning_naming_only_the_kind_of_error(self, tmp_path, logged):
+        def broken():
+            raise RuntimeError("the board broke")
+        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)"), heard=broken)
+        collect(deck)
+        assert logged.of(deck).warnings() == ["telling that sound arrived failed (RuntimeError); the sound goes on"]
+
     def test_without_a_callback_nothing_changes(self, tmp_path):
         deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(7)"))
         assert [value_of(f) for f in collect(deck)] == [7]

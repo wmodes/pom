@@ -344,8 +344,8 @@ class TerminalPort:
             if still_alive is not None:
                 try:
                     still_alive()
-                except Exception:                    # a failing heartbeat must not end the wait
-                    pass
+                except Exception as problem:         # a failing heartbeat must not end the wait
+                    self.logger.warning("the heartbeat failed (%s); the wait goes on", type(problem).__name__)
             if now - trouble.reminded >= self._wait_reminder:
                 trouble.reminded = now
                 self.logger.warning("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)

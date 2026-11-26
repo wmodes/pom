@@ -124,12 +124,12 @@ class MicDeck:
             self._put(None)                                 # tells frames() the sound has ended
 
     def _tell_sound_arrived(self) -> None:
-        """Calls `heard`, if there is one. Whatever it does, the sound goes on."""
+        """Calls `heard`, if there is one. Whatever it does, the sound goes on; a failure is a warning naming only the kind of error."""
         if self._heard is not None:
             try:
                 self._heard()
-            except Exception:                               # the board must never stop the sound
-                pass
+            except Exception as problem:                    # the board must never stop the sound
+                self._fault("warning", f"telling that sound arrived failed ({type(problem).__name__}); the sound goes on")
 
     def _put(self, item: Optional[bytes]) -> None:
         """Adds to the buffer, throwing away the oldest frame if it is full (the end marker is never lost)."""

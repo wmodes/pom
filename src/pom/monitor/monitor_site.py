@@ -30,7 +30,6 @@ Design decisions, and why:
 """
 import hmac
 import ipaddress
-import math
 import threading
 import time
 from dataclasses import dataclass, field
@@ -42,7 +41,8 @@ from werkzeug.serving import WSGIRequestHandler, make_server
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
-from pom.monitor.score_chart import ChartLook, render_score_chart
+from pom.defaults import ChartSettings, MonitorSettings
+from pom.monitor.score_chart import render_score_chart
 from pom.monitor.chart_notebook import ChartNotebook
 from pom.monitor.turn_history import TurnHistory, TurnRecord
 
@@ -63,8 +63,6 @@ class _PollingRequestHandler(WSGIRequestHandler):
         _log.debug('%s "%s" %s', self.address_string(), self.requestline, code)
 
 REALM = "Printer of Mysteries"
-DEFAULT_POLL_SECONDS = 5.0      # the fallback for a missing or bad `[monitor] poll_seconds`; the setting is the one that counts
-DEFAULT_SNIPPET_CHARS = 90        # the fallback for a missing or bad `[monitor] hinge_snippet_chars`; the setting is the one that counts
 SECURITY_HEADERS = {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
@@ -272,64 +270,47 @@ class MonitorSite:
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         app: The Flask application, or None if there is no password (the site cannot run).
+        monitor: The `[monitor]` settings it reads: the password, `show_hinges`, `poll_seconds`, `hinge_snippet_chars` and `password_on_localhost`.
+        chart: The `[chart]` settings that shape the chart and say how many minutes it shows.
     """
 
-    def __init__(self, history: TurnHistory, password: str, show_hinges: bool = True,
+    def __init__(self, history: TurnHistory, monitor: MonitorSettings, chart: ChartSettings,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
-                 clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None, chart=None,
-                 poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
-                 stream_began_at: Optional[float] = None,
-                 password_on_localhost: bool = True, hinge_snippet_chars: int = DEFAULT_SNIPPET_CHARS, bookkeeper: Optional[Bookkeeper] = None):
+                 clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None,
+                 stream_now: Optional[Callable[[], float]] = None, stream_began_at: Optional[float] = None,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             history: Where the turns are read from.
-            password: The site's password; the site does not run without one.
-            show_hinges: False hides the hinge text everywhere, leaving numbers only.
+            monitor: The `[monitor]` settings. Its password is the site's; the site does not run without one. `show_hinges` false hides the
+                hinge text everywhere, leaving numbers only. `password_on_localhost` false lets a request from the Printer's own machine in
+                without the password (see `_from_this_machine`).
+            chart: The `[chart]` settings that shape the chart.
             status_source: A function returning the MonitorStatus now; optional.
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise MonitorSiteError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             notebook: A ChartNotebook to draw the chart from; without one the page has no chart.
-            chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
-            poll_seconds: How often the open page asks for news and redraws (`[monitor] poll_seconds`), above 0; a bad value is the fallback, with a warning.
             stream_now: Returns the stream time now, the chart's right edge, so the chart moves through silence; without it the edge is the newest attempt.
-            password_on_localhost: False lets a request from the Printer's own machine in without the password (see `_from_this_machine`); True, the
-                default and the fallback for anything that is not a bool, asks everyone.
             stream_began_at: The stream time at which listening began; a quiet start (no attempt for longer than the longest silence) is drawn as a
                 silence too, as long as the notebook still holds every attempt since then.
-            hinge_snippet_chars: How many characters of a hinge the list shows before cutting it (`[monitor] hinge_snippet_chars`), a whole number of at least 1;
-                a bad value is the fallback, with a warning.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MonitorSiteError, DEBUG, strict)
         self._history = history
-        self._show_hinges = bool(show_hinges)
+        self.monitor, self.chart = monitor, chart
         self._status_source = status_source
         self._notebook = notebook
-        self._look = chart if chart is not None else ChartLook()
         self._clock = clock
         self._stream_now = stream_now
         self._stream_began_at = stream_began_at
-        if not isinstance(password_on_localhost, bool):
-            self.logger.warning("password_on_localhost must be true or false, not %r; asking everyone for the password", password_on_localhost)
-            password_on_localhost = True
-        self._password_on_localhost = password_on_localhost
-        self._poll_seconds = poll_seconds
-        if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
-            self.logger.warning("poll_seconds must be a number above 0, not %r; using %g", poll_seconds, DEFAULT_POLL_SECONDS)
-            self._poll_seconds = DEFAULT_POLL_SECONDS
-        if not (isinstance(hinge_snippet_chars, int) and not isinstance(hinge_snippet_chars, bool) and hinge_snippet_chars >= 1):
-            self.logger.warning("hinge_snippet_chars must be a whole number of at least 1, not %r; using %s",
-                                hinge_snippet_chars, DEFAULT_SNIPPET_CHARS)
-            hinge_snippet_chars = DEFAULT_SNIPPET_CHARS
-        self._hinge_snippet_chars = hinge_snippet_chars
         self._started_at = clock()
         self._server = None
         self._thread: Optional[threading.Thread] = None
         self.app: Optional[Flask] = None
-        if not (isinstance(password, str) and password):
+        if not monitor.password:
             self.logger.critical("the monitoring site needs a password and none was set (put one under [monitor] in "
                                  "config/pom.local.toml), so it will not start")
             return
-        self._password = password.encode("utf-8")
+        self._password = monitor.password.encode("utf-8")
         self.app = self._build_app()
 
     # --- Starting and stopping ------------------------------------------------------
@@ -403,9 +384,9 @@ class MonitorSite:
         }
 
     def _hinge_text(self, record: TurnRecord, short: bool) -> str:
-        if not self._show_hinges:
+        if not self.monitor.show_hinges:
             return "(hidden)"
-        return _snippet(record.hinge, self._hinge_snippet_chars) if short else record.hinge
+        return _snippet(record.hinge, self.monitor.hinge_snippet_chars) if short else record.hinge
 
     @staticmethod
     def _bar_text(record: TurnRecord) -> str:
@@ -425,13 +406,13 @@ class MonitorSite:
             return ""
         links = {record.heard_at: record.id for record in self._history.recent()}
         if self._stream_now is None:
-            return render_score_chart(self._notebook.recent(self._look.window_minutes * 60.0), links, self._look)
+            return render_score_chart(self._notebook.recent(self.chart.window_minutes * 60.0), links, self.chart)
         now = self._stream_now()
         points = self._notebook.recent()
         # the ticks across the whole chart come from the notebook alone: the page never sees the bar, only what the notebook was given to keep
         ticks = [(tick.at, tick.score, tick.bar) for tick in self._notebook.ticks_up_to(now)]
         began_at = self._stream_began_at if self._notebook.holds_everything else None                  # else the start is no longer in what is drawn
-        return render_score_chart(points, links, self._look, ticks=ticks, now=now, bar_now=self._status().bar, began_at=began_at)
+        return render_score_chart(points, links, self.chart, ticks=ticks, now=now, bar_now=self._status().bar, began_at=began_at)
 
     def _row(self, record: TurnRecord, now: float) -> dict:
         return {"id": record.id, "time": _clock_time(record.at), "ago": _ago(now - record.at),
@@ -459,7 +440,7 @@ class MonitorSite:
     def _authorized(self) -> bool:
         """True if the request carries the right password (any user name), compared in constant time, or comes from this machine and
         `password_on_localhost` is off."""
-        if not self._password_on_localhost and self._from_this_machine():
+        if not self.monitor.password_on_localhost and self._from_this_machine():
             return True
         auth = request.authorization
         given = (auth.password or "").encode("utf-8") if auth is not None and auth.type == "basic" else b""
@@ -484,8 +465,8 @@ class MonitorSite:
             records = self._history.recent()
             stats = self._stats(records)
             now = self._clock()
-            script = _SCRIPT % {"newest": records[0].id if records else "null", "every": self._poll_seconds}
-            return render_template_string(_INDEX, style=_STYLE, theme_head=_THEME_HEAD, theme_button=_THEME_BUTTON, script=script, s=stats, chart=self._chart(), chart_minutes=f"{self._look.window_minutes:g}",
+            script = _SCRIPT % {"newest": records[0].id if records else "null", "every": self.monitor.poll_seconds}
+            return render_template_string(_INDEX, style=_STYLE, theme_head=_THEME_HEAD, theme_button=_THEME_BUTTON, script=script, s=stats, chart=self._chart(), chart_minutes=f"{self.chart.window_minutes:g}",
                                           services=list(stats["services"].items()),
                                           rows=[self._row(record, now) for record in records])
 
@@ -520,7 +501,7 @@ class MonitorSite:
                 item = {"id": record.id, "at": record.at, "ago": _ago(now - record.at), "heard_at": record.heard_at,
                         "score": record.score, "bar": record.bar, "window_size": record.window_size,
                         "has_portent": record.portent is not None}
-                if self._show_hinges:
+                if self.monitor.show_hinges:
                     item["hinge"] = record.hinge
                 if record.portent is not None:
                     item.update(portent=record.portent.text, words=record.portent.words, seconds=record.portent.seconds,

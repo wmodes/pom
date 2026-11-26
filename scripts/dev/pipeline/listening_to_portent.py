@@ -162,7 +162,7 @@ def main() -> None:
         notebook = ChartNotebook(config.chart, monitor)
         history = TurnHistory(monitor, keep_heard_since=lambda: notebook.earliest_at)
         # the page reads this snapshot from its own thread; the main thread replaces its numbers after every sentence
-        site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, status_source=lambda: MonitorStatus(
+        site = MonitorSite(history, monitor, config.chart, clock=time.time, notebook=notebook, status_source=lambda: MonitorStatus(
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
             services=watch(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe()))
         if not site.start(monitor.host, monitor.port):

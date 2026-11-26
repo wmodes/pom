@@ -3,6 +3,7 @@
 The pages are read with Flask's test client; one test starts the real server on a free port and reads it over HTTP.
 """
 import base64
+import dataclasses
 import json
 import urllib.error
 import urllib.request
@@ -18,6 +19,12 @@ PASSWORD = "open sesame"
 
 
 MONITOR = MonitorSettings()
+CHART = ChartSettings()
+
+
+def settings(password=PASSWORD, **fields):
+    """The `[monitor]` settings for a site, with this password and any other setting changed by keyword."""
+    return MonitorSettings(password=password, **fields)
 
 class Clock:
     def __init__(self, now=1_000_000.0):
@@ -36,10 +43,15 @@ def portent(text="The ghosts keep the hours.", cut_off=False):
                           Passage("horoscope#2", "horoscope", "horoscope", "The Moon in Cancer favours the home.", 6)), 2.5, cut_off)
 
 
-def make(clock=None, show_hinges=True, status=None, history=None, **options):
+MONITOR_FIELDS = {field.name for field in dataclasses.fields(MonitorSettings)}
+
+
+def make(clock=None, show_hinges=True, status=None, history=None, chart=CHART, **options):
+    """A site with the test password; a `[monitor]` setting given by keyword goes into its settings, anything else to the site itself."""
     clock = clock or Clock()
     history = history if history is not None else TurnHistory(MONITOR, clock=clock)
-    site = MonitorSite(history, PASSWORD, show_hinges=show_hinges, status_source=status, clock=clock, **options)
+    monitor = settings(show_hinges=show_hinges, **{name: options.pop(name) for name in list(options) if name in MONITOR_FIELDS})
+    site = MonitorSite(history, monitor, chart, status_source=status, clock=clock, **options)
     return site, history, site.app.test_client(), clock
 
 
@@ -77,7 +89,7 @@ class TestThePassword:
 
     def test_a_password_with_other_characters_works(self):
         history = TurnHistory(MONITOR)
-        site = MonitorSite(history, "pässwörd: ñ=1")
+        site = MonitorSite(history, settings("pässwörd: ñ=1"), CHART)
         client = site.app.test_client()
         assert client.get("/", headers=basic(password="pässwörd: ñ=1")).status_code == 200
         assert client.get("/", headers=basic(password="passwoerd")).status_code == 401
@@ -95,19 +107,18 @@ class TestThePassword:
         client.get("/", headers=basic())
         assert calls == [(PASSWORD.encode(), PASSWORD.encode())]
 
-    @pytest.mark.parametrize("bad", ["", None, 5, b"bytes", ["pw"]])
-    def test_without_a_usable_password_the_site_does_not_exist(self, bad, logged):
-        site = MonitorSite(TurnHistory(MONITOR), bad)
+    def test_without_a_password_the_site_does_not_exist(self, logged):
+        site = MonitorSite(TurnHistory(MONITOR), settings(""), CHART)
         assert site.app is None
         assert site.start("127.0.0.1", 0) is False and site.port is None
         assert len(logged.of(site).criticals()) == 1 and "password" in logged.of(site).criticals()[0]
 
     def test_strict_mode_raises_for_a_missing_password(self):
         with pytest.raises(MonitorSiteError, match="password"):
-            MonitorSite(TurnHistory(MONITOR), "", strict=True)
+            MonitorSite(TurnHistory(MONITOR), settings(""), CHART, strict=True)
 
     def test_the_password_is_never_in_a_report_or_a_log(self, logged):
-        site = MonitorSite(TurnHistory(MONITOR), "")
+        site = MonitorSite(TurnHistory(MONITOR), settings(""), CHART)
         _, _, client, _ = make()
         client.get("/", headers=basic(password="wrong-guess-1234"))
         assert PASSWORD not in logged.text() and "wrong-guess-1234" not in logged.text()
@@ -421,8 +432,7 @@ class TestTheChart:
         assert "Orange: qualifiers (click one)." in page and "The last 30 minutes." in page
 
     def test_the_caption_and_the_chart_follow_the_configured_look(self):
-        from pom.monitor import ChartLook
-        notebook, _, client = self.with_notebook(chart=ChartLook(window_minutes=12, bar_line_width=2.5, qualifier_dot_radius=7))
+        notebook, _, client = self.with_notebook(chart=ChartSettings(window_minutes=12, bar_line_width=2.5, qualifier_dot_radius=7))
         notebook.add(3.0, 5.0, 10.0, True)
         page = get(client, "/").get_data(as_text=True)
         assert "The last 12 minutes." in page and "The last 30 minutes." not in page
@@ -430,15 +440,13 @@ class TestTheChart:
         assert "last 12 minutes" in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_the_chart_window_also_picks_which_points_are_drawn(self):
-        from pom.monitor import ChartLook
-        notebook, _, client = self.with_notebook(chart=ChartLook(window_minutes=5))
+        notebook, _, client = self.with_notebook(chart=ChartSettings(window_minutes=5))
         notebook.add(3.0, 5.0, 0.0)
         notebook.add(3.0, 5.0, 1000.0)                      # 1000 s after the first: outside a five-minute window
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 1
 
     def test_a_window_longer_than_the_old_thirty_minutes_draws_all_of_it(self):
-        from pom.monitor import ChartLook
-        notebook, _, client = self.with_notebook(chart=ChartLook(window_minutes=60))
+        notebook, _, client = self.with_notebook(chart=ChartSettings(window_minutes=60))
         notebook.add(3.0, 5.0, 0.0)
         notebook.add(3.0, 5.0, 2400.0)                      # forty minutes after the first: inside an hour, outside half an hour
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="dot"') == 2
@@ -835,7 +843,7 @@ class TestRunningForReal:
     def test_it_serves_over_http_and_stops(self):
         history = TurnHistory(MONITOR)
         add(history, "A hinge over the wire.")
-        site = MonitorSite(history, PASSWORD)
+        site = MonitorSite(history, settings(), CHART)
         assert site.start("127.0.0.1", 0) is True
         try:
             port = site.port
@@ -853,7 +861,7 @@ class TestRunningForReal:
             urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2)
 
     def poll_once(self):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        site = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         assert site.start("127.0.0.1", 0) is True
         try:
             request = urllib.request.Request(f"http://127.0.0.1:{site.port}/api/turns", headers=basic())
@@ -877,7 +885,7 @@ class TestRunningForReal:
         assert "/api/turns" not in seen.out + seen.err                          # not also werkzeug's own line
 
     def test_starting_twice_keeps_one_server(self):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        site = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         try:
             assert site.start("127.0.0.1", 0) is True
             port = site.port
@@ -886,17 +894,17 @@ class TestRunningForReal:
             site.stop()
 
     def test_stopping_twice_or_before_starting_is_safe(self):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        site = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         site.stop()
         site.start("127.0.0.1", 0)
         site.stop()
         site.stop()
 
     def test_a_port_that_is_taken_is_reported_not_raised(self, logged):
-        first = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        first = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         first.start("127.0.0.1", 0)
         try:
-            second = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+            second = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
             assert second.start("127.0.0.1", first.port) is False
             assert second.port is None and len(logged.of(second).criticals()) == 1
             assert str(first.port) in logged.of(second).criticals()[0]
@@ -905,11 +913,11 @@ class TestRunningForReal:
 
     @pytest.mark.parametrize("port", [-1, 70000, "x"])
     def test_a_bad_port_is_reported_not_raised(self, port, logged):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        site = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         assert site.start("127.0.0.1", port) is False and len(logged.of(site).criticals()) == 1
 
     def test_the_site_does_not_keep_the_process_alive(self):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        site = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         site.start("127.0.0.1", 0)
         try:
             assert site._thread.daemon is True
@@ -1014,8 +1022,7 @@ class TestTheChartMovesWithTheStream:
         assert 'cx="714.0"' in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_a_silence_is_drawn_short_through_the_page(self):
-        from pom.monitor import ChartLook
-        notebook, client, _ = self.moving(now=4000.0, chart=ChartLook(longest_silence_minutes=5))
+        notebook, client, _ = self.moving(now=4000.0, chart=ChartSettings(longest_silence_minutes=5))
         notebook.add(3.0, 5.0, 100.0)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         assert 'class="gap"' in svg and ">silence<" in svg and ">1 hr 5 min<" in svg
@@ -1151,17 +1158,6 @@ class TestThePollBeat:
     def test_a_part_of_a_second_is_kept(self):
         assert "setInterval(poll, 2.5 * 1000)" in self.beat(poll_seconds=2.5)
 
-    @pytest.mark.parametrize("bad", [0, -1, "5", None, True, float("inf"), float("nan")])
-    def test_a_bad_beat_is_the_fallback_with_a_warning(self, bad, logged):
-        site, _, client, _ = make(poll_seconds=bad)
-        assert "setInterval(poll, 5 * 1000)" in get(client, "/").get_data(as_text=True)
-        assert any("poll_seconds" in w for w in logged.of(site).warnings())
-
-    def test_a_good_beat_says_nothing(self, logged):
-        site, _, _, _ = make(poll_seconds=7)
-        assert not logged.of(site).warnings()
-
-
     def test_the_beat_is_the_same_for_everything_the_page_asks_for(self):
         page = self.beat(poll_seconds=9)
         assert page.count("setInterval") == 1 and "drawChart();" in page and "fetch('/api/turns'" in page
@@ -1189,20 +1185,9 @@ class TestTheHingeSnippetLength:
         _, page = self.listed("0123456789", hinge_snippet_chars=10)
         assert "0123456789" in page and "0123456789…" not in page
 
-    def test_with_no_setting_it_is_the_fallback(self):
+    def test_the_default_is_ninety(self):
         _, page = self.listed("x" * 100)
         assert "x" * 90 + "…" in page and "x" * 91 not in page
-
-    @pytest.mark.parametrize("bad", [0, -1, 2.5, "90", None, True])
-    def test_a_bad_length_is_the_fallback_with_a_warning(self, bad, logged):
-        site, page = self.listed("x" * 100, hinge_snippet_chars=bad)
-        assert "x" * 90 + "…" in page and "x" * 91 not in page
-        assert any("hinge_snippet_chars" in w for w in logged.of(site).warnings())
-
-    def test_a_good_length_says_nothing(self, logged):
-        site, _ = self.listed("x" * 100, hinge_snippet_chars=20)
-        assert not logged.of(site).warnings()
-
 
 class TestTheTilesAreReadOnEveryPoll:
     """The status tiles come from the status function on each request, so they move on the page's beat, with no attempt needed."""
@@ -1292,21 +1277,12 @@ class TestThePasswordOnLocalhost:
     def test_asking_for_the_password_on_localhost_asks_everyone(self):
         assert self.ask(self.site(password_on_localhost=True)).status_code == 401
 
-    @pytest.mark.parametrize("bad", ["no", "false", None, 0, 1, "", [False]])
-    def test_a_setting_that_is_not_a_bool_asks_everyone_with_a_warning(self, bad, logged):
-        site, _, client, _ = make(password_on_localhost=bad)
-        assert self.ask(client).status_code == 401 and any("password_on_localhost" in w for w in logged.of(site).warnings())
-
-    def test_a_good_setting_says_nothing(self, logged):
-        site, _, _, _ = make(password_on_localhost=False)
-        assert not logged.of(site).warnings()
-
     def test_the_refusal_is_unchanged(self):
         response = self.ask(self.site(password_on_localhost=False), address="192.168.1.5")
         assert response.get_data(as_text=True) == "A password is needed." and response.headers["WWW-Authenticate"].startswith('Basic realm="Printer of Mysteries"')
 
     def test_over_a_real_socket_the_machines_own_connection_is_let_in(self):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD, password_on_localhost=False)
+        site = MonitorSite(TurnHistory(MONITOR), settings(password_on_localhost=False), CHART)
         assert site.start("127.0.0.1", 0) is True
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{site.port}/api/turns", timeout=5) as response:
@@ -1315,7 +1291,7 @@ class TestThePasswordOnLocalhost:
             site.stop()
 
     def test_over_a_real_socket_by_default_it_is_refused(self):
-        site = MonitorSite(TurnHistory(MONITOR), PASSWORD)
+        site = MonitorSite(TurnHistory(MONITOR), settings(), CHART)
         assert site.start("127.0.0.1", 0) is True
         try:
             with pytest.raises(urllib.error.HTTPError) as refused:

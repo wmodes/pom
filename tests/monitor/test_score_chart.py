@@ -4,14 +4,15 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from pom.monitor.score_chart import ChartLook, SilenceCompressor, SilenceShape, _silence_lines, render_score_chart, silence_shape
+from pom.defaults import ChartSettings
+from pom.monitor.score_chart import SilenceCompressor, SilenceShape, _silence_lines, render_score_chart, silence_shape
 from pom.monitor.chart_notebook import NotebookEntry
 
 NS = "{http://www.w3.org/2000/svg}"
-LOOK = ChartLook()                                       # the fallbacks, which are also what the shipped config says
-WIDTH, HEIGHT = LOOK.drawing_width, LOOK.drawing_height
-LEFT, RIGHT, TOP, BOTTOM = LOOK.margin_left, LOOK.margin_right, LOOK.margin_top, LOOK.margin_bottom
-DEFAULT_SECONDS = LOOK.window_minutes * 60.0
+CHART = ChartSettings()                                  # the defaults, which are also what the shipped config says
+WIDTH, HEIGHT = CHART.drawing_width, CHART.drawing_height
+LEFT, RIGHT, TOP, BOTTOM = CHART.margin_left, CHART.margin_right, CHART.margin_top, CHART.margin_bottom
+DEFAULT_SECONDS = CHART.window_minutes * 60.0
 PLOT_W, PLOT_H = WIDTH - LEFT - RIGHT, HEIGHT - TOP - BOTTOM
 NEVER = 1e9                                              # a silence this long (in minutes) never happens: the chart is drawn in plain time
 
@@ -27,7 +28,7 @@ def render(points, qualifier_ids=None, seconds=None, width=None, height=None, ti
         look["drawing_width"] = width
     if height is not None:
         look["drawing_height"] = height
-    return render_score_chart(points, qualifier_ids, ChartLook(**look), ticks=ticks, now=now, bar_now=bar_now, began_at=began_at)
+    return render_score_chart(points, qualifier_ids, ChartSettings(**look), ticks=ticks, now=now, bar_now=bar_now, began_at=began_at)
 
 
 def parse(svg):
@@ -471,7 +472,7 @@ class TestHowLongASilenceWas:
         assert _silence_lines(seconds) == lines
 
 
-LOOK_5 = ChartLook(longest_silence_minutes=5)
+CHART_5 = ChartSettings(longest_silence_minutes=5)
 
 
 class TestASilenceIsDrawnShort:
@@ -494,7 +495,7 @@ class TestASilenceIsDrawnShort:
         silence_left, silence_right = x_of(0, 300), x_of(300, 300)
         assert float(gap.get("y")) == TOP and float(gap.get("height")) == pytest.approx(PLOT_H, abs=0.06)
         assert float(gap.get("x")) + float(gap.get("width")) / 2 == pytest.approx((silence_left + silence_right) / 2, abs=0.06)
-        assert float(gap.get("width")) == pytest.approx(LOOK.break_gap_width, abs=0.06)
+        assert float(gap.get("width")) == pytest.approx(CHART.break_gap_width, abs=0.06)
 
     def test_the_gap_comes_after_the_bar_so_it_breaks_it(self):
         svg = render([point(0), point(3000)], longest_silence_minutes=5)
@@ -503,7 +504,7 @@ class TestASilenceIsDrawnShort:
     def test_a_silence_narrower_than_the_gap_is_all_gap(self):
         gap = find(self.drawn(seconds=36000), "rect", "gap")[0]
         assert float(gap.get("width")) == pytest.approx(PLOT_W * 300 / 36000, abs=0.1)
-        assert float(gap.get("width")) < LOOK.break_gap_width
+        assert float(gap.get("width")) < CHART.break_gap_width
 
     def test_there_is_a_break_mark_on_each_edge_of_the_gap_the_height_of_the_plot(self):
         root = self.drawn()
@@ -524,7 +525,7 @@ class TestASilenceIsDrawnShort:
     def test_the_zigzag_is_exactly_the_shape_of_the_break_mark(self):
         root = self.drawn()
         gap = find(root, "rect", "gap")[0]
-        left, size, middle = float(gap.get("x")), LOOK.break_mark_size, TOP + PLOT_H / 2
+        left, size, middle = float(gap.get("x")), CHART.break_mark_size, TOP + PLOT_H / 2
         expected = (f"M{left:.1f} {TOP:g} V{middle - size:.1f} L{left + size / 2:.1f} {middle - size / 2:.1f} "
                     f"L{left - size / 2:.1f} {middle + size / 2:.1f} L{left:.1f} {middle + size:.1f} V{TOP + PLOT_H:.1f}")
         assert find(root, "path", "break")[0].get("d") == expected
@@ -567,7 +568,7 @@ class TestASilenceIsDrawnShort:
 
     def test_the_gap_sits_where_the_first_minutes_end(self):
         gap = find(self.drawn([point(0), point(3000)]), "rect", "gap")[0]
-        assert float(gap.get("x")) == pytest.approx(x_of(silence_shape(LOOK_5).edge_seconds, 300), abs=0.06)
+        assert float(gap.get("x")) == pytest.approx(x_of(silence_shape(CHART_5).edge_seconds, 300), abs=0.06)
 
     def test_a_long_silence_draws_the_same_width_of_it_whatever_its_length(self):
         short = self.drawn([point(0), point(3000)], ticks=[(30.0, 5.85, 6.0)])
@@ -672,9 +673,6 @@ class TestEveryNumberIsASetting:
         dot = parse(render([point(0), point(1800, qualified=True)], attempt_dot_radius=2.5))
         assert find(dot, "circle", "dot")[0].get("r") == "2.5"
 
-    def test_with_no_look_the_fallbacks_are_the_shipped_numbers(self):
-        assert render_score_chart([point(0)]) == render_score_chart([point(0)], None, ChartLook())
-
     def test_the_longest_silence_sets_which_gaps_are_drawn_short(self):
         pts = [point(0), point(500)]                                                        # 500 s: a silence at 5 minutes, not at 10
         assert find(parse(render(pts, longest_silence_minutes=5)), "rect", "gap") and not find(parse(render(pts, longest_silence_minutes=10)), "rect", "gap")
@@ -698,27 +696,27 @@ class TestEveryNumberIsASetting:
 
 
 class TestTheShapeOfASilence:
-    """`silence_shape(look)`: the one place the chart's settings become the sizes of a silence."""
+    """`silence_shape(chart)`: the one place the chart's settings become the sizes of a silence."""
 
     def test_the_longest_silence_is_longest_silence_minutes(self):
-        assert silence_shape(ChartLook(longest_silence_minutes=7)).longest_seconds == 420.0
+        assert silence_shape(ChartSettings(longest_silence_minutes=7)).longest_seconds == 420.0
 
     def test_the_cut_is_the_break_gap_width_at_the_charts_scale(self):
-        assert silence_shape(LOOK).gap_seconds == pytest.approx(64.0 / PLOT_W * 1800.0)
+        assert silence_shape(CHART).gap_seconds == pytest.approx(64.0 / PLOT_W * 1800.0)
 
     def test_the_cut_is_no_wider_than_a_whole_silence(self):
-        assert silence_shape(ChartLook(break_gap_width=10_000.0)).gap_seconds == 300.0
+        assert silence_shape(ChartSettings(break_gap_width=10_000.0)).gap_seconds == 300.0
 
     def test_the_true_scale_sides_share_what_the_cut_leaves(self):
-        shape = silence_shape(ChartLook(longest_silence_minutes=10))
+        shape = silence_shape(ChartSettings(longest_silence_minutes=10))
         assert shape.edge_seconds == pytest.approx((600.0 - shape.gap_seconds) / 2.0)
 
     def test_a_cut_as_wide_as_the_silence_leaves_no_sides(self):
-        assert silence_shape(ChartLook(break_gap_width=10_000.0)).edge_seconds == 0.0
+        assert silence_shape(ChartSettings(break_gap_width=10_000.0)).edge_seconds == 0.0
 
     def test_a_longer_window_makes_the_cut_cover_more_time(self):
-        assert (silence_shape(ChartLook(window_minutes=60, longest_silence_minutes=30)).gap_seconds
-                == pytest.approx(2 * silence_shape(ChartLook(window_minutes=30, longest_silence_minutes=30)).gap_seconds))
+        assert (silence_shape(ChartSettings(window_minutes=60, longest_silence_minutes=30)).gap_seconds
+                == pytest.approx(2 * silence_shape(ChartSettings(window_minutes=30, longest_silence_minutes=30)).gap_seconds))
 
 
 class TestSilenceShape:

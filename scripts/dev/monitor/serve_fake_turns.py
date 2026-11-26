@@ -146,13 +146,14 @@ def main() -> None:
             parser.error(f"--light {setting!r}: say NAME=STATE with a name from {', '.join(services)} and a state from {', '.join(light.value for light in Light)}")
         services[name] = Light(state)
     config = Config.load(ROOT / "config" / "pom.toml")
+    # the password and the hidden hinges are this script's own (its flags), whatever the config says
+    monitor = dataclasses.replace(config.monitor, password=args.password, show_hinges=not args.hide_hinges)
     if args.chart:
         room = InventedRoom(config, rng, args.speed, quiet_start_minutes=args.quiet_start,
                             history_seconds=None if args.history_minutes is None else args.history_minutes * 60.0)
         history = room.history
         threading.Thread(target=room.run, daemon=True).start()
-        site = MonitorSite(history, args.password, clock=room.now, show_hinges=not args.hide_hinges, notebook=room.notebook, chart=config.chart,
-                           poll_seconds=config.monitor.poll_seconds, hinge_snippet_chars=config.monitor.hinge_snippet_chars, stream_now=room.now, stream_began_at=0.0,
+        site = MonitorSite(history, monitor, config.chart, clock=room.now, notebook=room.notebook, stream_now=room.now, stream_began_at=0.0,
                            status_source=lambda: MonitorStatus(bar=room.keeper.bar_at(room.now()), window_size=room.keeper.window_size_at(room.now()),
                                                                attempts_heard=room.heard, attempts_scored=room.scored, services=services,
                                                                algorithm=config.qualifying.algorithm, bar_description=room.keeper.describe()))
@@ -160,7 +161,7 @@ def main() -> None:
         history = TurnHistory(config.monitor)
         for n in range(5):
             fake_turn(history, rng, n)
-        site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges,
+        site = MonitorSite(history, monitor, config.chart,
                            status_source=lambda: MonitorStatus(bar=6.84, window_size=118, attempts_heard=1432, attempts_scored=1391, services=services))
     if not site.start("127.0.0.1" if args.check else "0.0.0.0", 0 if args.check else args.port):
         sys.exit("the site did not start (the log above says why)")

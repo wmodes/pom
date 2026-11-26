@@ -278,10 +278,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         if not monitor.password:
             logger.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
-            site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, chart=config.chart,
-                               poll_seconds=monitor.poll_seconds, hinge_snippet_chars=monitor.hinge_snippet_chars, stream_now=stream_now,
-                               stream_began_at=stream_started_at, password_on_localhost=monitor.password_on_localhost,
-                               status_source=status_now, bookkeeper=bookkeeper)
+            site = MonitorSite(history, monitor, config.chart, clock=time.time, notebook=notebook, stream_now=stream_now,
+                               stream_began_at=stream_started_at, status_source=status_now, bookkeeper=bookkeeper)
 
     def turned(attempt, result) -> None:
         logger.info("turn over: %s", result.outcome.value)

@@ -340,9 +340,9 @@ class TestWhatItPrintsOn:
         typed = build_printer(config, Options()).parts["keyboard"]._typed_scorer
         assert typed.qualifying is config.qualifying
 
-    def test_the_bar_keeper_gets_the_qualifier_bar_influence_from_the_config(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nqualifier_bar_influence = 0.3\n')
-        assert p.parts["bar_keeper"]._qualifier_bar_influence == 0.3
+    def test_the_bar_keeper_is_handed_the_qualifying_settings(self, tmp_path):
+        config = config_from(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nqualifier_bar_influence = 0.3\n')
+        assert build_printer(config, Options()).parts["bar_keeper"].qualifying is config.qualifying
 
     def test_the_turn_taker_prints_on_that_terminal(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "console"\n')

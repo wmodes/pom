@@ -23,14 +23,14 @@ parts every way shares:
 A clip that has no score (None), or one the bar ignores (a score under a floor), is NO_MARK and stays out of everything here.
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad input to
-    `rule` is simply ignored. `strict=True` raises BarKeeperError instead, for tests and dev tools.
+  * Nothing here may stop the oracle (see pom/__init__.py). The settings come checked from the config (`[qualifying]`); bad input to
+    `rule` is simply ignored.
   * THE QUALIFIER'S INFLUENCE IS THE BARKEEPER'S, NOT EACH BAR'S. How much a score that stood above the bar influences the bar is one
     dial, `qualifier_bar_influence`, a plain number that is not limited to 0 to 1 (an experiment may want 1.1 or -0.1): the BarKeeper changes
     the score's value on its way in (bar + influence * (score - bar)) and hands it to whichever bar it has, so every bar gets the dial and none
     needs to know about it. Typed lines (`rule_typed`) use the same rule with their own dial.
   * The bar is passed in, already built (`bar_keeper_from_settings` builds the one the config chose), so a new way of deciding is a new
-    Bar and nothing here changes.
+    Bar and nothing here changes. There is no default bar: which bars exist, and which is the default, is said once, in the config.
   * This module never reads Config, and it never sees any words, only numbers.
   * Two threads share one BarKeeper: the room's (the HingeFinder) and the keyboard's (the TypedLineScorer). Each public call takes the
     BarKeeper's own lock for its whole length, so a ruling never sees the bar or the window half-updated by the other thread. The lock
@@ -48,13 +48,11 @@ from enum import Enum
 from typing import Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
-from pom.qualifying.percentile_bar import PercentileBar
+from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_COOLDOWN_SECONDS = 60.0
-DEFAULT_QUALIFIER_BAR_INFLUENCE = 0.5     # a score that stood above the bar goes into the bar half way up from the bar to the score
 LOCK_TIMEOUT_SECONDS = 5.0   # the longest a call waits for the lock; the work inside it takes microseconds
 
 
@@ -76,45 +74,25 @@ class BarKeeper:
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         counted: How many scores have counted so far.
+        qualifying: The `[qualifying]` settings it reads: `cooldown_seconds` (how many seconds after a qualifier before another score may
+            qualify; 0 means no cooldown) and `qualifier_bar_influence` (how far up from the bar to the score a score that stood above the bar
+            goes into the bar: 1 is the score itself, 0 is the bar itself, and any number is allowed).
     """
 
-    def __init__(self, bar: Optional[Bar] = None, cooldown_seconds: float = DEFAULT_COOLDOWN_SECONDS,
-                 qualifier_bar_influence: float = DEFAULT_QUALIFIER_BAR_INFLUENCE, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, bar: Bar, qualifying: QualifyingSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            bar: The Bar that works out where the bar sits. None means a PercentileBar with its defaults.
-            cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 means no cooldown).
-            qualifier_bar_influence: How far up from the bar to the score a score that stood above the bar goes into the bar: 1 is the score
-                itself, 0 is the bar itself. Any number (not limited to 0 to 1).
+            bar: The Bar that works out where the bar sits.
+            qualifying: The `[qualifying]` settings.
             strict: Raise BarKeeperError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, BarKeeperError, DEBUG, strict)
-        if bar is None:
-            bar = PercentileBar(bookkeeper=bookkeeper)
-        elif not isinstance(bar, Bar):
-            self.logger.warning("bar must be a Bar, got %s; using the default PercentileBar", type(bar).__name__)
-            bar = PercentileBar(bookkeeper=bookkeeper)
         self._bar = bar
+        self.qualifying = qualifying
         self._lock = threading.Lock()      # held for the whole of each public call that reads or changes the bar or the clock
-        self._cooldown_seconds = self._valid_cooldown_seconds(cooldown_seconds)
-        self._qualifier_bar_influence = self._valid_influence(qualifier_bar_influence)
         self._last_time: Optional[float] = None
         self._last_qualifier: Optional[float] = None
         self.counted = 0
-
-    def _valid_cooldown_seconds(self, value) -> float:
-        """A number of 0 or more, or the default with a warning."""
-        if self._is_number(value) and value >= 0.0:
-            return float(value)
-        self.logger.warning("cooldown_seconds must be a number of at least 0, got %r; using %g", value, DEFAULT_COOLDOWN_SECONDS)
-        return DEFAULT_COOLDOWN_SECONDS
-
-    def _valid_influence(self, value) -> float:
-        """Any finite number, or the default with a warning."""
-        if self._is_number(value):
-            return float(value)
-        self.logger.warning("qualifier_bar_influence must be a number, got %r; using %g", value, DEFAULT_QUALIFIER_BAR_INFLUENCE)
-        return DEFAULT_QUALIFIER_BAR_INFLUENCE
 
     @staticmethod
     def _value_for_bar(score: float, level: Optional[float], influence: float) -> float:
@@ -146,8 +124,8 @@ class BarKeeper:
 
     def describe(self) -> str:
         """One line saying how the BarKeeper works and how it is set."""
-        return (f"{self._bar.describe()}; at most one qualifier every {self._cooldown_seconds:g} s; "
-                f"a qualifying score goes into the bar {self._qualifier_bar_influence * 100:g}% of the way up from the bar")
+        return (f"{self._bar.describe()}; at most one qualifier every {self.qualifying.cooldown_seconds:g} s; "
+                f"a qualifying score goes into the bar {self.qualifying.qualifier_bar_influence * 100:g}% of the way up from the bar")
 
     def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to qualify at time `now`, or None if `now` is not a number or the bar has none."""
@@ -188,18 +166,18 @@ class BarKeeper:
             now = self._steady(now)
             level = self._bar.level_at(now)
             above = level is not None and score > level
-            cooling = above and self._last_qualifier is not None and now - self._last_qualifier < self._cooldown_seconds
+            cooling = above and self._last_qualifier is not None and now - self._last_qualifier < self.qualifying.cooldown_seconds
             qualified = above and not cooling
             if qualified:
                 self._last_qualifier = now
-            self._bar.add(self._value_for_bar(score, level, self._qualifier_bar_influence) if above else float(score), now)    # a held score stood above the bar too: it goes in as the qualifier it would have been
+            self._bar.add(self._value_for_bar(score, level, self.qualifying.qualifier_bar_influence) if above else float(score), now)    # a held score stood above the bar too: it goes in as the qualifier it would have been
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
             self.logger.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
             return ruling
 
-    def rule_typed(self, score: Optional[float], now: float, bar_influence: float = 0.0) -> Ruling:
+    def rule_typed(self, score: Optional[float], now: float, bar_influence: float) -> Ruling:
         """Judges a score that was not heard in the room but handed to the Printer directly (a typed line).
 
         Such a score is held to the same bar as the room's, but it takes no part in the room's rhythm: no cooldown applies to it,
@@ -215,8 +193,7 @@ class BarKeeper:
             now = self._steady(now)
             level = self._bar.level_at(now)
             qualified = level is not None and score > level
-            influence = bar_influence if self._is_number(bar_influence) else 0.0
-            self._bar.add(self._value_for_bar(score, level, influence), now)
+            self._bar.add(self._value_for_bar(score, level, bar_influence), now)
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY

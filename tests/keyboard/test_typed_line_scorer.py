@@ -35,7 +35,8 @@ class Clock:
 
 def bar_keeper(bar_level=6.0, cooldown=60.0):
     """A BarKeeper whose bar sits at `bar_level` (the starting line, with a window that will not fill)."""
-    return BarKeeper(PercentileBar(100.0, 300.0, 20, bar_level), cooldown)
+    settings = QualifyingSettings(bar_percentile=100.0, window_seconds=300.0, min_scores=20, starting_bar=bar_level, cooldown_seconds=cooldown)
+    return BarKeeper(PercentileBar(settings), settings)
 
 
 def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):

@@ -673,4 +673,5 @@ class TestABarWithNoAnchorHasNoTicks:
     def test_the_percentile_and_moving_average_bars_have_none(self):
         from pom.qualifying.moving_average_bar import MovingAverageBar
         from pom.qualifying.percentile_bar import PercentileBar
-        assert PercentileBar().ticks_between(0.0, 1000.0) == [] and MovingAverageBar().ticks_between(0.0, 1000.0) == []
+        from pom.defaults import QualifyingSettings
+        assert PercentileBar(QualifyingSettings()).ticks_between(0.0, 1000.0) == [] and MovingAverageBar().ticks_between(0.0, 1000.0) == []

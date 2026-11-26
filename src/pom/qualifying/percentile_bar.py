@@ -14,25 +14,20 @@ beside it:
     `min_scores` things, the bar is the room's own.
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad
-    input to `add` is ignored. `strict=True` raises PercentileBarError instead, for tests and dev tools.
+  * Nothing here may stop the oracle (see pom/__init__.py). The settings come checked from the config (`[qualifying]`); bad input to `add`
+    is ignored.
   * Only the scores in the window are kept (never fewer than `min_scores`), so memory is bounded however long the room talks.
-  * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
+  * Only numbers are kept: no words from the room. This module never reads Config; it is handed the `[qualifying]` settings.
 """
 import math
 from collections import deque
 from typing import Deque, List, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-
-DEFAULT_BAR_PERCENTILE = 99.5
-DEFAULT_WINDOW_SECONDS = 300.0
-DEFAULT_MIN_SCORES = 20
-DEFAULT_STARTING_BAR = 6.8
-MINIMUM_MIN_SCORES = 2                 # a bar needs at least two scores to stand above
 
 
 class PercentileBarError(ValueError):
@@ -48,42 +43,26 @@ class PercentileBar(Bar):
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        qualifying: The `[qualifying]` settings it reads: `bar_percentile` (how much of the window the bar sits above), `window_seconds`
+            (how many seconds of recent scores the bar is drawn from), `min_scores` (the window always holds at least this many, and until
+            this many have been heard the bar is `starting_bar`) and `starting_bar`.
     """
 
-    def __init__(self, bar_percentile: float = DEFAULT_BAR_PERCENTILE, window_seconds: float = DEFAULT_WINDOW_SECONDS,
-                 min_scores: int = DEFAULT_MIN_SCORES, starting_bar: float = DEFAULT_STARTING_BAR, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, qualifying: QualifyingSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            bar_percentile: How much of the window the bar sits above, above 0 and at most 100.
-            window_seconds: How many seconds of recent scores the bar is drawn from, above 0.
-            min_scores: The window always holds at least this many scores, and until this many have been heard the bar is
-                `starting_bar`; a whole number of at least 2.
-            starting_bar: The bar until `min_scores` scores have been heard.
+            qualifying: The `[qualifying]` settings.
             strict: Raise PercentileBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PercentileBarError, DEBUG, strict)
-        self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE,
-                                       lambda v: _is_number(v) and 0 < v <= 100, "a number above 0 and at most 100", float)
-        self._window_seconds = self._valid(window_seconds, "window_seconds", DEFAULT_WINDOW_SECONDS,
-                                           lambda v: _is_number(v) and v > 0, "a number above 0", float)
-        self._min_scores = self._valid(min_scores, "min_scores", DEFAULT_MIN_SCORES,
-                                       lambda v: isinstance(v, int) and not isinstance(v, bool) and v >= MINIMUM_MIN_SCORES,
-                                       f"a whole number of at least {MINIMUM_MIN_SCORES}", int)
-        self._starting_bar = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number", float)
+        self.qualifying = qualifying
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
     def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "PercentileBar":
-        """Builds the bar from an object with `percentile`, `window_seconds`, `min_scores` and `starting_bar`.
-        `started_at` is the stream time the bar begins; this bar has no clock to start, and takes it so the factory can build any bar the same way."""
-        return cls(settings.bar_percentile, settings.window_seconds, settings.min_scores, settings.starting_bar, strict=strict, bookkeeper=bookkeeper)
-
-    def _valid(self, value, name: str, default, is_good, wanted: str, convert):
-        """The value if it passes `is_good`, otherwise the default with a warning."""
-        if is_good(value):
-            return convert(value)
-        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
-        return default
+        """Builds the bar from the `[qualifying]` settings. `started_at` is the stream time the bar begins; this bar has no clock to start, and
+        takes it so the factory can build any bar the same way."""
+        return cls(settings, strict=strict, bookkeeper=bookkeeper)
 
     # --- The Bar questions ---------------------------------------------------
 
@@ -93,9 +72,9 @@ class PercentileBar(Bar):
             return None
         window = self._window(now)
         if window is None:
-            return self._starting_bar
+            return self.qualifying.starting_bar
         ranked = sorted(window)
-        rank = math.ceil(round(self._bar_percentile * len(ranked) / 100.0, 9))       # rounded: 64.4% of 250 is 161, not 161.00000000000003
+        rank = math.ceil(round(self.qualifying.bar_percentile * len(ranked) / 100.0, 9))       # rounded: 64.4% of 250 is 161, not 161.00000000000003
         return ranked[rank - 1]
 
     def window_size_at(self, now: float) -> int:
@@ -112,23 +91,23 @@ class PercentileBar(Bar):
 
     def describe(self) -> str:
         """For example: the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8."""
-        return (f"the {self._bar_percentile:g}th percentile of the last {self._window_seconds:g} s of scores "
-                f"(at least the last {self._min_scores}), starting at {self._starting_bar:g}")
+        return (f"the {self.qualifying.bar_percentile:g}th percentile of the last {self.qualifying.window_seconds:g} s of scores "
+                f"(at least the last {self.qualifying.min_scores}), starting at {self.qualifying.starting_bar:g}")
 
     # --- The window -----------------------------------------------------------------
 
     def _window(self, now: float) -> Optional[List[float]]:
         """The scores in the window at `now`, or None if fewer than `min_scores` are held at all."""
-        if len(self._recent) < self._min_scores:
+        if len(self._recent) < self.qualifying.min_scores:
             return None
-        cutoff = now - self._window_seconds
+        cutoff = now - self.qualifying.window_seconds
         inside = [score for heard, score in self._recent if heard >= cutoff]
-        if len(inside) >= self._min_scores:
+        if len(inside) >= self.qualifying.min_scores:
             return inside
-        return [score for _, score in list(self._recent)[-self._min_scores:]]      # a quiet room: the last few
+        return [score for _, score in list(self._recent)[-self.qualifying.min_scores:]]      # a quiet room: the last few
 
     def _forget_old(self, now: float) -> None:
         """Drops scores older than the window, but never below `min_scores` held, so a quiet room keeps its floor."""
-        cutoff = now - self._window_seconds
-        while len(self._recent) > self._min_scores and self._recent[0][0] < cutoff:
+        cutoff = now - self.qualifying.window_seconds
+        while len(self._recent) > self.qualifying.min_scores and self._recent[0][0] < cutoff:
             self._recent.popleft()

@@ -6,7 +6,7 @@ BarKeeper are the real ones, because how the finder joins them is the point.
 
 import pytest
 
-from pom.defaults import ListeningSettings
+from pom.defaults import ListeningSettings, QualifyingSettings
 from pom.listening.eavesdropper import Eavesdropper
 from pom.listening.whisper_model_client import Segment
 from pom.listening import ClipLevel, Take, TakeCutter
@@ -68,7 +68,8 @@ def segment(words="", ends_at=10.0, kind="speech", room_tone=()):
 
 def bar_keeper(min_scores=3, cooldown=60.0):
     """A BarKeeper over a PercentileBar whose starting line is out of reach (1000), so nothing qualifies until `min_scores` scores are heard."""
-    return BarKeeper(PercentileBar(100.0, 300.0, min_scores, 1000.0), cooldown)
+    settings = QualifyingSettings(bar_percentile=100.0, window_seconds=300.0, min_scores=min_scores, starting_bar=1000.0, cooldown_seconds=cooldown)
+    return BarKeeper(PercentileBar(settings), settings)
 
 
 def finder(segments, scores=None, score_room_tone=False, take_cutter=None, scored_by=ScoredBy.MODEL, **tracking):
@@ -336,7 +337,7 @@ class TestARoomThatStartsAgain:
     @staticmethod
     def keeper():
         from pom.qualifying import DecayingQuantileBar
-        return BarKeeper(DecayingQuantileBar(), cooldown_seconds=60, qualifier_bar_influence=0.0)       # a qualifier leaves the bar alone, so each strong score stands above it
+        return BarKeeper(DecayingQuantileBar(), QualifyingSettings(cooldown_seconds=60, qualifier_bar_influence=0.0))       # a qualifier leaves the bar alone, so each strong score stands above it
 
     def test_a_first_room_qualifies_once_a_cooldown(self):
         _, attempts = self.hear_for(200, self.keeper())

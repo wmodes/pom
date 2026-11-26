@@ -6,15 +6,16 @@ The BarKeeper can decide where its bar sits in more than one way. Each way is a 
     bar_keeper = bar_keeper_from_settings(config.qualifying)
 
 `settings.algorithm` names the way: "percentile", "decaying_quantile" or "moving_average". Each bar reads only the settings it needs,
-so one `[qualifying]` section can hold the settings of all of them and switching is a single line. A new way of deciding is a new class
-and one new entry in ALGORITHMS.
+so one `[qualifying]` section can hold the settings of all of them and switching is a single line. A new way of deciding is a new class,
+its name in `BAR_ALGORITHMS` (pom.defaults, which the config checks the setting against and which holds the default) and one new entry
+in ALGORITHMS here; a test checks the two name the same bars.
 
-Nothing here may stop the oracle: an unknown name is logged as a warning through the bar's logger and the default (percentile) is used.
-This module never reads Config; it reads attributes off the settings object it is given.
+This module never reads Config; it is handed the `[qualifying]` settings, whose algorithm the config has already checked.
 """
 from typing import Dict, Optional, Type
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import QualifyingSettings
 
 from pom.qualifying.bar_keeper import BarKeeper
 from pom.qualifying.decaying_quantile_bar import DecayingQuantileBar
@@ -22,7 +23,6 @@ from pom.qualifying.moving_average_bar import MovingAverageBar
 from pom.qualifying.percentile_bar import PercentileBar
 from pom.qualifying.bar import Bar
 
-DEFAULT_ALGORITHM = "percentile"
 ALGORITHMS: Dict[str, Type[Bar]] = {
     "percentile": PercentileBar,
     "decaying_quantile": DecayingQuantileBar,
@@ -30,18 +30,11 @@ ALGORITHMS: Dict[str, Type[Bar]] = {
 }
 
 
-def bar_from_settings(settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> Bar:
-    """The bar the settings name (`settings.algorithm`), built from the settings, to begin at stream time `started_at`. An unknown name gives the default
-    with a warning."""
-    name = getattr(settings, "algorithm", DEFAULT_ALGORITHM)
-    known = name in ALGORITHMS if isinstance(name, str) else False
-    bar = ALGORITHMS[name if known else DEFAULT_ALGORITHM].from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper)
-    if not known:
-        bar.logger.warning("the qualifying algorithm must be one of %s, got %r; using %s", ", ".join(ALGORITHMS), name, DEFAULT_ALGORITHM)
-    return bar
+def bar_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> Bar:
+    """The bar the `[qualifying]` settings name (`settings.algorithm`), built from them, to begin at stream time `started_at`."""
+    return ALGORITHMS[settings.algorithm].from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper)
 
 
-def bar_keeper_from_settings(settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> BarKeeper:
-    """A BarKeeper with the bar the settings name (beginning at stream time `started_at`), `settings.cooldown_seconds` and `settings.qualifier_bar_influence`."""
-    return BarKeeper(bar_from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper), settings.cooldown_seconds,
-                     settings.qualifier_bar_influence, strict=strict, bookkeeper=bookkeeper)
+def bar_keeper_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> BarKeeper:
+    """A BarKeeper over the bar the `[qualifying]` settings name (beginning at stream time `started_at`), handed the same settings."""
+    return BarKeeper(bar_from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper), settings, strict=strict, bookkeeper=bookkeeper)

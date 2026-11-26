@@ -1,11 +1,10 @@
 """Tests for pom.qualifying.percentile_bar: a nearest-rank percentile of a window of time, with a starting line."""
 import random
-from types import SimpleNamespace
 
 import pytest
 
-from pom.qualifying.percentile_bar import (DEFAULT_MIN_SCORES, DEFAULT_BAR_PERCENTILE, DEFAULT_STARTING_BAR, DEFAULT_WINDOW_SECONDS,
-                                        PercentileBar, PercentileBarError)
+from pom.defaults import QualifyingSettings
+from pom.qualifying.percentile_bar import PercentileBar
 from pom.qualifying.bar import Bar
 
 
@@ -15,7 +14,7 @@ def bar(**options):
     options.setdefault("bar_percentile", 100.0)
     options.setdefault("min_scores", 5)
     options.setdefault("window_seconds", 60)
-    return PercentileBar(**options)
+    return PercentileBar(QualifyingSettings(**options))
 
 
 def feed(b, scores, start=0.0, step=1.0):
@@ -33,18 +32,19 @@ def warmed_up(**options):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_BAR_PERCENTILE, DEFAULT_WINDOW_SECONDS, DEFAULT_MIN_SCORES, DEFAULT_STARTING_BAR) == (99.5, 300.0, 20, 6.8)
+        q = QualifyingSettings()
+        assert (q.bar_percentile, q.window_seconds, q.min_scores, q.starting_bar) == (99.5, 300.0, 20, 6.8)
 
     def test_good_settings_are_quiet(self, logged):
-        assert logged.of(PercentileBar()).ok()
+        assert logged.of(PercentileBar(QualifyingSettings())).ok()
         assert logged.of(bar(bar_percentile=0.001, window_seconds=0.5, min_scores=2)).ok()
         assert logged.of(bar(bar_percentile=100, starting_bar=-2)).ok()
 
     def test_it_is_a_bar(self):
-        assert isinstance(PercentileBar(), Bar)
+        assert isinstance(PercentileBar(QualifyingSettings()), Bar)
 
     def test_it_ignores_no_score(self):
-        assert PercentileBar().ignores(0.0) is False and PercentileBar().ignores(9.0) is False
+        assert PercentileBar(QualifyingSettings()).ignores(0.0) is False and PercentileBar(QualifyingSettings()).ignores(9.0) is False
 
 
 class TestTheStartingLine:
@@ -60,14 +60,14 @@ class TestTheStartingLine:
         assert b.level_at(5.0) == 9.0
 
     def test_the_default_needs_twenty(self):
-        b = PercentileBar(bar_percentile=100)
+        b = PercentileBar(QualifyingSettings(bar_percentile=100))
         feed(b, [9.0] * 19)
-        assert b.level_at(19.0) == DEFAULT_STARTING_BAR
+        assert b.level_at(19.0) == QualifyingSettings().starting_bar
         b.add(9.0, 19.0)
         assert b.level_at(20.0) == 9.0
 
     def test_there_is_always_a_bar(self):
-        assert PercentileBar().level_at(0.0) is not None
+        assert PercentileBar(QualifyingSettings()).level_at(0.0) is not None
 
     def test_while_warming_up_the_window_size_is_all_it_holds(self):
         b = bar()
@@ -101,7 +101,7 @@ class TestThePercentileBar:
         assert bar(bar_percentile=99.5, min_scores=5, window_seconds=1000).level_at(0.0) == 6.8
 
     def test_the_default_percentile_is_995(self):
-        b = PercentileBar(min_scores=5)
+        b = PercentileBar(QualifyingSettings(min_scores=5))
         feed(b, [1, 2, 3, 4, 5])
         assert b.level_at(5.0) == 5.0
 
@@ -213,7 +213,7 @@ class TestAgainstAPlainReference:
         for _ in range(400):
             now += rng.uniform(0.1, 2 * gap)
             events.append((now, round(rng.choice([1.0, 1.0, 2.0, 3.0, 3.5, 4.0, 5.0, 5.5, 6.0, 7.0, 8.0]) + rng.random(), 2)))
-        b = PercentileBar(percentile, 120, 12, 6.8)
+        b = PercentileBar(QualifyingSettings(bar_percentile=percentile, window_seconds=120, min_scores=12, starting_bar=6.8))
         got = []
         for when, score in events:
             got.append(b.level_at(when))
@@ -223,72 +223,33 @@ class TestAgainstAPlainReference:
 
 class TestDescribing:
     def test_it_says_how_it_works_in_one_line(self):
-        text = PercentileBar(99.5, 300, 20, 6.8).describe()
+        text = PercentileBar(QualifyingSettings(bar_percentile=99.5, window_seconds=300, min_scores=20, starting_bar=6.8)).describe()
         assert text == "the 99.5th percentile of the last 300 s of scores (at least the last 20), starting at 6.8"
 
     def test_it_says_nothing_about_qualifiers_because_the_barkeeper_does(self):
-        assert "qualif" not in PercentileBar().describe()
+        assert "qualif" not in PercentileBar(QualifyingSettings()).describe()
 
 
-class TestBadSettings:
-    @pytest.mark.parametrize("bad", [0, -1, 100.1, 101, "99", None, True, [99], float("nan"), float("inf")])
-    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad, logged):
-        b = bar(bar_percentile=bad)
-        assert len(logged.of(b).warnings()) == 1 and "bar_percentile" in logged.of(b).warnings()[0]
-        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE
-
-    @pytest.mark.parametrize("bad", [0, -1, "60", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_window_means_the_default_with_a_warning(self, bad, logged):
-        b = bar(window_seconds=bad)
-        assert len(logged.of(b).warnings()) == 1 and "window_seconds" in logged.of(b).warnings()[0]
-        assert b._window_seconds == DEFAULT_WINDOW_SECONDS
-
-    @pytest.mark.parametrize("bad", [0, 1, -1, 2.5, "5", None, True, [5]])
-    def test_a_bad_minimum_means_the_default_with_a_warning(self, bad, logged):
-        b = bar(min_scores=bad)
-        assert len(logged.of(b).warnings()) == 1 and "min_scores" in logged.of(b).warnings()[0]
-        assert b._min_scores == DEFAULT_MIN_SCORES
-
-    @pytest.mark.parametrize("bad", ["6.8", None, True, [6.8], float("nan"), float("inf")])
-    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad, logged):
-        b = bar(starting_bar=bad)
-        assert len(logged.of(b).warnings()) == 1 and "starting_bar" in logged.of(b).warnings()[0]
-        assert b.level_at(0.0) == DEFAULT_STARTING_BAR
-
+class TestTheSettings:
     def test_a_negative_starting_bar_is_allowed(self):
         assert bar(starting_bar=-2.5).level_at(0.0) == -2.5
 
-    @pytest.mark.parametrize("option,bad", [("bar_percentile", 0), ("window_seconds", 0), ("min_scores", 1), ("starting_bar", None)])
-    def test_strict_mode_raises(self, option, bad):
-        with pytest.raises(PercentileBarError, match=option):
-            bar(strict=True, **{option: bad})
-
-    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
-        assert logged.of(bar(strict=True)).ok()
-
-    def test_two_bad_settings_give_two_warnings(self, logged):
-        assert len(logged.of(PercentileBar(bar_percentile=-1, window_seconds=0)).warnings()) == 2
+    def test_it_keeps_the_settings_it_was_handed(self):
+        settings = QualifyingSettings()
+        assert PercentileBar(settings).qualifying is settings
 
 
 class TestBuildingFromSettings:
-    def test_it_reads_the_settings_it_needs(self, logged):
-        settings = SimpleNamespace(bar_percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5, other="x")
+    def test_it_is_built_from_the_qualifying_settings(self, logged):
+        settings = QualifyingSettings(bar_percentile=95.0, window_seconds=120.0, min_scores=8, starting_bar=5.5)
         b = PercentileBar.from_settings(settings, started_at=0.0)
-        assert (b._bar_percentile, b._window_seconds, b._min_scores, b._starting_bar) == (95.0, 120.0, 8, 5.5)
+        assert b.qualifying is settings and b.level_at(0.0) == 5.5
         assert logged.of(b).ok()
-
-    def test_bad_settings_are_replaced_as_usual(self, logged):
-        b = PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=120.0, min_scores=8, starting_bar=5.5), started_at=0.0)
-        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(logged.of(b).warnings()) == 1
-
-    def test_strict_is_passed_on(self):
-        with pytest.raises(PercentileBarError):
-            PercentileBar.from_settings(SimpleNamespace(bar_percentile=500, window_seconds=1.0, min_scores=8, starting_bar=1.0), started_at=0.0, strict=True)
 
 
 class TestLogging:
     def test_nothing_is_logged_by_default(self, logged):
-        b = PercentileBar()
+        b = PercentileBar(QualifyingSettings())
         feed(b, [1.0, 2.0, 9.0])
         b.level_at(3.0)
         assert logged.text() == ""

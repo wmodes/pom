@@ -369,3 +369,30 @@ def test_a_sweep_keeps_a_message_that_is_not_quiet_yet_and_the_count_it_has():
     sent(muter, "stopped b")                                 # the sweep runs: a is only 50 old and must keep its count
     clock.advance(1.0)
     assert sent(muter, "stopped a") == ["stopped a", MUTING]
+
+
+# --- When the muter itself fails ----------------------------------------------------------
+
+def broken_record():
+    """A record whose text cannot be built (a %d given a word), so the muter fails on it."""
+    return logging.LogRecord("pom.mic", logging.WARNING, "mic.py", 1, "count %d", ("many",), None)
+
+
+def test_a_line_the_muter_fails_on_goes_through():
+    muter, _ = made()
+    assert muter.filter(broken_record()) is True
+
+
+def test_the_muter_s_own_failure_is_written_once_to_stderr_naming_only_the_kind_of_error_as_python_s_logging_does(capsys):
+    """Python's logging reports its own failures on stderr, not through the log (which would pass back through the part that failed)."""
+    muter, _ = made()
+    for _ in range(3):
+        muter.filter(broken_record())
+    assert capsys.readouterr().err == "WARNING pom.bookkeeper.log_muter: the log muter failed (TypeError); lines go through unmuted\n"
+
+
+def test_the_muter_s_failure_is_not_sent_through_the_log(caplog):
+    muter, _ = made()
+    with caplog.at_level(logging.DEBUG):
+        muter.filter(broken_record())
+    assert caplog.records == []

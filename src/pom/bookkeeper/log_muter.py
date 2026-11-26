@@ -24,21 +24,19 @@ It is attached to every handler of the `pom` logger (see log_setup.configure_log
 the modules' own child loggers. A record that passes through several handlers is decided once; the verdict is kept on the record.
 
 A log filter must never stop the main work: if anything in here fails the line goes through, and one warning (naming the kind of error, never the
-text of a line) says so.
+text of a line) says so. That warning is written straight to stderr, as Python's own logging reports its own failures (`Handler.handleError`), not
+through the log: the log passes through this muter, the part that failed. Under systemd stderr reaches the same journal.
 """
 import logging
 import re
+import sys
 import threading
 import time
 from typing import Callable, Dict, Tuple
 
-from pom.bookkeeper.log_setup import get_logger
-
-DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 TAG = "LOGMUTE"
 _DIGITS = re.compile(r"[0-9]+")
 _VERDICT = "_logmute_verdict"     # where a record keeps the answer, so a second handler does not count it again
-_log = get_logger(__name__, DEBUG)
 
 
 class _Run:
@@ -141,7 +139,10 @@ class LogMuter(logging.Filter):
             del self._runs[key]
 
     def _warn_once(self, error: Exception) -> None:
-        """Says once, naming only the kind of error, that the muter failed and lines are going through."""
-        if not self._warned:
+        """Says once on stderr, naming only the kind of error, that the muter failed and lines are going through (as Python's logging does)."""
+        if not self._warned and sys.stderr is not None:
             self._warned = True
-            _log.warning("the log muter failed (%s); lines go through unmuted", type(error).__name__)
+            try:
+                sys.stderr.write(f"WARNING {__name__}: the log muter failed ({type(error).__name__}); lines go through unmuted\n")
+            except OSError:                    # nowhere left to say it; the line still goes through
+                pass

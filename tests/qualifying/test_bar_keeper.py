@@ -40,12 +40,11 @@ class FakeBar(Bar):
         return "a fake bar"
 
 
-class DecayingQuantileBar(TickingDecayingQuantileBar):
-    """The bar with its ticks pushed out of reach (a tick every million years), for the tests here that are not about the ticks."""
-
-    def __init__(self, *args, **options):
-        options.setdefault("anchor_interval_minutes", 1e12)
-        super().__init__(*args, **options)
+def tickless_settings(**settings):
+    """`[qualifying]` settings with the bar's ticks pushed out of reach (a tick every million years), for the tests here that are not about
+    the ticks; any other setting by keyword."""
+    settings.setdefault("anchor_interval_minutes", 1e12)
+    return QualifyingSettings(**settings)
 
 
 def bar_keeper(level=5.0, cooldown=0, ignored=(), strict=False, **settings):
@@ -313,34 +312,34 @@ class TestOverARealPercentileBar:
 
 class TestOverARealDecayingQuantileBar:
     def test_a_score_above_the_starting_line_qualifies_at_first(self):
-        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8), QualifyingSettings(cooldown_seconds=0))
+        t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8)), QualifyingSettings(cooldown_seconds=0))
         assert t.rule(7.5, 1.0) is Ruling.QUALIFIED
 
     def test_a_qualifier_with_no_influence_goes_in_as_the_bar_itself(self):
-        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=0.0))
+        t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8)), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=0.0))
         t.rule(9.0, 1.0)
         assert t.window_size_at(1.0) == 1 and t.bar_at(1.0) == pytest.approx(6.8)
 
     def test_scores_that_did_not_qualify_are_kept(self):
-        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=0.0))
+        t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8)), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=0.0))
         t.rule(2.0, 1.0)
         assert t.window_size_at(1.0) == 1
 
     def test_the_bar_follows_the_room_down(self):
-        t = BarKeeper(DecayingQuantileBar(starting_bar=6.8, bar_percentile=90, half_life_seconds=30), QualifyingSettings(cooldown_seconds=0))
+        t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8, bar_percentile=90, half_life_seconds=30)), QualifyingSettings(cooldown_seconds=0))
         for i in range(200):
             t.rule(2.0, float(i))
         assert t.bar_at(200.0) < 3.0
 
     def test_describe_includes_the_cooldown(self):
-        assert "at most one qualifier every 60 s" in BarKeeper(DecayingQuantileBar(), QualifyingSettings(cooldown_seconds=60)).describe()
+        assert "at most one qualifier every 60 s" in BarKeeper(TickingDecayingQuantileBar(tickless_settings()), QualifyingSettings(cooldown_seconds=60)).describe()
 
     @staticmethod
     def share_above_the_bar(influence, seed=7, scores=6000, step=2.0):
         """The share of an unchanging room's scores that stand above the bar once it has settled (no cooldown, so held scores do not hide any)."""
         import random
         rng = random.Random(seed)
-        t = BarKeeper(DecayingQuantileBar(starting_bar=3.0, bar_percentile=99.5, half_life_seconds=300), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=influence))
+        t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=3.0, bar_percentile=99.5, half_life_seconds=300)), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=influence))
         above = counted = 0
         for i in range(scores):
             ruling = t.rule(rng.uniform(0.0, 9.0), i * step)
@@ -355,7 +354,7 @@ class TestOverARealDecayingQuantileBar:
 
     def test_with_no_influence_a_room_that_is_louder_than_the_bar_keeps_clearing_it(self):
         """The bar can never follow the room up: a bar that settled low stays low while every score clears it."""
-        t = BarKeeper(DecayingQuantileBar(starting_bar=3.0, bar_percentile=99.5, half_life_seconds=300), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=0.0))
+        t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=3.0, bar_percentile=99.5, half_life_seconds=300)), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=0.0))
         for i in range(40):
             t.rule(2.0 + (i % 3) * 0.1, float(i))
         later = [t.rule(5.0 + (i % 3), 100.0 + i) for i in range(60)]
@@ -364,7 +363,7 @@ class TestOverARealDecayingQuantileBar:
     def test_with_some_influence_the_bar_follows_the_room_up(self):
         """The same quiet-then-livelier room as with no influence: now the bar rises with the zingers and fewer of them clear it."""
         def run(influence):
-            t = BarKeeper(DecayingQuantileBar(starting_bar=3.0, bar_percentile=99.5, half_life_seconds=300), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=influence))
+            t = BarKeeper(TickingDecayingQuantileBar(tickless_settings(starting_bar=3.0, bar_percentile=99.5, half_life_seconds=300)), QualifyingSettings(cooldown_seconds=0, qualifier_bar_influence=influence))
             for i in range(40):
                 t.rule(2.0 + (i % 3) * 0.1, float(i))
             later = [t.rule(5.0 + (i % 3), 100.0 + i) for i in range(60)]
@@ -379,7 +378,7 @@ class TestOverATickingBar:
 
     @staticmethod
     def keeper(**settings):
-        return BarKeeper(TickingDecayingQuantileBar(half_life_seconds=300.0, starting_bar_weight=1e-12, anchor_score=5.0, anchor_interval_minutes=1.0), QualifyingSettings(**settings))
+        return BarKeeper(TickingDecayingQuantileBar(QualifyingSettings(half_life_seconds=300.0, starting_bar_weight=1e-12, anchor_score=5.0, anchor_interval_minutes=1.0)), QualifyingSettings(**settings))
 
     def test_ticks_are_not_counted_as_attempts(self):
         t = self.keeper(cooldown_seconds=0)
@@ -671,13 +670,12 @@ class TestTheTicksForAChart:
         assert t.ticks_between(0.0, 1000.0) == []
 
     def test_over_a_real_bar_they_are_the_ticks_with_the_bar_at_each(self):
-        t = BarKeeper(TickingDecayingQuantileBar(half_life_seconds=300.0, starting_bar_weight=20.0, starting_bar=7.0, anchor_score=5.0,
-                                                 anchor_interval_minutes=1.0, started_at=0.0), QualifyingSettings(cooldown_seconds=0))
+        t = BarKeeper(TickingDecayingQuantileBar(QualifyingSettings(half_life_seconds=300.0, starting_bar_weight=20.0, starting_bar=7.0, anchor_score=5.0, anchor_interval_minutes=1.0), started_at=0.0), QualifyingSettings(cooldown_seconds=0))
         ticks = t.ticks_between(0.0, 180.0)
         assert [at for at, _, _ in ticks] == [60.0, 120.0, 180.0] and ticks[0][2] > ticks[1][2] > ticks[2][2]
 
     def test_listing_the_ticks_does_not_count_an_attempt_or_start_a_cooldown(self):
-        t = BarKeeper(TickingDecayingQuantileBar(), QualifyingSettings(cooldown_seconds=60))
+        t = BarKeeper(TickingDecayingQuantileBar(QualifyingSettings()), QualifyingSettings(cooldown_seconds=60))
         t.ticks_between(0.0, 3600.0)
         assert t.counted == 0 and t.rule(9.0, 3601.0) is Ruling.QUALIFIED
 

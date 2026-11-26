@@ -337,7 +337,8 @@ class TestARoomThatStartsAgain:
     @staticmethod
     def keeper():
         from pom.qualifying import DecayingQuantileBar
-        return BarKeeper(DecayingQuantileBar(), QualifyingSettings(cooldown_seconds=60, qualifier_bar_influence=0.0))       # a qualifier leaves the bar alone, so each strong score stands above it
+        settings = QualifyingSettings(cooldown_seconds=60, qualifier_bar_influence=0.0)          # a qualifier leaves the bar alone, so each strong score stands above it
+        return BarKeeper(DecayingQuantileBar(settings), settings)
 
     def test_a_first_room_qualifies_once_a_cooldown(self):
         _, attempts = self.hear_for(200, self.keeper())

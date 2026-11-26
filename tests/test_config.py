@@ -9,10 +9,6 @@ import pytest
 
 from pom.config import Config
 from pom.defaults import ListeningSettings, OracleSettings, ScorerSettings, QualifyingSettings
-import pom.qualifying.bar_keeper
-import pom.qualifying.percentile_bar
-import pom.qualifying.decaying_quantile_bar
-import pom.qualifying.moving_average_bar
 
 
 def write_exactly(tmp_path, text):
@@ -515,14 +511,6 @@ def test_the_qualifying_defaults_when_nothing_is_set():
     assert config.qualifying == QualifyingSettings() and config.qualifying.bar_percentile == 99.5 and config.problems.ok
 
 
-def test_the_qualifying_defaults_match_the_bars_defaults():
-    from pom.qualifying import decaying_quantile_bar
-    s = QualifyingSettings()
-    assert (s.bar_percentile, s.half_life_seconds, s.starting_bar) == (
-        pom.qualifying.decaying_quantile_bar.DEFAULT_BAR_PERCENTILE, pom.qualifying.decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
-        pom.qualifying.decaying_quantile_bar.DEFAULT_STARTING_BAR)
-
-
 def test_the_starting_qualifying_values():
     assert QualifyingSettings() == QualifyingSettings(99.5, 300.0, 20, 60.0, 6.8, 0.5, 300.0, 0.25, 10.0, 0.05, "percentile")
 
@@ -575,14 +563,6 @@ def test_the_anchor_interval_is_any_number_of_minutes_above_zero(tmp_path, text,
 def test_the_discard_age_is_any_number_of_minutes_above_zero(tmp_path, text, expected):
     config = Config.load(write(tmp_path, f"[qualifying]\ndiscard_scores_older_than_minutes = {text}\n"), environ={})
     assert config.qualifying.discard_scores_older_than_minutes == expected and config.problems.ok
-
-
-def test_the_anchor_and_discard_settings_fall_back_to_the_bars_own_fallbacks():
-    from pom.qualifying.decaying_quantile_bar import (DEFAULT_ANCHOR_INTERVAL_MINUTES, DEFAULT_ANCHOR_SCORE,
-                                                      DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES)
-    s = QualifyingSettings()
-    assert (s.anchor_score, s.anchor_interval_minutes, s.discard_scores_older_than_minutes) == \
-        (DEFAULT_ANCHOR_SCORE, DEFAULT_ANCHOR_INTERVAL_MINUTES, DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES)
 
 
 # ---- the settings that used to be constants in modules ----

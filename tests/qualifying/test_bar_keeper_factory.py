@@ -2,7 +2,7 @@
 import pytest
 
 from pom.defaults import BAR_ALGORITHMS, QualifyingSettings
-from pom.qualifying import (ALGORITHMS, bar_from_settings, bar_keeper_from_settings, BarKeeper, DecayingQuantileBar, MovingAverageBar, PercentileBar, Ruling)
+from pom.qualifying import (ALGORITHMS, bar_from_settings, bar_keeper_from_settings, BarKeeper, DecayingQuantileBar, DecayingQuantileBarError, MovingAverageBar, PercentileBar, Ruling)
 
 
 def settings(**overrides):
@@ -39,21 +39,17 @@ class TestBuildingABar:
         assert bar_from_settings(given, started_at=0.0).qualifying is given
 
     def test_the_decaying_quantile_bar_gets_its_settings(self):
-        bar = bar_from_settings(settings(algorithm="decaying_quantile"), started_at=0.0)
-        assert (bar._bar_percentile, bar._half_life, bar._starting_bar) == (99.0, 90.0, 5.5)
+        given = settings(algorithm="decaying_quantile")
+        assert bar_from_settings(given, started_at=0.0).qualifying is given
 
     def test_the_moving_average_bar_gets_its_settings(self):
         given = settings(algorithm="moving_average")
         bar = bar_from_settings(given, started_at=0.0)
         assert bar.qualifying is given and bar.level_at(0.0) == pytest.approx(5.5)
 
-    def test_a_bad_value_is_the_bars_to_report(self, logged):
-        bar = bar_from_settings(settings(algorithm="decaying_quantile", bar_percentile=500), started_at=0.0)
-        assert len(logged.of(bar).warnings()) == 1 and "percentile" in logged.of(bar).warnings()[0]
-
     def test_strict_is_passed_to_the_bar(self):
-        with pytest.raises(Exception, match="percentile"):
-            bar_from_settings(settings(algorithm="decaying_quantile", bar_percentile=500), started_at=0.0, strict=True)
+        with pytest.raises(DecayingQuantileBarError, match="started_at"):
+            bar_from_settings(settings(algorithm="decaying_quantile"), started_at="soon", strict=True)
 
 
 class TestBuildingABarKeeper:
@@ -62,9 +58,9 @@ class TestBuildingABarKeeper:
         assert isinstance(bar_keeper, BarKeeper) and isinstance(bar_keeper._bar, DecayingQuantileBar)
         assert bar_keeper.qualifying.cooldown_seconds == 45.0 and logged.of(bar_keeper).ok()
 
-    def test_strict_is_passed_through_to_a_bad_bar_setting(self):
-        with pytest.raises(Exception, match="percentile"):
-            bar_keeper_from_settings(settings(algorithm="decaying_quantile", bar_percentile=500), started_at=0.0, strict=True)
+    def test_strict_is_passed_through_to_the_bar(self):
+        with pytest.raises(DecayingQuantileBarError, match="started_at"):
+            bar_keeper_from_settings(settings(algorithm="decaying_quantile"), started_at="soon", strict=True)
 
     @pytest.mark.parametrize("name", ["percentile", "decaying_quantile", "moving_average"])
     def test_every_bar_keeper_starts_at_the_starting_line_and_qualifies_on_a_strong_score(self, name):

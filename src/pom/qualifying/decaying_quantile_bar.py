@@ -22,8 +22,8 @@ room goes quiet nothing buries them any more, and the bar settles toward the anc
 quantile: they are never judged, never qualify, never start a cooldown, and are not counted as scores (`window_size_at` leaves them out).
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad
-    input to `add` is ignored. `strict=True` raises DecayingQuantileBarError instead, for tests and dev tools.
+  * Nothing here may stop the oracle (see pom/__init__.py). The settings come checked from the config (`[qualifying]`); a bad start
+    is 0 with a warning (`strict=True` raises DecayingQuantileBarError instead, for tests and dev tools); bad input to `add` is ignored.
   * Decay is by time, not by number of scores, so a quiet room and a busy one both remember "the last few minutes".
   * Scores, and ticks, older than `discard_scores_older_than_minutes` are dropped, so memory stays bounded however long the room talks. It is a setting
     and not a rule of the module, because it decides what the bar does after a long quiet: once every real score is gone, the bar is made of the
@@ -37,25 +37,19 @@ Design decisions, and why:
   * The starting line is a blend, not an extra score in the list: a stand-in score with almost no weight would still anchor the
     interpolation between its neighbours, and at a percentile of 100 it would be a permanent floor.
   * Only numbers are kept: no words from the room.
-  * This module never reads Config; the entry point passes the settings in (`from_settings` reads them off an object).
+  * This module never reads Config; it is handed the `[qualifying]` settings.
 """
 import math
 from collections import deque
 from typing import Deque, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_BAR_PERCENTILE = 99.5
-DEFAULT_HALF_LIFE_SECONDS = 300.0
-DEFAULT_STARTING_BAR = 6.8
-DEFAULT_STARTING_BAR_WEIGHT = 20.0
-DEFAULT_ANCHOR_SCORE = 5.85
-DEFAULT_ANCHOR_INTERVAL_MINUTES = 1.0
-DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES = 120.0
-DEFAULT_STARTED_AT = 0.0
+DEFAULT_STARTED_AT = 0.0      # a stream time, not a setting: a stream that begins at 0, and the fallback for a start that is not a number
 
 
 class DecayingQuantileBarError(ValueError):
@@ -71,50 +65,34 @@ class DecayingQuantileBar(Bar):
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        qualifying: The `[qualifying]` settings it reads: `bar_percentile` (how much of the weighted scores the bar sits above),
+            `half_life_seconds` (seconds for a score's weight to halve), `starting_bar` (the bar before any real score has been heard, and where
+            it returns after a long silence), `starting_bar_weight` (how many scores' worth of weight the starting line begins with),
+            `anchor_score` (the value of each tick, the level the bar settles toward in silence), `anchor_interval_minutes` (minutes between
+            ticks: shorter pulls the bar down faster in silence, and a little lower during talk) and `discard_scores_older_than_minutes`
+            (minutes after which a score, or a tick, is dropped from the bar's memory).
     """
 
-    def __init__(self, bar_percentile: float = DEFAULT_BAR_PERCENTILE, half_life_seconds: float = DEFAULT_HALF_LIFE_SECONDS,
-                 starting_bar: float = DEFAULT_STARTING_BAR, starting_bar_weight: float = DEFAULT_STARTING_BAR_WEIGHT,
-                 anchor_score: float = DEFAULT_ANCHOR_SCORE, anchor_interval_minutes: float = DEFAULT_ANCHOR_INTERVAL_MINUTES,
-                 discard_scores_older_than_minutes: float = DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES, started_at: float = DEFAULT_STARTED_AT,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, qualifying: QualifyingSettings, started_at: float = DEFAULT_STARTED_AT, strict: bool = False,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            bar_percentile: How much of the weighted scores the bar sits above, above 0 and at most 100.
-            half_life_seconds: Seconds for a score's weight to halve, above 0.
-            starting_bar: The bar before any real score has been heard, and where it returns after a long silence.
-            starting_bar_weight: How many scores' worth of weight the starting line begins with, above 0.
-            anchor_score: The value of each tick, the level the bar settles toward in silence. Any number.
-            anchor_interval_minutes: Minutes between ticks, above 0. Shorter pulls the bar down faster in silence, and a little lower during talk.
-            discard_scores_older_than_minutes: Minutes after which a score, or a tick, is dropped from the bar's memory, above 0.
+            qualifying: The `[qualifying]` settings.
             started_at: The stream time at which the bar begins, in the same seconds as the times it is given: the tick grid and the starting bar's fade both run
                 from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
             strict: Raise DecayingQuantileBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, DecayingQuantileBarError, DEBUG, strict)
-        self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE, lambda v: _is_number(v) and 0 < v <= 100,
-                                       "a number above 0 and at most 100")
-        self._half_life = self._valid(half_life_seconds, "half_life_seconds", DEFAULT_HALF_LIFE_SECONDS,
-                                      lambda v: _is_number(v) and v > 0, "a number above 0")
-        self._starting_bar = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number")
-        self._starting_bar_weight = self._valid(starting_bar_weight, "starting_bar_weight", DEFAULT_STARTING_BAR_WEIGHT,
-                                            lambda v: _is_number(v) and v > 0, "a number above 0")
-        self._anchor_score = self._valid(anchor_score, "anchor_score", DEFAULT_ANCHOR_SCORE, _is_number, "a number")
-        self._anchor_interval = 60.0 * self._valid(anchor_interval_minutes, "anchor_interval_minutes", DEFAULT_ANCHOR_INTERVAL_MINUTES,
-                                                   lambda v: _is_number(v) and v > 0, "a number above 0")
-        self._discard_seconds = 60.0 * self._valid(discard_scores_older_than_minutes, "discard_scores_older_than_minutes",
-                                                   DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES, lambda v: _is_number(v) and v > 0, "a number above 0")
+        self.qualifying = qualifying
+        self._anchor_interval = 60.0 * qualifying.anchor_interval_minutes                       # in seconds, as every time here is
+        self._discard_seconds = 60.0 * qualifying.discard_scores_older_than_minutes
         self._memory: Deque[Tuple[float, float]] = deque()          # (time heard, score), oldest first; the real scores only, never the ticks
         self._started_at = self._valid(started_at, "started_at", DEFAULT_STARTED_AT, _is_number, "a number")
 
     @classmethod
     def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "DecayingQuantileBar":
-        """Builds the bar from an object with `bar_percentile`, `half_life_seconds`, `starting_bar`, `anchor_score`, `anchor_interval_minutes`,
-        `discard_scores_older_than_minutes` and `starting_bar_weight`."""
-        return cls(settings.bar_percentile, settings.half_life_seconds, settings.starting_bar, anchor_score=settings.anchor_score,
-                   anchor_interval_minutes=settings.anchor_interval_minutes,
-                   discard_scores_older_than_minutes=settings.discard_scores_older_than_minutes,
-                   starting_bar_weight=settings.starting_bar_weight, started_at=started_at, strict=strict, bookkeeper=bookkeeper)
+        """Builds the bar from the `[qualifying]` settings, to begin at stream time `started_at`."""
+        return cls(settings, started_at, strict=strict, bookkeeper=bookkeeper)
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
@@ -141,7 +119,7 @@ class DecayingQuantileBar(Bar):
         first = max(1, math.ceil((start - self._started_at) / self._anchor_interval))
         last = math.floor((end - self._started_at) / self._anchor_interval)
         times = [self._started_at + k * self._anchor_interval for k in range(first, last + 1)]
-        return [(at, self._anchor_score, self.level_as_of(at)) for at in times]
+        return [(at, self.qualifying.anchor_score, self.level_as_of(at)) for at in times]
 
     def _level(self, now: float, future: bool) -> Optional[float]:
         """The bar at `now`; `future` says whether a score heard after `now` still counts (as a stepped-back clock would have it) or not."""
@@ -149,10 +127,10 @@ class DecayingQuantileBar(Bar):
             return None
         entries = self._weighted_scores(now, future)
         if not entries:
-            return self._starting_bar
-        line = self._starting_bar_weight * self._weight(now - self._started_at)
+            return self.qualifying.starting_bar
+        line = self.qualifying.starting_bar_weight * self._weight(now - self._started_at)
         share = line / (line + sum(weight for _, weight in entries))          # how much of the bar is still the starting line
-        return share * self._starting_bar + (1.0 - share) * self._quantile(entries, self._bar_percentile)
+        return share * self.qualifying.starting_bar + (1.0 - share) * self._quantile(entries, self.qualifying.bar_percentile)
 
     def window_size_at(self, now: float) -> int:
         """How many scores' worth of weight the real scores carry at `now`, to the nearest whole score (the starting line is not
@@ -172,14 +150,14 @@ class DecayingQuantileBar(Bar):
 
     def describe(self) -> str:
         """For example: the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8."""
-        return (f"the {self._bar_percentile:g}th percentile of scores that count half as much every {self._half_life:g} s, "
-                f"starting at {self._starting_bar:g}, with a steady tick of {self._anchor_score:g} every {self._anchor_interval / 60.0:g} min")
+        return (f"the {self.qualifying.bar_percentile:g}th percentile of scores that count half as much every {self.qualifying.half_life_seconds:g} s, "
+                f"starting at {self.qualifying.starting_bar:g}, with a steady tick of {self.qualifying.anchor_score:g} every {self._anchor_interval / 60.0:g} min")
 
     # --- The arithmetic -------------------------------------------------------------
 
     def _weight(self, age: float) -> float:
         """2 ** (-age / half_life); a negative age (a clock that stepped back) counts as 0."""
-        return 2.0 ** (-max(age, 0.0) / self._half_life)
+        return 2.0 ** (-max(age, 0.0) / self.qualifying.half_life_seconds)
 
     def _forget_old(self, now: float) -> None:
         """Drops scores older than `discard_scores_older_than_minutes`."""
@@ -198,7 +176,7 @@ class DecayingQuantileBar(Bar):
         is kept while it is no older than a score would be; none exist before the first interval after `started_at` has gone by."""
         last = math.floor((now - self._started_at) / self._anchor_interval)
         first = max(1, math.ceil((now - self._discard_seconds - self._started_at) / self._anchor_interval))
-        return [(self._anchor_score, self._weight(now - (self._started_at + k * self._anchor_interval))) for k in range(first, last + 1)]
+        return [(self.qualifying.anchor_score, self._weight(now - (self._started_at + k * self._anchor_interval))) for k in range(first, last + 1)]
 
     @staticmethod
     def _quantile(entries, percentile: float) -> float:

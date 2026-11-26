@@ -353,8 +353,9 @@ class TestTheMovedSettingsReachTheirParts:
     """Each of these was a constant in a module; now the config says it and the entry point passes it in."""
 
     def test_the_starting_bar_weight(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\nstarting_bar_weight = 9\n')
-        assert p.parts["bar_keeper"]._bar._starting_bar_weight == 9.0
+        config = config_from(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\nstarting_bar_weight = 9\n')
+        bar = build_printer(config, Options()).parts["bar_keeper"]._bar
+        assert bar.qualifying is config.qualifying and bar.qualifying.starting_bar_weight == 9.0
 
     def test_the_longest_clip(self, tmp_path):
         config = config_from(tmp_path, "[listening]\nmax_clip_words = 12\n")

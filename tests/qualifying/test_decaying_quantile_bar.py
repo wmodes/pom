@@ -1,12 +1,11 @@
 """Tests for pom.qualifying.decaying_quantile_bar: a weighted, interpolated high quantile with a fading starting line."""
+import dataclasses
 import math
-from types import SimpleNamespace
 
 import pytest
 
-from pom.qualifying.decaying_quantile_bar import (DEFAULT_ANCHOR_INTERVAL_MINUTES, DEFAULT_ANCHOR_SCORE, DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES,
-                                               DEFAULT_HALF_LIFE_SECONDS, DEFAULT_BAR_PERCENTILE, DEFAULT_STARTING_BAR, DEFAULT_STARTING_BAR_WEIGHT,
-                                               DecayingQuantileBarError)
+from pom.defaults import QualifyingSettings
+from pom.qualifying.decaying_quantile_bar import DecayingQuantileBarError
 from pom.qualifying.decaying_quantile_bar import DecayingQuantileBar as TickingDecayingQuantileBar
 from pom.qualifying.bar import Bar
 
@@ -14,19 +13,23 @@ TINY = 1e-12            # a starting weight so small that the starting line does
 NO_TICKS = 1e12         # minutes between ticks: so far apart that no tick ever comes, so the tests of everything but the ticks see only real scores
 
 
-class DecayingQuantileBar(TickingDecayingQuantileBar):
-    """The bar with its ticks pushed out of reach, for every test here that is not about the ticks. (`TickingDecayingQuantileBar` is the real one.)"""
+SETTING_NAMES = {field.name for field in dataclasses.fields(QualifyingSettings)}
 
-    def __init__(self, *args, **options):
-        options.setdefault("anchor_interval_minutes", NO_TICKS)
-        super().__init__(*args, **options)
+
+def tickless_settings(**settings):
+    """`[qualifying]` settings with the ticks pushed out of reach, for every test here that is not about the ticks, unless it gives its own
+    `anchor_interval_minutes`; any other setting by keyword."""
+    settings.setdefault("anchor_interval_minutes", NO_TICKS)
+    return QualifyingSettings(**settings)
 
 
 def bar(**options):
-    """A bar with a very long half-life (no decay worth speaking of) and no starting line, unless a test says otherwise."""
+    """A bar with a very long half-life (no decay worth speaking of), no starting line and no ticks, unless a test says otherwise. `[qualifying]`
+    settings by keyword; anything else (`started_at`, `strict`) goes to the bar."""
     options.setdefault("half_life_seconds", 1e12)
     options.setdefault("starting_bar_weight", TINY)
-    return DecayingQuantileBar(**options)
+    settings = {name: options.pop(name) for name in list(options) if name in SETTING_NAMES}
+    return TickingDecayingQuantileBar(tickless_settings(**settings), **options)
 
 
 def feed(b, scores, start=0.0, step=1.0):
@@ -47,58 +50,58 @@ def line_through_the_shares(scores, percentile):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_BAR_PERCENTILE, DEFAULT_HALF_LIFE_SECONDS, DEFAULT_STARTING_BAR, DEFAULT_STARTING_BAR_WEIGHT) == (99.5, 300.0, 6.8, 20.0)
+        q = QualifyingSettings()
+        assert (q.bar_percentile, q.half_life_seconds, q.starting_bar, q.starting_bar_weight) == (99.5, 300.0, 6.8, 20.0)
 
     def test_good_settings_are_quiet(self, logged):
-        assert logged.of(DecayingQuantileBar()).ok()
-        assert logged.of(DecayingQuantileBar(bar_percentile=100, half_life_seconds=0.001, starting_bar=-3, starting_bar_weight=0.001)).ok()
+        assert logged.of(TickingDecayingQuantileBar(tickless_settings())).ok()
+        assert logged.of(TickingDecayingQuantileBar(tickless_settings(bar_percentile=100, half_life_seconds=0.001, starting_bar=-3, starting_bar_weight=0.001))).ok()
 
     def test_it_is_a_bar(self):
-        assert isinstance(DecayingQuantileBar(), Bar)
+        assert isinstance(TickingDecayingQuantileBar(tickless_settings()), Bar)
 
     def test_it_ignores_no_score(self):
-        assert DecayingQuantileBar().ignores(0.0) is False and DecayingQuantileBar().ignores(9.0) is False
+        assert TickingDecayingQuantileBar(tickless_settings()).ignores(0.0) is False and TickingDecayingQuantileBar(tickless_settings()).ignores(9.0) is False
 
 
 class TestTheStartingLine:
     def test_before_any_score_the_bar_is_the_starting_line(self):
-        assert DecayingQuantileBar(starting_bar=6.8).level_at(0.0) == pytest.approx(6.8)
-        assert DecayingQuantileBar(starting_bar=5.0, bar_percentile=50).level_at(100.0) == pytest.approx(5.0)
+        assert TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8)).level_at(0.0) == pytest.approx(6.8)
+        assert TickingDecayingQuantileBar(tickless_settings(starting_bar=5.0, bar_percentile=50)).level_at(100.0) == pytest.approx(5.0)
 
     def test_the_starting_line_is_settable(self):
-        assert DecayingQuantileBar(starting_bar=4.25).level_at(0.0) == pytest.approx(4.25)
+        assert TickingDecayingQuantileBar(tickless_settings(starting_bar=4.25)).level_at(0.0) == pytest.approx(4.25)
 
     def test_there_is_always_a_bar(self):
-        assert DecayingQuantileBar().level_at(0.0) is not None
+        assert TickingDecayingQuantileBar(tickless_settings()).level_at(0.0) is not None
 
     def test_one_early_score_barely_moves_the_bar_off_the_starting_line(self):
-        b = DecayingQuantileBar(starting_bar=6.8)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8))
         b.level_at(0.0)
         b.add(9.0, 0.0)
         assert b.level_at(0.1) == pytest.approx((20 * 6.8 + 1 * 9.0) / 21, abs=0.01)     # 20 parts starting line to 1 part score
 
     def test_low_scores_pull_the_bar_down_from_the_starting_line_as_they_arrive(self):
-        b = DecayingQuantileBar(starting_bar=6.8, bar_percentile=50, half_life_seconds=1e12)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8, bar_percentile=50, half_life_seconds=1e12))
         level_before = b.level_at(0.0)
         feed(b, [2.0] * 200)
         assert level_before == pytest.approx(6.8) and b.level_at(200.0) < 3.0
 
     def test_the_starting_line_fades_with_the_half_life(self):
-        b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=75, half_life_seconds=100, starting_bar_weight=20,
-                                discard_scores_older_than_minutes=800 / 60)      # scores are discarded after 800 s
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=75, half_life_seconds=100, starting_bar_weight=20, discard_scores_older_than_minutes=800 / 60))      # scores are discarded after 800 s
         b.level_at(0.0)
         feed(b, [2.0] * 20, start=0.0, step=0.001)           # 20 real scores heard at once: the line holds as much weight
         assert b.level_at(0.02) == pytest.approx(5.5, abs=0.1)         # half and half: (9 + 2) / 2
         assert b.level_at(1000.0) == pytest.approx(9.0)      # ten half-lives later every real score has been discarded
 
     def test_while_scores_keep_arriving_the_starting_line_fades_away(self):
-        b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20))
         b.level_at(0.0)
         feed(b, [2.0] * 50, start=500.0, step=0.01)          # five half-lives later: the line has 20/32 of one score's weight
         assert b.level_at(501.0) == pytest.approx(2.0, abs=0.35)
 
     def test_the_starting_line_counts_from_the_first_use_not_from_each_use(self):
-        b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20))
         b.level_at(0.0)
         b.add(2.0, 500.0)
         b.level_at(500.0)                                     # asked again: the line must not start over
@@ -106,13 +109,13 @@ class TestTheStartingLine:
         assert b.level_at(501.0) == pytest.approx(2.0, abs=0.35)
 
     def test_after_a_long_silence_the_bar_returns_to_the_starting_line(self):
-        b = DecayingQuantileBar(starting_bar=6.8, half_life_seconds=60, discard_scores_older_than_minutes=8)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=6.8, half_life_seconds=60, discard_scores_older_than_minutes=8))
         feed(b, [1.0, 2.0, 3.0, 4.0, 9.0], step=1.0)
         assert b.level_at(10 * 60 + 100) == pytest.approx(6.8)
 
     def test_the_starting_weight_sets_how_long_the_line_lasts(self):
-        light = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=1e12, starting_bar_weight=1)
-        heavy = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=1e12, starting_bar_weight=500)
+        light = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=1e12, starting_bar_weight=1))
+        heavy = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=1e12, starting_bar_weight=500))
         for b in (light, heavy):
             b.level_at(0.0)
             feed(b, [2.0] * 50)
@@ -120,7 +123,7 @@ class TestTheStartingLine:
 
     def test_the_line_fades_from_the_start_the_bar_was_given(self):
         options = dict(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
-        late, early = DecayingQuantileBar(started_at=5000.0, **options), DecayingQuantileBar(started_at=0.0, **options)
+        late, early = TickingDecayingQuantileBar(tickless_settings(**options), started_at=5000.0), TickingDecayingQuantileBar(tickless_settings(**options), started_at=0.0)
         for b in (late, early):
             b.add(2.0, 5000.0)
         assert late.level_at(5000.0) > 5.0                                     # a bar that began at 5000 s: the line is fresh then
@@ -128,32 +131,30 @@ class TestTheStartingLine:
 
     def test_reading_the_bar_does_not_start_it(self):
         """The start is given, not found: a bar first read at 5000 s has been fading its line since 0, not since the read."""
-        b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20, started_at=0.0)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20), started_at=0.0)
         b.level_at(5000.0)                                                     # the first read, long after the start
         b.add(2.0, 5000.0)
         assert b.level_at(5000.0) == pytest.approx(2.0, abs=0.01)
 
     def test_a_bar_with_no_start_given_starts_at_zero(self, logged):
-        b = DecayingQuantileBar(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20)
+        b = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20))
         assert b._started_at == 0.0 and logged.of(b).ok()
 
     @pytest.mark.parametrize("good", [0, 0.0, 12.5, -3, 1e6])
     def test_a_start_can_be_any_number(self, good, logged):
-        assert logged.of(DecayingQuantileBar(started_at=good)).ok() and DecayingQuantileBar(started_at=good)._started_at == float(good)
+        assert logged.of(TickingDecayingQuantileBar(tickless_settings(), started_at=good)).ok() and TickingDecayingQuantileBar(tickless_settings(), started_at=good)._started_at == float(good)
 
     @pytest.mark.parametrize("bad", ["0", None, True, [0], float("nan"), float("inf")])
     def test_a_bad_start_is_zero_with_a_warning(self, bad, logged):
-        b = DecayingQuantileBar(started_at=bad)
+        b = TickingDecayingQuantileBar(tickless_settings(), started_at=bad)
         assert b._started_at == 0.0 and len(logged.of(b).warnings()) == 1 and "started_at" in logged.of(b).warnings()[0]
 
     def test_strict_raises_on_a_bad_start(self):
         with pytest.raises(DecayingQuantileBarError):
-            DecayingQuantileBar(started_at="soon", strict=True)
+            TickingDecayingQuantileBar(tickless_settings(), started_at="soon", strict=True)
 
     def test_from_settings_passes_the_start_on(self):
-        settings = SimpleNamespace(bar_percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
-                                   discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5)
-        assert DecayingQuantileBar.from_settings(settings, started_at=42.0)._started_at == 42.0
+        assert TickingDecayingQuantileBar.from_settings(QualifyingSettings(), started_at=42.0)._started_at == 42.0
 
 
 class TestTheWeightedQuantile:
@@ -210,30 +211,30 @@ class TestTheQuantileIsSeparateFromTheStartingLine:
     @pytest.mark.parametrize("percentile", [100, 99.5, 90, 50, 10])
     def test_the_quantile_takes_its_percentile_as_an_argument(self, percentile):
         entries = [(score, 1.0) for score in self.SCORES]
-        assert DecayingQuantileBar._quantile(entries, percentile) == pytest.approx(line_through_the_shares(self.SCORES, percentile), abs=1e-9)
+        assert TickingDecayingQuantileBar._quantile(entries, percentile) == pytest.approx(line_through_the_shares(self.SCORES, percentile), abs=1e-9)
 
     def test_the_list_the_bar_is_read_from_has_no_starting_line_in_it(self):
         """A heavy starting line at 9 drags the bar up, but a percentile read from the weighted scores sees only the scores."""
-        b = DecayingQuantileBar(bar_percentile=99.5, half_life_seconds=1e12, starting_bar=9.0, starting_bar_weight=500)
+        b = TickingDecayingQuantileBar(tickless_settings(bar_percentile=99.5, half_life_seconds=1e12, starting_bar=9.0, starting_bar_weight=500))
         feed(b, self.SCORES)
         now = float(len(self.SCORES))
         assert b.level_at(now) > 8.0                                 # the starting line is pulling the bar toward 9
         assert b._quantile(b._weighted_scores(now), 50) == pytest.approx(line_through_the_shares(self.SCORES, 50), abs=1e-6)
 
     def test_the_weighted_scores_are_the_remembered_scores_with_their_weights(self):
-        b = DecayingQuantileBar(half_life_seconds=10.0)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=10.0))
         assert b._weighted_scores(0.0) == []
         b.add(4.0, 0.0)
         b.add(7.0, 10.0)
         assert b._weighted_scores(10.0) == [(4.0, pytest.approx(0.5)), (7.0, pytest.approx(1.0))]
 
     def test_the_weighted_scores_leave_out_what_is_forgotten(self):
-        b = DecayingQuantileBar(half_life_seconds=10.0)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=10.0))
         b.add(4.0, 0.0)
         assert b._weighted_scores(1_000_000.0) == []
 
     def test_the_bar_is_the_quantile_at_its_own_percentile_blended_with_the_starting_line(self):
-        b = DecayingQuantileBar(bar_percentile=90, half_life_seconds=1e12, starting_bar=9.0, starting_bar_weight=TINY)
+        b = TickingDecayingQuantileBar(tickless_settings(bar_percentile=90, half_life_seconds=1e12, starting_bar=9.0, starting_bar_weight=TINY))
         feed(b, self.SCORES)
         now = float(len(self.SCORES))
         assert b.level_at(now) == pytest.approx(b._quantile(b._weighted_scores(now), 90), abs=1e-6)
@@ -245,7 +246,8 @@ def ticking(**options):
     options.setdefault("starting_bar_weight", TINY)
     options.setdefault("anchor_score", 5.0)
     options.setdefault("anchor_interval_minutes", 1.0)
-    return TickingDecayingQuantileBar(**options)
+    settings = {name: options.pop(name) for name in list(options) if name in SETTING_NAMES}
+    return TickingDecayingQuantileBar(QualifyingSettings(**settings), **options)
 
 
 class TestTheAnchor:
@@ -322,53 +324,19 @@ class TestTheAnchor:
 
     def test_talk_is_lowered_only_slightly_by_the_ticks(self):
         """Ticks add weight below the top, so in a busy room the bar sits a little lower than it would without them."""
-        with_ticks, without = ticking(), DecayingQuantileBar(half_life_seconds=300.0, starting_bar_weight=TINY)
+        with_ticks, without = ticking(), TickingDecayingQuantileBar(tickless_settings(half_life_seconds=300.0, starting_bar_weight=TINY))
         for b in (with_ticks, without):
             for i in range(200):
                 b.add(1.0 + (i * 7) % 9, i * 0.5)                    # 200 scores over 100 s, spread over 1 to 9
         assert 0 <= without.level_at(100.0) - with_ticks.level_at(100.0) < 0.5
 
-    def test_the_default_anchor_is_the_documented_fallback(self, logged):
-        b = TickingDecayingQuantileBar()
-        assert (b._anchor_score, b._anchor_interval) == (DEFAULT_ANCHOR_SCORE, 60.0 * DEFAULT_ANCHOR_INTERVAL_MINUTES) and logged.of(b).ok()
-
-    @pytest.mark.parametrize("bad", ["5", None, True, [5], float("nan"), float("inf")])
-    def test_a_bad_anchor_score_means_the_default_with_a_warning(self, bad, logged):
-        b = TickingDecayingQuantileBar(anchor_score=bad)
-        assert len(logged.of(b).warnings()) == 1 and "anchor_score" in logged.of(b).warnings()[0] and b._anchor_score == DEFAULT_ANCHOR_SCORE
-
-    @pytest.mark.parametrize("bad", [0, -1, "1", None, True, float("nan"), float("inf")])
-    def test_a_bad_anchor_interval_means_the_default_with_a_warning(self, bad, logged):
-        b = TickingDecayingQuantileBar(anchor_interval_minutes=bad)
-        assert len(logged.of(b).warnings()) == 1 and "anchor_interval_minutes" in logged.of(b).warnings()[0]
-        assert b._anchor_interval == 60.0 * DEFAULT_ANCHOR_INTERVAL_MINUTES
-
-    @pytest.mark.parametrize("option,bad", [("anchor_score", None), ("anchor_interval_minutes", 0)])
-    def test_strict_mode_raises(self, option, bad):
-        with pytest.raises(DecayingQuantileBarError):
-            TickingDecayingQuantileBar(strict=True, **{option: bad})
-
-    def test_the_default_discard_age_is_the_documented_fallback(self, logged):
-        b = TickingDecayingQuantileBar()
-        assert b._discard_seconds == 60.0 * DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES and logged.of(b).ok()
-
-    @pytest.mark.parametrize("bad", [0, -1, "60", None, True, float("nan"), float("inf")])
-    def test_a_bad_discard_age_means_the_default_with_a_warning(self, bad, logged):
-        b = TickingDecayingQuantileBar(discard_scores_older_than_minutes=bad)
-        assert len(logged.of(b).warnings()) == 1 and "discard_scores_older_than_minutes" in logged.of(b).warnings()[0]
-        assert b._discard_seconds == 60.0 * DEFAULT_DISCARD_SCORES_OLDER_THAN_MINUTES
-
-    def test_strict_mode_raises_on_a_bad_discard_age(self):
-        with pytest.raises(DecayingQuantileBarError):
-            TickingDecayingQuantileBar(strict=True, discard_scores_older_than_minutes=0)
-
     def test_negative_and_zero_anchor_scores_are_fine(self, logged):
-        assert logged.of(TickingDecayingQuantileBar(anchor_score=-2)).ok() and logged.of(TickingDecayingQuantileBar(anchor_score=0)).ok()
+        assert logged.of(TickingDecayingQuantileBar(QualifyingSettings(anchor_score=-2))).ok() and logged.of(TickingDecayingQuantileBar(QualifyingSettings(anchor_score=0))).ok()
 
 
 class TestTheDecay:
     def test_an_old_zinger_loses_its_hold_gradually(self):
-        b = DecayingQuantileBar(bar_percentile=99, half_life_seconds=60, starting_bar=3.0, starting_bar_weight=TINY)
+        b = TickingDecayingQuantileBar(tickless_settings(bar_percentile=99, half_life_seconds=60, starting_bar=3.0, starting_bar_weight=TINY))
         b.add(9.0, 0.0)
         feed(b, [3.0] * 60, start=1.0, step=1.0)
         levels = [b.level_at(t) for t in (61, 120, 180, 240, 300)]
@@ -376,8 +344,8 @@ class TestTheDecay:
         assert levels[0] > 3.5 and levels[-1] < levels[0]
 
     def test_a_fresh_score_beats_the_bar_set_by_an_old_zinger_but_not_one_just_heard(self):
-        old = DecayingQuantileBar(bar_percentile=99.5, half_life_seconds=60, starting_bar_weight=TINY, starting_bar=3.0)
-        fresh = DecayingQuantileBar(bar_percentile=99.5, half_life_seconds=60, starting_bar_weight=TINY, starting_bar=3.0)
+        old = TickingDecayingQuantileBar(tickless_settings(bar_percentile=99.5, half_life_seconds=60, starting_bar_weight=TINY, starting_bar=3.0))
+        fresh = TickingDecayingQuantileBar(tickless_settings(bar_percentile=99.5, half_life_seconds=60, starting_bar_weight=TINY, starting_bar=3.0))
         old.add(9.0, 0.0)                                   # a zinger ten minutes ago
         feed(old, [3.0] * 120, start=1.0, step=5.0)                # then ordinary talk up to 596 s
         feed(fresh, [3.0] * 120, start=1.0, step=5.0)
@@ -385,7 +353,7 @@ class TestTheDecay:
         assert old.level_at(600.0) < 7.2 < fresh.level_at(600.0)
 
     def test_scores_count_for_half_after_one_half_life(self):
-        b = DecayingQuantileBar(bar_percentile=50, half_life_seconds=100, starting_bar_weight=TINY, starting_bar=0.0)
+        b = TickingDecayingQuantileBar(tickless_settings(bar_percentile=50, half_life_seconds=100, starting_bar_weight=TINY, starting_bar=0.0))
         b.add(0.0, 0.0)           # weight 0.5 at t = 100
         b.add(10.0, 100.0)        # weight 1 at t = 100
         # weights 0.5 and 1: the 0.0 covers 0 to 0.5, the 10.0 covers 0.5 to 1.5; the 50th percentile (0.75) is a quarter of the way
@@ -401,43 +369,43 @@ class TestTheDecay:
         assert busy.level_at(101.0) < quiet.level_at(101.0) or busy.level_at(101.0) == pytest.approx(1.0)
 
     def test_a_score_heard_after_the_time_asked_about_counts_in_full_not_more(self):
-        b = DecayingQuantileBar(bar_percentile=50, half_life_seconds=60, starting_bar_weight=TINY, starting_bar=0.0)
+        b = TickingDecayingQuantileBar(tickless_settings(bar_percentile=50, half_life_seconds=60, starting_bar_weight=TINY, starting_bar=0.0))
         b.add(1.0, 0.0)
         b.add(9.0, 100.0)
         # asked about t = 50, before the second score: its age counts as 0, so its weight is 1, and the first is 2 ** (-50/60) = 0.561
         assert b.level_at(50.0) == pytest.approx(1.0 + (0.5 * (0.5612 + 1.0) - 0.5612) / 1.0 * 8.0, abs=0.01)
 
     def test_a_clock_that_steps_back_does_not_break_it(self):
-        b = DecayingQuantileBar(half_life_seconds=60)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=60))
         b.add(5.0, 100.0)
         assert b.level_at(50.0) is not None
 
 
 class TestTheWindowSize:
     def test_it_counts_real_scores_only(self):
-        b = DecayingQuantileBar()
+        b = TickingDecayingQuantileBar(tickless_settings())
         assert b.window_size_at(0.0) == 0
         feed(b, [1, 2, 3])
         assert b.window_size_at(3.0) == 3
 
     def test_a_score_counts_for_half_after_one_half_life(self):
-        b = DecayingQuantileBar(half_life_seconds=10)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=10))
         feed(b, [3.0] * 4, step=0.0)                          # four scores heard at once
         assert b.window_size_at(0.0) == 4 and b.window_size_at(10.0) == 2 and b.window_size_at(20.0) == 1
 
     def test_the_count_is_to_the_nearest_whole_score(self):
-        b = DecayingQuantileBar(half_life_seconds=10)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=10))
         b.add(3.0, 0.0)
         assert b.window_size_at(5.0) == 1                     # 0.71 rounds up
         assert b.window_size_at(20.0) == 0                    # 0.25 rounds down
 
     def test_a_busy_room_has_a_window_of_about_a_hundred_at_a_five_minute_half_life(self):
-        b = DecayingQuantileBar(half_life_seconds=300)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=300))
         feed(b, [3.0] * 1200, step=60 / 14)                   # fourteen scores a minute for twenty minutes
         assert 95 <= b.window_size_at(1200 * 60 / 14) <= 107   # not the 1200 scores heard
 
     def test_scores_older_than_the_discard_age_are_forgotten(self):
-        b = DecayingQuantileBar(half_life_seconds=10, discard_scores_older_than_minutes=80 / 60)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=10, discard_scores_older_than_minutes=80 / 60))
         b.add(5.0, 0.0)
         b.window_size_at(80.0)
         assert len(b._memory) == 1
@@ -446,7 +414,7 @@ class TestTheWindowSize:
 
     def test_the_discard_age_is_a_length_of_time_whatever_the_half_life(self):
         """A half-life of 1000 s would keep a score for hours if the age were counted in half-lives; the setting is minutes."""
-        b = DecayingQuantileBar(half_life_seconds=1000, discard_scores_older_than_minutes=1)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=1000, discard_scores_older_than_minutes=1))
         b.add(5.0, 0.0)
         b.window_size_at(60.0)
         assert len(b._memory) == 1
@@ -454,13 +422,13 @@ class TestTheWindowSize:
         assert len(b._memory) == 0
 
     def test_memory_is_bounded(self):
-        b = DecayingQuantileBar(half_life_seconds=10, discard_scores_older_than_minutes=80 / 60)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=10, discard_scores_older_than_minutes=80 / 60))
         feed(b, [3.0] * 5000, step=0.5)
         assert len(b._memory) <= 80 / 0.5 + 2
 
     def test_a_weight_that_has_faded_to_nothing_is_dropped_and_never_divided_by(self):
         """A half-life of a second and a memory of a billion minutes: after a million seconds every weight underflows to zero."""
-        b = DecayingQuantileBar(half_life_seconds=1.0, discard_scores_older_than_minutes=1e9, starting_bar=6.8)
+        b = TickingDecayingQuantileBar(tickless_settings(half_life_seconds=1.0, discard_scores_older_than_minutes=1e9, starting_bar=6.8))
         b.add(9.0, 0.0)
         assert b.level_at(1_000_000.0) == pytest.approx(6.8)
         t = ticking(half_life_seconds=1.0, discard_scores_older_than_minutes=1e9)
@@ -471,101 +439,58 @@ class TestTheWindowSize:
 class TestWhatIsIgnored:
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_score_that_is_not_a_number_changes_nothing(self, junk):
-        b = DecayingQuantileBar()
+        b = TickingDecayingQuantileBar(tickless_settings())
         b.add(junk, 0.0)
         assert b.window_size_at(0.0) == 0
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_time_that_is_not_a_number_changes_nothing(self, junk):
-        b = DecayingQuantileBar()
+        b = TickingDecayingQuantileBar(tickless_settings())
         b.add(5.0, junk)
         assert b.window_size_at(0.0) == 0 and b.level_at(junk) is None
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
     def test_a_window_size_asked_with_a_time_that_is_not_a_number_is_zero(self, junk):
-        b = DecayingQuantileBar()
+        b = TickingDecayingQuantileBar(tickless_settings())
         feed(b, [1, 2, 3])
         assert b.window_size_at(junk) == 0
 
     def test_a_zero_is_a_real_score(self):
-        b = DecayingQuantileBar()
+        b = TickingDecayingQuantileBar(tickless_settings())
         b.add(0.0, 0.0)
         assert b.window_size_at(0.0) == 1
 
 
 class TestDescribing:
     def test_it_says_how_it_works_in_one_line(self):
-        assert TickingDecayingQuantileBar(99.5, 300, 6.8, anchor_score=5.85, anchor_interval_minutes=1).describe() == \
+        assert TickingDecayingQuantileBar(QualifyingSettings(bar_percentile=99.5, half_life_seconds=300, starting_bar=6.8, anchor_score=5.85, anchor_interval_minutes=1)).describe() == \
             "the 99.5th percentile of scores that count half as much every 300 s, starting at 6.8, with a steady tick of 5.85 every 1 min"
 
     def test_it_says_nothing_about_qualifiers_because_the_barkeeper_does(self):
-        assert "qualif" not in DecayingQuantileBar().describe()
+        assert "qualif" not in TickingDecayingQuantileBar(tickless_settings()).describe()
 
 
-class TestBadSettings:
-    @pytest.mark.parametrize("bad", [0, -1, 100.1, "99", None, True, [99], float("nan"), float("inf")])
-    def test_a_bad_percentile_means_the_default_with_a_warning(self, bad, logged):
-        b = DecayingQuantileBar(bar_percentile=bad)
-        assert len(logged.of(b).warnings()) == 1 and "bar_percentile" in logged.of(b).warnings()[0]
-        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE
-
-    @pytest.mark.parametrize("bad", [0, -5, "300", None, True, float("nan"), float("inf")])
-    def test_a_bad_half_life_means_the_default_with_a_warning(self, bad, logged):
-        b = DecayingQuantileBar(half_life_seconds=bad)
-        assert len(logged.of(b).warnings()) == 1 and "half_life_seconds" in logged.of(b).warnings()[0]
-        assert b._half_life == DEFAULT_HALF_LIFE_SECONDS
-
-    @pytest.mark.parametrize("bad", ["6.8", None, True, [6.8], float("nan"), float("inf")])
-    def test_a_bad_starting_bar_means_the_default_with_a_warning(self, bad, logged):
-        b = DecayingQuantileBar(starting_bar=bad)
-        assert len(logged.of(b).warnings()) == 1 and "starting_bar" in logged.of(b).warnings()[0]
-        assert b.level_at(0.0) == pytest.approx(DEFAULT_STARTING_BAR)
-
-    @pytest.mark.parametrize("bad", [0, -1, "20", None, True, float("nan")])
-    def test_a_bad_starting_weight_means_the_default_with_a_warning(self, bad, logged):
-        b = DecayingQuantileBar(starting_bar_weight=bad)
-        assert len(logged.of(b).warnings()) == 1 and "starting_bar_weight" in logged.of(b).warnings()[0]
-        assert b._starting_bar_weight == DEFAULT_STARTING_BAR_WEIGHT
-
+class TestTheSettings:
     def test_a_negative_starting_bar_is_allowed(self):
-        assert DecayingQuantileBar(starting_bar=-2.5).level_at(0.0) == pytest.approx(-2.5)
+        assert TickingDecayingQuantileBar(tickless_settings(starting_bar=-2.5)).level_at(0.0) == pytest.approx(-2.5)
 
-    @pytest.mark.parametrize("option,bad", [("bar_percentile", 0), ("half_life_seconds", 0), ("starting_bar", None), ("starting_bar_weight", 0)])
-    def test_strict_mode_raises(self, option, bad):
-        with pytest.raises(DecayingQuantileBarError, match=option):
-            DecayingQuantileBar(strict=True, **{option: bad})
-
-    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
-        assert logged.of(DecayingQuantileBar(strict=True)).ok()
-
-    def test_two_bad_settings_give_two_warnings(self, logged):
-        assert len(logged.of(DecayingQuantileBar(bar_percentile=0, half_life_seconds=0)).warnings()) == 2
+    def test_it_keeps_the_settings_it_was_handed(self):
+        settings = QualifyingSettings()
+        assert TickingDecayingQuantileBar(settings).qualifying is settings
 
 
 class TestBuildingFromSettings:
-    def test_it_reads_the_settings_it_needs(self, logged):
-        settings = SimpleNamespace(bar_percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
-                                   discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5, unrelated="x")
-        b = DecayingQuantileBar.from_settings(settings, started_at=0.0)
-        assert (b._bar_percentile, b._half_life, b._starting_bar, b._anchor_score, b._anchor_interval, b._discard_seconds,
-                b._starting_bar_weight) == (95.0, 120.0, 5.5, 4.5, 150.0, 5400.0, 7.5)
-        assert logged.of(b).ok()
-
-    def test_bad_settings_are_replaced_as_usual(self, logged):
-        settings = SimpleNamespace(bar_percentile=500, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
-                                   discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5)
-        b = DecayingQuantileBar.from_settings(settings, started_at=0.0)
-        assert b._bar_percentile == DEFAULT_BAR_PERCENTILE and len(logged.of(b).warnings()) == 1
-
-    def test_strict_is_passed_on(self):
-        with pytest.raises(DecayingQuantileBarError):
-            DecayingQuantileBar.from_settings(SimpleNamespace(bar_percentile=500, half_life_seconds=1.0, starting_bar=1.0, anchor_score=5.0,
-                                                              anchor_interval_minutes=1.0, discard_scores_older_than_minutes=1.0, starting_bar_weight=7.5), started_at=0.0, strict=True)
+    def test_it_is_built_from_the_qualifying_settings(self, logged):
+        settings = QualifyingSettings(bar_percentile=95.0, half_life_seconds=120.0, starting_bar=5.5, anchor_score=4.5, anchor_interval_minutes=2.5,
+                                      discard_scores_older_than_minutes=90.0, starting_bar_weight=7.5)
+        b = TickingDecayingQuantileBar.from_settings(settings, started_at=0.0)
+        assert b.qualifying is settings and logged.of(b).ok()
+        assert [at for at, _, _ in b.ticks_between(0.0, 400.0)] == [150.0, 300.0]          # the interval in minutes, ticked in seconds
 
 
 class TestLogging:
     def test_only_numbers_are_kept_and_nothing_is_logged_by_default(self, logged):
-        b = DecayingQuantileBar()
+        b = TickingDecayingQuantileBar(tickless_settings())
         feed(b, [1.0, 2.0, 9.0])
         b.level_at(3.0)
         assert "secret" not in logged.text()

@@ -584,7 +584,6 @@ MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's
     ("monitor", "history_max_turns", "200", 200, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "max_typed_line_characters", "80", 80, 500, ["0", "-1", "2.5", '"500"', "true"]),
     ("terminal", "refused_character_retry_seconds", "0.5", 0.5, 1.0, ["0", "-1", '"1"', "true", "inf"]),
-    ("terminal", "wait_log_reminder_seconds", "30", 30.0, 60.0, ["0", "-1", '"60"', "true", "inf"]),
     ("monitor", "mic_down_after_seconds", "7", 7.0, 5.0, ["0", "-1", '"5"', "true", "inf"]),
     ("monitor", "service_down_after_seconds", "90", 90.0, 45.0, ["0", "-1", '"45"', "true", "inf"]),
 ]
@@ -1303,7 +1302,7 @@ def test_the_committed_config_sets_every_terminal_key():
         section = tomllib.load(f)["terminal"]
     assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
                             "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds", "mode",
-                            "max_typed_line_characters", "refused_character_retry_seconds", "wait_log_reminder_seconds",
+                            "max_typed_line_characters", "refused_character_retry_seconds",
                             "data_bits", "parity", "stop_bits", "port_search"}
 
 

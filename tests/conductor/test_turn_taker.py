@@ -487,12 +487,12 @@ class TestTheLogs:
             take(rig)
         assert any("the oracle gave nothing (attempt 1 of 3); trying again in 10 s" in line for line in self.lines(caplog))
 
-    def test_a_wait_for_the_printer_is_logged_at_the_start_and_every_sixth_try(self, caplog):
+    def test_every_try_at_a_printer_that_cannot_print_yet_is_logged_and_the_log_mutes_the_repeats(self, caplog):
         rig = build(terminal_replies=[NOTHING_TYPED] * 100)
         with caplog.at_level(logging.INFO, logger="pom.conductor.turn_taker"):
             take(rig)
         waits = [line for line in self.lines(caplog) if "cannot print yet" in line]
-        assert 5 <= len(waits) <= 7 and "(try 1)" in waits[0] and "(try 7)" in waits[1]
+        assert len(waits) == len(rig.terminal.texts) and [f"(try {n})" in line for n, line in enumerate(waits, start=1)] == [True] * len(waits)
 
     def test_the_end_of_a_failed_turn_is_logged_with_its_outcome(self, caplog):
         rig = build(terminal_replies=[NOTHING_TYPED] * 100)

@@ -541,13 +541,13 @@ def test_the_probability_reported_is_the_odds_of_one_pick_before_any_redraw():
     assert selector.probability(store.get("cut#0")) == pytest.approx(1 / 3)
 
 
-def test_a_library_of_only_unfinished_passages_still_answers_and_says_so_once(logged):
+def test_a_library_of_only_unfinished_passages_still_answers_and_says_so_each_time_and_the_log_mutes_the_repeats(logged):
     store = Catalog.from_passages([Passage("lead#0", "lead", "red", LEAD_IN, 6), Passage("cut#0", "cut", "red", CUT, 11)])
     selector = Bibliomancer(store, circulation_for(red={}), random.Random(4), redraw_limit=5)
     for _ in range(20):
         assert len(selector.draw(1)) == 1
     tired = [w for w in logged.of(selector).warnings() if "ended unfinished" in w]
-    assert len(tired) == 1 and "5 picks in a row" in tired[0] and "2 of 2" in tired[0]
+    assert len(tired) == 20 and set(tired) == {"5 picks in a row ended unfinished; using one anyway (2 of 2 passages are unfinished)"}
 
 
 def test_with_redrawing_off_nothing_is_warned_when_unfinished_passages_come_up(logged):

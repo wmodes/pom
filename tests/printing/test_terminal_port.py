@@ -437,14 +437,13 @@ def test_the_typed_line_limit_is_a_setting():
 
 @pytest.mark.parametrize("option,bad", [("max_typed_line_characters", 0), ("max_typed_line_characters", 2.5), ("max_typed_line_characters", True),
                                         ("max_typed_line_characters", "500"), ("refused_character_retry_seconds", 0),
-                                        ("refused_character_retry_seconds", -1), ("refused_character_retry_seconds", "1"),
-                                        ("wait_log_reminder_seconds", 0), ("wait_log_reminder_seconds", None), ("wait_log_reminder_seconds", True)])
+                                        ("refused_character_retry_seconds", -1), ("refused_character_retry_seconds", "1")])
 def test_a_bad_limit_means_the_default_with_a_warning(option, bad, logged):
     port = TerminalPort("/dev/x", **{option: bad})
     assert len(logged.of(port).warnings()) == 1 and option in logged.of(port).warnings()[0]
 
 
-@pytest.mark.parametrize("option", ["max_typed_line_characters", "refused_character_retry_seconds", "wait_log_reminder_seconds"])
+@pytest.mark.parametrize("option", ["max_typed_line_characters", "refused_character_retry_seconds"])
 def test_strict_mode_raises_on_a_bad_limit(option):
     with pytest.raises(TerminalPortError):
         TerminalPort("/dev/x", strict=True, **{option: 0})
@@ -775,25 +774,18 @@ class TestAHeldMachine:
         port, serial_port, _, opened = stalled_port({1: TimeoutError("slow")})
         assert port.transmit("abc").completed is True and serial_port.written == b"abc" and len(opened) == 1
 
-    def test_it_is_one_warning_for_the_whole_stall_and_a_line_in_the_log_when_typing_goes_on(self, caplog, logged):
+    def test_a_stall_is_a_warning_when_it_begins_and_a_line_in_the_log_when_typing_goes_on(self, caplog, logged):
         port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 12)})
         with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
             port.transmit("abcdef")
-        assert len(logged.of(port).warnings()) == 1 and "stopped taking characters" in logged.of(port).warnings()[0] and "2 of 6" in logged.of(port).warnings()[0]
+        assert "stopped taking characters" in logged.of(port).warnings()[0] and "2 of 6" in logged.of(port).warnings()[0]
         assert any("typing again after" in r.getMessage() for r in caplog.records)
 
-    def test_a_long_stall_is_mentioned_in_the_log_every_minute(self, caplog):
-        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 140)})
-        with caplog.at_level(logging.WARNING, logger="pom.printing.terminal_port"):
-            port.transmit("abcdef")
-        reminders = [r.getMessage() for r in caplog.records if "still not typing" in r.getMessage()]
-        assert len(reminders) == 2 and "2 of 6 characters" in reminders[0]
-
-    def test_the_reminder_interval_is_a_setting(self, caplog):
-        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 140)}, wait_log_reminder_seconds=30)
-        with caplog.at_level(logging.WARNING, logger="pom.printing.terminal_port"):
-            port.transmit("abcdef")
-        assert len([r for r in caplog.records if "still not typing" in r.getMessage()]) == 4          # 138 s of stall, a reminder every 30
+    def test_every_try_after_the_first_says_the_terminal_is_still_not_typing_and_the_log_mutes_the_repeats(self, logged):
+        port, _, _, _ = stalled_port({n: SerialTimeoutException("held") for n in range(2, 12)})          # ten refusals in a row
+        port.transmit("abcdef")
+        later = logged.of(port).warnings()[1:]
+        assert len(later) == 9 and all(line.startswith("the terminal is still not typing (") and "2 of 6 characters sent" in line for line in later)
 
     def test_the_pause_before_a_refused_character_is_sent_again_is_a_setting(self):
         failures = {n: SerialTimeoutException("held") for n in range(2, 12)}                           # ten refusals in a row
@@ -898,9 +890,9 @@ class TestAMachineThatHoldsTheEndOfThePortent:
         with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
             report = port.transmit("abcdef")
         assert report.completed is True and report.characters == 6 and serial_port.closed is False
-        assert len(logged.of(port).warnings()) == 2 and not logged.of(port).criticals()
+        assert len(logged.of(port).warnings()) >= 2 and not logged.of(port).criticals()
         assert "stopped taking characters" in logged.of(port).warnings()[0]
-        assert "still not typing" in logged.of(port).warnings()[1]               # the reminder is a warning like any other, through the recorder
+        assert all("still not typing" in line for line in logged.of(port).warnings()[1:])    # every later try says so; the log mutes the repeats
         assert any("typing again after" in r.getMessage() for r in caplog.records)
 
     def test_the_heartbeat_is_called_while_the_end_waits(self):
@@ -975,7 +967,7 @@ class TestAPortThatIsLost:
         assert report.completed is True and first.written == b"abc" and second.written == b"defg"
         assert len(attempts) == 5 and clock.sleeps.count(2.0) == 4          # a try every 2 s
 
-    def test_one_warning_for_the_stretch_not_one_per_try(self, logged):
+    def test_a_warning_when_the_stretch_begins_then_each_failed_try_says_still_not_typing(self, logged):
         clock = FakeClock()
         first, second = ScriptedSerial(clock, {1: OSError("unplugged")}), ScriptedSerial(clock)
         tries = []
@@ -989,7 +981,9 @@ class TestAPortThatIsLost:
             return second
         port = TerminalPort("/dev/x", opener=opener, clock=clock, sleep=clock.sleep, finish_wait_seconds=0)
         port.transmit("abc")
-        assert len(logged.of(port).warnings()) == 1 and "port was lost" in logged.of(port).warnings()[0]
+        warnings = logged.of(port).warnings()
+        assert "port was lost" in warnings[0]
+        assert len(warnings[1:]) == 8 and all(line.startswith("the terminal is still not typing (") for line in warnings[1:])   # 8 failed reopenings
 
     def test_a_port_that_never_comes_back_is_given_up_after_the_patience(self, logged):
         clock = FakeClock()

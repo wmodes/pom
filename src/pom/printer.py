@@ -316,8 +316,7 @@ def _make_terminal(mode: str, settings, bookkeeper: Optional[Bookkeeper] = None)
                         settings.finish_wait_seconds, settings.echoplex, settings.type_during_printing, settings.stall_patience_seconds,
                         settings.reconnect_seconds, max_typed_line_characters=settings.max_typed_line_characters,
                         refused_character_retry_seconds=settings.refused_character_retry_seconds,
-                        wait_log_reminder_seconds=settings.wait_log_reminder_seconds, data_bits=settings.data_bits, parity=settings.parity,
-                        stop_bits=settings.stop_bits, finder=finder, bookkeeper=bookkeeper)
+                        data_bits=settings.data_bits, parity=settings.parity, stop_bits=settings.stop_bits, finder=finder, bookkeeper=bookkeeper)
 
 
 def parse_options(argv=None) -> Options:

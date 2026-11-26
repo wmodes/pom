@@ -620,10 +620,6 @@ max_typed_line_characters = 500
 # The pause, in seconds (above 0), before a character the machine refused (its buffer is full, or it is held) is sent again.
 refused_character_retry_seconds = 1
 
-# While the Printer waits for a machine that has stalled, been held, run out of paper or gone away, it mentions the wait in the log this
-# often, in seconds (above 0). It only sets how chatty the log is.
-wait_log_reminder_seconds = 60
-
 # What the Printer prints on. "serial" is the real typewriter (the port above). "console" types on the screen at the same
 # pace, for development. "none" means no printer at all: a turn is write the portent, show it on the monitoring site, done,
 # so the Printer can be watched listening and writing with nothing attached.

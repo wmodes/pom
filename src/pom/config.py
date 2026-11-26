@@ -97,7 +97,7 @@ _KEYS = {"strict", "debug", "log_level", "local_logs", "logmute_after_repeats", 
          "qualifying.anchor_score", "qualifying.anchor_interval_minutes", "qualifying.discard_scores_older_than_minutes",
          "qualifying.starting_bar_weight", "listening.max_clip_words", "scorer.warmup_poll_seconds", "scorer.warmup_attempts",
          "monitor.service_check_seconds", "monitor.mic_down_after_seconds", "monitor.service_down_after_seconds", "monitor.poll_seconds", "terminal.max_typed_line_characters", "terminal.refused_character_retry_seconds",
-         "terminal.wait_log_reminder_seconds", "terminal.data_bits", "terminal.parity", "terminal.stop_bits",
+         "terminal.data_bits", "terminal.parity", "terminal.stop_bits",
          "chart.window_minutes", "chart.gridline_every_minutes", "chart.score_max", "chart.score_gridlines",
          "chart.drawing_width", "chart.drawing_height", "chart.margin_left", "chart.margin_right", "chart.margin_top", "chart.margin_bottom",
          "chart.attempt_dot_radius", "chart.qualifier_dot_radius", "chart.bar_line_width", "chart.longest_silence_minutes", "chart.break_mark_size", "chart.break_gap_width", "display.browser", "display.browser_flags", "display.browser_profile_dir",
@@ -210,7 +210,6 @@ DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS = 600.0
 DEFAULT_TERMINAL_RECONNECT_SECONDS = 2.0
 DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS = 500
 DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS = 1.0
-DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS = 60.0
 
 DEFAULT_CHART_WINDOW_MINUTES = 30.0
 DEFAULT_CHART_GRIDLINE_EVERY_MINUTES = 5.0
@@ -580,7 +579,6 @@ class TerminalSettings:
         max_typed_line_characters: A line typed on the typewriter's keyboard is ended at this many characters, so a stuck key cannot grow it
             without limit. A whole number of at least 1.
         refused_character_retry_seconds: The pause before a character the machine refused (a full buffer, a held machine) is sent again, above 0.
-        wait_log_reminder_seconds: A long wait for the machine (stalled, held, out of paper, gone) is mentioned in the log this often, above 0.
         mode: "serial" (the real typewriter, the default), "console" (types on the screen at the same pace, for development) or
             "none" (no printer: a turn is write, record, done, so the Printer can be watched with nothing attached).
     """
@@ -597,7 +595,6 @@ class TerminalSettings:
     mode: str = DEFAULT_TERMINAL_MODE
     max_typed_line_characters: int = DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS
     refused_character_retry_seconds: float = DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS
-    wait_log_reminder_seconds: float = DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS
     data_bits: int = DEFAULT_TERMINAL_DATA_BITS
     parity: str = DEFAULT_TERMINAL_PARITY
     stop_bits: int = DEFAULT_TERMINAL_STOP_BITS
@@ -982,8 +979,6 @@ class Config:
                    "terminal.max_typed_line_characters", DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS, 1, problems),
             _positive(values.get("terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS),
                       "terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS, problems),
-            _positive(values.get("terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS),
-                      "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, problems),
             _whole_choice(values.get("terminal.data_bits", DEFAULT_TERMINAL_DATA_BITS), "terminal.data_bits", DEFAULT_TERMINAL_DATA_BITS,
                           TERMINAL_DATA_BITS, problems),
             _choice(values.get("terminal.parity", DEFAULT_TERMINAL_PARITY), "terminal.parity", DEFAULT_TERMINAL_PARITY, TERMINAL_PARITIES, problems),

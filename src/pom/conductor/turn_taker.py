@@ -38,8 +38,8 @@ Design decisions, and why:
   * A portent that finishes writing after the watchdog took the floor is still printed: printing has priority. It is logged as a warning.
   * Time and sleeping are the caller's (`clock`, `sleep`), so tests need not wait.
   * LOGGING, so a problem can be read afterwards: one INFO line when the turn begins (who, the score, the bar), one for each write attempt
-    that gave nothing, one when the portent is written (its length and how long it took), the start of a wait for the printer and every sixth
-    try after, and one when the turn ends with its outcome and times. Numbers and labels only. What was heard and what was written are never
+    that gave nothing, one when the portent is written (its length and how long it took), one for each try at a printer that cannot print yet
+    (the log mutes the repeats), and one when the turn ends with its outcome and times. Numbers and labels only. What was heard and what was written are never
     logged.
   * The parts are passed in, already built; this module never reads Config.
 """
@@ -64,7 +64,6 @@ DEFAULT_WRITE_BUDGET_SECONDS = 270.0    # the FloorKeeper's writing limit (300 s
 DEFAULT_PRINT_PAUSE_SECONDS = 10.0
 BEAT_SECONDS = 5.0                      # how often a wait for the printer sends its heartbeat
 WRITE_FAILURES_THAT_ALARM = 3           # turns in a row that wrote nothing
-PRINT_TRIES_BETWEEN_LOG_LINES = 6
 
 
 class TurnTakerError(ValueError):
@@ -266,9 +265,8 @@ class TurnTaker:
                                   write_attempts=write_attempts, print_tries=tries)
             if tries == 1:
                 self._set_outcome(record_id, "waiting for the printer")
-            if tries % PRINT_TRIES_BETWEEN_LOG_LINES == 1:
-                self.logger.info("turn: the terminal cannot print yet (try %d); waiting for it, for up to %.0f s more", tries,
-                                 max(0.0, deadline - self._clock()))
+            self.logger.info("turn: the terminal cannot print yet (try %d); waiting for it, for up to %.0f s more", tries,
+                             max(0.0, deadline - self._clock()))
             if self._clock() + self._print_pause >= deadline:
                 break
             self._wait(turn, self._print_pause)

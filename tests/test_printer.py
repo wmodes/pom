@@ -308,9 +308,8 @@ class TestTheMovedSettingsReachTheirParts:
         assert build(tmp_path, "[monitor]\nservice_check_seconds = 40\n").parts["poller"]._every_seconds == 40.0
 
     def test_the_terminal_limits(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nmode = "serial"\nmax_typed_line_characters = 80\nrefused_character_retry_seconds = 0.5\n'
-                            "wait_log_reminder_seconds = 30\n")
-        assert (p.terminal._max_typed_line, p.terminal._refused_retry, p.terminal._wait_reminder) == (80, 0.5, 30.0)
+        p = build(tmp_path, '[terminal]\nmode = "serial"\nmax_typed_line_characters = 80\nrefused_character_retry_seconds = 0.5\n')
+        assert (p.terminal._max_typed_line, p.terminal._refused_retry) == (80, 0.5)
 
     def test_the_chart(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "x"\n[chart]\nwindow_minutes = 12\nbar_line_width = 2\n')

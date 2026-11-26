@@ -107,7 +107,6 @@ class Bibliomancer:
         self._exemplar_range = self._valid_exemplar_range(exemplar_range)
         self._redraw_limit = self._valid_redraw_limit(redraw_limit)
         self._unfinished: set[int] = set()       # table positions of the passages that end unfinished
-        self._gave_up_warned = False
         circulation.check(store.layout())                        # logs any drift; the odds still work
         self._passages: list[Passage] = []
         self._probability: list[float] = []
@@ -263,15 +262,14 @@ class Bibliomancer:
     def _pick_finished(self) -> tuple[int, int]:
         """A weighted pick, drawn again while it lands on an unfinished passage: (the position, how many redraws).
 
-        After `redraw_limit` redraws the unfinished passage stands (and, once, that is warned about), so a library that is
+        After `redraw_limit` redraws the unfinished passage stands (with a warning; the log mutes the repeats), so a library that is
         mostly unfinished still gives the oracle something.
         """
         index, redraws = self._pick(), 0
         while index in self._unfinished and redraws < self._redraw_limit:
             index = self._pick()
             redraws += 1
-        if index in self._unfinished and self._redraw_limit and not self._gave_up_warned:
-            self._gave_up_warned = True
+        if index in self._unfinished and self._redraw_limit:
             self.logger.warning("%s picks in a row ended unfinished; using one anyway (%s of %s passages are unfinished)",
                                 self._redraw_limit, len(self._unfinished), len(self._passages))
         return index, redraws

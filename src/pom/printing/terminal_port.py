@@ -211,13 +211,13 @@ class TerminalPort:
         self._after_cr = False                   # the last byte handled was a CR, so a following LF is its pair
         self._usable = isinstance(port, str) and bool(port.strip())
         if not self._usable:
-            self.logger.warning(f"the terminal port must be a device name, got {port!r}; nothing will be typed")
+            self.logger.warning("the terminal port must be a device name, got %r; nothing will be typed", port)
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return value
-        self.logger.warning(f"the typewriter {name} must be {wanted}, got {value!r}; using {default}")
+        self.logger.warning("the typewriter %s must be %s, got %r; using %s", name, wanted, value, default)
         return default
 
     @property
@@ -274,8 +274,7 @@ class TerminalPort:
             try:
                 left = self._wait_until_taken(sent, len(data), trouble, still_alive)
             except Exception as error:               # a dead port must never stop the oracle
-                self.logger.warning(f"the terminal port failed at the end, after all {sent} characters were sent "
-                                 f"({type(error).__name__})")
+                self.logger.warning("the terminal port failed at the end, after all %s characters were sent (%s)", sent, type(error).__name__)
                 self.close()
                 return PrintResult(sent, self._clock() - started, False)
             if left:                                 # the patience ran out (reported, and the port closed, by the wait)
@@ -331,14 +330,14 @@ class TerminalPort:
         now = self._clock()
         if trouble.since is None:
             trouble.begin(now)
-            self.logger.warning(f"the terminal {'stopped taking characters (held, out of paper or busy)' if stalled else 'port was lost'} "
-                             f"after {sent} of {total} characters ({type(error).__name__}); waiting for it for up to "
-                             f"{self._stall_patience:g} s")
+            self.logger.warning("the terminal %s after %s of %s characters (%s); waiting for it for up to %g s",
+                                "stopped taking characters (held, out of paper or busy)" if stalled else "port was lost", sent, total,
+                                type(error).__name__, self._stall_patience)
         while True:
             now = self._clock()
             if now - trouble.since >= self._stall_patience:
-                self.logger.critical(f"the terminal did not come back within {self._stall_patience:g} s, after {sent} of {total} characters; "
-                                     f"the rest was not typed")
+                self.logger.critical("the terminal did not come back within %g s, after %s of %s characters; the rest was not typed",
+                                     self._stall_patience, sent, total)
                 self.close()
                 return False
             if still_alive is not None:
@@ -382,8 +381,7 @@ class TerminalPort:
                     try:
                         data = self._serial.read(max(1, getattr(self._serial, "in_waiting", 0) or 1))
                     except Exception as error:       # a dead port must never stop the oracle
-                        self.logger.warning(f"the terminal port failed while listening for the keyboard "
-                                         f"({type(error).__name__}); try again later")
+                        self.logger.warning("the terminal port failed while listening for the keyboard (%s); try again later", type(error).__name__)
                         self.close()
                         pause = self._reconnect if deadline is None else max(0.0, min(self._reconnect, deadline - self._clock()))   # no hot loop on a dead port
             if pause is not None:
@@ -434,7 +432,7 @@ class TerminalPort:
             try:
                 self._serial.write(text.encode("ascii"))
             except Exception as error:               # a dead port must never stop the oracle
-                self.logger.warning(f"the terminal port failed while echoing the keyboard ({type(error).__name__})")
+                self.logger.warning("the terminal port failed while echoing the keyboard (%s)", type(error).__name__)
                 self.close()
 
     def _discard_input(self) -> None:
@@ -463,7 +461,7 @@ class TerminalPort:
             self._serial = self._opener(name, self._baud, self._flow_control, self._data_bits, self._parity, self._stop_bits)
         except Exception as error:
             if not self._connect_failing and not quiet:
-                self.logger.warning(f"the terminal port {self._port_name!r} would not open ({type(error).__name__}); nothing was typed")
+                self.logger.warning("the terminal port %r would not open (%s); nothing was typed", self._port_name, type(error).__name__)
             self._connect_failing = self._connect_failing or not quiet
             return False
         if self._connect_failing:

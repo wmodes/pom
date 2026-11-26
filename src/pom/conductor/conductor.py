@@ -111,7 +111,7 @@ class Conductor:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
         return default
 
     # --- Running --------------------------------------------------------------------
@@ -184,7 +184,7 @@ class Conductor:
             if name == "room" and not self._restart_room:
                 continue
             if not self._running(name):
-                self.logger.warning(f"the {name} thread had stopped; it is started again")
+                self.logger.warning("the %s thread had stopped; it is started again", name)
                 with self._lock:
                     thread = threading.Thread(target=target, name=f"conductor-{name}", daemon=True)
                     self._threads[name] = thread
@@ -209,7 +209,7 @@ class Conductor:
         try:
             getattr(part, method)()
         except Exception as problem:               # nothing may stop the oracle
-            self.logger.warning(f"{method} failed on a part ({type(problem).__name__})")
+            self.logger.warning("%s failed on a part (%s)", method, type(problem).__name__)
 
     # --- The room and the keyboard --------------------------------------------------
 
@@ -222,7 +222,7 @@ class Conductor:
                     return
                 continue
             except Exception as problem:           # nothing may stop the oracle
-                self.logger.warning(f"the room could not be built ({type(problem).__name__}); trying again")
+                self.logger.warning("the room could not be built (%s); trying again", type(problem).__name__)
                 if self._stop.wait(self._restart_pause):
                     return
                 continue
@@ -235,7 +235,7 @@ class Conductor:
                 for attempt in finder.find():
                     self._offer(attempt, "room")
             except Exception as problem:           # nothing may stop the oracle
-                self.logger.warning(f"the room failed ({type(problem).__name__})")
+                self.logger.warning("the room failed (%s)", type(problem).__name__)
             finally:
                 self._call(finder, "close")
                 with self._lock:
@@ -253,7 +253,7 @@ class Conductor:
                 for attempt in self._keyboard.watch():
                     self._offer(attempt, "keyboard")
             except Exception as problem:           # nothing may stop the oracle
-                self.logger.warning(f"the keyboard failed ({type(problem).__name__})")
+                self.logger.warning("the keyboard failed (%s)", type(problem).__name__)
             if self._stop.is_set():
                 return
             if self._stop.wait(self._restart_pause):
@@ -290,7 +290,7 @@ class Conductor:
             try:
                 result = self._turn_taker.take_turn(turn, attempt)
             except Exception as problem:           # take_turn should never raise; if it does the floor must still be given back
-                self.logger.warning(f"a turn raised ({type(problem).__name__}); the floor was yielded")
+                self.logger.warning("a turn raised (%s); the floor was yielded", type(problem).__name__)
                 turn.finish()
                 continue
             self._call_back(self._on_turn, attempt, result)
@@ -301,4 +301,4 @@ class Conductor:
         try:
             callback(*args)
         except Exception as problem:               # a bad callback must not stop the Printer
-            self.logger.warning(f"a callback raised ({type(problem).__name__}); it was ignored")
+            self.logger.warning("a callback raised (%s); it was ignored", type(problem).__name__)

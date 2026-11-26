@@ -81,7 +81,7 @@ class Catalog:
         self._by_id: dict[str, Passage] = {}
         for passage in passages:
             if passage.id in self._by_id:
-                self.logger.warning(f"duplicate passage id {passage.id}; keeping the first")
+                self.logger.warning("duplicate passage id %s; keeping the first", passage.id)
                 continue
             self._by_id[passage.id] = passage
             self._tree.setdefault(passage.shelf, {}).setdefault(passage.holding, []).append(passage)
@@ -106,7 +106,7 @@ class Catalog:
         root = Path(directory)
         passages = []
         if not root.is_dir():
-            logger.critical(f"passage directory not found: {root}")
+            logger.critical("passage directory not found: %s", root)
         else:
             for folder in sorted(p for p in root.iterdir()
                                  if p.is_dir() and not p.name.startswith(".")):
@@ -184,7 +184,7 @@ def _read_file(path: Path, shelf: str, holding: str, logger: LogRecorder) -> lis
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as error:
-        logger.warning(f"cannot read {path}: {error}; skipping the file")
+        logger.warning("cannot read %s: %s; skipping the file", path, error)
         return passages
     for number, line in enumerate(lines, start=1):
         if not line.strip():
@@ -193,29 +193,28 @@ def _read_file(path: Path, shelf: str, holding: str, logger: LogRecorder) -> lis
         try:
             record = json.loads(line)
         except json.JSONDecodeError as error:
-            logger.warning(f"{where}: not valid JSON ({error}); skipping the record")
+            logger.warning("%s: not valid JSON (%s); skipping the record", where, error)
             continue
         if not isinstance(record, dict):
-            logger.warning(f"{where}: a passage must be a JSON object; skipping the record")
+            logger.warning("%s: a passage must be a JSON object; skipping the record", where)
             continue
         text = record.get("text")
         if "text" not in record:
-            logger.warning(f"{where}: missing field(s): text; skipping the record")
+            logger.warning("%s: missing field(s): text; skipping the record", where)
             continue
         if not isinstance(text, str) or not text.strip():
-            logger.warning(f"{where}: text must be a non-empty string; skipping the record")
+            logger.warning("%s: text must be a non-empty string; skipping the record", where)
             continue
         passage_id = record.get("id")
         if passage_id is None:
             passage_id = f"{holding}#line{number}"
-            logger.warning(f"{where}: missing field(s): id; using {passage_id}")
+            logger.warning("%s: missing field(s): id; using %s", where, passage_id)
         for field, expected in (("shelf", shelf), ("holding", holding)):
             if field not in record:
-                logger.warning(f"{where}: missing field(s): {field}; using {expected!r}")
+                logger.warning("%s: missing field(s): %s; using %r", where, field, expected)
             elif record[field] != expected:
                 what = "folder" if field == "shelf" else "file"
-                logger.warning(f"{where}: {field} {record[field]!r} does not match its {what} "
-                            f"{expected!r}; using {expected!r}")
+                logger.warning("%s: %s %r does not match its %s %r; using %r", where, field, record[field], what, expected, expected)
         words = record.get("words")
         passages.append(Passage(
             id=str(passage_id), holding=holding, shelf=shelf, text=text,
@@ -231,5 +230,5 @@ def _repeats(value, where: str, logger: LogRecorder) -> int:
     """The repeat count; 1 (with a warning) if it is not a positive whole number."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
         return value
-    logger.warning(f"{where}: repeats must be a whole number of at least 1, got {value!r}; using 1")
+    logger.warning("%s: repeats must be a whole number of at least 1, got %r; using 1", where, value)
     return 1

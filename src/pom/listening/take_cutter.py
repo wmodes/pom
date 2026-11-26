@@ -104,8 +104,7 @@ class TakeCutter:
         if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
             self._max_words = max_words
         else:
-            self.logger.warning(f"max_words must be a whole number of at least 1, got {max_words!r}; "
-                             f"using {DEFAULT_MAX_WORDS}")
+            self.logger.warning("max_words must be a whole number of at least 1, got %r; using %s", max_words, DEFAULT_MAX_WORDS)
             self._max_words = DEFAULT_MAX_WORDS
 
     @property
@@ -125,7 +124,7 @@ class TakeCutter:
         """
         if not isinstance(text, str):
             if text is not None:
-                self.logger.warning(f"take cutter expects text, got {type(text).__name__}; ignoring it")
+                self.logger.warning("take cutter expects text, got %s; ignoring it", type(text).__name__)
             return []
         clips: list = []
         sentences = self._sentences(" ".join(text.split()))

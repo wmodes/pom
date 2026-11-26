@@ -68,7 +68,7 @@ class KeyboardWatcher:
                                         "at least 0")
         self._sleep = sleep if callable(sleep) else time.sleep
         if sleep is not None and not callable(sleep):
-            self.logger.warning(f"sleep must be a function, got {type(sleep).__name__}; using time.sleep")
+            self.logger.warning("sleep must be a function, got %s; using time.sleep", type(sleep).__name__)
         self._paused = threading.Event()
         self._closed = threading.Event()
         self.dropped_lines = 0
@@ -77,7 +77,7 @@ class KeyboardWatcher:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
         return default
 
     @property
@@ -103,7 +103,7 @@ class KeyboardWatcher:
             try:
                 line = self._terminal.read_line(self._poll)
             except Exception as problem:             # nothing may stop the oracle
-                self.logger.warning(f"the keyboard could not be read ({type(problem).__name__}); trying again")
+                self.logger.warning("the keyboard could not be read (%s); trying again", type(problem).__name__)
                 self._sleep(self._error_pause)
                 continue
             if line is None or not isinstance(line, str):
@@ -117,7 +117,7 @@ class KeyboardWatcher:
             try:
                 attempt = self._typed_scorer.score(line)
             except Exception as problem:             # nothing may stop the oracle
-                self.logger.warning(f"a typed line could not be scored ({type(problem).__name__}); it was dropped")
+                self.logger.warning("a typed line could not be scored (%s); it was dropped", type(problem).__name__)
                 self._sleep(self._error_pause)
                 continue
             yield attempt

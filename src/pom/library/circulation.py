@@ -84,10 +84,10 @@ class Circulation:
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
         except OSError as error:
-            logger.warning(f"cannot read circulation file {path}: {error}; every weight counts 1.0")
+            logger.warning("cannot read circulation file %s: %s; every weight counts 1.0", path, error)
             document = {}
         except json.JSONDecodeError as error:
-            logger.warning(f"circulation file {path} is not valid JSON: {error}; every weight counts 1.0")
+            logger.warning("circulation file %s is not valid JSON: %s; every weight counts 1.0", path, error)
             document = {}
         return cls._parse(document, logger, strict)
 
@@ -115,23 +115,21 @@ class Circulation:
                 continue
             logger.debug("shelf %r: %r", name, entry)
             if not isinstance(entry, dict):
-                logger.warning(f"shelf '{name}' must be an object with 'share' and 'holdings'; "
-                            f"ignoring it")
+                logger.warning("shelf '%s' must be an object with 'share' and 'holdings'; ignoring it", name)
                 continue
             unknown = sorted(k for k in entry if k not in _SHELF_KEYS and not k.startswith("_"))
             if unknown:
-                logger.warning(f"shelf '{name}' has unknown key(s): {', '.join(unknown)}; ignoring them")
+                logger.warning("shelf '%s' has unknown key(s): %s; ignoring them", name, ", ".join(unknown))
             shares[name] = _number(entry.get("share", DEFAULT_WEIGHT), f"shelf '{name}' share", logger)
             holdings = entry.get("holdings", {})
             if not isinstance(holdings, dict):
-                logger.warning(f"shelf '{name}' 'holdings' must be an object; ignoring it")
+                logger.warning("shelf '%s' 'holdings' must be an object; ignoring it", name)
                 continue
             for holding, weight in holdings.items():
                 if holding.startswith("_"):
                     continue
                 if holding in weights:
-                    logger.warning(f"holding '{holding}' is listed under more than one shelf; "
-                                f"keeping the first")
+                    logger.warning("holding '%s' is listed under more than one shelf; keeping the first", holding)
                     continue
                 weights[holding] = _number(weight, f"holding '{holding}' weight", logger)
                 listed_under[holding] = name
@@ -190,22 +188,20 @@ class Circulation:
 
         empty_shelves = sorted(r for r in self._shares if not actual.get(r))
         if empty_shelves:
-            logger.warning(f"circulation lists shelf(s) with no passages: {', '.join(empty_shelves)}")
+            logger.warning("circulation lists shelf(s) with no passages: %s", ", ".join(empty_shelves))
         missing_holdings = sorted(s for s in self._weights if s not in located)
         if missing_holdings:
-            logger.warning(f"circulation lists holding(s) with no passages: {', '.join(missing_holdings)}")
+            logger.warning("circulation lists holding(s) with no passages: %s", ", ".join(missing_holdings))
         unlisted_shelves = sorted(r for r in actual if r not in self._shares)
         if unlisted_shelves:
-            logger.warning(f"{len(unlisted_shelves)} shelf(s) not in circulation file, "
-                        f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_shelves)}")
+            logger.warning("%s shelf(s) not in circulation file, counted %s: %s", len(unlisted_shelves), DEFAULT_WEIGHT, ", ".join(unlisted_shelves))
         unlisted_holdings = sorted(s for s in located if s not in self._weights)
         if unlisted_holdings:
-            logger.warning(f"{len(unlisted_holdings)} holding(s) not in circulation file, "
-                        f"counted {DEFAULT_WEIGHT}: {', '.join(unlisted_holdings)}")
+            logger.warning("%s holding(s) not in circulation file, counted %s: %s",
+                           len(unlisted_holdings), DEFAULT_WEIGHT, ", ".join(unlisted_holdings))
         for holding, shelf in sorted(self._listed_under.items()):
             if holding in located and located[holding] != shelf:
-                logger.warning(f"holding '{holding}' is listed under '{shelf}' but its "
-                            f"passages are in '{located[holding]}'")
+                logger.warning("holding '%s' is listed under '%s' but its passages are in '%s'", holding, shelf, located[holding])
 
 
 def _new_logger(strict: bool, bookkeeper: Optional[Bookkeeper] = None) -> LogRecorder:
@@ -219,10 +215,9 @@ def _number(value, label: str, logger: LogRecorder) -> float:
     Booleans and strings are rejected: `true` is almost certainly a typo, not a weight of 1.
     """
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        logger.warning(f"{label} must be a number, got {value!r}; using {DEFAULT_WEIGHT}")
+        logger.warning("%s must be a number, got %r; using %s", label, value, DEFAULT_WEIGHT)
         return DEFAULT_WEIGHT
     if not math.isfinite(value) or value < 0:
-        logger.warning(f"{label} must be a finite number of at least 0, got {value!r}; "
-                    f"using {DEFAULT_WEIGHT}")
+        logger.warning("%s must be a finite number of at least 0, got %r; using %s", label, value, DEFAULT_WEIGHT)
         return DEFAULT_WEIGHT
     return float(value)

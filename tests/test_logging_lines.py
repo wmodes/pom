@@ -6,6 +6,7 @@ path, outside it. This test fails if one appears. The exceptions are listed here
   * the bookkeeper itself (log_setup, log_muter, the LogRecorder and the Bookkeeper) is the path;
   * the monitoring site's request log, which is written from inside werkzeug's request handler class, an object of the library's, not ours.
 """
+import ast
 import re
 from pathlib import Path
 
@@ -35,3 +36,23 @@ def test_no_class_logs_outside_the_logger_the_bookkeeper_handed_it():
 def test_the_one_allowed_exception_is_still_there_so_the_list_does_not_go_stale():
     text = (SRC / "monitor" / "monitor_site.py").read_text(encoding="utf-8")
     assert all(line in text for _, line in ALLOWED)
+
+
+LEVELS = {"debug", "info", "warning", "error", "critical", "exception"}
+
+
+def f_string_messages():
+    """Logger calls whose message is an f-string (read with ast, so a docstring's example never counts)."""
+    found = []
+    for path in sorted(SRC.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in LEVELS
+                    and node.args and isinstance(node.args[0], ast.JoinedStr)):
+                found.append(f"{path.relative_to(SRC).as_posix()}:{node.lineno}")
+    return found
+
+
+def test_every_log_line_is_written_in_python_s_lazy_percent_style():
+    """One style for every line: `logger.warning("got %r", value)`, never `logger.warning(f"got {value!r}")` (Python's own pattern: the text is
+    built only if the line is shown)."""
+    assert f_string_messages() == [], "write the message with %s/%r/%g and pass the values after it"

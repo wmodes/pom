@@ -309,15 +309,16 @@ class MonitorSite:
         self._stream_now = stream_now
         self._stream_began_at = stream_began_at
         if not isinstance(password_on_localhost, bool):
-            self.logger.warning(f"password_on_localhost must be true or false, not {password_on_localhost!r}; asking everyone for the password")
+            self.logger.warning("password_on_localhost must be true or false, not %r; asking everyone for the password", password_on_localhost)
             password_on_localhost = True
         self._password_on_localhost = password_on_localhost
         self._poll_seconds = poll_seconds
         if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
-            self.logger.warning(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
+            self.logger.warning("poll_seconds must be a number above 0, not %r; using %g", poll_seconds, DEFAULT_POLL_SECONDS)
             self._poll_seconds = DEFAULT_POLL_SECONDS
         if not (isinstance(hinge_snippet_chars, int) and not isinstance(hinge_snippet_chars, bool) and hinge_snippet_chars >= 1):
-            self.logger.warning(f"hinge_snippet_chars must be a whole number of at least 1, not {hinge_snippet_chars!r}; using {DEFAULT_SNIPPET_CHARS}")
+            self.logger.warning("hinge_snippet_chars must be a whole number of at least 1, not %r; using %s",
+                                hinge_snippet_chars, DEFAULT_SNIPPET_CHARS)
             hinge_snippet_chars = DEFAULT_SNIPPET_CHARS
         self._hinge_snippet_chars = hinge_snippet_chars
         self._started_at = clock()
@@ -340,8 +341,7 @@ class MonitorSite:
         try:
             self._server = make_server(host, port, self.app, threaded=True, request_handler=_PollingRequestHandler)
         except (OSError, OverflowError, ValueError, SystemExit) as problem:      # werkzeug exits the process if the port is taken
-            self.logger.critical(f"the monitoring site could not listen on port {port} ({type(problem).__name__}); "
-                                 f"it is not running")
+            self.logger.critical("the monitoring site could not listen on port %s (%s); it is not running", port, type(problem).__name__)
             return False
         self._thread = threading.Thread(target=self._server.serve_forever, name="monitor-site", daemon=True)
         self._thread.start()
@@ -375,7 +375,7 @@ class MonitorSite:
                 return status
             self.logger.warning("the status function did not return a MonitorStatus; the page shows no state")
         except Exception as problem:               # a failing status function must never take the page down
-            self.logger.warning(f"the status function failed ({type(problem).__name__}); the page shows no state")
+            self.logger.warning("the status function failed (%s); the page shows no state", type(problem).__name__)
         return MonitorStatus()
 
     def _stats(self, records) -> dict:

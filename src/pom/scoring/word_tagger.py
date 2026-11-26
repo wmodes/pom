@@ -148,7 +148,7 @@ class WordTagger:
         try:
             import nltk
         except ImportError as error:
-            self.logger.warning(f"nltk is not installed ({error}); using plain rules for words")
+            self.logger.warning("nltk is not installed (%s); using plain rules for words", error)
             return
         if nltk_data:
             nltk.data.path.insert(0, str(nltk_data))
@@ -157,8 +157,8 @@ class WordTagger:
                 nltk.pos_tag(["probe"])
                 self._tagger = nltk.pos_tag
             except Exception as error:      # missing data raises LookupError; never stop on it
-                self.logger.warning(f"no part-of-speech tagger ({_first_line(error)}); words will be "
-                                 f"untagged and names guessed from capital letters")
+                self.logger.warning("no part-of-speech tagger (%s); words will be untagged and names guessed from capital letters",
+                                    _first_line(error))
         if self._lemmatizer is None:
             try:
                 from nltk.stem import WordNetLemmatizer
@@ -166,15 +166,13 @@ class WordTagger:
                 lemmatize("probes", "n")
                 self._lemmatizer = lambda word, pos: lemmatize(word, pos) if pos else word
             except Exception as error:
-                self.logger.warning(f"no WordNet lemmatizer ({_first_line(error)}); using words as "
-                                 f"they were spoken")
+                self.logger.warning("no WordNet lemmatizer (%s); using words as they were spoken", _first_line(error))
         if self._stopwords is None:
             try:
                 from nltk.corpus import stopwords
                 self._stopwords = stopwords.words("english")
             except Exception as error:
-                self.logger.warning(f"no NLTK stopword list ({_first_line(error)}); using a short "
-                                 f"built-in list")
+                self.logger.warning("no NLTK stopword list (%s); using a short built-in list", _first_line(error))
 
     # --- Reading text ---------------------------------------------------------------
 
@@ -182,7 +180,7 @@ class WordTagger:
         """Reads text as a list of Words, in order. Non-text or empty text gives an empty list."""
         if not isinstance(text, str):
             if text is not None:
-                self.logger.warning(f"the word tagger expects text, got {type(text).__name__}; ignoring it")
+                self.logger.warning("the word tagger expects text, got %s; ignoring it", type(text).__name__)
             return []
         tokens = _TOKEN.findall(text)
         if not tokens:
@@ -216,7 +214,7 @@ class WordTagger:
             tagged = self._tagger(tokens)
             return [tag for _, tag in tagged]
         except Exception as error:
-            self.logger.warning(f"tagging failed ({_first_line(error)}); treating words as untagged")
+            self.logger.warning("tagging failed (%s); treating words as untagged", _first_line(error))
             return [""] * len(tokens)
 
     def _lemma(self, lower: str, tag: str) -> str:

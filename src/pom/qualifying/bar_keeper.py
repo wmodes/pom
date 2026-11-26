@@ -92,7 +92,7 @@ class BarKeeper:
         if bar is None:
             bar = PercentileBar(bookkeeper=bookkeeper)
         elif not isinstance(bar, Bar):
-            self.logger.warning(f"bar must be a Bar, got {type(bar).__name__}; using the default PercentileBar")
+            self.logger.warning("bar must be a Bar, got %s; using the default PercentileBar", type(bar).__name__)
             bar = PercentileBar(bookkeeper=bookkeeper)
         self._bar = bar
         self._lock = threading.Lock()      # held for the whole of each public call that reads or changes the bar or the clock
@@ -106,14 +106,14 @@ class BarKeeper:
         """A number of 0 or more, or the default with a warning."""
         if self._is_number(value) and value >= 0.0:
             return float(value)
-        self.logger.warning(f"cooldown_seconds must be a number of at least 0, got {value!r}; using {DEFAULT_COOLDOWN_SECONDS:g}")
+        self.logger.warning("cooldown_seconds must be a number of at least 0, got %r; using %g", value, DEFAULT_COOLDOWN_SECONDS)
         return DEFAULT_COOLDOWN_SECONDS
 
     def _valid_influence(self, value) -> float:
         """Any finite number, or the default with a warning."""
         if self._is_number(value):
             return float(value)
-        self.logger.warning(f"qualifier_bar_influence must be a number, got {value!r}; using {DEFAULT_QUALIFIER_BAR_INFLUENCE:g}")
+        self.logger.warning("qualifier_bar_influence must be a number, got %r; using %g", value, DEFAULT_QUALIFIER_BAR_INFLUENCE)
         return DEFAULT_QUALIFIER_BAR_INFLUENCE
 
     @staticmethod
@@ -135,7 +135,7 @@ class BarKeeper:
         """Takes the lock for the length of the `with`, yielding True; or yields False (and logs a CRITICAL) if it waited too long."""
         got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
         if not got:
-            self.logger.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if it had nothing")
+            self.logger.critical("%s could not get the lock in %g s; answering as if it had nothing", call, LOCK_TIMEOUT_SECONDS)
         try:
             yield got
         finally:

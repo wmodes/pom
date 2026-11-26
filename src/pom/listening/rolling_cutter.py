@@ -123,7 +123,7 @@ class RollingCutter:
         """The value if it is a number that passes `is_good`, otherwise the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
         return default
 
     @property
@@ -197,7 +197,7 @@ class RollingCutter:
             try:
                 found = join_unfinished(self._client.segments(window, self._start, vad=self._vad))
             except Exception as problem:             # a misbehaving client must never stop the oracle
-                self.logger.warning(f"whisper could not be asked for segments ({type(problem).__name__})")
+                self.logger.warning("whisper could not be asked for segments (%s)", type(problem).__name__)
                 return []
             self.took = self._clock() - started
             if self._client.error:                   # whisper did not answer: keep the audio and try again

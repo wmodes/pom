@@ -120,7 +120,7 @@ class DecayingQuantileBar(Bar):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
         return default
 
     # --- The Bar questions ---------------------------------------------------

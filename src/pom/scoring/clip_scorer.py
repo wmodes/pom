@@ -126,14 +126,14 @@ class ClipScorer:
         """A non-negative number, or the default with a warning."""
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
             return float(value)
-        self.logger.warning(f"{name} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number of at least %g, got %r; using %g", name, minimum, value, default)
         return default
 
     def _whole(self, value, name, default, minimum):
         """A whole number of at least `minimum`, or the default with a warning."""
         if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
             return value
-        self.logger.warning(f"{name} must be a whole number of at least {minimum}, got {value!r}; using {default}")
+        self.logger.warning("%s must be a whole number of at least %s, got %r; using %s", name, minimum, value, default)
         return default
 
     # --- Scoring --------------------------------------------------------------------
@@ -206,8 +206,8 @@ class ClipScorer:
         self._failures += 1
         if self._failures >= self._failure_limit:
             self._reopen_at = self._clock() + self._retry_seconds
-            self.logger.warning(f"the scorer model failed {self._failures} times in a row; leaving "
-                             f"clips unscored and trying the model again in {self._retry_seconds:g} s")
+            self.logger.warning("the scorer model failed %s times in a row; leaving clips unscored and trying the model again in %g s",
+                                self._failures, self._retry_seconds)
 
     def _model_worked(self) -> None:
         """A success closes the breaker and clears the failure count."""

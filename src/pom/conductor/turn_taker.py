@@ -151,10 +151,10 @@ class TurnTaker:
         self._print_pause = self._valid(print_pause_seconds, "print_pause_seconds", DEFAULT_PRINT_PAUSE_SECONDS, lambda v: v > 0, "above 0")
         self._clock = clock if callable(clock) else time.monotonic
         if clock is not None and not callable(clock):
-            self.logger.warning(f"clock must be a function, got {type(clock).__name__}; using time.monotonic")
+            self.logger.warning("clock must be a function, got %s; using time.monotonic", type(clock).__name__)
         self._sleep = sleep if callable(sleep) else time.sleep
         if sleep is not None and not callable(sleep):
-            self.logger.warning(f"sleep must be a function, got {type(sleep).__name__}; using time.sleep")
+            self.logger.warning("sleep must be a function, got %s; using time.sleep", type(sleep).__name__)
         self.outcomes: Counter = Counter()
         self._failed_writes_in_a_row = 0
 
@@ -162,7 +162,7 @@ class TurnTaker:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
         return default
 
     # --- One turn -------------------------------------------------------------------
@@ -170,7 +170,7 @@ class TurnTaker:
     def take_turn(self, turn: Turn, attempt: Attempt) -> TurnResult:
         """Takes the hinge through writing, recording and printing, and yields the floor. Never raises (except in strict mode)."""
         if not isinstance(turn, Turn):
-            self.logger.warning(f"take_turn was given {type(turn).__name__}, not a Turn; nothing was done")
+            self.logger.warning("take_turn was given %s, not a Turn; nothing was done", type(turn).__name__)
             return TurnResult(TurnOutcome.ERROR)
         began = self._clock()
         trail = {"record_id": None}                  # what the turn has got as far as, for the error case below
@@ -181,7 +181,7 @@ class TurnTaker:
                                  f"{attempt.bar:.1f}" if _is_number(getattr(attempt, "bar", None)) else "none")
                 result = self._take(turn, attempt, began, trail)
             except Exception as problem:             # nothing may stop the oracle
-                self.logger.warning(f"a turn failed unexpectedly ({type(problem).__name__}); the floor was yielded")
+                self.logger.warning("a turn failed unexpectedly (%s); the floor was yielded", type(problem).__name__)
                 result = TurnResult(TurnOutcome.ERROR, record_id=trail["record_id"])
                 self._set_outcome(trail["record_id"], TurnOutcome.ERROR)
         self.outcomes[result.outcome] += 1
@@ -231,9 +231,9 @@ class TurnTaker:
             self._sleep(self._write_pause)
         self._failed_writes_in_a_row += 1
         if self._failed_writes_in_a_row % WRITE_FAILURES_THAT_ALARM == 0:
-            self.logger.critical(f"the oracle has written nothing for {self._failed_writes_in_a_row} turns in a row; it looks broken")
+            self.logger.critical("the oracle has written nothing for %s turns in a row; it looks broken", self._failed_writes_in_a_row)
         else:
-            self.logger.warning(f"the oracle wrote nothing after {attempts} attempt{'s' if attempts != 1 else ''}; this turn is dropped")
+            self.logger.warning("the oracle wrote nothing after %s attempt%s; this turn is dropped", attempts, "s" if attempts != 1 else "")
         return None, attempts
 
     def _record(self, attempt: Attempt, portent):
@@ -259,8 +259,8 @@ class TurnTaker:
                 return self._done(TurnOutcome.PRINTED, record_id, words=words, characters=result.characters, writing_seconds=writing_seconds,
                                   printing_seconds=self._clock() - printing_began, write_attempts=write_attempts, print_tries=tries)
             if result.characters > 0:
-                self.logger.critical(f"the terminal failed after {result.characters} characters; it is not typed again, so the start is not "
-                                     f"repeated on the paper")
+                self.logger.critical("the terminal failed after %s characters; it is not typed again, so the start is not repeated on the paper",
+                                     result.characters)
                 return self._done(TurnOutcome.PRINT_FAILED, record_id, words=words, characters=result.characters,
                                   writing_seconds=writing_seconds, printing_seconds=self._clock() - printing_began,
                                   write_attempts=write_attempts, print_tries=tries)
@@ -273,9 +273,9 @@ class TurnTaker:
                 break
             self._wait(turn, self._print_pause)
         if tries == 0:
-            self.logger.warning(f"the portent was ready more than {self._freshness:g} s after the hinge, so it is dropped unprinted")
+            self.logger.warning("the portent was ready more than %g s after the hinge, so it is dropped unprinted", self._freshness)
         else:
-            self.logger.critical(f"the printer did not come back within {self._freshness:g} s of the hinge ({tries} tries); the portent is dropped")
+            self.logger.critical("the printer did not come back within %g s of the hinge (%s tries); the portent is dropped", self._freshness, tries)
         return self._done(TurnOutcome.TOO_LATE, record_id, words=words, writing_seconds=writing_seconds,
                           printing_seconds=self._clock() - printing_began, write_attempts=write_attempts, print_tries=tries)
 

@@ -158,7 +158,7 @@ class FloorKeeper:
         if clock is None:
             clock = time.monotonic
         elif not callable(clock):
-            self.logger.warning(f"clock must be a function, got {type(clock).__name__}; using time.monotonic")
+            self.logger.warning("clock must be a function, got %s; using time.monotonic", type(clock).__name__)
             clock = time.monotonic
         self._clock = clock
         self._lock = threading.Lock()      # held for the whole of each public call
@@ -174,7 +174,7 @@ class FloorKeeper:
         """A number that passes `is_good`, or the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
         return default
 
     # --- Questions ------------------------------------------------------------------
@@ -294,14 +294,14 @@ class FloorKeeper:
         self._current = None
         self.overruns += 1
         self._enter(FloorState.RECOVERING)
-        self.logger.warning(f"{what}, so the {who}'s turn lost the floor; listening resumes after the recovery")
+        self.logger.warning("%s, so the %s's turn lost the floor; listening resumes after the recovery", what, who)
 
     @contextmanager
     def _held(self, call: str) -> Iterator[bool]:
         """Takes the lock for the length of the `with`, yielding True; or yields False (and logs a CRITICAL) if it waited too long."""
         got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
         if not got:
-            self.logger.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if the floor were free of turns")
+            self.logger.critical("%s could not get the lock in %g s; answering as if the floor were free of turns", call, LOCK_TIMEOUT_SECONDS)
         try:
             yield got
         finally:

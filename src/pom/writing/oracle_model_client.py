@@ -88,15 +88,14 @@ class OracleModelClient:
         self.last_cut_off = False
         self._usable = True
         if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
-            self.logger.warning(f"the oracle address must start with http:// or https://, got {url!r}; "
-                             f"the model will not be asked")
+            self.logger.warning("the oracle address must start with http:// or https://, got %r; the model will not be asked", url)
             self._usable = False
 
     def _valid(self, value, name: str, default, is_good, wanted: str):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return value
-        self.logger.warning(f"the oracle {name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("the oracle %s must be %s, got %r; using %g", name, wanted, value, default)
         return default
 
     @property
@@ -123,7 +122,7 @@ class OracleModelClient:
             text = choice["message"]["content"].strip()
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
-            self.logger.warning(f"the oracle model did not answer ({type(error).__name__}); no portent this time")
+            self.logger.warning("the oracle model did not answer (%s); no portent this time", type(error).__name__)
             return None
         self.last_seconds = time.perf_counter() - started
         self.last_cut_off = choice.get("finish_reason") == "length"

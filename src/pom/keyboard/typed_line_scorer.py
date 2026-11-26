@@ -67,14 +67,14 @@ class TypedLineScorer:
         """Any finite number (it is not limited to 0 to 1), or 0 with a warning: the bar stays the room's."""
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
             return float(value)
-        self.logger.warning(f"bar_influence must be a number, got {value!r}; using 0")
+        self.logger.warning("bar_influence must be a number, got %r; using 0", value)
         return 0.0
 
     def _valid_score_multiplier(self, value) -> float:
         """A number of 0 or more, or the default with a warning."""
         if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value >= 0.0:
             return float(value)
-        self.logger.warning(f"score_multiplier must be a number of at least 0, got {value!r}; using {DEFAULT_SCORE_MULTIPLIER:g}")
+        self.logger.warning("score_multiplier must be a number of at least 0, got %r; using %g", value, DEFAULT_SCORE_MULTIPLIER)
         return DEFAULT_SCORE_MULTIPLIER
 
     def score(self, line: str) -> Attempt:

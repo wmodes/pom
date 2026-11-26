@@ -72,11 +72,11 @@ class MicDeck:
         self.dropped_frames = 0
         self._heard = heard
         if not (isinstance(device, str) and device.strip()):
-            self.logger.warning(f"the capture device must be a name such as {self._FALLBACK_DEVICE}, got {device!r}; "
-                             f"using {self._FALLBACK_DEVICE}")
+            self.logger.warning("the capture device must be a name such as %s, got %r; using %s",
+                                self._FALLBACK_DEVICE, device, self._FALLBACK_DEVICE)
             device = self._FALLBACK_DEVICE
         if not (_is_number(buffer_seconds) and buffer_seconds > 0):
-            self.logger.warning(f"buffer_seconds must be a number above 0, got {buffer_seconds!r}; using {DEFAULT_BUFFER_SECONDS:g}")
+            self.logger.warning("buffer_seconds must be a number above 0, got %r; using %g", buffer_seconds, DEFAULT_BUFFER_SECONDS)
             buffer_seconds = DEFAULT_BUFFER_SECONDS
         self._queue: "queue.Queue[Optional[bytes]]" = queue.Queue(maxsize=max(1, round(buffer_seconds / FRAME_SECONDS)))
         self._closing = threading.Event()
@@ -90,13 +90,13 @@ class MicDeck:
     def _start(self, device: str, arecord: str) -> None:
         program = shutil.which(arecord) if isinstance(arecord, str) else None
         if program is None:
-            self.logger.critical(f"{self._TOOL} was not found; the Printer cannot hear ({self._MISSING_HINT})")
+            self.logger.critical("%s was not found; the Printer cannot hear (%s)", self._TOOL, self._MISSING_HINT)
             return
         try:
             self._process = subprocess.Popen(self._command(program, device), stdout=subprocess.PIPE,
                                              stderr=subprocess.DEVNULL)
         except OSError as problem:
-            self.logger.critical(f"{self._TOOL} could not be started ({type(problem).__name__}); the Printer cannot hear")
+            self.logger.critical("%s could not be started (%s); the Printer cannot hear", self._TOOL, type(problem).__name__)
             return
         self._reader = threading.Thread(target=self._read, name="mic-reader", daemon=True)
         self._reader.start()

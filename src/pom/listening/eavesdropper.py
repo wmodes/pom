@@ -150,7 +150,7 @@ class Eavesdropper:
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return value
-        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
         return default
 
     @property
@@ -256,7 +256,7 @@ class Eavesdropper:
         error = self._client.error
         if error and not self._whisper_down:
             self._whisper_down = True
-            self.logger.warning(f"whisper is not answering ({error}); the audio is kept and tried again")
+            self.logger.warning("whisper is not answering (%s); the audio is kept and tried again", error)
         elif not error and self._whisper_down:
             self._whisper_down = False
             self.logger.info("whisper is answering again")

@@ -128,11 +128,10 @@ class Bibliomancer:
         except (TypeError, ValueError):
             low = high = None
         if not (whole(low) and whole(high)):
-            self.logger.warning(f"exemplar_range must be two whole numbers of at least 1, "
-                             f"got {exemplar_range!r}; using {DEFAULT_EXEMPLAR_RANGE}")
+            self.logger.warning("exemplar_range must be two whole numbers of at least 1, got %r; using %s", exemplar_range, DEFAULT_EXEMPLAR_RANGE)
             return DEFAULT_EXEMPLAR_RANGE
         if low > high:
-            self.logger.warning(f"exemplar_range ({low}, {high}) is backwards; using ({high}, {low})")
+            self.logger.warning("exemplar_range (%s, %s) is backwards; using (%s, %s)", low, high, high, low)
             low, high = high, low
         return (low, high)
 
@@ -140,7 +139,7 @@ class Bibliomancer:
         """A whole number of at least 0; anything else is reported and replaced by the default."""
         if isinstance(redraw_limit, int) and not isinstance(redraw_limit, bool) and redraw_limit >= 0:
             return redraw_limit
-        self.logger.warning(f"redraw_limit must be a whole number of at least 0, got {redraw_limit!r}; using {DEFAULT_REDRAW_LIMIT}")
+        self.logger.warning("redraw_limit must be a whole number of at least 0, got %r; using %s", redraw_limit, DEFAULT_REDRAW_LIMIT)
         return DEFAULT_REDRAW_LIMIT
 
     # --- Building the odds ----------------------------------------------------------
@@ -158,8 +157,7 @@ class Bibliomancer:
             if totals[shelf] > 0:
                 drawable.append(shelf)
             else:
-                self.logger.warning(f"shelf '{shelf}' has no drawable passages (every holding "
-                                 f"weight is 0); skipping it")
+                self.logger.warning("shelf '%s' has no drawable passages (every holding weight is 0); skipping it", shelf)
         if not drawable:
             self.logger.critical("nothing to draw from: no passage has a positive weight")
             return
@@ -274,8 +272,8 @@ class Bibliomancer:
             redraws += 1
         if index in self._unfinished and self._redraw_limit and not self._gave_up_warned:
             self._gave_up_warned = True
-            self.logger.warning(f"{self._redraw_limit} picks in a row ended unfinished; using one anyway "
-                             f"({len(self._unfinished)} of {len(self._passages)} passages are unfinished)")
+            self.logger.warning("%s picks in a row ended unfinished; using one anyway (%s of %s passages are unfinished)",
+                                self._redraw_limit, len(self._unfinished), len(self._passages))
         return index, redraws
 
     def _pick(self) -> int:

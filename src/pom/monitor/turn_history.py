@@ -98,12 +98,10 @@ class TurnHistory:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnHistoryError, DEBUG, strict)
         if not (_is_number(max_age_seconds) and max_age_seconds > 0):
-            self.logger.warning(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; "
-                             f"using {DEFAULT_MAX_AGE_SECONDS:g}")
+            self.logger.warning("max_age_seconds must be a number above 0, got %r; using %g", max_age_seconds, DEFAULT_MAX_AGE_SECONDS)
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS
         if not (isinstance(max_records, int) and not isinstance(max_records, bool) and max_records >= 1):
-            self.logger.warning(f"max_records must be a whole number of at least 1, got {max_records!r}; "
-                             f"using {DEFAULT_MAX_RECORDS}")
+            self.logger.warning("max_records must be a whole number of at least 1, got %r; using %s", max_records, DEFAULT_MAX_RECORDS)
             max_records = DEFAULT_MAX_RECORDS
         self._max_age = float(max_age_seconds)
         self._records: Deque[TurnRecord] = deque(maxlen=max_records)       # oldest first

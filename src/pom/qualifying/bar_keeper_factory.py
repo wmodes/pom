@@ -37,7 +37,7 @@ def bar_from_settings(settings, started_at: float, strict: bool = False, bookkee
     known = name in ALGORITHMS if isinstance(name, str) else False
     bar = ALGORITHMS[name if known else DEFAULT_ALGORITHM].from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper)
     if not known:
-        bar.logger.warning(f"the qualifying algorithm must be one of {', '.join(ALGORITHMS)}, got {name!r}; using {DEFAULT_ALGORITHM}")
+        bar.logger.warning("the qualifying algorithm must be one of %s, got %r; using %s", ", ".join(ALGORITHMS), name, DEFAULT_ALGORITHM)
     return bar
 
 

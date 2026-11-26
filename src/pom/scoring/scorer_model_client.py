@@ -150,21 +150,19 @@ class ScorerModelClient:
         self._timeout = (timeout if isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
                          and timeout > 0 else DEFAULT_TIMEOUT)
         if self._timeout != timeout:
-            self.logger.warning(f"the scorer timeout must be a positive number of seconds, got "
-                             f"{timeout!r}; using {DEFAULT_TIMEOUT:g}")
+            self.logger.warning("the scorer timeout must be a positive number of seconds, got %r; using %g", timeout, DEFAULT_TIMEOUT)
         self._explain_prompt = (explain_prompt or "").strip()
         self._explain_timeout = (explain_timeout if isinstance(explain_timeout, (int, float))
                                  and not isinstance(explain_timeout, bool) and explain_timeout > 0
                                  else DEFAULT_EXPLAIN_TIMEOUT)
         if self._explain_timeout != explain_timeout:
-            self.logger.warning(f"the explain timeout must be a positive number of seconds, got "
-                             f"{explain_timeout!r}; using {DEFAULT_EXPLAIN_TIMEOUT:g}")
+            self.logger.warning("the explain timeout must be a positive number of seconds, got %r; using %g",
+                                explain_timeout, DEFAULT_EXPLAIN_TIMEOUT)
         self._post = post if post is not None else _http_post
         self.last_seconds: Optional[float] = None
         self._usable = True
         if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
-            self.logger.warning(f"the scorer address must start with http:// or https://, got {url!r}; "
-                             f"the model will not be asked")
+            self.logger.warning("the scorer address must start with http:// or https://, got %r; the model will not be asked", url)
             self._usable = False
         if not self._prompt:
             self.logger.warning("the scorer has no prompt; the model will not be asked")
@@ -199,8 +197,7 @@ class ScorerModelClient:
             reply = self._post(self._url, body, self._timeout)
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
-            self.logger.warning(f"the scorer model did not answer ({type(error).__name__}); "
-                             f"the clip will go unscored")
+            self.logger.warning("the scorer model did not answer (%s); the clip will go unscored", type(error).__name__)
             return None
         self.last_seconds = time.perf_counter() - started
         value = score_from_scorecard(reply)
@@ -240,7 +237,7 @@ class ScorerModelClient:
             text = reply["choices"][0]["message"]["content"].strip()
         except Exception as error:               # a dead server or an odd reply must not stop the debug view
             self.last_seconds = time.perf_counter() - started
-            self.logger.warning(f"the model did not give an explanation ({type(error).__name__})")
+            self.logger.warning("the model did not give an explanation (%s)", type(error).__name__)
             return None
         self.last_seconds = time.perf_counter() - started
         self.logger.debug("explained a clip of %d characters in %.0f ms", len(clip_text), self.last_seconds * 1000)

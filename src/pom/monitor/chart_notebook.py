@@ -80,15 +80,15 @@ class ChartNotebook:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ChartNotebookError, DEBUG, strict)
         if not (is_number(max_age_seconds) and max_age_seconds > 0):
-            self.logger.warning(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; using {DEFAULT_MAX_AGE_SECONDS:g}")
+            self.logger.warning("max_age_seconds must be a number above 0, got %r; using %g", max_age_seconds, DEFAULT_MAX_AGE_SECONDS)
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS
         if not (isinstance(max_entries, int) and not isinstance(max_entries, bool) and max_entries >= 1):
-            self.logger.warning(f"max_entries must be a whole number of at least 1, got {max_entries!r}; using {DEFAULT_MAX_ENTRIES}")
+            self.logger.warning("max_entries must be a whole number of at least 1, got %r; using %s", max_entries, DEFAULT_MAX_ENTRIES)
             max_entries = DEFAULT_MAX_ENTRIES
         if silence_shape is None:
             silence_shape = DEFAULT_SILENCE_SHAPE
         elif not isinstance(silence_shape, SilenceShape):
-            self.logger.warning(f"silence_shape must be a SilenceShape, got {type(silence_shape).__name__}; using the default")
+            self.logger.warning("silence_shape must be a SilenceShape, got %s; using the default", type(silence_shape).__name__)
             silence_shape = DEFAULT_SILENCE_SHAPE
         self._head: List[NotebookEntry] = []                    # the ticks for the first minutes after the newest attempt, worked out when it was heard
         self._max_age = float(max_age_seconds)

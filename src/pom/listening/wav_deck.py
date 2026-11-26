@@ -70,19 +70,18 @@ class WavDeck:
         """The value if it is a number of 0 or more, otherwise the default with a warning."""
         if _is_number(value) and value >= 0:
             return float(value)
-        self.logger.warning(f"{name} must be a number of at least 0, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be a number of at least 0, got %r; using %g", name, value, default)
         return default
 
     def _open(self, path) -> None:
         try:
             wav = wave.open(str(Path(path)), "rb")
         except (OSError, EOFError, wave.Error, TypeError, ValueError) as problem:
-            self.logger.critical(f"cannot open the recording ({type(problem).__name__}); nothing will be played")
+            self.logger.critical("cannot open the recording (%s); nothing will be played", type(problem).__name__)
             return
         if (wav.getframerate(), wav.getnchannels(), wav.getsampwidth()) != (SAMPLE_RATE, 1, SAMPLE_BYTES):
             wav.close()
-            self.logger.critical(f"the recording must be 16 kHz mono 16-bit; convert it with: "
-                                 f"ffmpeg -i in -ar {SAMPLE_RATE} -ac 1 out.wav")
+            self.logger.critical("the recording must be 16 kHz mono 16-bit; convert it with: ffmpeg -i in -ar %s -ac 1 out.wav", SAMPLE_RATE)
             return
         self._wav = wav
         self.seconds = wav.getnframes() / SAMPLE_RATE

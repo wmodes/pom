@@ -91,7 +91,7 @@ class MovingAverageBar(Bar):
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return float(value)
-        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
         return default
 
     def _valid_range(self, value) -> tuple:
@@ -102,8 +102,7 @@ class MovingAverageBar(Bar):
                 return float(low), float(high)
         except (TypeError, ValueError):
             pass
-        self.logger.warning(f"score_range must be (lowest, highest) with the lowest below the highest, got {value!r}; "
-                         f"using {DEFAULT_SCORE_RANGE}")
+        self.logger.warning("score_range must be (lowest, highest) with the lowest below the highest, got %r; using %s", value, DEFAULT_SCORE_RANGE)
         return DEFAULT_SCORE_RANGE
 
     # --- The Bar questions ---------------------------------------------------

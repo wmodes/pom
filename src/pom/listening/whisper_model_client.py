@@ -131,13 +131,11 @@ class WhisperModelClient:
         self._usable = isinstance(url, str) and url.startswith(("http://", "https://"))
         self._url = url.rstrip("/") if self._usable else DEFAULT_URL
         if not self._usable:
-            self.logger.warning(f"the whisper address must start with http:// or https://, got {url!r}; "
-                             f"whisper will not be asked")
+            self.logger.warning("the whisper address must start with http:// or https://, got %r; whisper will not be asked", url)
         if _is_number(timeout) and timeout > 0:
             self._timeout = float(timeout)
         else:
-            self.logger.warning(f"the whisper timeout must be a positive number of seconds, got {timeout!r}; "
-                             f"using {DEFAULT_TIMEOUT:g}")
+            self.logger.warning("the whisper timeout must be a positive number of seconds, got %r; using %g", timeout, DEFAULT_TIMEOUT)
             self._timeout = DEFAULT_TIMEOUT
         self._post = post if post is not None else _http_post
 
@@ -179,7 +177,7 @@ class WhisperModelClient:
             return None
         if not isinstance(pcm, (bytes, bytearray, memoryview)):
             self.error = "BadAudio"
-            self.logger.warning(f"the audio for whisper must be bytes, got {type(pcm).__name__}")
+            self.logger.warning("the audio for whisper must be bytes, got %s", type(pcm).__name__)
             return None
         if len(pcm) < SAMPLE_BYTES:                             # not even one sample: nothing to transcribe, nothing failed
             self.error = None
@@ -188,7 +186,7 @@ class WhisperModelClient:
             reply = self._post(self._url, fields, wav_bytes(bytes(pcm)), self._timeout)
         except Exception as problem:                 # a dead or slow server must never stop the oracle
             self.error = type(problem).__name__
-            self.logger.warning(f"whisper did not answer ({self.error})")
+            self.logger.warning("whisper did not answer (%s)", self.error)
             return None
         if not isinstance(reply, str):
             self.error = "BadReply"

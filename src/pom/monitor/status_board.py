@@ -64,7 +64,7 @@ class StatusBoard:
             first = name not in self._unknown
             self._unknown.add(name)
         if first:
-            self.logger.warning(f"a status was posted for {name!r}, which is not on the board")
+            self.logger.warning("a status was posted for %r, which is not on the board", name)
 
     def lights(self) -> Dict[str, Light]:
         """The light for each registered part, in order: what it last posted, or DOWN if that is too old or it never posted."""

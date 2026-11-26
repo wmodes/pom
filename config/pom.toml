@@ -34,12 +34,6 @@ log_level = "INFO"
 # false on the Pi, where journald (journalctl -u pom) already keeps the log.
 local_logs = false
 
-# The microphone and the terminal are looked for again and again, for ever, while they are missing (every `[conductor] restart_pause_seconds` for the
-# microphone, every `[terminal] reconnect_seconds` for the terminal). Only this many lookups in a row that find nothing are written to the log, so an
-# unplugged microphone over a weekend does not fill it; the count starts again as soon as one is found. A whole number of at least 1. Higher logs more
-# of a long outage; lower is quieter.
-device_search_log_limit = 50
-
 # MUTING A MESSAGE THAT KEEPS REPEATING (see src/pom/bookkeeper/log_muter.py). Two lines are the same message when they come from the same part at the
 # same level and say the same thing once every run of digits is read as one ("not found after 49s" and "not found after 50s" are the same). DEBUG lines are
 # never muted. The first `logmute_after_repeats` lines of a message are logged; under the last a line says LOGMUTE: Last message repeating and muted, and
@@ -558,7 +552,7 @@ ascii_printwheel = false
 # the device's USB name or of its path, in any case, for example "Prolific" or "ttyUSB0" (`ls /dev/serial/by-id/` lists the names); a name
 # that matches nothing falls back to whatever is there, with a warning; a name that matches several takes the first and warns. The device is
 # looked up each time the port is opened, so a terminal that comes back under another name is found. While none is there it is looked for
-# again every `reconnect_seconds`, for ever, and only the first `device_search_log_limit` misses in a row are logged. A device with no USB name
+# again every `reconnect_seconds`, for ever, and a miss that keeps repeating is muted in the log by the `logmute_` settings. A device with no USB name
 # (a GPIO serial port) is chosen by writing its path, for example "/dev/serial0", which is used as written when nothing is found.
 port = "auto"
 

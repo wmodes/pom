@@ -44,7 +44,7 @@ def main():
         terminal = TerminalPort(args.port, terminal_settings.baud, terminal_settings.flow_control, terminal_settings.end_of_line, cps,
                                 finish_wait, terminal_settings.echoplex, terminal_settings.type_during_printing,
                                 data_bits=terminal_settings.data_bits, parity=terminal_settings.parity, stop_bits=terminal_settings.stop_bits,
-                                finder=TerminalPortFinder(terminal_settings.port_search, config.device_search_log_limit))
+                                finder=TerminalPortFinder(terminal_settings.port_search))
     else:
         terminal = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
                                    type_during_printing=terminal_settings.type_during_printing)

@@ -39,16 +39,15 @@ class CaptureCardFinder(DeviceFinder):
     """Turns the microphone setting into a device `arecord -D` can open."""
     KIND = "sound card"
 
-    def __init__(self, timeout_seconds: float, log_limit: int, arecord: str = "arecord",
+    def __init__(self, timeout_seconds: float, arecord: str = "arecord",
                  lister: Optional[Callable[[], str]] = None, strict: bool = False):
         """Args:
             timeout_seconds: How long to wait for `arecord -l` before giving up, above 0 (setting `listening.device_lookup_seconds`).
-            log_limit: How many lookups in a row that find nothing are logged (setting `device_search_log_limit`).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             lister: Returns the text `arecord -l` prints. Defaults to running the program.
             strict: Raise CaptureCardFinderError on any problem instead of recording it.
         """
-        super().__init__(log_limit, strict=strict, error=CaptureCardFinderError)
+        super().__init__(strict=strict, error=CaptureCardFinderError)
         self._timeout_seconds = timeout_seconds          # validated once, by the config module
         self._arecord = arecord
         self._lister = lister if lister is not None else self._run_arecord

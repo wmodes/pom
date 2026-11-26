@@ -12,8 +12,8 @@ class ListedFinder(DeviceFinder):
     """A finder whose list of devices is whatever the test sets (or an exception to raise)."""
     KIND = "gadget"
 
-    def __init__(self, devices, log_limit=3, strict=False):
-        super().__init__(log_limit, strict=strict)
+    def __init__(self, devices, strict=False):
+        super().__init__(strict=strict)
         self.devices = devices
 
     def _available(self):
@@ -164,31 +164,34 @@ def test_nothing_there_hands_the_setting_back_as_written_so_opening_it_fails_lou
     assert ListedFinder([]).resolve("/dev/ttyACM0") == "/dev/ttyACM0"
 
 
-def test_nothing_there_is_a_warning_each_time_up_to_the_limit_and_then_no_more(caplog):
-    finder = ListedFinder([], log_limit=3)
+def test_nothing_there_is_a_warning_every_time_and_the_finder_does_no_muting_of_its_own(caplog):
+    finder = ListedFinder([])
     with caplog.at_level(logging.INFO, logger=LOGGER):
-        for _ in range(10):
+        for _ in range(200):                                   # the log's LogMuter mutes the repeats; the finder just says it
             finder.resolve("auto")
     warnings = lines(caplog, logging.WARNING)
-    assert len(warnings) == 3 and all("no gadget" in w for w in warnings)
-    assert "not logging" in warnings[-1]                      # the last one says why the rest are quiet
+    assert len(warnings) == 200 and all("no gadget" in w and "trying again" in w for w in warnings)
+    assert not any("not logging" in w for w in warnings)
 
 
-def test_the_count_starts_again_when_a_device_is_found(caplog):
-    finder = ListedFinder([], log_limit=2)
+def test_the_count_of_tries_starts_again_when_a_device_is_found(caplog):
+    finder = ListedFinder([])
     with caplog.at_level(logging.INFO, logger=LOGGER):
-        for _ in range(5):
+        for _ in range(3):
             finder.resolve("auto")
         finder.devices = [MIC]
         finder.resolve("auto")
         finder.devices = []
-        for _ in range(5):
+        for _ in range(2):
             finder.resolve("auto")
-    assert len(lines(caplog, logging.WARNING)) == 4           # two before it was found, two after it went away again
+        finder.devices = [MIC]
+        finder.resolve("auto")
+    found_lines = [m for m in lines(caplog, logging.INFO) if "found after" in m]
+    assert len(found_lines) == 2 and "after 3 tries" in found_lines[0] and "after 2 tries" in found_lines[1]
 
 
 def test_finding_a_device_after_trying_says_how_many_tries_it_took(caplog):
-    finder = ListedFinder([], log_limit=2)
+    finder = ListedFinder([])
     for _ in range(4):
         finder.resolve("auto")
     finder.devices = [MIC]

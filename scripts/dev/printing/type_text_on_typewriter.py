@@ -48,7 +48,7 @@ def main():
         typewriter = TerminalPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
                                     terminal.echoplex, terminal.type_during_printing, data_bits=terminal.data_bits,
                                     parity=terminal.parity, stop_bits=terminal.stop_bits,
-                                    finder=TerminalPortFinder(terminal.port_search, config.device_search_log_limit))
+                                    finder=TerminalPortFinder(terminal.port_search))
     else:
         typewriter = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
                                        type_during_printing=terminal.type_during_printing)

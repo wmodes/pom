@@ -48,7 +48,7 @@ def a_sound_card_is_there(monkeypatch):
     class FoundCard:
         found = True
 
-        def __init__(self, timeout_seconds, log_limit):
+        def __init__(self, timeout_seconds):
             pass
 
         def resolve(self, device):
@@ -98,9 +98,8 @@ class TestTheWiring:
         opened, asked = [], []
 
         class StandInFinder:
-            def __init__(self, timeout_seconds, log_limit):
+            def __init__(self, timeout_seconds):
                 asked.append(("timeout", timeout_seconds))
-                asked.append(("log_limit", log_limit))
 
             found = True
 
@@ -118,9 +117,8 @@ class TestTheWiring:
         p.conductor._room_factory()
         p.conductor._room_factory()
         assert asked[0] == ("timeout", 7.0)                                          # the lookup's patience is the setting
-        assert asked[1] == ("log_limit", 50)                                         # and how many failed lookups are logged
         assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
-        assert opened == [("found-3", 3.0), ("found-4", 3.0)]                        # the deck gets what the finder answered, not the setting
+        assert opened == [("found-2", 3.0), ("found-3", 3.0)]                        # the deck gets what the finder answered, not the setting
 
     def test_sound_arriving_from_the_microphone_posts_the_mic_light_to_the_board(self, tmp_path, monkeypatch):
         decks = []
@@ -182,7 +180,7 @@ class TestTheWiring:
         class StandInFinder:
             found = False
 
-            def __init__(self, timeout_seconds, log_limit):
+            def __init__(self, timeout_seconds):
                 pass
 
             def resolve(self, device):
@@ -199,12 +197,12 @@ class TestTheWiring:
             p.conductor._room_factory()
         assert opened == []                                                          # arecord is never started for a card that is not there
 
-    def test_the_terminal_is_found_by_a_finder_that_gets_the_search_pattern_and_the_log_limit(self, tmp_path, monkeypatch):
+    def test_the_terminal_is_found_by_a_finder_that_gets_the_search_pattern(self, tmp_path, monkeypatch):
         made, asked = [], []
 
         class StandInFinder:
-            def __init__(self, search_pattern, log_limit):
-                made.append((search_pattern, log_limit))
+            def __init__(self, search_pattern):
+                made.append(search_pattern)
 
             def resolve(self, setting):
                 asked.append(setting)
@@ -212,7 +210,7 @@ class TestTheWiring:
 
         monkeypatch.setattr(printer_module, "TerminalPortFinder", StandInFinder)
         p = build(tmp_path, '[terminal]\nmode = "serial"\nport = "Prolific"\nport_search = "/x/*"\n')
-        assert made == [("/x/*", 50)]
+        assert made == ["/x/*"]
         assert p.terminal.online() is False and asked == ["Prolific"]            # opening the terminal asks the finder about the setting
 
     def test_the_writer_and_the_selector_share_one_random_generator(self, tmp_path):

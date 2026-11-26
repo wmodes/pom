@@ -33,16 +33,15 @@ class TerminalPortFinder(DeviceFinder):
     """Turns the terminal's port setting into a serial device that can be opened."""
     KIND = "serial port"
 
-    def __init__(self, search_pattern: str, log_limit: int, lister: Callable[[str], list] = glob.glob,
+    def __init__(self, search_pattern: str, lister: Callable[[str], list] = glob.glob,
                  real_path: Callable[[str], str] = os.path.realpath, strict: bool = False):
         """Args:
             search_pattern: Where the serial devices are looked for (setting `terminal.port_search`), a glob such as /dev/serial/by-id/*.
-            log_limit: How many lookups in a row that find nothing are logged (setting `device_search_log_limit`).
             lister: A function pattern -> list of matching paths. Default: glob.glob. Tests give a fake.
             real_path: A function path -> the real device it points to. Default: os.path.realpath. Tests give a fake.
             strict: Raise TerminalPortFinderError on any problem instead of recording it.
         """
-        super().__init__(log_limit, strict=strict, error=TerminalPortFinderError)
+        super().__init__(strict=strict, error=TerminalPortFinderError)
         self._search_pattern = search_pattern
         self._lister = lister
         self._real_path = real_path

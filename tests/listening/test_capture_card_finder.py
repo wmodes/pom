@@ -23,8 +23,8 @@ TWO_CARDS = PI_LISTING + """card 3: Camera [USB Camera], device 0: USB Audio [US
 NO_CARDS = "arecord: device_list:274: no soundcards found...\n"
 
 
-def finder(listing, strict=False, log_limit=50):
-    return CaptureCardFinder(5.0, log_limit, lister=lambda: listing, strict=strict)
+def finder(listing, strict=False):
+    return CaptureCardFinder(5.0, lister=lambda: listing, strict=strict)
 
 
 def test_it_is_a_device_finder_and_the_keyword_is_auto():
@@ -104,24 +104,16 @@ def test_an_empty_listing_is_no_card():
 def test_a_failing_listing_hands_the_keyword_back_and_warns_without_the_error_text():
     def lister():
         raise OSError("secret detail")
-    found = CaptureCardFinder(5.0, 50, lister=lister)
+    found = CaptureCardFinder(5.0, lister=lister)
     assert found.resolve(AUTO) == AUTO
     assert len(found.report.warnings) == 1 and "OSError" in found.report.warnings[0] and "secret detail" not in found.report.warnings[0]
 
 
 def test_it_looks_again_each_time_so_a_microphone_plugged_in_later_is_found():
     listings = iter([NO_CARDS, PI_LISTING])
-    found = CaptureCardFinder(5.0, 50, lister=lambda: next(listings))
+    found = CaptureCardFinder(5.0, lister=lambda: next(listings))
     assert found.resolve(AUTO) == AUTO
     assert found.resolve(AUTO) == "plughw:CARD=ATR4697USB,DEV=0"
-
-
-def test_the_search_log_limit_is_the_one_it_was_given(caplog):
-    found = finder(NO_CARDS, log_limit=2)
-    with caplog.at_level(logging.INFO, logger="pom.device_finder"):
-        for _ in range(6):
-            found.resolve(AUTO)
-    assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 2
 
 
 @pytest.mark.parametrize("listing", [NO_CARDS, TWO_CARDS])
@@ -134,7 +126,7 @@ def test_strict_raises_for_a_failing_listing():
     def lister():
         raise OSError("gone")
     with pytest.raises(CaptureCardFinderError):
-        CaptureCardFinder(5.0, 50, lister=lister, strict=True).resolve(AUTO)
+        CaptureCardFinder(5.0, lister=lister, strict=True).resolve(AUTO)
 
 
 # --- running the real program (a stand-in for arecord) ---------------------------------------
@@ -148,7 +140,7 @@ def fake_arecord(tmp_path, body):
 
 def test_it_runs_arecord_with_the_list_flag_and_reads_what_it_prints(tmp_path):
     program = fake_arecord(tmp_path, "assert sys.argv[1:] == ['-l'], sys.argv\nprint('card 7: Mic [Some Mic], device 0: USB Audio [USB Audio]')")
-    assert CaptureCardFinder(5.0, 50, arecord=program).resolve(AUTO) == "plughw:CARD=Mic,DEV=0"
+    assert CaptureCardFinder(5.0, arecord=program).resolve(AUTO) == "plughw:CARD=Mic,DEV=0"
 
 
 def test_it_asks_in_english_whatever_the_machines_language_because_it_reads_the_words(tmp_path, monkeypatch):
@@ -156,17 +148,17 @@ def test_it_asks_in_english_whatever_the_machines_language_because_it_reads_the_
     monkeypatch.setenv("LC_ALL", "de_DE.UTF-8")
     program = fake_arecord(tmp_path, "assert os.environ.get('LC_ALL') == 'C', os.environ.get('LC_ALL')\n"
                                      "print('card 7: Mic [Some Mic], device 0: USB Audio [USB Audio]')")
-    assert CaptureCardFinder(5.0, 50, arecord=program).resolve(AUTO) == "plughw:CARD=Mic,DEV=0"
+    assert CaptureCardFinder(5.0, arecord=program).resolve(AUTO) == "plughw:CARD=Mic,DEV=0"
 
 
 def test_a_missing_arecord_is_a_warning_not_a_crash(tmp_path):
-    found = CaptureCardFinder(5.0, 50, arecord=str(tmp_path / "no-such-program"))
+    found = CaptureCardFinder(5.0, arecord=str(tmp_path / "no-such-program"))
     assert found.resolve(AUTO) == AUTO
     assert len(found.report.warnings) == 1 and "FileNotFoundError" in found.report.warnings[0]
 
 
 def test_a_listing_that_hangs_is_given_up_on_after_the_timeout(tmp_path):
     program = fake_arecord(tmp_path, "time.sleep(30)")
-    found = CaptureCardFinder(0.3, 50, arecord=program)
+    found = CaptureCardFinder(0.3, arecord=program)
     assert found.resolve(AUTO) == AUTO
     assert len(found.report.warnings) == 1 and "TimeoutExpired" in found.report.warnings[0]

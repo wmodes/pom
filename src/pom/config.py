@@ -9,7 +9,6 @@ of being threaded through by hand. Today there are five:
                its own `DEBUG = ...` line (see pom/bookkeeper/log_setup.py).
     log_level  How much the service logs to stdout (and so to journald).
     local_logs Also write the log to logs/pom.log (gitignored), for working on the Mac. Off on the Pi.
-    device_search_log_limit How many lookups in a row that find no microphone or terminal are logged (then quiet until one is found).
     logmute_after_repeats, logmute_remind_every_repeats, logmute_quiet_seconds  When a message that keeps repeating is muted, how often it
                is reminded of, and how long it must be quiet to be let through again (see pom/bookkeeper/log_muter.py).
     [scorer]   A section (see ScorerSettings): the language model's address and timeout, the prompt
@@ -89,7 +88,7 @@ DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
-_KEYS = {"strict", "debug", "log_level", "local_logs", "device_search_log_limit", "logmute_after_repeats", "logmute_remind_every_repeats", "logmute_quiet_seconds", "oracle.exemplars_min", "oracle.exemplars_max",
+_KEYS = {"strict", "debug", "log_level", "local_logs", "logmute_after_repeats", "logmute_remind_every_repeats", "logmute_quiet_seconds", "oracle.exemplars_min", "oracle.exemplars_max",
          "scorer.url", "scorer.timeout", "scorer.prompt_scoring", "scorer.prompt_output",
          "scorer.prompt_output_debug", "scorer.clip_filter_score", "scorer.min_content_words", "scorer.failure_limit",
          "scorer.retry_seconds", "oracle.url", "oracle.timeout", "oracle.prompt", "oracle.max_tokens",
@@ -152,7 +151,6 @@ DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER = 1.5
 DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE = 0.0
 DEFAULT_LISTENING_WHISPER_URL = "http://127.0.0.1:8110"
 DEFAULT_LISTENING_WHISPER_TIMEOUT = 180.0
-DEFAULT_DEVICE_SEARCH_LOG_LIMIT = 50
 DEFAULT_LOGMUTE_AFTER_REPEATS = 50
 DEFAULT_LOGMUTE_REMIND_EVERY_REPEATS = 500
 DEFAULT_LOGMUTE_QUIET_SECONDS = 300.0
@@ -681,7 +679,6 @@ class Config:
         debug: Show DEBUG output from every module (a module may override it).
         log_level: A level name: DEBUG, INFO, WARNING, ERROR or CRITICAL.
         local_logs: Also write the log to a local file (development only).
-        device_search_log_limit: How many lookups in a row that find no microphone or terminal are logged, a whole number of at least 1.
         logmute_after_repeats: How many lines of one message are logged before it is muted, a whole number of at least 1.
         logmute_remind_every_repeats: Once a message is muted, one line in this many is logged as a reminder, a whole number of at least 1.
         logmute_quiet_seconds: How long a muted message must be silent before it is logged again, above 0.
@@ -708,7 +705,6 @@ class Config:
                  printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
                  conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None,
                  chart: Optional["ChartSettings"] = None, display: Optional["DisplaySettings"] = None,
-                 device_search_log_limit: int = DEFAULT_DEVICE_SEARCH_LOG_LIMIT,
                  logmute_after_repeats: int = DEFAULT_LOGMUTE_AFTER_REPEATS,
                  logmute_remind_every_repeats: int = DEFAULT_LOGMUTE_REMIND_EVERY_REPEATS,
                  logmute_quiet_seconds: float = DEFAULT_LOGMUTE_QUIET_SECONDS):
@@ -727,7 +723,6 @@ class Config:
         self.strict = strict
         self.debug = debug
         self.local_logs = local_logs
-        self.device_search_log_limit = device_search_log_limit
         self.logmute_after_repeats = logmute_after_repeats
         self.logmute_remind_every_repeats = logmute_remind_every_repeats
         self.logmute_quiet_seconds = logmute_quiet_seconds
@@ -758,8 +753,6 @@ class Config:
         strict = _bool(values.get("strict", False), "strict", report)
         debug = _bool(values.get("debug", False), "debug", report)
         local_logs = _bool(values.get("local_logs", False), "local_logs", report)
-        device_search_log_limit = _count(values.get("device_search_log_limit", DEFAULT_DEVICE_SEARCH_LOG_LIMIT), "device_search_log_limit",
-                                         DEFAULT_DEVICE_SEARCH_LOG_LIMIT, report)
         logmute_after_repeats = _count(values.get("logmute_after_repeats", DEFAULT_LOGMUTE_AFTER_REPEATS), "logmute_after_repeats",
                                        DEFAULT_LOGMUTE_AFTER_REPEATS, report)
         logmute_remind_every_repeats = _count(values.get("logmute_remind_every_repeats", DEFAULT_LOGMUTE_REMIND_EVERY_REPEATS),
@@ -1036,7 +1029,7 @@ class Config:
             _nonblank(values.get("display.browser_profile_dir", DEFAULT_DISPLAY_BROWSER_PROFILE_DIR), "display.browser_profile_dir",
                       DEFAULT_DISPLAY_BROWSER_PROFILE_DIR, report))
         return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
-                   printing, terminal, conductor, boot_slip, chart, display, device_search_log_limit,
+                   printing, terminal, conductor, boot_slip, chart, display,
                    logmute_after_repeats, logmute_remind_every_repeats, logmute_quiet_seconds)
 
 

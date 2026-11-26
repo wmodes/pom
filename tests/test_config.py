@@ -83,21 +83,10 @@ def test_local_logs_is_read_from_the_file_and_the_environment(tmp_path):
     assert Config.load(environ={"POM_LOCAL_LOGS": "yes"}).local_logs is True
 
 
-def test_device_search_log_limit_defaults_to_fifty():
-    config = Config.load(environ={})
-    assert config.device_search_log_limit == 50 and config.report.ok
-
-
-def test_device_search_log_limit_is_read_from_the_file(tmp_path):
+def test_the_retired_device_search_log_limit_is_reported_as_an_unknown_key_and_there_is_no_such_setting(tmp_path):
     config = Config.load(write(tmp_path, "device_search_log_limit = 7\n"), environ={})
-    assert config.device_search_log_limit == 7 and config.report.ok
-
-
-@pytest.mark.parametrize("bad", ["0", "-3", "2.5", '"ten"', "true", "[1]"])
-def test_a_bad_device_search_log_limit_is_the_default_with_a_warning(tmp_path, bad):
-    config = Config.load(write(tmp_path, f"device_search_log_limit = {bad}\n"), environ={})
-    assert config.device_search_log_limit == 50
-    assert len(config.report.warnings) == 1 and "device_search_log_limit" in config.report.warnings[0]
+    assert not hasattr(config, "device_search_log_limit")
+    assert len(config.report.warnings) == 1 and "unknown key" in config.report.warnings[0] and "device_search_log_limit" in config.report.warnings[0]
 
 
 LOGMUTE = [  # key, a good value in TOML, what it reads as, the setting's default, bad values
@@ -134,10 +123,10 @@ def test_the_shipped_config_sets_each_logmute_setting(key, text, expected, defau
     assert tomllib.loads(path.read_text(encoding="utf-8"))[key] == default
 
 
-def test_the_shipped_config_sets_the_device_search_log_limit():
+def test_the_shipped_config_no_longer_has_the_device_search_log_limit():
     import tomllib
     path = Path(__file__).parent.parent / "config" / "pom.toml"
-    assert tomllib.loads(path.read_text(encoding="utf-8"))["device_search_log_limit"] == 50
+    assert "device_search_log_limit" not in tomllib.loads(path.read_text(encoding="utf-8"))
 
 
 def test_bad_local_logs_values_mean_off_with_a_warning(tmp_path):

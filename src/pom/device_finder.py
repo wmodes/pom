@@ -12,7 +12,8 @@ THE RULE. The setting is `auto` or a name.
   * More than one device to choose from (`auto`, or a name that matches several) is a WARNING that says what was chosen and what was there.
   * Nothing there: the setting is handed back as written, so opening it fails loudly in the owner's usual way, and the owner asks again at its
     own retry interval, for ever. Every lookup that finds a device logs one INFO line (the setting, what was available, what was chosen).
-    A lookup that finds nothing logs only the first `log_limit` times in a row; the count starts again when a device is found.
+    A lookup that finds nothing warns every time; the log's LogMuter (bookkeeper/log_muter.py) mutes a warning that keeps repeating, so the
+    finder keeps no limiter of its own.
 
 Design decisions, and why:
   * IT LOOKS AGAIN EVERY TIME IT IS ASKED. A device plugged in later, or one that came back under another number, is found on the next try
@@ -59,15 +60,13 @@ class DeviceFinder:
     """
     KIND = "device"                     # what a subclass's devices are called in the log ("sound card", "serial port")
 
-    def __init__(self, log_limit: int, strict: bool = False, error: type = DeviceFinderError):
+    def __init__(self, strict: bool = False, error: type = DeviceFinderError):
         """Args:
-            log_limit: How many lookups in a row that find nothing are logged, a whole number of at least 1 (validated by the config module).
             strict: Raise `error` on any problem instead of recording it.
             error: The exception type strict mode raises (a subclass gives its own).
         """
         self.report = FaultRecorder(strict=strict, error=error)      # it keeps the lines for tests; this class does the logging, so it is not capped
-        self._log_limit = log_limit
-        self._tries = 0                                              # lookups in a row that found nothing
+        self._tries = 0                                              # lookups in a row that found nothing, for the "found after N tries" line
         self.found = False
 
     def _available(self) -> List[Device]:
@@ -107,12 +106,9 @@ class DeviceFinder:
         return chosen
 
     def _found_nothing(self, what: str, setting: str) -> None:
-        """Counts a lookup that found nothing, and logs it only while the count is within the limit."""
+        """Counts a lookup that found nothing and warns. A warning that keeps repeating is muted by the log, not here."""
         self._tries += 1
-        if self._tries > self._log_limit:
-            return
-        note = f"; not logging the next tries until one is found" if self._tries == self._log_limit else ""
-        self._warn(f"{what} (setting {setting!r}); trying again{note}")
+        self._warn(f"{what} (setting {setting!r}); trying again")
 
     def _warn(self, message: str) -> None:
         """Records a problem (raises in strict mode) and logs it."""

@@ -14,13 +14,13 @@ ARDUINO = f"{BY_ID}/usb-Arduino__www.arduino.cc__0043_85735313437351E0E1E1-if00"
 REAL = {PROLIFIC: "/dev/ttyUSB0", ARDUINO: "/dev/ttyACM0"}
 
 
-def finder(paths, log_limit=50, strict=False, pattern=f"{BY_ID}/*"):
+def finder(paths, strict=False, pattern=f"{BY_ID}/*"):
     asked = []
 
     def lister(searched):
         asked.append(searched)
         return list(paths)
-    found = TerminalPortFinder(pattern, log_limit, lister=lister, real_path=lambda path: REAL.get(path, path), strict=strict)
+    found = TerminalPortFinder(pattern, lister=lister, real_path=lambda path: REAL.get(path, path), strict=strict)
     found.asked = asked
     return found
 
@@ -72,7 +72,7 @@ def test_with_no_port_at_all_a_setting_is_handed_back_as_written():
 
 def test_it_looks_again_each_time_so_a_terminal_plugged_in_later_is_found():
     plugged = []
-    found = TerminalPortFinder("/x/*", 50, lister=lambda pattern: list(plugged), real_path=lambda path: path)
+    found = TerminalPortFinder("/x/*", lister=lambda pattern: list(plugged), real_path=lambda path: path)
     assert found.resolve(AUTO) == AUTO
     plugged.append(PROLIFIC)
     assert found.resolve(AUTO) == PROLIFIC
@@ -81,17 +81,9 @@ def test_it_looks_again_each_time_so_a_terminal_plugged_in_later_is_found():
 def test_a_search_that_fails_is_the_same_as_nothing_there_and_does_not_carry_the_error_text():
     def lister(pattern):
         raise OSError("secret detail")
-    found = TerminalPortFinder("/x/*", 50, lister=lister)
+    found = TerminalPortFinder("/x/*", lister=lister)
     assert found.resolve(AUTO) == AUTO
     assert len(found.report.warnings) == 1 and "OSError" in found.report.warnings[0] and "secret detail" not in found.report.warnings[0]
-
-
-def test_the_search_log_limit_is_the_one_it_was_given(caplog):
-    found = finder([], log_limit=2)
-    with caplog.at_level(logging.INFO, logger="pom.device_finder"):
-        for _ in range(6):
-            found.resolve(AUTO)
-    assert len([r for r in caplog.records if r.levelno == logging.WARNING]) == 2
 
 
 @pytest.mark.parametrize("paths, setting", [([], AUTO), ([PROLIFIC, ARDUINO], AUTO), ([PROLIFIC], "Nonesuch")])
@@ -105,10 +97,10 @@ def test_with_the_real_directory_and_links_a_symlink_is_found_by_the_name_of_the
     by_id = tmp_path / "by-id"
     by_id.mkdir()
     (by_id / "usb-Some_Adapter-port0").symlink_to(tmp_path / "ttyUSB7")
-    found = TerminalPortFinder(str(by_id / "*"), 50)
+    found = TerminalPortFinder(str(by_id / "*"))
     assert found.resolve("ttyUSB7") == str(by_id / "usb-Some_Adapter-port0") and found.report.ok
     assert found.resolve(AUTO) == str(by_id / "usb-Some_Adapter-port0")
 
 
 def test_with_the_real_directory_missing_there_is_nothing_there(tmp_path):
-    assert TerminalPortFinder(str(tmp_path / "no-such-directory" / "*"), 50).resolve(AUTO) == AUTO
+    assert TerminalPortFinder(str(tmp_path / "no-such-directory" / "*")).resolve(AUTO) == AUTO

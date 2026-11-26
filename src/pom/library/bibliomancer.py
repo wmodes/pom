@@ -65,11 +65,9 @@ from typing import Optional, Sequence
 from pom.library.catalog import Passage, Catalog
 from pom.library.circulation import Circulation
 from pom.library.endings import ends_unfinished
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_EXEMPLAR_RANGE = (3, 5)
 DEFAULT_REDRAW_LIMIT = 50
@@ -83,14 +81,14 @@ class Bibliomancer:
     """Draws weighted random passages from a Catalog.
 
     Attributes:
-        report: Problems found while building the odds (an empty library, a shelf with nothing
-            drawable). `check_report` holds what `Circulation.check` found about the layout.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper): problems found while building the odds (an
+            empty library, a shelf with nothing drawable). What `Circulation.check` found about the layout is logged by the circulation.
     """
 
     def __init__(self, store: Catalog, circulation: Circulation,
                  rng: Optional[random.Random] = None, strict: bool = False,
                  exemplar_range: Sequence[int] = DEFAULT_EXEMPLAR_RANGE,
-                 redraw_limit: int = DEFAULT_REDRAW_LIMIT):
+                 redraw_limit: int = DEFAULT_REDRAW_LIMIT, bookkeeper: Optional[Bookkeeper] = None):
         """Builds the draw odds from the store and the weights.
 
         Args:
@@ -99,17 +97,18 @@ class Bibliomancer:
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
             strict: Raise BibliomancerError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             exemplar_range: The (fewest, most) passages `draw()` returns when not told how many.
             redraw_limit: How many times one pick that lands on an unfinished passage is drawn again before the
                 unfinished one is accepted; a whole number, 0 for never redrawing.
         """
         self._rng = rng if rng is not None else random.Random()
-        self.report = ReportRecorder(strict=strict, error=BibliomancerError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, BibliomancerError, DEBUG, strict)
         self._exemplar_range = self._valid_exemplar_range(exemplar_range)
         self._redraw_limit = self._valid_redraw_limit(redraw_limit)
         self._unfinished: set[int] = set()       # table positions of the passages that end unfinished
         self._gave_up_warned = False
-        self.check_report = circulation.check(store.layout())   # logs any drift; the odds still work
+        circulation.check(store.layout())                        # logs any drift; the odds still work
         self._passages: list[Passage] = []
         self._probability: list[float] = []
         self._cumulative: list[float] = []
@@ -129,11 +128,11 @@ class Bibliomancer:
         except (TypeError, ValueError):
             low = high = None
         if not (whole(low) and whole(high)):
-            self.report.warn(f"exemplar_range must be two whole numbers of at least 1, "
+            self.logger.warning(f"exemplar_range must be two whole numbers of at least 1, "
                              f"got {exemplar_range!r}; using {DEFAULT_EXEMPLAR_RANGE}")
             return DEFAULT_EXEMPLAR_RANGE
         if low > high:
-            self.report.warn(f"exemplar_range ({low}, {high}) is backwards; using ({high}, {low})")
+            self.logger.warning(f"exemplar_range ({low}, {high}) is backwards; using ({high}, {low})")
             low, high = high, low
         return (low, high)
 
@@ -141,7 +140,7 @@ class Bibliomancer:
         """A whole number of at least 0; anything else is reported and replaced by the default."""
         if isinstance(redraw_limit, int) and not isinstance(redraw_limit, bool) and redraw_limit >= 0:
             return redraw_limit
-        self.report.warn(f"redraw_limit must be a whole number of at least 0, got {redraw_limit!r}; using {DEFAULT_REDRAW_LIMIT}")
+        self.logger.warning(f"redraw_limit must be a whole number of at least 0, got {redraw_limit!r}; using {DEFAULT_REDRAW_LIMIT}")
         return DEFAULT_REDRAW_LIMIT
 
     # --- Building the odds ----------------------------------------------------------
@@ -149,7 +148,7 @@ class Bibliomancer:
     def _build(self, store: Catalog, circulation: Circulation) -> None:
         """Computes every passage's chance of being drawn and the cumulative table."""
         if len(store) == 0:
-            self.report.critical("nothing to draw from: the store has no passages")
+            self.logger.critical("nothing to draw from: the store has no passages")
             return
         totals = {}      # shelf -> sum of holding weights over its passages
         for shelf in store.shelves():
@@ -159,10 +158,10 @@ class Bibliomancer:
             if totals[shelf] > 0:
                 drawable.append(shelf)
             else:
-                self.report.warn(f"shelf '{shelf}' has no drawable passages (every holding "
+                self.logger.warning(f"shelf '{shelf}' has no drawable passages (every holding "
                                  f"weight is 0); skipping it")
         if not drawable:
-            self.report.critical("nothing to draw from: no passage has a positive weight")
+            self.logger.critical("nothing to draw from: no passage has a positive weight")
             return
         self._shares = circulation.shares_for(drawable)
         running = 0.0
@@ -180,11 +179,11 @@ class Bibliomancer:
                 self._cumulative.append(running)
         self._counts = {shelf: 0 for shelf in drawable}
         if not self._passages:
-            self.report.critical("nothing to draw from: no passage has a positive chance")
+            self.logger.critical("nothing to draw from: no passage has a positive chance")
             return
-        self.report.info("selector ready: %d drawable passage(s) in %d shelf(s); %d end unfinished and are %s", len(self._passages),
+        self.logger.info("selector ready: %d drawable passage(s) in %d shelf(s); %d end unfinished and are %s", len(self._passages),
                          len(drawable), len(self._unfinished), "drawn again" if self._redraw_limit else "left in (redraw is off)")
-        self.report.debug("shelf shares: %s",
+        self.logger.debug("shelf shares: %s",
                           ", ".join(f"{r}={s:.3f}" for r, s in sorted(self._shares.items())))
 
     # --- Questions ------------------------------------------------------------------
@@ -236,7 +235,7 @@ class Bibliomancer:
 
         Returns:
             The passages, in the order drawn. Fewer than `count` if that many distinct drawable
-            passages do not exist; empty if there is nothing to draw (see `report`).
+            passages do not exist; empty if there is nothing to draw (the log says why).
         """
         if count is None:
             count = self._rng.randint(*self._exemplar_range)
@@ -259,7 +258,7 @@ class Bibliomancer:
         passages = [self._passages[i] for i in picked]
         for passage in passages:
             self._counts[passage.shelf] = self._counts.get(passage.shelf, 0) + 1
-        self.report.debug("drew %d passage(s): %s (%d pick(s) redone for an unfinished ending)", len(passages),
+        self.logger.debug("drew %d passage(s): %s (%d pick(s) redone for an unfinished ending)", len(passages),
                           ", ".join(c.id for c in passages), redraws)
         return passages
 
@@ -275,7 +274,7 @@ class Bibliomancer:
             redraws += 1
         if index in self._unfinished and self._redraw_limit and not self._gave_up_warned:
             self._gave_up_warned = True
-            self.report.warn(f"{self._redraw_limit} picks in a row ended unfinished; using one anyway "
+            self.logger.warning(f"{self._redraw_limit} picks in a row ended unfinished; using one anyway "
                              f"({len(self._unfinished)} of {len(self._passages)} passages are unfinished)")
         return index, redraws
 

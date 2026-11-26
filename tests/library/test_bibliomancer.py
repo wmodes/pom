@@ -110,29 +110,29 @@ def test_a_zero_share_shelf_has_no_chance():
     assert selector.shelf_shares()["blue"] == pytest.approx(1.0)
 
 
-def test_a_shelf_whose_holdings_all_weigh_zero_is_skipped_with_a_warning():
+def test_a_shelf_whose_holdings_all_weigh_zero_is_skipped_with_a_warning(logged):
     store = make_store({"red": {"r": 5}, "blue": {"b": 5}})
     selector = Bibliomancer(store, circulation_for(red={"holdings": {"r": 0}}, blue={}))
     assert selector.ready
     assert selector.shelf_shares() == pytest.approx({"blue": 1.0})
-    assert any("red" in w and "no drawable passages" in w for w in selector.report.warnings)
+    assert any("red" in w and "no drawable passages" in w for w in logged.of(selector).warnings())
 
 
 # --- Nothing to draw -------------------------------------------------------------------
 
-def test_an_empty_store_is_critical_and_draws_nothing_without_raising():
+def test_an_empty_store_is_critical_and_draws_nothing_without_raising(logged):
     selector = Bibliomancer(Catalog.from_passages([]), Circulation.from_dict({}))
-    assert not selector.ready and selector.report.has_critical
-    assert any("nothing to draw from" in m for m in selector.report.criticals)
+    assert not selector.ready and bool(logged.of(selector).criticals())
+    assert any("nothing to draw from" in m for m in logged.of(selector).criticals())
     assert selector.draw(5) == [] and selector.draw() == []
 
 
-def test_when_every_weight_is_zero_it_is_critical_and_draws_nothing():
+def test_when_every_weight_is_zero_it_is_critical_and_draws_nothing(logged):
     store = make_store({"red": {"r": 5}})
     selector = Bibliomancer(store, circulation_for(red={"holdings": {"r": 0}}))
-    assert not selector.ready and selector.report.has_critical
-    assert any("no passage has a positive weight" in m for m in selector.report.criticals)
-    assert any("no drawable passages" in w for w in selector.report.warnings)
+    assert not selector.ready and bool(logged.of(selector).criticals())
+    assert any("no passage has a positive weight" in m for m in logged.of(selector).criticals())
+    assert any("no drawable passages" in w for w in logged.of(selector).warnings())
     assert selector.draw(3) == []
 
 
@@ -366,20 +366,20 @@ def test_an_explicit_count_overrides_the_range():
     assert len(Bibliomancer(store, circulation, random.Random(43), exemplar_range=(2, 2)).draw(4)) == 4
 
 
-def test_a_reversed_range_is_swapped_with_a_warning():
+def test_a_reversed_range_is_swapped_with_a_warning(logged):
     store, circulation = tiles()
     selector = Bibliomancer(store, circulation, exemplar_range=(5, 3))
     assert selector.exemplar_range == (3, 5)
-    assert any("backwards" in w for w in selector.report.warnings)
+    assert any("backwards" in w for w in logged.of(selector).warnings())
 
 
 @pytest.mark.parametrize("bad", [(0, 3), (-1, 5), (3, 0), ("3", "5"), (None, 5), (3,), 5, None,
                                  (True, 5), (2.5, 4), (3, 4, 5)])
-def test_a_bad_range_falls_back_to_the_default_with_a_warning(bad):
+def test_a_bad_range_falls_back_to_the_default_with_a_warning(bad, logged):
     store, circulation = tiles()
     selector = Bibliomancer(store, circulation, exemplar_range=bad)
     assert selector.exemplar_range == (3, 5)
-    assert any("exemplar_range must be" in w for w in selector.report.warnings)
+    assert any("exemplar_range must be" in w for w in logged.of(selector).warnings())
 
 
 def test_the_range_choice_is_repeatable_with_a_seed():
@@ -424,13 +424,13 @@ def test_strict_accepts_a_clean_setup():
 
 # --- Layout drift, logging -------------------------------------------------------------
 
-def test_layout_drift_is_reported_but_does_not_stop_the_sampler():
+def test_layout_drift_is_reported_but_does_not_stop_the_sampler(logged):
     store = make_store({"red": {"r": 5}})
     circulation = circulation_for(red={"holdings": {"ghost": 2}}, cooking={})
     selector = Bibliomancer(store, circulation, random.Random(1))
     assert selector.ready
-    assert any("ghost" in w for w in selector.check_report.warnings)
-    assert any("cooking" in w for w in selector.check_report.warnings)
+    assert any("ghost" in w for w in logged.of(circulation).warnings())        # the circulation logs the drift it found
+    assert any("cooking" in w for w in logged.of(circulation).warnings())
 
 
 def test_building_logs_a_summary_and_problems(caplog):
@@ -480,12 +480,12 @@ def test_draws_are_not_logged_when_the_module_flag_is_off(caplog):
 
 @pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
                     reason="committed passages not present")
-def test_the_real_library_builds_cleanly_and_balances_the_shelves():
+def test_the_real_library_builds_cleanly_and_balances_the_shelves(logged):
     passages = REPO / "library" / "passages"
     store = Catalog.load(passages, strict=True)
     circulation = Circulation.from_file(passages / "circulation.json", strict=True)
     selector = Bibliomancer(store, circulation, random.Random(51), strict=True)
-    assert selector.report.ok and selector.check_report.ok
+    assert logged.of(selector).ok() and logged.of(circulation).ok()
     assert sum(selector.shelf_shares().values()) == pytest.approx(1.0)
     targets = selector.shelf_shares()
     shares = shares_of(selector, 6000, count=3)
@@ -541,20 +541,20 @@ def test_the_probability_reported_is_the_odds_of_one_pick_before_any_redraw():
     assert selector.probability(store.get("cut#0")) == pytest.approx(1 / 3)
 
 
-def test_a_library_of_only_unfinished_passages_still_answers_and_says_so_once():
+def test_a_library_of_only_unfinished_passages_still_answers_and_says_so_once(logged):
     store = Catalog.from_passages([Passage("lead#0", "lead", "red", LEAD_IN, 6), Passage("cut#0", "cut", "red", CUT, 11)])
     selector = Bibliomancer(store, circulation_for(red={}), random.Random(4), redraw_limit=5)
     for _ in range(20):
         assert len(selector.draw(1)) == 1
-    tired = [w for w in selector.report.warnings if "ended unfinished" in w]
+    tired = [w for w in logged.of(selector).warnings() if "ended unfinished" in w]
     assert len(tired) == 1 and "5 picks in a row" in tired[0] and "2 of 2" in tired[0]
 
 
-def test_with_redrawing_off_nothing_is_warned_when_unfinished_passages_come_up():
+def test_with_redrawing_off_nothing_is_warned_when_unfinished_passages_come_up(logged):
     store = Catalog.from_passages([Passage("lead#0", "lead", "red", LEAD_IN, 6)])
     selector = Bibliomancer(store, circulation_for(red={}), random.Random(4), redraw_limit=0)
     selector.draw(1)
-    assert not [w for w in selector.report.warnings if "unfinished" in w]
+    assert not [w for w in logged.of(selector).warnings() if "unfinished" in w]
 
 
 def test_the_exact_fallback_also_prefers_the_finished_passages():
@@ -576,16 +576,16 @@ def test_when_only_unfinished_passages_are_left_the_pull_still_fills():
 
 
 @pytest.mark.parametrize("bad", [-1, True, "5", 2.5, None])
-def test_a_bad_redraw_limit_is_reported_and_replaced_by_the_default(bad):
+def test_a_bad_redraw_limit_is_reported_and_replaced_by_the_default(bad, logged):
     store, circulation = tiles()
     selector = Bibliomancer(store, circulation, random.Random(5), redraw_limit=bad)
-    assert any("redraw_limit must be" in w and "using 50" in w for w in selector.report.warnings)
+    assert any("redraw_limit must be" in w and "using 50" in w for w in logged.of(selector).warnings())
 
 
 @pytest.mark.parametrize("fine", [0, 1, 7])
-def test_a_good_redraw_limit_is_accepted_quietly(fine):
+def test_a_good_redraw_limit_is_accepted_quietly(fine, logged):
     store, circulation = tiles()
-    assert not Bibliomancer(store, circulation, random.Random(5), redraw_limit=fine).report.warnings
+    assert not logged.of(Bibliomancer(store, circulation, random.Random(5), redraw_limit=fine)).warnings()
 
 
 def test_a_bad_redraw_limit_raises_in_strict_mode():

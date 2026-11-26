@@ -10,7 +10,7 @@ passage is to be drawn (that is the Circulation and the Bibliomancer) and it nev
 
 Design decisions, and why:
   * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
-    an unreadable file or a mismatched record is skipped or repaired and recorded in a ReportRecorder (and
+    an unreadable file or a mismatched record is skipped or repaired and logged (and
     logged), never raised. One corrupt record must not cost the gallery its library. Only a store
     with no passages at all is CRITICAL, and even then nothing is raised: the store is simply empty
     and says so. `strict=True` raises instead, for tests and dev tools.
@@ -20,7 +20,7 @@ Design decisions, and why:
   * Passages are immutable. Nothing downstream should be able to edit the library by accident.
   * Loading is eager. The library is about 15 MB of text, which is nothing next to the Pi's 16 GB,
     and doing the work at startup keeps the session itself free of file reads.
-  * ReportRecorder messages name the file and line, because the files are generated and a person has to
+  * The log messages name the file and line, because the files are generated and a person has to
     find the bad record.
   * Order is deterministic (sorted shelves, holdings, then file order), so a seeded selector
     gives the same draws on every machine.
@@ -31,11 +31,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 
 class CatalogError(ValueError):
@@ -70,53 +69,53 @@ class Catalog:
     Build one with `Catalog.load` (from disk) or `Catalog.from_passages` (in memory).
     """
 
-    def __init__(self, passages: Iterable[Passage], report: Optional[ReportRecorder] = None,
-                 strict: bool = False):
+    def __init__(self, passages: Iterable[Passage], logger: Optional[LogRecorder] = None,
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Indexes the passages. Use the `load` / `from_passages` constructors.
 
         A passage whose id was already seen is skipped and reported. A store with no passages at all
         records a CRITICAL fault (and raises CatalogError in strict mode).
         """
-        self.report = report if report is not None else _new_report(strict)
+        self.logger = logger if logger is not None else _new_logger(strict, bookkeeper)
         self._tree: dict[str, dict[str, list[Passage]]] = {}
         self._by_id: dict[str, Passage] = {}
         for passage in passages:
             if passage.id in self._by_id:
-                self.report.warn(f"duplicate passage id {passage.id}; keeping the first")
+                self.logger.warning(f"duplicate passage id {passage.id}; keeping the first")
                 continue
             self._by_id[passage.id] = passage
             self._tree.setdefault(passage.shelf, {}).setdefault(passage.holding, []).append(passage)
         if not self._by_id:
-            self.report.critical("no passages loaded: the oracle has nothing to say")
+            self.logger.critical("no passages loaded: the oracle has nothing to say")
 
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_passages(cls, passages: Iterable[Passage], strict: bool = False) -> "Catalog":
+    def from_passages(cls, passages: Iterable[Passage], strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Catalog":
         """Builds a store from passage objects already in memory (used by tests)."""
-        return cls(passages, strict=strict)
+        return cls(passages, strict=strict, bookkeeper=bookkeeper)
 
     @classmethod
-    def load(cls, directory, strict: bool = False) -> "Catalog":
+    def load(cls, directory, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Catalog":
         """Reads every `<shelf>/<holding>.jsonl` under `directory`.
 
-        A missing directory, an unreadable file or a bad record is recorded in `store.report`
+        A missing directory, an unreadable file or a bad record is logged
         and skipped; the rest still loads. With strict=True the first problem raises CatalogError.
         """
-        report = _new_report(strict)
+        logger = _new_logger(strict, bookkeeper)
         root = Path(directory)
         passages = []
         if not root.is_dir():
-            report.critical(f"passage directory not found: {root}")
+            logger.critical(f"passage directory not found: {root}")
         else:
             for folder in sorted(p for p in root.iterdir()
                                  if p.is_dir() and not p.name.startswith(".")):
                 for path in sorted(folder.glob("*.jsonl")):
-                    read = _read_file(path, folder.name, path.stem, report)
-                    report.debug("read %s/%s: %d passage(s)", folder.name, path.name, len(read))
+                    read = _read_file(path, folder.name, path.stem, logger)
+                    logger.debug("read %s/%s: %d passage(s)", folder.name, path.name, len(read))
                     passages.extend(read)
-        store = cls(passages, report, strict)
-        report.info("loaded %d passages from %d holding(s) in %d shelf(s)", len(store),
+        store = cls(passages, logger, strict)
+        logger.info("loaded %d passages from %d holding(s) in %d shelf(s)", len(store),
                     sum(len(store.holdings(r)) for r in store.shelves()), len(store.shelves()))
         return store
 
@@ -171,12 +170,12 @@ class Catalog:
             yield from self.passages(shelf)
 
 
-def _new_report(strict: bool) -> ReportRecorder:
-    """A ReportRecorder that raises CatalogError in strict mode; otherwise it collects and logs."""
-    return ReportRecorder(strict=strict, error=CatalogError, logger=_log)
+def _new_logger(strict: bool, bookkeeper: Optional[Bookkeeper] = None) -> LogRecorder:
+    """This module's logger: from the Bookkeeper the entry point built (a plain one when a test or tool gives none); strict mode raises CatalogError."""
+    return (bookkeeper or Bookkeeper()).logger_for(__name__, CatalogError, DEBUG, strict)
 
 
-def _read_file(path: Path, shelf: str, holding: str, report: ReportRecorder) -> list[Passage]:
+def _read_file(path: Path, shelf: str, holding: str, logger: LogRecorder) -> list[Passage]:
     """Parses one passage file, repairing or skipping what is wrong and reporting each problem.
 
     The folder and file name are trusted over what a record claims.
@@ -185,7 +184,7 @@ def _read_file(path: Path, shelf: str, holding: str, report: ReportRecorder) -> 
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as error:
-        report.warn(f"cannot read {path}: {error}; skipping the file")
+        logger.warning(f"cannot read {path}: {error}; skipping the file")
         return passages
     for number, line in enumerate(lines, start=1):
         if not line.strip():
@@ -194,43 +193,43 @@ def _read_file(path: Path, shelf: str, holding: str, report: ReportRecorder) -> 
         try:
             record = json.loads(line)
         except json.JSONDecodeError as error:
-            report.warn(f"{where}: not valid JSON ({error}); skipping the record")
+            logger.warning(f"{where}: not valid JSON ({error}); skipping the record")
             continue
         if not isinstance(record, dict):
-            report.warn(f"{where}: a passage must be a JSON object; skipping the record")
+            logger.warning(f"{where}: a passage must be a JSON object; skipping the record")
             continue
         text = record.get("text")
         if "text" not in record:
-            report.warn(f"{where}: missing field(s): text; skipping the record")
+            logger.warning(f"{where}: missing field(s): text; skipping the record")
             continue
         if not isinstance(text, str) or not text.strip():
-            report.warn(f"{where}: text must be a non-empty string; skipping the record")
+            logger.warning(f"{where}: text must be a non-empty string; skipping the record")
             continue
         passage_id = record.get("id")
         if passage_id is None:
             passage_id = f"{holding}#line{number}"
-            report.warn(f"{where}: missing field(s): id; using {passage_id}")
+            logger.warning(f"{where}: missing field(s): id; using {passage_id}")
         for field, expected in (("shelf", shelf), ("holding", holding)):
             if field not in record:
-                report.warn(f"{where}: missing field(s): {field}; using {expected!r}")
+                logger.warning(f"{where}: missing field(s): {field}; using {expected!r}")
             elif record[field] != expected:
                 what = "folder" if field == "shelf" else "file"
-                report.warn(f"{where}: {field} {record[field]!r} does not match its {what} "
+                logger.warning(f"{where}: {field} {record[field]!r} does not match its {what} "
                             f"{expected!r}; using {expected!r}")
         words = record.get("words")
         passages.append(Passage(
             id=str(passage_id), holding=holding, shelf=shelf, text=text,
             words=words if isinstance(words, int) and not isinstance(words, bool)
             else len(text.split()),
-            repeats=_repeats(record.get("repeats", 1), where, report),
+            repeats=_repeats(record.get("repeats", 1), where, logger),
             sha1=str(record.get("sha1", "")),
         ))
     return passages
 
 
-def _repeats(value, where: str, report: ReportRecorder) -> int:
+def _repeats(value, where: str, logger: LogRecorder) -> int:
     """The repeat count; 1 (with a warning) if it is not a positive whole number."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
         return value
-    report.warn(f"{where}: repeats must be a whole number of at least 1, got {value!r}; using 1")
+    logger.warning(f"{where}: repeats must be a whole number of at least 1, got {value!r}; using 1")
     return 1

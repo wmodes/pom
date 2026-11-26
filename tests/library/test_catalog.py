@@ -145,14 +145,14 @@ def test_blank_lines_are_skipped(tmp_path):
     assert len(Catalog.load(tmp_path)) == 2
 
 
-def test_only_shelf_folders_with_jsonl_files_are_read(library):
+def test_only_shelf_folders_with_jsonl_files_are_read(library, logged):
     (library / "circulation.json").write_text("{}", encoding="utf-8")
     (library / "news" / "notes.txt").write_text("not a passage file", encoding="utf-8")
     write(library, ".hidden", "secret", [record(".hidden", "secret", 0, "Never loaded")])
     store = Catalog.load(library)
     assert len(store) == 6
     assert ".hidden" not in store.shelves()
-    assert store.report.ok
+    assert logged.of(store).ok()
 
 
 def test_shelves_and_holdings_come_back_sorted_whatever_order_they_were_made_in(tmp_path):
@@ -190,66 +190,66 @@ def test_from_passages_builds_a_store_in_memory():
 
 # --- Recovering from bad input (the default) -------------------------------------------
 
-def test_missing_directory_gives_an_empty_store_and_a_critical_issue(tmp_path):
+def test_missing_directory_gives_an_empty_store_and_a_critical_issue(tmp_path, logged):
     store = Catalog.load(tmp_path / "nope")
     assert len(store) == 0 and store.layout() == {}
-    assert store.report.has_critical
-    assert any("not found" in m for m in store.report.criticals)
+    assert bool(logged.of(store).criticals())
+    assert any("not found" in m for m in logged.of(store).criticals())
 
 
-def test_an_empty_directory_is_critical_because_there_is_nothing_to_say(tmp_path):
+def test_an_empty_directory_is_critical_because_there_is_nothing_to_say(tmp_path, logged):
     store = Catalog.load(tmp_path)
-    assert len(store) == 0 and store.report.has_critical
-    assert any("nothing to say" in m for m in store.report.criticals)
+    assert len(store) == 0 and bool(logged.of(store).criticals())
+    assert any("nothing to say" in m for m in logged.of(store).criticals())
 
 
-def test_a_good_library_has_a_clean_report(library):
-    report = Catalog.load(library).report
-    assert report.ok and not report.has_critical
+def test_a_good_library_has_a_clean_report(library, logged):
+    store = Catalog.load(library)
+    assert logged.of(store).ok() and not logged.of(store).criticals()
 
 
-def test_a_bad_json_line_is_skipped_and_the_rest_still_load(tmp_path):
+def test_a_bad_json_line_is_skipped_and_the_rest_still_load(tmp_path, logged):
     body = (json.dumps(record("news", "ads", 0, "Fine")) + "\n{broken\n"
             + json.dumps(record("news", "ads", 2, "Also fine")) + "\n")
     write(tmp_path, "news", "ads", None, raw=body)
     store = Catalog.load(tmp_path)
     assert [c.text for c in store.passages("news", "ads")] == ["Fine", "Also fine"]
-    assert any("ads.jsonl:2: not valid JSON" in w for w in store.report.warnings)
+    assert any("ads.jsonl:2: not valid JSON" in w for w in logged.of(store).warnings())
 
 
-def test_a_non_object_record_is_skipped(tmp_path):
+def test_a_non_object_record_is_skipped(tmp_path, logged):
     body = "[1, 2]\n" + json.dumps(record("news", "ads", 1, "Fine")) + "\n"
     write(tmp_path, "news", "ads", None, raw=body)
     store = Catalog.load(tmp_path)
     assert len(store) == 1
-    assert any("ads.jsonl:1: a passage must be a JSON object" in w for w in store.report.warnings)
+    assert any("ads.jsonl:1: a passage must be a JSON object" in w for w in logged.of(store).warnings())
 
 
-def test_a_record_without_text_is_skipped(tmp_path):
+def test_a_record_without_text_is_skipped(tmp_path, logged):
     bad = record("news", "ads", 0, "x")
     del bad["text"]
     write(tmp_path, "news", "ads", [bad, record("news", "ads", 1, "Fine")])
     store = Catalog.load(tmp_path)
     assert [c.id for c in store] == ["ads#00001"]
-    assert any("missing field(s): text" in w for w in store.report.warnings)
+    assert any("missing field(s): text" in w for w in logged.of(store).warnings())
 
 
 @pytest.mark.parametrize("text", ["", "   \n ", 5, None])
-def test_empty_or_non_string_text_is_skipped(tmp_path, text):
+def test_empty_or_non_string_text_is_skipped(tmp_path, text, logged):
     write(tmp_path, "news", "ads", [record("news", "ads", 0, "x") | {"text": text},
                                      record("news", "ads", 1, "Fine")])
     store = Catalog.load(tmp_path)
     assert len(store) == 1
-    assert any("non-empty string" in w for w in store.report.warnings)
+    assert any("non-empty string" in w for w in logged.of(store).warnings())
 
 
-def test_a_missing_id_is_generated_from_the_holding_and_line(tmp_path):
+def test_a_missing_id_is_generated_from_the_holding_and_line(tmp_path, logged):
     bad = record("news", "ads", 0, "Fine")
     del bad["id"]
     write(tmp_path, "news", "ads", [bad])
     store = Catalog.load(tmp_path)
     assert [c.id for c in store] == ["ads#line1"]
-    assert any("missing field(s): id" in w for w in store.report.warnings)
+    assert any("missing field(s): id" in w for w in logged.of(store).warnings())
 
 
 @pytest.mark.parametrize("field", ["holding", "shelf"])
@@ -261,48 +261,49 @@ def test_a_missing_shelf_or_holding_is_filled_in_from_the_location(tmp_path, fie
     assert (passage.shelf, passage.holding) == ("news", "ads")
 
 
-def test_shelf_mismatch_trusts_the_folder_and_warns(tmp_path):
+def test_shelf_mismatch_trusts_the_folder_and_warns(tmp_path, logged):
     write(tmp_path, "news", "ads", [record("poetry", "ads", 0, "Fine")])
     store = Catalog.load(tmp_path)
     assert store.get("ads#00000").shelf == "news"
     assert store.layout() == {"news": ["ads"]}
-    assert any("shelf 'poetry' does not match its folder 'news'" in w for w in store.report.warnings)
+    assert any("shelf 'poetry' does not match its folder 'news'" in w for w in logged.of(store).warnings())
 
 
-def test_holding_mismatch_trusts_the_file_and_warns(tmp_path):
+def test_holding_mismatch_trusts_the_file_and_warns(tmp_path, logged):
     write(tmp_path, "news", "ads", [record("news", "obits", 0, "Fine")])
     store = Catalog.load(tmp_path)
     assert store.get("obits#00000").holding == "ads"
     assert store.layout() == {"news": ["ads"]}
-    assert any("holding 'obits' does not match its file 'ads'" in w for w in store.report.warnings)
+    assert any("holding 'obits' does not match its file 'ads'" in w for w in logged.of(store).warnings())
 
 
-def test_duplicate_ids_keep_the_first_and_warn(tmp_path):
+def test_duplicate_ids_keep_the_first_and_warn(tmp_path, logged):
     write(tmp_path, "news", "ads", [record("news", "ads", 0, "One"), record("news", "ads", 0, "Two")])
     store = Catalog.load(tmp_path)
     assert len(store) == 1 and store.get("ads#00000").text == "One"
-    assert any("duplicate passage id" in w for w in store.report.warnings)
+    assert any("duplicate passage id" in w for w in logged.of(store).warnings())
 
 
 @pytest.mark.parametrize("bad", [0, -1, "3", None, True, 2.5])
-def test_bad_repeats_become_one_with_a_warning(tmp_path, bad):
+def test_bad_repeats_become_one_with_a_warning(tmp_path, bad, logged):
     write(tmp_path, "news", "ads", [record("news", "ads", 0, "Fine") | {"repeats": bad}])
     store = Catalog.load(tmp_path)
     assert store.get("ads#00000").repeats == 1
-    assert any("repeats must be" in w for w in store.report.warnings)
+    assert any("repeats must be" in w for w in logged.of(store).warnings())
 
 
-def test_an_unreadable_file_is_skipped_and_the_others_load(library):
+def test_an_unreadable_file_is_skipped_and_the_others_load(library, logged):
     (library / "news" / "broken.jsonl").write_bytes(b"\xff\xfe not utf-8 \x80")
     store = Catalog.load(library)
     assert len(store) == 6                      # the six good passages are all there
-    assert any("broken.jsonl" in w and "skipping the file" in w for w in store.report.warnings)
+    assert any("broken.jsonl" in w and "skipping the file" in w for w in logged.of(store).warnings())
 
 
-def test_a_corrupt_file_cannot_flood_the_report(tmp_path):
+def test_every_bad_line_of_a_corrupt_file_is_logged_and_the_catalog_keeps_none_of_them(tmp_path, logged):
+    """Keeping a flood of repeats out of the log is the LogMuter's job, in one place for every class; the catalog only says each one."""
     write(tmp_path, "news", "ads", None, raw="{bad\n" * 5000)
     store = Catalog.load(tmp_path)
-    assert len(store.report.warnings) <= 50 and store.report.suppressed > 4000
+    assert len(logged.of(store).warnings()) == 5000 and len(store) == 0 and not hasattr(store, "report")
 
 
 def test_problems_are_logged_so_they_reach_journald(tmp_path, caplog):
@@ -318,15 +319,15 @@ def test_loading_never_raises_whatever_is_wrong(tmp_path):
     Catalog.load(tmp_path)
 
 
-def test_duplicate_ids_in_memory_keep_the_first_and_warn():
+def test_duplicate_ids_in_memory_keep_the_first_and_warn(logged):
     store = Catalog.from_passages([Passage("a#0", "a", "news", "First one", 2),
                                     Passage("a#0", "a", "news", "Second one", 2)])
     assert len(store) == 1 and store.get("a#0").text == "First one"
-    assert any("duplicate" in w for w in store.report.warnings)
+    assert any("duplicate" in w for w in logged.of(store).warnings())
 
 
-def test_an_empty_in_memory_store_is_critical():
-    assert Catalog.from_passages([]).report.has_critical
+def test_an_empty_in_memory_store_is_critical(logged):
+    assert bool(logged.of(Catalog.from_passages([])).criticals())
 
 
 def test_load_logs_a_summary_at_info_and_per_file_detail_at_debug(library, caplog):
@@ -416,20 +417,22 @@ def test_strict_from_passages_rejects_duplicates():
 
 # --- Meeting Circulation, and the committed library -----------------------------------------
 
-def test_layout_feeds_weights_check(library):
+def test_layout_feeds_weights_check(library, logged):
     circulation = Circulation.from_dict({"shelves": {"news": {"holdings": {"ads": 1, "obits": 1}},
                                                 "poetry": {"holdings": {"dickinson": 1}}}})
-    assert circulation.check(Catalog.load(library).layout()).ok
+    circulation.check(Catalog.load(library).layout())
+    assert logged.of(circulation).ok()
 
 
 @pytest.mark.skipif(not (REPO / "library" / "passages" / "circulation.json").exists(),
                     reason="committed passages not present")
-def test_real_passages_load_and_agree_with_the_real_weights_file():
+def test_real_passages_load_and_agree_with_the_real_weights_file(logged):
     store = Catalog.load(REPO / "library" / "passages", strict=True)   # raises on any bad record
-    assert store.report.ok
+    assert logged.of(store).ok()
     assert len(store) > 50000
     folders = sorted(f.name for f in (REPO / "library" / "passages").iterdir() if f.is_dir())
     assert store.shelves() == folders      # every shelf folder loaded, however many there are
     assert all(passage.words <= 150 for passage in store)
     circulation = Circulation.from_file(REPO / "library" / "passages" / "circulation.json", strict=True)
-    assert circulation.check(store.layout()).ok
+    circulation.check(store.layout())                                   # strict: raises on any drift
+    assert logged.of(circulation).ok()

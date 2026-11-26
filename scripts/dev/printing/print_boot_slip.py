@@ -48,8 +48,7 @@ def main():
     else:
         terminal = ConsoleTerminal(characters_per_second=cps, finish_wait_seconds=finish_wait,
                                    type_during_printing=terminal_settings.type_during_printing)
-    formatter = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
-                                 printing.composed_characters_kept)
+    formatter = PortentFormatter(printing)
     floor = FloorKeeper(conductor.writing_seconds, conductor.printing_seconds, conductor.recovering_seconds)
     if args.no_network:
         find = lambda: []                                    # noqa: E731

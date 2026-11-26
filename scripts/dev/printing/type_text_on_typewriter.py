@@ -42,8 +42,7 @@ def main():
     finish_wait = 0.0 if args.fast else terminal.finish_wait_seconds
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    text = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
-                               printing.composed_characters_kept).format(raw)
+    text = PortentFormatter(printing).format(raw)
     if args.port:
         typewriter = TerminalPort(args.port, terminal.baud, terminal.flow_control, terminal.end_of_line, cps, finish_wait,
                                     terminal.echoplex, terminal.type_during_printing, data_bits=terminal.data_bits,

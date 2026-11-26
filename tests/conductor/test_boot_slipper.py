@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from pom.defaults import PrintingSettings
 from pom.conductor import BootSlipper, FloorKeeper, FloorState
 from pom.printing import PortentFormatter, PrintResult
 
@@ -39,7 +40,7 @@ def slipper_for(terminal, addresses=None, floor=None, template=TEMPLATE, **optio
     options.setdefault("ears_shut_seconds", 0.0)
     found = list(addresses if addresses is not None else [])
     floor = floor or FloorKeeper(recovering_seconds=0)
-    slipper = BootSlipper(floor, terminal, PortentFormatter(65, 4, 4, ""), template, lambda: list(found), hostname=lambda: "pom1", **options)
+    slipper = BootSlipper(floor, terminal, PortentFormatter(PrintingSettings()), template, lambda: list(found), hostname=lambda: "pom1", **options)
     return slipper, floor
 
 
@@ -81,7 +82,7 @@ class TestTheSlip:
 
         def no_name():
             raise OSError("no name")
-        slipper = BootSlipper(floor, terminal, PortentFormatter(65, 4, 4, ""), TEMPLATE, lambda: ["10.0.0.5"], hostname=no_name,
+        slipper = BootSlipper(floor, terminal, PortentFormatter(PrintingSettings()), TEMPLATE, lambda: ["10.0.0.5"], hostname=no_name,
                               grace_seconds=0, retry_seconds=0, ears_shut_seconds=0)
         assert slipper.run() is True and "HOST unknown" in terminal.typed[0]
 
@@ -152,7 +153,7 @@ class TestWaitingForAnAddress:
         def find():
             calls.append(1)
             return ["10.0.0.5"]
-        slipper = BootSlipper(floor, terminal, PortentFormatter(65, 4, 4, ""), TEMPLATE, find, hostname=lambda: "pom1",
+        slipper = BootSlipper(floor, terminal, PortentFormatter(PrintingSettings()), TEMPLATE, find, hostname=lambda: "pom1",
                               grace_seconds=60, retry_seconds=0.0, ears_shut_seconds=0)
         slipper.run()
         assert len(calls) == 1 and "10.0.0.5" in terminal.typed[0]
@@ -160,7 +161,7 @@ class TestWaitingForAnAddress:
     def test_an_address_that_arrives_within_the_grace_is_the_one_typed(self):
         answers = [[], [], ["192.168.1.23"]]
         terminal, floor = FakeTerminal(), FloorKeeper(recovering_seconds=0)
-        slipper = BootSlipper(floor, terminal, PortentFormatter(65, 4, 4, ""), TEMPLATE, lambda: answers.pop(0) if len(answers) > 1 else answers[0],
+        slipper = BootSlipper(floor, terminal, PortentFormatter(PrintingSettings()), TEMPLATE, lambda: answers.pop(0) if len(answers) > 1 else answers[0],
                               hostname=lambda: "pom1", grace_seconds=60, retry_seconds=0.0, ears_shut_seconds=0)
         slipper.run()
         assert "192.168.1.23" in terminal.typed[0]
@@ -172,7 +173,7 @@ class TestWaitingForAnAddress:
             now[0] += 1.0                          # every look at the clock is a second
             return now[0]
         terminal, floor = FakeTerminal(), FloorKeeper(recovering_seconds=0)
-        slipper = BootSlipper(floor, terminal, PortentFormatter(65, 4, 4, ""), TEMPLATE, lambda: [], hostname=lambda: "pom1",
+        slipper = BootSlipper(floor, terminal, PortentFormatter(PrintingSettings()), TEMPLATE, lambda: [], hostname=lambda: "pom1",
                               grace_seconds=5, retry_seconds=0.0, ears_shut_seconds=0, clock=clock)
         assert slipper.run() is True and "127.0.0.1" in terminal.typed[0]
 
@@ -183,7 +184,7 @@ class TestWaitingForAnAddress:
         def find():
             calls.append(1)
             return []
-        BootSlipper(floor, terminal, PortentFormatter(65, 4, 4, ""), TEMPLATE, find, hostname=lambda: "pom1", grace_seconds=0,
+        BootSlipper(floor, terminal, PortentFormatter(PrintingSettings()), TEMPLATE, find, hostname=lambda: "pom1", grace_seconds=0,
                     retry_seconds=0.0, ears_shut_seconds=0).run()
         assert len(calls) == 1
 

@@ -223,8 +223,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                            OracleModelClient(oracle, bookkeeper=bookkeeper), rng,
                            bookkeeper=bookkeeper)
     printing = config.printing
-    formatter = PortentFormatter(printing.line_width, printing.quote_indent, printing.linefeeds_after_portent,
-                                 printing.composed_characters_kept)
+    formatter = PortentFormatter(printing)
     terminal = _make_terminal(mode, terminal_settings, bookkeeper)
 
     # the turn

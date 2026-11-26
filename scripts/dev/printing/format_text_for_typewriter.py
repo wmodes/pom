@@ -13,13 +13,13 @@ Usage:
     format_text_for_typewriter.py --width 40 --indent 6 "..."
 """
 import argparse
+import dataclasses
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
 from pom.config import Config
-from pom.defaults import COMPOSED_CHARACTERS, PrintingSettings  # noqa: E402
 from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 from pom.printing import PortentFormatter  # noqa: E402
 
@@ -45,16 +45,21 @@ def main():
     configure_logging("WARNING")
     printing = Config.load(CONFIG_PATH).printing
     if args.cpi:
-        printing = PrintingSettings(printing.paper_width_inches, printing.margin_inches, args.cpi, printing.quote_indent)
-    width = args.width or printing.line_width
-    indent = printing.quote_indent if args.indent is None else args.indent
+        printing = dataclasses.replace(printing, characters_per_inch=args.cpi)
+    if args.width:                                   # the paper that gives this line at this pitch
+        printing = dataclasses.replace(printing, paper_width_inches=args.width / printing.characters_per_inch + 2 * printing.margin_inches)
+    if args.indent is not None:
+        printing = dataclasses.replace(printing, quote_indent=args.indent)
+    if args.feeds is not None:
+        printing = dataclasses.replace(printing, linefeeds_after_portent=args.feeds)
+    if args.keep is not None:
+        printing = dataclasses.replace(printing, keep_composed_characters=args.keep)
+    if args.ascii_wheel:
+        printing = dataclasses.replace(printing, ascii_printwheel=True)
+    width = printing.line_width
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    feeds = printing.linefeeds_after_portent if args.feeds is None else args.feeds
-    keep = printing.composed_characters_kept if args.keep is None else args.keep
-    if args.ascii_wheel:
-        keep = COMPOSED_CHARACTERS
-    typed = PortentFormatter(width, indent, feeds, keep).format(raw)
+    typed = PortentFormatter(printing).format(raw)
     body = typed.rstrip("\n")
     lines = body.split("\n") if body else []
     print(ruler(width))
@@ -63,7 +68,7 @@ def main():
         print("\n" * (len(typed) - len(body) - 1), end="")     # the rest of the line feeds, as the paper would move
     print(ruler(width))
     print(f"{len(lines)} lines, longest {max((len(line) for line in lines), default=0)} of {width} characters, "
-          f"quotes indented {indent}, {len(typed) - len(body)} line feeds after")
+          f"quotes indented {printing.quote_indent}, {len(typed) - len(body)} line feeds after")
 
 
 if __name__ == "__main__":

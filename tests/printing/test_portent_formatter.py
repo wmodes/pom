@@ -1,11 +1,18 @@
 """Tests for the PortentFormatter: fences out, ASCII only, wrapped to the line, line feeds after."""
 import pytest
 
+from pom.defaults import PrintingSettings
 from pom.printing import PortentFormatter
 
 
+def page(width=65, indent=4, feeds=4, keep=""):
+    """The [printing] settings that give a line of `width` characters (10 to the inch, 1-inch margins), and the rest as given."""
+    return PrintingSettings(paper_width_inches=width / 10 + 2, margin_inches=1.0, characters_per_inch=10.0, quote_indent=indent,
+                            linefeeds_after_portent=feeds, keep_composed_characters=keep)
+
+
 def fmt(text, width=20, indent=4, feeds=0):
-    return PortentFormatter(width, indent, feeds).format(text)
+    return PortentFormatter(page(width, indent, feeds)).format(text)
 
 
 # --- Wrapping ------------------------------------------------------------------------------
@@ -160,14 +167,12 @@ def test_line_feeds_after_are_counted_after_the_last_line_not_after_blank_lines_
 
 
 def test_the_defaults_are_a_65_character_line_a_4_space_indent_and_4_line_feeds():
-    formatter = PortentFormatter()
+    formatter = PortentFormatter(PrintingSettings())
     assert (formatter.line_width, formatter.quote_indent, formatter.linefeeds_after) == (65, 4, 4)
 
 
-def test_nonsense_numbers_are_made_sane_and_nothing_raises():
-    formatter = PortentFormatter(0, -3, -1)
-    assert (formatter.line_width, formatter.quote_indent, formatter.linefeeds_after) == (1, 0, 0)
-    assert formatter.format("ab") == "a\nb"
+def test_an_indent_as_wide_as_the_line_is_cut_down_so_the_quote_has_room():
+    assert PortentFormatter(page(width=20, indent=30)).quote_indent == 19
 
 
 def test_the_longest_line_never_passes_the_width():
@@ -189,7 +194,7 @@ def test_the_composed_characters_with_a_stand_in_are_swapped_by_default(text, ex
 
 def test_less_than_and_greater_than_are_always_typed_as_they_are():
     assert fmt("if x < 3 and y > 4", 40) == "if x < 3 and y > 4"
-    assert PortentFormatter(40, 4, 0, "").format("a<b>c") == "a<b>c"
+    assert PortentFormatter(page(40, 4, 0, "")).format("a<b>c") == "a<b>c"
 
 
 @pytest.mark.parametrize("kept, text, expected", [
@@ -197,11 +202,11 @@ def test_less_than_and_greater_than_are_always_typed_as_they_are():
     ("\\^`{|}~", "`~{}\\|^", "`~{}\\|^"), ("", "`~{}\\|^", "'-()//"),
 ])
 def test_the_kept_composed_characters_are_typed_as_they_are_and_the_rest_swapped(kept, text, expected):
-    assert PortentFormatter(40, 4, 0, kept).format(text) == expected
+    assert PortentFormatter(page(40, 4, 0, kept)).format(text) == expected
 
 
 def test_keeping_a_character_that_is_not_swapped_anyway_changes_nothing():
-    assert PortentFormatter(40, 4, 0, "<>x").format("a<b `c`") == "a<b 'c'"
+    assert PortentFormatter(page(40, 4, 0, "<>x")).format("a<b `c`") == "a<b 'c'"
 
 
 def test_a_backtick_in_a_fence_is_the_fence_not_a_composed_character():

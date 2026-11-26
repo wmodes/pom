@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from pom.defaults import PrintingSettings
 from pom.conductor import FloorKeeper, FloorState, TurnOutcome, TurnResult, TurnTaker, TurnTakerError
 from pom.library import Passage
 from pom.monitor import TurnHistory
@@ -87,7 +88,7 @@ def build(writer_replies=(), terminal=..., writer_takes=0.0, terminal_takes=0.0,
     writer = FakeWriter(*writer_replies, clock=clock, takes=writer_takes)
     the_terminal = FakeTerminal(*terminal_replies, on_call=on_print, clock=clock, takes=terminal_takes) if terminal is ... else terminal
     the_history = TurnHistory(clock=clock) if history else None
-    taker = TurnTaker(writer, formatter or PortentFormatter(), the_terminal, the_history, clock=clock, sleep=clock.advance, **options)
+    taker = TurnTaker(writer, formatter or PortentFormatter(PrintingSettings()), the_terminal, the_history, clock=clock, sleep=clock.advance, **options)
     return SimpleNamespace(taker=taker, keeper=keeper, clock=clock, writer=writer, terminal=the_terminal, history=the_history)
 
 
@@ -104,7 +105,7 @@ class TestAGoodTurn:
         result = take(rig)
         assert result.outcome is TurnOutcome.PRINTED and rig.writer.calls == [SECRET_HINGE]
         assert len(rig.terminal.texts) == 1 and SECRET_PORTENT in rig.terminal.texts[0]
-        assert rig.terminal.texts[0] == PortentFormatter().format(SECRET_PORTENT)          # what is typed is the formatted portent
+        assert rig.terminal.texts[0] == PortentFormatter(PrintingSettings()).format(SECRET_PORTENT)          # what is typed is the formatted portent
         assert (result.words, result.characters, result.write_attempts, result.print_tries) == (5, len(rig.terminal.texts[0]), 1, 1)
 
     def test_the_turn_is_in_the_history_with_its_outcome(self):
@@ -436,33 +437,33 @@ class TestBadSettings:
     @pytest.mark.parametrize("name", ["freshness_seconds", "write_attempt_seconds", "write_budget_seconds", "print_pause_seconds"])
     @pytest.mark.parametrize("bad", [0, -1, float("nan"), "x", None, True])
     def test_a_bad_number_above_zero_is_the_default_with_a_warning(self, name, bad, logged):
-        taker = TurnTaker(FakeWriter(), PortentFormatter(), None, **{name: bad})
+        taker = TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, **{name: bad})
         assert len(logged.of(taker).warnings()) == 1 and name in logged.of(taker).warnings()[0]
 
     @pytest.mark.parametrize("bad", [0, 1.5, -2, "3", None, True])
     def test_bad_write_attempts_is_the_default_with_a_warning(self, bad, logged):
-        taker = TurnTaker(FakeWriter(), PortentFormatter(), None, write_attempts=bad)
+        taker = TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, write_attempts=bad)
         assert len(logged.of(taker).warnings()) == 1 and "write_attempts" in logged.of(taker).warnings()[0]
 
     @pytest.mark.parametrize("bad", [-1, "x", None])
     def test_a_bad_pause_is_the_default_with_a_warning(self, bad, logged):
-        taker = TurnTaker(FakeWriter(), PortentFormatter(), None, write_pause_seconds=bad)
+        taker = TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, write_pause_seconds=bad)
         assert len(logged.of(taker).warnings()) == 1
 
     def test_a_pause_of_zero_is_allowed(self, logged):
-        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None, write_pause_seconds=0)).ok()
+        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, write_pause_seconds=0)).ok()
 
     def test_a_clock_or_sleep_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
-        assert len(logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None, clock=5)).warnings()) == 1
-        warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None, sleep="x")).warnings()
+        assert len(logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, clock=5)).warnings()) == 1
+        warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, sleep="x")).warnings()
         assert len(warnings) == 2 and "sleep must be a function" in warnings[1]                # the second taker's one warning, after the first's
 
     def test_good_settings_are_quiet(self, logged):
-        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(), None)).ok()
+        assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None)).ok()
 
     def test_in_strict_mode_a_bad_setting_raises(self):
         with pytest.raises(TurnTakerError):
-            TurnTaker(FakeWriter(), PortentFormatter(), None, freshness_seconds=-1, strict=True)
+            TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, freshness_seconds=-1, strict=True)
 
 
 class TestTheLogs:

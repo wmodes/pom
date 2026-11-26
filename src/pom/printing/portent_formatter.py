@@ -35,6 +35,8 @@ import re
 import textwrap
 import unicodedata
 
+from pom.defaults import PrintingSettings
+
 # An opening fence, an optional language tag that is alone on the fence's line, then the quoted text up to the closing
 # fence or the end of the text. Lazy, so two fenced pieces are two quotes.
 _FENCE = re.compile(r"```[ \t]*(?:[A-Za-z0-9_+-]+[ \t]*(?=\n))?(.*?)(?:```|\Z)", re.DOTALL)
@@ -60,19 +62,23 @@ class PortentFormatter:
     """Makes a portent printable: fences out, ASCII only, wrapped to the line.
 
     Args:
-        line_width: How many characters fit on a line (from `config.printing.line_width`).
-        quote_indent: How many spaces a fenced quotation is indented. At least one character of the line is kept for the
-            quote itself, so an indent as wide as the line is cut down to fit.
-        linefeeds_after: How many line feeds follow the portent, 0 or more (from `config.printing.linefeeds_after_portent`).
-        keep_composed: Which of the seven swappable composed characters (see above) to type as they are; every other one is
-            swapped for its stand-in (from `config.printing.composed_characters_kept`).
+        printing: The `[printing]` section: its `line_width` (how many characters fit on a line, worked out from the paper, the margins
+            and the pitch), `quote_indent` (how many spaces a fenced quotation is indented), `linefeeds_after_portent` (how many line
+            feeds follow the portent) and `composed_characters_kept` (which of the seven swappable composed characters, see above, are
+            typed as they are; every other one is swapped for its stand-in).
+
+    Attributes:
+        printing: The `[printing]` settings it was handed.
+        line_width, quote_indent, linefeeds_after: What it formats to. At least one character of the line is kept for a quote itself,
+            so an indent as wide as the line is cut down to fit.
     """
 
-    def __init__(self, line_width: int = 65, quote_indent: int = 4, linefeeds_after: int = 4, keep_composed: str = ""):
-        self.line_width = max(1, line_width)
-        self.quote_indent = max(0, min(quote_indent, self.line_width - 1))
-        self.linefeeds_after = max(0, linefeeds_after)
-        self._stand_ins = {c: stand_in for c, stand_in in _COMPOSED_STAND_INS.items() if c not in keep_composed}
+    def __init__(self, printing: PrintingSettings):
+        self.printing = printing
+        self.line_width = printing.line_width
+        self.quote_indent = min(printing.quote_indent, self.line_width - 1)    # (the config checks each setting, not this pair)
+        self.linefeeds_after = printing.linefeeds_after_portent
+        self._stand_ins = {c: stand_in for c, stand_in in _COMPOSED_STAND_INS.items() if c not in printing.composed_characters_kept}
 
     def format(self, text: str) -> str:
         """The text as it should be typed: lines joined with newlines, then `linefeeds_after` line feeds. Empty text gives ''."""

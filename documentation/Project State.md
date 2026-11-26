@@ -16,7 +16,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 
 ## Where things stand (2026-11-04)
 
-- **Built and tested** (3,396 tests, all passing): everything in the module map below except the start-up duties. In short: the shared plumbing (`fault_recorder`, `log_setup`, `config` with
+- **Built and tested** (3,396 tests, all passing): everything in the module map below except the start-up duties. In short: the shared plumbing (`log_recorder`, `log_setup`, `config` with
   `[scorer]`, `[qualifying]`, `[listening]`, `[oracle]`, `[monitor]`, `[printing]`, `[terminal]` and `[conductor]` sections); the library
   (`Circulation`, `Catalog`, `Bibliomancer`); the whole listening side; the Scorer and its warm-up; the `BarKeeper` and its three bars; the `PromptBuilder` and the oracle client; the
   `PortentFormatter` and the `TerminalPort`; the typed-line path; the Conductor (floor, turns, watchdogs); the entry point (`python -m pom`); and the monitoring site.
@@ -61,7 +61,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   do one thing, plain data objects passed between them. Scripts in `scripts/` are standalone helpers;
   they may import `pom`, and `pom` never imports them. `src/pom/` never imports from `experiments/`.
 - **The Printer must never stop because of a typo or a recoverable fault** (a gallery cannot crash).
-  A problem a module can recover from is recovered from and recorded in a `pom.bookkeeper.fault_recorder.FaultRecorder`
+  A problem a module can recover from is recovered from and recorded in a `pom.bookkeeper.log_recorder.LogRecorder`
   (WARNING = recovered, ERROR = failed and skipped or retried, CRITICAL = cannot do its job, and even then nothing raises). The same `report` is the one way a module logs: `debug`, `info`, `warn`, `error`, `critical`. `strict=True`
   turns every fault into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
@@ -110,7 +110,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 
 ```
 src/pom/
-  bookkeeper/          built   fault_recorder.py: faults as data (WARNING / CRITICAL, strict mode, logs every fault, keeps the first `limit` for reading); log_setup.py: stdout logging, debug flag, per-module override, local log file; log_muter.py: the LogMuter, which mutes a message that keeps repeating (settings `logmute_*`)
+  bookkeeper/          built   log_recorder.py: the LogRecorder, the one way a module says anything (debug/info/warn/error/critical, strict mode); log_book.py: the LogBook, which holds the faults a recorder kept; fault.py: the Fault and Severity types; log_setup.py: stdout logging, debug flag, per-module override, local log file; log_muter.py: the LogMuter, which mutes a message that keeps repeating (settings `logmute_*`)
   config.py            built   shared settings, layered; [scorer], [qualifying], [oracle]
   startup.py           built   the startup runner; its ten duties are placeholders in planned_steps(), and printer.py does not call it yet
   printer.py           built   the entry point (python -m pom): builds every part from one Config and runs the Conductor; --mac-mic, --wav, --terminal

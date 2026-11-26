@@ -38,7 +38,7 @@ Design decisions, and why:
 """
 from typing import Sequence
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -64,7 +64,7 @@ class FallbackScorer:
         """Args:
             base: The score a clip gets before anything is added to it.
         """
-        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
+        self.report = LogRecorder(logger=_log)      # everything this class says goes through it
         self._base = base
 
     def score(self, text: str, words: Sequence) -> float:

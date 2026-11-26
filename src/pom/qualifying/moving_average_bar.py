@@ -24,7 +24,7 @@ Design decisions, and why:
 import math
 from typing import Optional, Sequence
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.bar import Bar
 
@@ -65,7 +65,7 @@ class MovingAverageBar(Bar):
             score_range: (lowest, highest) possible score; the lowest must be below the highest.
             strict: Raise MovingAverageBarError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=MovingAverageBarError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=MovingAverageBarError, logger=_log)
         self._fraction = self._valid(fraction, "average_fraction", DEFAULT_FRACTION, lambda v: _is_number(v) and v >= 0,
                                      "a number of at least 0")
         half_life = self._valid(half_life_scores, "average_half_life_scores", DEFAULT_HALF_LIFE_SCORES,

@@ -41,7 +41,7 @@ from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_muter import LogMuter
 from pom.bookkeeper.log_setup import configure_logging, get_logger
 from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
@@ -123,7 +123,7 @@ class Printer:
                  services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None, poller: Optional[ServicePoller] = None):
         self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
         self._services, self._warmer, self._slipper, self._poller = services, warmer, slipper, poller
-        self.report = FaultRecorder(logger=_log)      # everything the Printer itself says goes through it
+        self.report = LogRecorder(logger=_log)      # everything the Printer itself says goes through it
 
     def run(self) -> None:
         """Starts the monitoring site (if any), the status poller, the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
@@ -167,7 +167,7 @@ class Printer:
 def build_printer(config: Config, options: Optional[Options] = None, root: Path = ROOT) -> Printer:
     """Builds every part from `config` and `options` and joins them in a Conductor. Contacts no server and opens no port or microphone."""
     options = options or Options()
-    report = FaultRecorder(logger=_log)             # what the building and the callbacks below say goes through it
+    report = LogRecorder(logger=_log)             # what the building and the callbacks below say goes through it
     listening, qualifying, scoring, oracle = config.listening, config.qualifying, config.scorer, config.oracle
     terminal_settings, conductor_settings, monitor = config.terminal, config.conductor, config.monitor
     mode = options.terminal or terminal_settings.mode
@@ -343,7 +343,7 @@ def main(argv=None) -> int:
     config = Config.load(options.config_path)
     muter = LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds)
     configure_logging(config.log_level, debug=config.debug, local_logs=config.local_logs, muter=muter)
-    report = FaultRecorder(logger=_log)
+    report = LogRecorder(logger=_log)
     for line in config.report.lines():
         report.warn("config: %s", line)
     printer = build_printer(config, options)

@@ -11,7 +11,7 @@ import time
 import pytest
 
 from pom.conductor import Conductor, ConductorError, FloorKeeper, FloorState, NoSoundSource
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
 
@@ -84,7 +84,7 @@ class FakeKeyboard:
     def __init__(self, *script, raises_first=False, raises_always=False):
         self.script, self.events, self.paused = list(script), [], False
         self.closed, self.raises_first, self.raises_always, self.watches = threading.Event(), raises_first, raises_always, 0
-        self.report = FaultRecorder()
+        self.report = LogRecorder()
 
     def watch(self):
         self.watches += 1
@@ -117,7 +117,7 @@ class FakeTurnTaker:
     def __init__(self, hold=None, fail=None, ears=None, keyboard=None, fail_before_the_turn_is_closed=None):
         self.turns, self.hold, self.fail, self.ears, self.keyboard = [], hold, fail, ears, keyboard
         self.fail_early = fail_before_the_turn_is_closed
-        self.started, self.ears_shut_at_start, self.report = threading.Event(), None, FaultRecorder()
+        self.started, self.ears_shut_at_start, self.report = threading.Event(), None, LogRecorder()
 
     def take_turn(self, turn, attempt):
         self.turns.append((turn.holder, attempt.text))

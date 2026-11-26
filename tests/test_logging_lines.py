@@ -1,8 +1,8 @@
-"""Every log line in the project goes through the one path: a module's `report` (a FaultRecorder), so every line is subject to the log's muting.
+"""Every log line in the project goes through the one path: a module's `report` (a LogRecorder), so every line is subject to the log's muting.
 
 A module that calls its logger directly (`_log.info(...)`) or reaches for a raw logger would be a second way to log, outside that path. This test
 fails if one appears. The exceptions are listed here, each with its reason, and only these:
-  * the bookkeeper itself (log_setup, log_muter, fault_recorder) cannot report through a recorder that depends on it;
+  * the bookkeeper itself (log_setup, log_muter, log_recorder) cannot report through a recorder that depends on it;
   * the monitoring site's request log, which is written from inside werkzeug's request handler class, an object of the library's, not ours.
 """
 import re

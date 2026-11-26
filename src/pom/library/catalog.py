@@ -10,7 +10,7 @@ passage is to be drawn (that is the Circulation and the Bibliomancer) and it nev
 
 Design decisions, and why:
   * Nothing here may stop the oracle. Per the project principle (see pom/__init__.py) a bad line,
-    an unreadable file or a mismatched record is skipped or repaired and recorded in a FaultRecorder (and
+    an unreadable file or a mismatched record is skipped or repaired and recorded in a LogRecorder (and
     logged), never raised. One corrupt record must not cost the gallery its library. Only a store
     with no passages at all is CRITICAL, and even then nothing is raised: the store is simply empty
     and says so. `strict=True` raises instead, for tests and dev tools.
@@ -20,7 +20,7 @@ Design decisions, and why:
   * Passages are immutable. Nothing downstream should be able to edit the library by accident.
   * Loading is eager. The library is about 15 MB of text, which is nothing next to the Pi's 16 GB,
     and doing the work at startup keeps the session itself free of file reads.
-  * FaultRecorder messages name the file and line, because the files are generated and a person has to
+  * LogRecorder messages name the file and line, because the files are generated and a person has to
     find the bad record.
   * Order is deterministic (sorted shelves, holdings, then file order), so a seeded selector
     gives the same draws on every machine.
@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -70,7 +70,7 @@ class Catalog:
     Build one with `Catalog.load` (from disk) or `Catalog.from_passages` (in memory).
     """
 
-    def __init__(self, passages: Iterable[Passage], report: Optional[FaultRecorder] = None,
+    def __init__(self, passages: Iterable[Passage], report: Optional[LogRecorder] = None,
                  strict: bool = False):
         """Indexes the passages. Use the `load` / `from_passages` constructors.
 
@@ -171,12 +171,12 @@ class Catalog:
             yield from self.passages(shelf)
 
 
-def _new_report(strict: bool) -> FaultRecorder:
-    """A FaultRecorder that raises CatalogError in strict mode; otherwise it collects and logs."""
-    return FaultRecorder(strict=strict, error=CatalogError, logger=_log)
+def _new_report(strict: bool) -> LogRecorder:
+    """A LogRecorder that raises CatalogError in strict mode; otherwise it collects and logs."""
+    return LogRecorder(strict=strict, error=CatalogError, logger=_log)
 
 
-def _read_file(path: Path, shelf: str, holding: str, report: FaultRecorder) -> list[Passage]:
+def _read_file(path: Path, shelf: str, holding: str, report: LogRecorder) -> list[Passage]:
     """Parses one passage file, repairing or skipping what is wrong and reporting each problem.
 
     The folder and file name are trusted over what a record claims.
@@ -228,7 +228,7 @@ def _read_file(path: Path, shelf: str, holding: str, report: FaultRecorder) -> l
     return passages
 
 
-def _repeats(value, where: str, report: FaultRecorder) -> int:
+def _repeats(value, where: str, report: LogRecorder) -> int:
     """The repeat count; 1 (with a warning) if it is not a positive whole number."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
         return value

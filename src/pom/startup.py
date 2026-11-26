@@ -40,7 +40,7 @@ from enum import Enum
 from typing import Callable, Iterable
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -105,7 +105,7 @@ class StartupResult:
         report: The problems: a WARNING for a failed optional step, a CRITICAL for a failed critical one.
     """
     results: tuple
-    report: FaultRecorder
+    report: LogRecorder
 
     @property
     def ready(self) -> bool:
@@ -144,7 +144,7 @@ class Startup:
 
     def run(self) -> StartupResult:
         """Runs every step. Never raises (except in strict mode); a failed step does not stop the rest."""
-        report = FaultRecorder(strict=self._strict, error=StartupError, logger=_log)
+        report = LogRecorder(strict=self._strict, error=StartupError, logger=_log)
         results = []
         for step in self._steps:
             started = self._clock()
@@ -162,7 +162,7 @@ class Startup:
         return final
 
     @staticmethod
-    def _record(result: StepResult, report: FaultRecorder) -> None:
+    def _record(result: StepResult, report: LogRecorder) -> None:
         """Logs a step's result, and files a failure in the report at the right severity."""
         report.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
                     f" ({result.note})" if result.note else "")

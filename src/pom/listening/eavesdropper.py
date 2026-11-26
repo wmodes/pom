@@ -51,7 +51,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Iterator, Optional, Tuple
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.listening.audio_deck import AudioDeck
 from pom.listening.audio_format import FRAME_SECONDS
 from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter)
@@ -122,7 +122,7 @@ class Eavesdropper:
             wall: Returns seconds that steadily increase, for noting when sound last arrived (real time, not stream time). Injected so tests need not wait.
             strict: Raise EavesdropperError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=EavesdropperError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=EavesdropperError, logger=_log)
         self._deck, self._client = deck, client
         self._room_tone_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
                                           lambda v: _is_whole(v, 0), "a whole number of at least 0")

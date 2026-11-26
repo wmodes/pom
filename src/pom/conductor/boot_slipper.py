@@ -35,7 +35,7 @@ import threading
 import time
 from typing import Callable, Optional
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -72,7 +72,7 @@ class BootSlipper:
             ears_shut_seconds: Seconds to wait after taking the floor, so the ears are shut before the first character. 0 or more.
             clock: Returns seconds; injected so tests need no waiting.
         """
-        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
+        self.report = LogRecorder(logger=_log)      # everything this class says goes through it
         self._floor, self._terminal, self._formatter, self._template = floor, terminal, formatter, template
         self._find_addresses, self._hostname = find_addresses, hostname
         self._grace, self._retry, self._ears_shut, self._clock = grace_seconds, retry_seconds, ears_shut_seconds, clock

@@ -23,7 +23,7 @@ import math
 from collections import deque
 from typing import Deque, List, Optional, Tuple
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.bar import Bar
 
@@ -62,7 +62,7 @@ class PercentileBar(Bar):
             starting_bar: The bar until `min_scores` scores have been heard.
             strict: Raise PercentileBarError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=PercentileBarError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=PercentileBarError, logger=_log)
         self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE,
                                        lambda v: _is_number(v) and 0 < v <= 100, "a number above 0 and at most 100", float)
         self._window_seconds = self._valid(window_seconds, "window_seconds", DEFAULT_WINDOW_SECONDS,

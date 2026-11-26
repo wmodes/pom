@@ -25,7 +25,7 @@ import subprocess
 import threading
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_RATE
 from pom.bookkeeper.log_setup import get_logger
 
@@ -69,7 +69,7 @@ class MicDeck:
             heard: Called, with no arguments, as each frame comes from the microphone (by the thread that reads it), so the status board can
                 tell that sound is arriving. A callback that raises is ignored: it must never stop the sound.
         """
-        self.report = FaultRecorder(strict=strict, error=MicDeckError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=MicDeckError, logger=_log)
         self.dropped_frames = 0
         self._heard = heard
         if not (isinstance(device, str) and device.strip()):

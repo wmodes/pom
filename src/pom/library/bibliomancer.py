@@ -66,7 +66,7 @@ from pom.library.catalog import Passage, Catalog
 from pom.library.circulation import Circulation
 from pom.library.endings import ends_unfinished
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -104,7 +104,7 @@ class Bibliomancer:
                 unfinished one is accepted; a whole number, 0 for never redrawing.
         """
         self._rng = rng if rng is not None else random.Random()
-        self.report = FaultRecorder(strict=strict, error=BibliomancerError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=BibliomancerError, logger=_log)
         self._exemplar_range = self._valid_exemplar_range(exemplar_range)
         self._redraw_limit = self._valid_redraw_limit(redraw_limit)
         self._unfinished: set[int] = set()       # table positions of the passages that end unfinished

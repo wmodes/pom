@@ -42,7 +42,7 @@ from typing import Callable, Iterable, Optional
 from pom.scoring.word_tagger import WordTagger
 from pom.listening.take_cutter import Clip, ClipLevel
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -106,7 +106,7 @@ class ClipScorer:
             clock: Returns seconds; injected so tests need not wait.
             strict: Raise ClipScorerError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=ClipScorerError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=ClipScorerError, logger=_log)
         self._scorer_model_client, self._word_tagger, self._clock = (
             scorer_model_client, word_tagger, clock)
         self._clip_filter_score = self._number(clip_filter_score, "clip_filter_score",

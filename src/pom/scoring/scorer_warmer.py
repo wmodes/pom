@@ -21,7 +21,7 @@ import threading
 import time
 from typing import Callable
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -47,7 +47,7 @@ class ScorerWarmer:
             attempts: How many warm-up requests may fail, with the server up, before it gives up.
             clock: Returns seconds; injected so tests need no waiting.
         """
-        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
+        self.report = LogRecorder(logger=_log)      # everything this class says goes through it
         self._scorer, self._server_answers = scorer, server_answers
         self._poll_seconds, self._attempts, self._clock = poll_seconds, attempts, clock
         self._stopped = threading.Event()

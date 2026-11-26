@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from pom.library.catalog import Passage
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.writing.prompt_builder import PromptBuilder
 from pom.writing.oracle_model_client import OracleModelClient
@@ -74,7 +74,7 @@ class PortentWriter:
             rng: The random generator the builder's Bibliomancer was built with; needed only for seeded writes.
             strict: Raise PortentWriterError on the writer's own problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=PortentWriterError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=PortentWriterError, logger=_log)
         self._builder = builder
         self._client = client
         self._rng = rng

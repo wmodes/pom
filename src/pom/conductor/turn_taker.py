@@ -51,7 +51,7 @@ from enum import Enum
 from typing import Callable, Optional, Tuple
 
 from pom.conductor.floor_keeper import Turn
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 
@@ -140,7 +140,7 @@ class TurnTaker:
             sleep: A function that waits that many seconds. Default: time.sleep.
             strict: Raise TurnTakerError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=TurnTakerError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=TurnTakerError, logger=_log)
         self._writer, self._formatter, self._terminal, self._history = writer, formatter, terminal, history
         self._freshness = self._valid(freshness_seconds, "freshness_seconds", DEFAULT_FRESHNESS_SECONDS, lambda v: v > 0, "above 0")
         self._write_attempts = int(self._valid(write_attempts, "write_attempts", DEFAULT_WRITE_ATTEMPTS,

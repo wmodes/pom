@@ -1,7 +1,7 @@
 """Tests for pom.library.catalog: loading passage files and answering layout questions.
 
 The module follows the project principle that nothing may stop the oracle: by default every bad
-file or record is skipped or repaired and recorded in a FaultRecorder. In strict mode, used by tests and
+file or record is skipped or repaired and recorded in a LogRecorder. In strict mode, used by tests and
 dev tools, the same problems raise. Most bad-input cases are tested both ways.
 
 Most tests build a tiny library in a temp folder. The last one loads the committed passages and

@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.listening.eavesdropper import Eavesdropper
 from pom.listening.whisper_model_client import Segment
 from pom.listening import ClipLevel, Take, TakeCutter
@@ -24,7 +24,7 @@ class FakeEavesdropper:
     """Hears the segments it was given, then ends. A test sets `paused` (or an `on_each` hook does) to play a turn beginning."""
 
     def __init__(self, segments, on_each=None):
-        self.segments, self.closed, self.report = list(segments), 0, FaultRecorder()
+        self.segments, self.closed, self.report = list(segments), 0, LogRecorder()
         self.paused, self.on_each = False, on_each
 
     def hear(self):
@@ -41,7 +41,7 @@ class FakeScorer:
     """Scores a text with the number it was told (3.0 if it was not told), and keeps a record of what it was asked."""
 
     def __init__(self, scores=None, scored_by=ScoredBy.MODEL):
-        self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], FaultRecorder()
+        self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], LogRecorder()
         self.clips = []
 
     def score(self, clip):
@@ -57,7 +57,7 @@ class FixedTakeCutter:
     """Cuts every text into the clips it was given."""
 
     def __init__(self, clips):
-        self.clips, self.report = clips, FaultRecorder()
+        self.clips, self.report = clips, LogRecorder()
 
     def split(self, text, heard_at=0.0):
         return list(self.clips)

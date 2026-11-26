@@ -383,8 +383,8 @@ The machine, its settings, how it keeps going, and how it is watched.
   microphone, whisper, the model servers, the terminal), then a one-line readiness summary. Only the runner is built; the steps are
   placeholders. Example: `Startup`, `StepStatus`, `StepOutcome` (was: `Status`, `Outcome`)
 - **fault**: A problem a module recovered from and recorded instead of crashing. Example: `Fault` (was/still)
-- **bookkeeper**: The module (`src/pom/bookkeeper/`) that keeps the Printer's books: what a module recovered from (`FaultRecorder`, in
-  `fault_recorder.py`) and where everything it logs goes (`log_setup.py`). Example: `pom.bookkeeper.FaultRecorder` (was: `pom.fault_recorder`,
+- **bookkeeper**: The module (`src/pom/bookkeeper/`) that keeps the Printer's books: what a module recovered from (`LogRecorder`, in
+  `log_recorder.py`) and where everything it logs goes (`log_setup.py`). Example: `pom.bookkeeper.LogRecorder` (was: `pom.log_recorder`,
   `pom.log_setup`, loose at the top of `pom/`)
 - **log muter**: The one filter, on every log handler, that lets a message that keeps repeating through a few times and then mutes it, for every
   module at once, so no module counts its own repeats. Example: `LogMuter` (settings `logmute_after_repeats`, `logmute_remind_every_repeats`,
@@ -397,9 +397,14 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **LOGMUTE line**: The second line the log muter writes under a line it lets through when it has something to say: `LOGMUTE: Last message
   repeating and muted`, `LOGMUTE: Last message repeated N times so far, still muted`, or `LOGMUTE: Last message repeated N times`. Searching for
   `^LOGMUTE` finds every one.
-- **fault recorder**: The one way a module says anything (`report.debug`, `.info`, `.warn`, `.error`, `.critical`, each logged at its level through the log muter, DEBUG never muted). `debug` and `info` are only logged; `warn` (recovered), `error` (failed and skipped or retried, the module still does its job) and `critical` (the module cannot do its job) are faults: kept for reading and raised in strict mode. It logs every one; it
+- **log recorder**: The one way a module says anything (`report.debug`, `.info`, `.warn`, `.error`, `.critical`, each logged at its level through the log muter, DEBUG never muted). `debug` and `info` are only logged; `warn` (recovered), `error` (failed and skipped or retried, the module still does its job) and `critical` (the module cannot do its job) are faults: kept for reading and raised in strict mode. It logs every one; it
   keeps the first `limit` for reading and counts the rest, and mutes nothing (the log muter does that, for every module at once). The Printer never
-  stops because of a fault. Example: `FaultRecorder` (was/still)
+  stops because of a fault. Example: `LogRecorder` (was: `FaultRecorder`, which named only one thing it reports)
+- **log book**: The class that holds what a log recorder kept: the first `limit` faults (and every critical), a count of the rest, the readers
+  (`warnings`, `errors`, `criticals`, `lines()`, `has_critical`) and its own lock. It neither logs nor raises. One per recorder. Example: `LogBook`
+  (was: part of `FaultRecorder`)
+- **fault**: (see above) the kept kind of thing a recorder says: a `warn`, `error` or `critical`; `debug` and `info` are not faults. Its types, `Fault`
+  and `Severity`, are in `bookkeeper/fault.py`.
 
 **Watching**
 

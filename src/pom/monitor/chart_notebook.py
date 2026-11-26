@@ -39,7 +39,7 @@ import threading
 from collections import deque
 from typing import Callable, Deque, List, Optional
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
@@ -79,7 +79,7 @@ class ChartNotebook:
                 is one, and only its first and last `edge_seconds` have ticks. None means the default shape, which has no true-scale sides, so none.
             began_at: The stream time at which listening began, so the stretch before the first attempt gets its ticks too. None means it does not.
         """
-        self.report = FaultRecorder(strict=strict, error=ChartNotebookError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=ChartNotebookError, logger=_log)
         if not (is_number(max_age_seconds) and max_age_seconds > 0):
             self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; using {DEFAULT_MAX_AGE_SECONDS:g}")
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS

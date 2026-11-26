@@ -24,7 +24,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or
     answering oddly gives None and a warning in `report`, never an exception. `strict=True` raises
     ScorerModelClientError instead, for tests and dev tools.
-  * Clip text is never logged and never put in a FaultRecorder message: nothing that was said in the
+  * Clip text is never logged and never put in a LogRecorder message: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config
     and has no built-in prompt, so the words that define "interesting" live in one place, the
@@ -54,7 +54,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -146,7 +146,7 @@ class ScorerModelClient:
                 does nothing.
             explain_timeout: Seconds to wait for a written reply, which takes much longer than a score.
         """
-        self.report = FaultRecorder(strict=strict, error=ScorerModelClientError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=ScorerModelClientError, logger=_log)
         self._url, self._prompt = url, (prompt or "").strip()
         self._timeout = (timeout if isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
                          and timeout > 0 else DEFAULT_TIMEOUT)

@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from typing import Callable, Iterable, Optional
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -127,7 +127,7 @@ class WordTagger:
                 NLTK's WordNet lemmatizer.
             stopwords: The stopword set. Default: NLTK's English list.
         """
-        self.report = FaultRecorder(strict=strict, error=WordTaggerError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=WordTaggerError, logger=_log)
         self._fillers = {f.strip().lower() for f in fillers if str(f).strip()}
         self._phrase_fillers = sorted((f for f in self._fillers if " " in f), key=len, reverse=True)
         self._cache: dict = {}

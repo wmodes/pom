@@ -82,7 +82,7 @@ from pathlib import Path
 from typing import Mapping, Optional
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 
 DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
@@ -698,7 +698,7 @@ class Config:
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
-                 report: Optional[FaultRecorder] = None, debug: bool = False, local_logs: bool = False,
+                 report: Optional[LogRecorder] = None, debug: bool = False, local_logs: bool = False,
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  qualifying: Optional[QualifyingSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
@@ -728,7 +728,7 @@ class Config:
         self.logmute_quiet_seconds = logmute_quiet_seconds
         self.exemplar_range = tuple(exemplar_range)
         self.log_level = log_level
-        self.report = report if report is not None else FaultRecorder(logger=_log)
+        self.report = report if report is not None else LogRecorder(logger=_log)
 
     @classmethod
     def load(cls, path=None, environ: Optional[Mapping[str, str]] = None) -> "Config":
@@ -743,7 +743,7 @@ class Config:
             A Config. Any problem becomes a warning in `config.report`; this never raises.
         """
         environ = os.environ if environ is None else environ
-        report = FaultRecorder(logger=_log)
+        report = LogRecorder(logger=_log)
         values = {}
         if path is not None:
             path = Path(path)
@@ -1037,7 +1037,7 @@ class Config:
 _CHARACTERS_PER_TOKEN = 5
 
 
-def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSettings", terminal: "TerminalSettings", report: FaultRecorder) -> None:
+def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSettings", terminal: "TerminalSettings", report: LogRecorder) -> None:
     """Warns when the Conductor's limits do not fit the settings they depend on. The values are kept: this only tells the person.
 
     A watchdog shorter than the thing it watches cuts off healthy turns, which is worse than a limit that is too long, so each warning
@@ -1059,14 +1059,14 @@ def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSetting
                     f"({longest_print:.0f} s for {oracle.max_tokens} tokens at {terminal.characters_per_second:g} characters a second)")
 
 
-def _check_the_lights_fit(monitor: "MonitorSettings", report: FaultRecorder) -> None:
+def _check_the_lights_fit(monitor: "MonitorSettings", report: LogRecorder) -> None:
     """Warns about a light that would go down between two checks: a check's answer must stay good longer than the time to the next check."""
     if monitor.service_down_after_seconds <= monitor.service_check_seconds:
         report.warn(f"monitor.service_down_after_seconds ({monitor.service_down_after_seconds:g}) should be longer than monitor.service_check_seconds "
                     f"({monitor.service_check_seconds:g}), or a light goes down between two checks")
 
 
-def _read_file(path: Path, report: FaultRecorder) -> dict:
+def _read_file(path: Path, report: LogRecorder) -> dict:
     """The file's known top-level keys; {} if it is missing (fine) or bad (warned)."""
     if not path.exists():
         return {}
@@ -1102,7 +1102,7 @@ def _flatten(document: dict) -> dict:
     return flat
 
 
-def _bool(value, label: str, report: FaultRecorder, default: bool = False) -> bool:
+def _bool(value, label: str, report: LogRecorder, default: bool = False) -> bool:
     """A boolean from a TOML bool or an on/off style string; otherwise `default` (False unless given) with a warning."""
     if isinstance(value, bool):
         return value
@@ -1115,7 +1115,7 @@ def _bool(value, label: str, report: FaultRecorder, default: bool = False) -> bo
     return default
 
 
-def _count(value, label: str, default: int, report: FaultRecorder) -> int:
+def _count(value, label: str, default: int, report: LogRecorder) -> int:
     """A whole number of at least 1 (a TOML integer or digits in a string); otherwise the default.
 
     Booleans and decimals are rejected, since `true` or `2.5` is almost certainly a typo.
@@ -1128,7 +1128,7 @@ def _count(value, label: str, default: int, report: FaultRecorder) -> int:
     return default
 
 
-def _number(value, label: str, default: float, minimum: float, report: FaultRecorder) -> float:
+def _number(value, label: str, default: float, minimum: float, report: LogRecorder) -> float:
     """A number of at least `minimum` (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
         return float(value)
@@ -1136,7 +1136,7 @@ def _number(value, label: str, default: float, minimum: float, report: FaultReco
     return default
 
 
-def _positive(value, label: str, default: float, report: FaultRecorder) -> float:
+def _positive(value, label: str, default: float, report: LogRecorder) -> float:
     """A number above 0 (an int or float, not a boolean, and not infinity); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value < float("inf"):
         return float(value)
@@ -1144,7 +1144,7 @@ def _positive(value, label: str, default: float, report: FaultRecorder) -> float
     return default
 
 
-def _percent(value, label: str, default: float, report: FaultRecorder) -> float:
+def _percent(value, label: str, default: float, report: LogRecorder) -> float:
     """A number above 0 and at most 100 (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value <= 100.0:
         return float(value)
@@ -1152,7 +1152,7 @@ def _percent(value, label: str, default: float, report: FaultRecorder) -> float:
     return default
 
 
-def _finite(value, label: str, default: float, report: FaultRecorder) -> float:
+def _finite(value, label: str, default: float, report: LogRecorder) -> float:
     """Any finite number (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and float("-inf") < value < float("inf"):
         return float(value)
@@ -1160,7 +1160,7 @@ def _finite(value, label: str, default: float, report: FaultRecorder) -> float:
     return default
 
 
-def _not_negative(value, label: str, default: float, report: FaultRecorder) -> float:
+def _not_negative(value, label: str, default: float, report: LogRecorder) -> float:
     """A finite number of 0 or more (not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value < float("inf"):
         return float(value)
@@ -1168,7 +1168,7 @@ def _not_negative(value, label: str, default: float, report: FaultRecorder) -> f
     return default
 
 
-def _below_one(value, label: str, default: float, report: FaultRecorder) -> float:
+def _below_one(value, label: str, default: float, report: LogRecorder) -> float:
     """A number from 0 up to but not including 1 (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 <= value < 1.0:
         return float(value)
@@ -1176,7 +1176,7 @@ def _below_one(value, label: str, default: float, report: FaultRecorder) -> floa
     return default
 
 
-def _choice(value, label: str, default: str, choices, report: FaultRecorder) -> str:
+def _choice(value, label: str, default: str, choices, report: LogRecorder) -> str:
     """One of the named choices (text, in the list); otherwise the default."""
     if isinstance(value, str) and value in choices:
         return value
@@ -1184,7 +1184,7 @@ def _choice(value, label: str, default: str, choices, report: FaultRecorder) -> 
     return default
 
 
-def _whole_choice(value, label: str, default: int, choices, report: FaultRecorder) -> int:
+def _whole_choice(value, label: str, default: int, choices, report: LogRecorder) -> int:
     """One of the listed whole numbers (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and value in choices:
         return value
@@ -1192,7 +1192,7 @@ def _whole_choice(value, label: str, default: int, choices, report: FaultRecorde
     return default
 
 
-def _port(value, label: str, default: int, report: FaultRecorder) -> int:
+def _port(value, label: str, default: int, report: LogRecorder) -> int:
     """A whole number from 1 to 65535 (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 65535:
         return value
@@ -1200,7 +1200,7 @@ def _port(value, label: str, default: int, report: FaultRecorder) -> int:
     return default
 
 
-def _whole(value, label: str, default: int, minimum: int, report: FaultRecorder) -> int:
+def _whole(value, label: str, default: int, minimum: int, report: LogRecorder) -> int:
     """A whole number of at least `minimum` (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
         return value
@@ -1208,7 +1208,7 @@ def _whole(value, label: str, default: int, minimum: int, report: FaultRecorder)
     return default
 
 
-def _numbers(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
+def _numbers(value, label: str, default: tuple, report: LogRecorder) -> tuple:
     """A non-empty list of finite numbers (no booleans), as a tuple; otherwise the default."""
     if (isinstance(value, (list, tuple)) and value
             and all(isinstance(v, (int, float)) and not isinstance(v, bool) and float("-inf") < v < float("inf") for v in value)):
@@ -1217,7 +1217,7 @@ def _numbers(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
     return default
 
 
-def _strings(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
+def _strings(value, label: str, default: tuple, report: LogRecorder) -> tuple:
     """A list of text (it may be empty), as a tuple; anything else gives the default."""
     if isinstance(value, (list, tuple)) and all(isinstance(v, str) for v in value):
         return tuple(value)
@@ -1225,7 +1225,7 @@ def _strings(value, label: str, default: tuple, report: FaultRecorder) -> tuple:
     return default
 
 
-def _nonblank(value, label: str, default: str, report: FaultRecorder) -> str:
+def _nonblank(value, label: str, default: str, report: LogRecorder) -> str:
     """Text with something in it; anything else (a number, empty text) gives the default."""
     if isinstance(value, str) and value.strip():
         return value
@@ -1233,7 +1233,7 @@ def _nonblank(value, label: str, default: str, report: FaultRecorder) -> str:
     return default
 
 
-def _composed(value, label: str, default: str, report: FaultRecorder) -> str:
+def _composed(value, label: str, default: str, report: LogRecorder) -> str:
     """Text made only of the composed characters (COMPOSED_CHARACTERS); any other character is a mistake and is left out."""
     if not isinstance(value, str):
         report.warn(f"{label} must be text, got {value!r}; using the default")
@@ -1244,7 +1244,7 @@ def _composed(value, label: str, default: str, report: FaultRecorder) -> str:
     return kept
 
 
-def _baud(value, label: str, default: int, report: FaultRecorder) -> int:
+def _baud(value, label: str, default: int, report: LogRecorder) -> int:
     """One of the standard baud rates (a whole number; True is 1 and no baud rate); otherwise the default."""
     if isinstance(value, int) and value in TERMINAL_BAUD_RATES:
         return value
@@ -1252,7 +1252,7 @@ def _baud(value, label: str, default: int, report: FaultRecorder) -> int:
     return default
 
 
-def _text(value, label: str, default: str, report: FaultRecorder) -> str:
+def _text(value, label: str, default: str, report: LogRecorder) -> str:
     """Text; anything else (a number, a list) is a mistake and gives the default."""
     if isinstance(value, str):
         return value
@@ -1260,7 +1260,7 @@ def _text(value, label: str, default: str, report: FaultRecorder) -> str:
     return default
 
 
-def _level(value, label: str, report: FaultRecorder) -> str:
+def _level(value, label: str, report: LogRecorder) -> str:
     """A log level name, upper-cased; otherwise INFO with a warning."""
     text = str(value).strip().upper()
     if text in _LEVELS:

@@ -39,7 +39,7 @@ from typing import Callable, Mapping, Optional
 from flask import Flask, Response, abort, jsonify, render_template_string, request
 from werkzeug.serving import WSGIRequestHandler, make_server
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
 from pom.monitor.score_chart import ChartLook, render_score_chart
@@ -298,7 +298,7 @@ class MonitorSite:
             hinge_snippet_chars: How many characters of a hinge the list shows before cutting it (`[monitor] hinge_snippet_chars`), a whole number of at least 1;
                 a bad value is the fallback, with a warning.
         """
-        self.report = FaultRecorder(strict=strict, error=MonitorSiteError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=MonitorSiteError, logger=_log)
         self._history = history
         self._show_hinges = bool(show_hinges)
         self._status_source = status_source

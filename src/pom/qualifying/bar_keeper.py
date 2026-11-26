@@ -47,7 +47,7 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import Iterator, Optional
 
-from pom.bookkeeper.fault_recorder import FaultRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.percentile_bar import PercentileBar
 from pom.qualifying.bar import Bar
@@ -89,7 +89,7 @@ class BarKeeper:
                 itself, 0 is the bar itself. Any number (not limited to 0 to 1).
             strict: Raise BarKeeperError on any problem instead of recording it.
         """
-        self.report = FaultRecorder(strict=strict, error=BarKeeperError, logger=_log)
+        self.report = LogRecorder(strict=strict, error=BarKeeperError, logger=_log)
         if bar is None:
             bar = PercentileBar()
         elif not isinstance(bar, Bar):

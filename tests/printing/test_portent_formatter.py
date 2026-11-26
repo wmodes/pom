@@ -217,6 +217,6 @@ def test_a_stand_in_that_is_nothing_leaves_no_double_space():
 
 
 def test_the_stand_ins_cover_exactly_the_composed_characters_the_config_names():
-    from pom.config import COMPOSED_CHARACTERS
+    from pom.defaults import COMPOSED_CHARACTERS
     from pom.printing.portent_formatter import _COMPOSED_STAND_INS
     assert set(_COMPOSED_STAND_INS) == set(COMPOSED_CHARACTERS)

@@ -6,7 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from pom.config import Config, DisplaySettings, MonitorSettings
+from pom.config import Config
+from pom.defaults import DisplaySettings, MonitorSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "setup" / "kiosk_browser.py"

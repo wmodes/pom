@@ -373,9 +373,16 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **servers**: The programs the Printer talks to over HTTP, on the Pi itself: whisper-server for Listening (port 8110) and one
   llama-server for each model (the scorer model on 8098, the oracle model on 8099). They stay loaded and idle during a turn. Example:
   none (was/still)
-- **config**: The settings, in `config/pom.toml` (committed, the quiet defaults the Printer runs with) over built-in defaults, under the
+- **config**: The settings, in `config/pom.toml` (committed, the quiet defaults the Printer runs with) over the defaults, under the
   gitignored `config/pom.local.toml` (where the monitoring site's password lives) and then environment variables. A bad value means
-  the default plus a warning. Everything a person might tune is in it. Example: `Config` (was/still)
+  the default plus a warning. Everything a person might tune is in it. `config.py` only reads it. Example: `Config` (was/still)
+- **defaults**: The shadow of `config/pom.toml`: every setting declared once, with its default and its rule, in `src/pom/defaults.py`. Not a
+  user-serviceable part. Its classes follow pom.toml, not the code's packages: the top-level keys (`ProjectSettings`) and one class per
+  `[section]` (`ConductorSettings`, ...). Example: `defaults.py`, `ConductorSettings().freshness_seconds` (the default)
+- **settings object**: One section of the config, read, as a frozen object: `config.conductor` is a `ConductorSettings`. The entry point hands
+  each class the settings objects it reads (two, if it reads two sections). Example: `ConductorSettings`, `config.conductor`
+- **setting rule**: What one setting's value must be ("a number above 0"), declared with the setting (`setting(360.0, above_zero())`) and
+  checked when the config is read. Example: `SettingRule`, `setting_rules.py`
 
 **Keeping going**
 

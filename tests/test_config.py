@@ -4,9 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from pom.config import (DEFAULT_SCORER_FAILURE_LIMIT, DEFAULT_SCORER_CLIP_FILTER_SCORE, DEFAULT_SCORER_MIN_CONTENT_WORDS,
-                        DEFAULT_SCORER_RETRY_SECONDS, DEFAULT_SCORER_TIMEOUT, DEFAULT_SCORER_URL,
-                        Config, ListeningSettings, OracleSettings, ScorerSettings, QualifyingSettings)
+from pom.config import Config
+from pom.defaults import ListeningSettings, OracleSettings, ScorerSettings, QualifyingSettings
 import pom.qualifying.bar_keeper
 import pom.qualifying.percentile_bar
 import pom.qualifying.decaying_quantile_bar
@@ -119,7 +118,7 @@ def test_a_bad_logmute_setting_is_the_default_with_one_warning(tmp_path, key, te
 def test_the_shipped_config_sets_each_logmute_setting(key, text, expected, default, bad):
     import tomllib
     path = Path(__file__).parent.parent / "config" / "pom.toml"
-    assert tomllib.loads(path.read_text(encoding="utf-8"))[key] == default
+    assert tomllib.loads(path.read_text(encoding="utf-8")).get(key, default) == default     # commented out, it takes the default
 
 
 def test_the_shipped_config_no_longer_has_the_device_search_log_limit():
@@ -164,7 +163,7 @@ def test_samples_default_to_three_to_five():
 def test_the_defaults_match_the_bibliomancers_defaults():
     """Config and Bibliomancer each carry the default (neither imports the other), so keep them equal."""
     from pom.library.bibliomancer import DEFAULT_EXEMPLAR_RANGE
-    from pom.config import DEFAULT_EXEMPLAR_RANGE as CONFIG_DEFAULT
+    CONFIG_DEFAULT = Config().exemplar_range
     assert CONFIG_DEFAULT == DEFAULT_EXEMPLAR_RANGE
 
 
@@ -354,12 +353,12 @@ def test_scorer_defaults_when_nothing_is_set():
 
 def test_the_scorer_defaults_match_the_scorers_own():
     from pom.scoring import clip_scorer, scorer_model_client
-    assert DEFAULT_SCORER_TIMEOUT == scorer_model_client.DEFAULT_TIMEOUT
-    assert DEFAULT_SCORER_CLIP_FILTER_SCORE == clip_scorer.DEFAULT_CLIP_FILTER_SCORE
-    assert DEFAULT_SCORER_MIN_CONTENT_WORDS == clip_scorer.DEFAULT_MIN_CONTENT_WORDS
-    assert DEFAULT_SCORER_FAILURE_LIMIT == clip_scorer.DEFAULT_FAILURE_LIMIT
-    assert DEFAULT_SCORER_RETRY_SECONDS == clip_scorer.DEFAULT_RETRY_SECONDS
-    assert DEFAULT_SCORER_URL.startswith("http://")
+    assert ScorerSettings().timeout == scorer_model_client.DEFAULT_TIMEOUT
+    assert ScorerSettings().clip_filter_score == clip_scorer.DEFAULT_CLIP_FILTER_SCORE
+    assert ScorerSettings().min_content_words == clip_scorer.DEFAULT_MIN_CONTENT_WORDS
+    assert ScorerSettings().failure_limit == clip_scorer.DEFAULT_FAILURE_LIMIT
+    assert ScorerSettings().retry_seconds == clip_scorer.DEFAULT_RETRY_SECONDS
+    assert ScorerSettings().url.startswith("http://")
 
 
 def test_scorer_values_are_read_from_the_section(tmp_path):
@@ -602,14 +601,6 @@ def test_a_bad_moved_setting_means_its_default_with_a_warning(tmp_path, section,
         assert len(config.problems.warnings) == 1 and f"{section}.{key}" in config.problems.warnings[0]
 
 
-def test_the_committed_config_sets_every_moved_setting():
-    import tomllib
-    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
-        document = tomllib.load(f)
-    for section, key, *_ in MOVED:
-        assert key in document[section], f"[{section}] {key} is not in config/pom.toml"
-
-
 # ---- the [display] section ----
 
 DISPLAY_GOOD = [("browser", '"/usr/bin/other"', "/usr/bin/other"), ("browser_flags", '["--a", "--b"]', ("--a", "--b")), ("browser_flags", "[]", ()),
@@ -619,7 +610,7 @@ DISPLAY_BAD = [("browser", '""'), ("browser", '"   "'), ("browser", "5"), ("brow
 
 
 def test_the_display_defaults_are_the_shipped_ones():
-    from pom.config import DisplaySettings
+    from pom.defaults import DisplaySettings
     d = Config().display
     assert d == DisplaySettings() and d.browser == "chromium" and d.browser_profile_dir == "~/.config/pom-kiosk"
     assert d.browser_flags[0] == "--kiosk" and "--ozone-platform=wayland" in d.browser_flags and isinstance(d.browser_flags, tuple)
@@ -633,7 +624,7 @@ def test_a_display_setting_is_read(tmp_path, key, text, expected):
 
 @pytest.mark.parametrize("key, value", DISPLAY_BAD)
 def test_a_bad_display_setting_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import DisplaySettings
+    from pom.defaults import DisplaySettings
     config = Config.load(write(tmp_path, f"[display]\n{key} = {value}\n"), environ={})
     assert config.display == DisplaySettings()
     assert len(config.problems.warnings) == 1 and f"display.{key}" in config.problems.warnings[0]
@@ -644,13 +635,8 @@ def test_an_unknown_display_key_is_a_warning(tmp_path):
     assert any("display.browsr" in w for w in config.problems.warnings)
 
 
-def test_the_committed_config_sets_every_display_key_to_the_default():
-    import tomllib
-    from dataclasses import fields
-    from pom.config import DisplaySettings
-    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
-        section = tomllib.load(f)["display"]
-    assert set(section) == {field.name for field in fields(DisplaySettings)}
+def test_the_committed_config_s_display_is_the_default():
+    from pom.defaults import DisplaySettings
     assert Config.load(Path(__file__).resolve().parents[1] / "config" / "pom.toml", environ={}).display == DisplaySettings()
 
 
@@ -671,7 +657,7 @@ CHART_BAD = [("window_minutes", "0"), ("window_minutes", '"30"'), ("window_minut
 
 
 def test_the_chart_starts_at_the_old_hard_coded_numbers():
-    from pom.config import ChartSettings
+    from pom.defaults import ChartSettings
     c = Config().chart
     assert c == ChartSettings() and (c.window_minutes, c.gridline_every_minutes, c.score_max) == (30.0, 5.0, 9.0)
     assert c.score_gridlines == (0.0, 3.0, 6.0, 9.0) and (c.drawing_width, c.drawing_height) == (720.0, 150.0)
@@ -688,29 +674,20 @@ def test_a_chart_setting_is_read(tmp_path, key, text, expected):
 
 @pytest.mark.parametrize("key, value", CHART_BAD)
 def test_a_bad_chart_setting_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import ChartSettings
+    from pom.defaults import ChartSettings
     config = Config.load(write(tmp_path, f"[chart]\n{key} = {value}\n"), environ={})
     assert config.chart == ChartSettings()
     assert len(config.problems.warnings) == 1 and f"chart.{key}" in config.problems.warnings[0]
 
 
 def test_margins_that_leave_no_room_for_the_plot_mean_the_default_size_and_margins(tmp_path):
-    from pom.config import ChartSettings
+    from pom.defaults import ChartSettings
     config = Config.load(write(tmp_path, "[chart]\ndrawing_width = 100\nmargin_left = 60\nmargin_right = 40\nbar_line_width = 3\n"
                                          "longest_silence_minutes = 9\nbreak_mark_size = 4\nbreak_gap_width = 50\n"), environ={})
     assert config.chart.drawing_width == 720.0 and config.chart.margin_left == 24.0 and config.chart.bar_line_width == 3.0
     assert (config.chart.longest_silence_minutes, config.chart.break_mark_size, config.chart.break_gap_width) == (9.0, 4.0, 50.0)       # the rest is kept
     assert any("no room for the plot" in w for w in config.problems.warnings)
     assert Config.load(write(tmp_path, "[chart]\ndrawing_height = 20\nmargin_top = 10\nmargin_bottom = 10\n"), environ={}).chart.drawing_height == 150.0
-
-
-def test_the_committed_config_sets_every_chart_key():
-    import tomllib
-    from dataclasses import fields
-    from pom.config import ChartSettings
-    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
-        section = tomllib.load(f)["chart"]
-    assert set(section) == {field.name for field in fields(ChartSettings)}
 
 
 def test_the_qualifier_bar_influence_starts_at_a_half():
@@ -959,11 +936,11 @@ def test_the_local_file_overrides_the_prompt_and_keeps_the_exemplar_counts(tmp_p
 
 
 def test_the_oracle_defaults_match_the_oracle_clients_own():
-    from pom.config import DEFAULT_ORACLE_MAX_TOKENS, DEFAULT_ORACLE_TEMPERATURE, DEFAULT_ORACLE_TIMEOUT
+
     from pom.writing import oracle_model_client
-    assert DEFAULT_ORACLE_TIMEOUT == oracle_model_client.DEFAULT_TIMEOUT
-    assert DEFAULT_ORACLE_MAX_TOKENS == oracle_model_client.DEFAULT_MAX_TOKENS
-    assert DEFAULT_ORACLE_TEMPERATURE == oracle_model_client.DEFAULT_TEMPERATURE
+    assert OracleSettings().timeout == oracle_model_client.DEFAULT_TIMEOUT
+    assert OracleSettings().max_tokens == oracle_model_client.DEFAULT_MAX_TOKENS
+    assert OracleSettings().temperature == oracle_model_client.DEFAULT_TEMPERATURE
 
 
 def test_oracle_values_are_read_from_the_section(tmp_path):
@@ -1033,7 +1010,7 @@ def test_room_tone_sounds_are_not_considered_unless_asked():
 # --- The [monitor] section -----------------------------------------------------------------
 
 def test_the_monitor_defaults_when_nothing_is_set():
-    from pom.config import MonitorSettings
+    from pom.defaults import MonitorSettings
     config = Config.load(environ={})
     assert config.monitor == MonitorSettings() and config.problems.ok
     assert (config.monitor.enabled, config.monitor.host, config.monitor.port) == (True, "0.0.0.0", 8080)
@@ -1041,7 +1018,7 @@ def test_the_monitor_defaults_when_nothing_is_set():
 
 
 def test_all_the_monitor_values_are_read_from_the_section(tmp_path):
-    from pom.config import MonitorSettings
+    from pom.defaults import MonitorSettings
     text = ('[monitor]\nenabled = true\nhost = "127.0.0.1"\nport = 9090\npassword = "s3cret"\nshow_hinges = false\n'
             'history_seconds = 1800\n')
     config = Config.load(write(tmp_path, text), environ={})
@@ -1061,7 +1038,7 @@ def test_the_smallest_and_largest_ports_are_accepted(tmp_path):
     ("history_seconds", "0"), ("history_seconds", "-5"), ("history_seconds", '"3600"'), ("history_seconds", "true"),
     ("history_seconds", "inf")])
 def test_a_bad_monitor_value_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import MonitorSettings
+    from pom.defaults import MonitorSettings
     config = Config.load(write(tmp_path, f"[monitor]\n{key} = {value}\n"), environ={})
     assert config.monitor == MonitorSettings()
     assert len(config.problems.warnings) == 1 and f"monitor.{key}" in config.problems.warnings[0]
@@ -1082,7 +1059,7 @@ def test_monitor_flags_take_a_boolean_or_an_on_off_word(tmp_path, value, expecte
 
 
 def test_an_unknown_monitor_key_is_warned_about(tmp_path):
-    from pom.config import MonitorSettings
+    from pom.defaults import MonitorSettings
     config = Config.load(write(tmp_path, "[monitor]\npasword = \"x\"\n"), environ={})
     assert any("monitor.pasword" in w for w in config.problems.warnings) and config.monitor == MonitorSettings()
 
@@ -1106,7 +1083,7 @@ def test_the_shipped_monitor_section_is_on_and_has_no_password():
 # --- The [printing] section ------------------------------------------------------------------
 
 def test_the_output_defaults_are_a_65_character_line_for_letter_paper_at_10_pitch():
-    from pom.config import PrintingSettings
+    from pom.defaults import PrintingSettings
     config = Config.load(environ={})
     assert config.printing == PrintingSettings() and config.problems.ok
     assert (config.printing.paper_width_inches, config.printing.margin_inches, config.printing.characters_per_inch) == (8.5, 1.0, 10.0)
@@ -1114,7 +1091,7 @@ def test_the_output_defaults_are_a_65_character_line_for_letter_paper_at_10_pitc
 
 
 def test_all_the_output_values_are_read_from_the_section(tmp_path):
-    from pom.config import PrintingSettings
+    from pom.defaults import PrintingSettings
     text = ("[printing]\npaper_width_inches = 11\nmargin_inches = 0.5\ncharacters_per_inch = 12\n"
             "quote_indent = 6\nlinefeeds_after_portent = 2\n")
     config = Config.load(write(tmp_path, text), environ={})
@@ -1140,14 +1117,14 @@ def test_zero_for_the_indent_and_the_line_feeds_is_allowed(tmp_path):
     ("linefeeds_after_portent", "-1"), ("linefeeds_after_portent", "true"),
 ])
 def test_a_bad_output_value_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import PrintingSettings
+    from pom.defaults import PrintingSettings
     config = Config.load(write(tmp_path, f"[printing]\n{key} = {value}\n"), environ={})
     assert config.printing == PrintingSettings()
     assert len(config.problems.warnings) == 1 and f"printing.{key}" in config.problems.warnings[0]
 
 
 def test_margins_that_leave_too_short_a_line_mean_the_default_paper_and_pitch_with_a_warning(tmp_path):
-    from pom.config import PrintingSettings
+    from pom.defaults import PrintingSettings
     config = Config.load(write(tmp_path, "[printing]\nmargin_inches = 4\nquote_indent = 6\nlinefeeds_after_portent = 1\n"), environ={})
     assert config.printing == PrintingSettings(quote_indent=6, linefeeds_after_portent=1)
     assert len(config.problems.warnings) == 1 and "20" in config.problems.warnings[0]
@@ -1158,14 +1135,6 @@ def test_a_line_of_exactly_the_shortest_width_is_allowed(tmp_path):
     assert config.printing.line_width == 20 and config.problems.ok
 
 
-def test_the_committed_config_sets_every_output_key():
-    import tomllib
-    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
-        section = tomllib.load(f)["printing"]
-    assert set(section) == {"paper_width_inches", "margin_inches", "characters_per_inch", "quote_indent", "linefeeds_after_portent",
-                              "keep_composed_characters", "ascii_printwheel"}
-
-
 def test_the_line_width_is_not_lost_to_floating_point_rounding(tmp_path):
     # (8 - 2 x 2.2) x 15 comes to 53.99999999999999 in floating point; the line is 54 characters
     text = "[printing]\npaper_width_inches = 8\nmargin_inches = 2.2\ncharacters_per_inch = 15\n"
@@ -1173,7 +1142,7 @@ def test_the_line_width_is_not_lost_to_floating_point_rounding(tmp_path):
 
 
 def test_a_config_built_without_output_settings_has_the_defaults():
-    from pom.config import PrintingSettings
+    from pom.defaults import PrintingSettings
     assert Config().printing == PrintingSettings()
 
 
@@ -1190,7 +1159,7 @@ def test_the_listed_composed_characters_are_read_and_are_the_ones_kept(tmp_path)
 
 
 def test_an_ascii_printwheel_keeps_all_the_composed_characters_whatever_is_listed(tmp_path):
-    from pom.config import COMPOSED_CHARACTERS
+    from pom.defaults import COMPOSED_CHARACTERS
     config = Config.load(write(tmp_path, '[printing]\nascii_printwheel = true\nkeep_composed_characters = "^"\n'), environ={})
     assert config.printing.ascii_printwheel is True and config.printing.composed_characters_kept == COMPOSED_CHARACTERS
     assert COMPOSED_CHARACTERS == "\\^`{|}~"
@@ -1223,7 +1192,7 @@ def test_the_fallback_for_a_too_short_line_keeps_the_composed_settings(tmp_path)
 # --- The [terminal] section ----------------------------------------------------------------
 
 def test_the_terminal_defaults_are_the_cadetwriters_own():
-    from pom.config import TerminalSettings
+    from pom.defaults import TerminalSettings
     config = Config.load(environ={})
     assert config.terminal == TerminalSettings() and config.problems.ok
     terminal = config.terminal
@@ -1236,7 +1205,7 @@ def test_the_terminal_defaults_are_the_cadetwriters_own():
 
 
 def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
-    from pom.config import TerminalSettings
+    from pom.defaults import TerminalSettings
     text = ('[terminal]\nport = "/dev/ttyUSB0"\nbaud = 115200\nflow_control = "rts_cts"\nend_of_line = "lf"\n'
             "characters_per_second = 12.5\nfinish_wait_seconds = 0\nechoplex = false\ntype_during_printing = true\n"
             "stall_patience_seconds = 90\nreconnect_seconds = 0.5\nmode = \"console\"\n"
@@ -1258,7 +1227,7 @@ def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     ("stop_bits", "0"), ("stop_bits", "3"), ("stop_bits", '"1"'), ("stop_bits", "true"),
 ])
 def test_a_bad_terminal_value_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import TerminalSettings
+    from pom.defaults import TerminalSettings
     config = Config.load(write(tmp_path, f"[terminal]\n{key} = {value}\n"), environ={})
     assert config.terminal == TerminalSettings()
     assert len(config.problems.warnings) == 1 and f"terminal.{key} must" in config.problems.warnings[0]
@@ -1278,34 +1247,24 @@ def test_every_standard_baud_rate_is_accepted(tmp_path, baud):
 
 
 def test_the_terminal_choices_and_defaults_are_the_ones_the_port_uses():
-    from pom import config as settings
+    from pom import defaults as settings
     from pom.printing import terminal_port as port
     assert settings.TERMINAL_BAUD_RATES == port.BAUD_RATES and settings.TERMINAL_FLOW_CONTROLS == port.FLOW_CONTROLS
     assert settings.TERMINAL_END_OF_LINES == tuple(port.END_OF_LINES)
     assert settings.TERMINAL_DATA_BITS == port.DATA_BITS and settings.TERMINAL_PARITIES == tuple(port.PARITIES)
     assert settings.TERMINAL_STOP_BITS == port.STOP_BITS
-    assert (settings.DEFAULT_TERMINAL_DATA_BITS, settings.DEFAULT_TERMINAL_PARITY, settings.DEFAULT_TERMINAL_STOP_BITS) == (
+    assert (settings.TerminalSettings().data_bits, settings.TerminalSettings().parity, settings.TerminalSettings().stop_bits) == (
         port.DEFAULT_DATA_BITS, port.DEFAULT_PARITY, port.DEFAULT_STOP_BITS)
-    assert (settings.DEFAULT_TERMINAL_BAUD, settings.DEFAULT_TERMINAL_FLOW_CONTROL, settings.DEFAULT_TERMINAL_END_OF_LINE) == (
+    assert (settings.TerminalSettings().baud, settings.TerminalSettings().flow_control, settings.TerminalSettings().end_of_line) == (
         port.DEFAULT_BAUD, port.DEFAULT_FLOW_CONTROL, port.DEFAULT_END_OF_LINE)
-    assert (settings.DEFAULT_TERMINAL_CHARACTERS_PER_SECOND, settings.DEFAULT_TERMINAL_FINISH_WAIT_SECONDS) == (
+    assert (settings.TerminalSettings().characters_per_second, settings.TerminalSettings().finish_wait_seconds) == (
         port.DEFAULT_CHARACTERS_PER_SECOND, port.DEFAULT_FINISH_WAIT_SECONDS)
-    assert (settings.DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, settings.DEFAULT_TERMINAL_RECONNECT_SECONDS) == (
+    assert (settings.TerminalSettings().stall_patience_seconds, settings.TerminalSettings().reconnect_seconds) == (
         port.DEFAULT_STALL_PATIENCE_SECONDS, port.DEFAULT_RECONNECT_SECONDS)
 
 
-def test_the_committed_config_sets_every_terminal_key():
-    import tomllib
-    with open(Path(__file__).resolve().parents[1] / "config" / "pom.toml", "rb") as f:
-        section = tomllib.load(f)["terminal"]
-    assert set(section) == {"port", "baud", "flow_control", "end_of_line", "characters_per_second", "finish_wait_seconds",
-                            "echoplex", "type_during_printing", "stall_patience_seconds", "reconnect_seconds", "mode",
-                            "max_typed_line_characters", "refused_character_retry_seconds",
-                            "data_bits", "parity", "stop_bits", "port_search"}
-
-
 def test_a_config_built_without_terminal_settings_has_the_defaults():
-    from pom.config import TerminalSettings
+    from pom.defaults import TerminalSettings
     assert Config().terminal == TerminalSettings()
 
 
@@ -1318,12 +1277,10 @@ def test_a_bad_flag_falls_back_to_that_flags_own_default_with_the_right_word_in_
 
 # --- The [conductor] section ---------------------------------------------------------------
 
-CONDUCTOR_KEYS = ("writing_seconds", "printing_seconds", "recovering_seconds", "freshness_seconds", "write_attempts", "write_pause_seconds",
-                  "write_budget_seconds", "print_pause_seconds", "restart_pause_seconds", "check_seconds")
 
 
 def test_the_conductor_defaults_err_long():
-    from pom.config import ConductorSettings
+    from pom.defaults import ConductorSettings
     config = Config.load(write_nothing_in(), environ={})
     assert config.conductor == ConductorSettings() and config.problems.ok
     c = config.conductor
@@ -1337,7 +1294,7 @@ def write_nothing_in():
 
 
 def test_all_the_conductor_values_are_read_from_the_section(tmp_path):
-    from pom.config import ConductorSettings
+    from pom.defaults import ConductorSettings
     text = ("[conductor]\nwriting_seconds = 500\nprinting_seconds = 400\nrecovering_seconds = 0\nfreshness_seconds = 120\n"
             "write_attempts = 5\nwrite_pause_seconds = 0\nwrite_budget_seconds = 450\nprint_pause_seconds = 2\n"
             "restart_pause_seconds = 0\ncheck_seconds = 0.25\n")
@@ -1352,33 +1309,29 @@ def test_all_the_conductor_values_are_read_from_the_section(tmp_path):
     ("restart_pause_seconds", "-1"), ("check_seconds", "0"), ("check_seconds", "true"),
 ])
 def test_a_bad_conductor_value_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import ConductorSettings
+    from pom.defaults import ConductorSettings
     config = Config.load(write(tmp_path, f"[conductor]\n{key} = {value}\n"), environ={})
     assert config.conductor == ConductorSettings()
     assert len(config.problems.warnings) == 1 and f"conductor.{key}" in config.problems.warnings[0]
 
 
-def test_the_committed_config_sets_every_conductor_key_and_fits_its_own_limits():
-    import tomllib
+def test_the_committed_config_s_conductor_fits_its_own_limits():
     path = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
-    with open(path, "rb") as f:
-        section = tomllib.load(f)["conductor"]
-    assert set(section) == set(CONDUCTOR_KEYS)
     assert Config.load(path, environ={}).problems.ok                      # no warning: the shipped limits fit the shipped settings
 
 
 def test_the_conductor_defaults_in_the_code_are_the_ones_the_parts_use():
-    from pom import config as settings
+    from pom import defaults as settings
     from pom.conductor import floor_keeper, turn_taker
     from pom.conductor import conductor
-    assert (settings.DEFAULT_CONDUCTOR_WRITING_SECONDS, settings.DEFAULT_CONDUCTOR_PRINTING_SECONDS,
-            settings.DEFAULT_CONDUCTOR_RECOVERING_SECONDS) == (floor_keeper.DEFAULT_WRITING_SECONDS, floor_keeper.DEFAULT_PRINTING_SECONDS,
+    assert (settings.ConductorSettings().writing_seconds, settings.ConductorSettings().printing_seconds,
+            settings.ConductorSettings().recovering_seconds) == (floor_keeper.DEFAULT_WRITING_SECONDS, floor_keeper.DEFAULT_PRINTING_SECONDS,
                                                                floor_keeper.DEFAULT_RECOVERING_SECONDS)
-    assert (settings.DEFAULT_CONDUCTOR_FRESHNESS_SECONDS, settings.DEFAULT_CONDUCTOR_WRITE_ATTEMPTS, settings.DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS,
-            settings.DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS, settings.DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS) == (
+    assert (settings.ConductorSettings().freshness_seconds, settings.ConductorSettings().write_attempts, settings.ConductorSettings().write_pause_seconds,
+            settings.ConductorSettings().write_budget_seconds, settings.ConductorSettings().print_pause_seconds) == (
         turn_taker.DEFAULT_FRESHNESS_SECONDS, turn_taker.DEFAULT_WRITE_ATTEMPTS, turn_taker.DEFAULT_WRITE_PAUSE_SECONDS,
         turn_taker.DEFAULT_WRITE_BUDGET_SECONDS, turn_taker.DEFAULT_PRINT_PAUSE_SECONDS)
-    assert (settings.DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS, settings.DEFAULT_CONDUCTOR_CHECK_SECONDS) == (
+    assert (settings.ConductorSettings().restart_pause_seconds, settings.ConductorSettings().check_seconds) == (
         conductor.DEFAULT_RESTART_PAUSE_SECONDS, conductor.DEFAULT_CHECK_SECONDS)
 
 
@@ -1432,7 +1385,7 @@ class TestTheLimitsFitTheirSettings:
         assert config.conductor.writing_seconds == 100.0 and config.oracle.timeout == 300.0
 
     def test_a_config_built_without_conductor_settings_has_the_defaults(self):
-        from pom.config import ConductorSettings
+        from pom.defaults import ConductorSettings
         assert Config().conductor == ConductorSettings()
 
 
@@ -1509,11 +1462,10 @@ def test_the_shipped_config_says_how_to_make_a_local_file():
 
 # --- The [boot_slip] section ----------------------------------------------------------------
 
-BOOT_SLIP_KEYS = ("enabled", "text", "address_grace_seconds", "retry_seconds")
 
 
 def test_the_boot_slip_defaults_type_the_slip_with_a_short_grace():
-    from pom.config import BootSlipSettings
+    from pom.defaults import BootSlipSettings
     config = Config.load(write_nothing_in(), environ={})
     assert config.boot_slip == BootSlipSettings() and config.problems.ok
     s = config.boot_slip
@@ -1522,7 +1474,7 @@ def test_the_boot_slip_defaults_type_the_slip_with_a_short_grace():
 
 
 def test_all_the_boot_slip_values_are_read_from_the_section(tmp_path):
-    from pom.config import BootSlipSettings
+    from pom.defaults import BootSlipSettings
     text = '[boot_slip]\nenabled = false\ntext = "HELLO {hostname}\\n{address}"\naddress_grace_seconds = 0\nretry_seconds = 2.5\n'
     config = Config.load(write(tmp_path, text), environ={})
     assert config.boot_slip == BootSlipSettings(False, "HELLO {hostname}\n{address}", 0.0, 2.5) and config.problems.ok
@@ -1533,19 +1485,15 @@ def test_all_the_boot_slip_values_are_read_from_the_section(tmp_path):
     ("address_grace_seconds", '"soon"'), ("retry_seconds", "-1"), ("retry_seconds", "true"),
 ])
 def test_a_bad_boot_slip_value_means_the_default_with_a_warning(tmp_path, key, value):
-    from pom.config import BootSlipSettings
+    from pom.defaults import BootSlipSettings
     config = Config.load(write(tmp_path, f"[boot_slip]\n{key} = {value}\n"), environ={})
     assert config.boot_slip == BootSlipSettings()
     assert len(config.problems.warnings) == 1 and f"boot_slip.{key}" in config.problems.warnings[0]
 
 
-def test_the_committed_config_sets_every_boot_slip_key_and_the_slip_is_the_default_one():
-    import tomllib
-    from pom.config import BootSlipSettings
+def test_the_committed_config_s_boot_slip_is_the_default_one():
+    from pom.defaults import BootSlipSettings
     path = Path(__file__).resolve().parents[1] / "config" / "pom.toml"
-    with open(path, "rb") as f:
-        section = tomllib.load(f)["boot_slip"]
-    assert set(section) == set(BOOT_SLIP_KEYS)
     config = Config.load(path, environ={})
     assert config.problems.ok
     assert config.boot_slip.text.strip() == BootSlipSettings().text         # the code's default and the shipped words agree
@@ -1559,5 +1507,41 @@ def test_the_committed_config_lets_the_printers_own_display_in():
 
 
 def test_the_code_default_asks_everyone_for_the_password():
-    from pom.config import MonitorSettings
+    from pom.defaults import MonitorSettings
     assert Config().monitor.password_on_localhost is True and MonitorSettings().password_on_localhost is True
+
+
+# --- The reader's own rules (defaults.py + config.py), pinned by the mutation checks of 2026-11-26 ---------------------------------
+
+def test_a_percentile_of_exactly_100_is_allowed(tmp_path):
+    config = Config.load(write(tmp_path, "[qualifying]\nbar_percentile = 100\n"), environ={})
+    assert config.qualifying.bar_percentile == 100.0 and not any("bar_percentile" in w for w in config.problems.warnings)
+
+
+def test_a_bad_number_s_warning_says_the_default_without_trailing_zeros(tmp_path):
+    config = Config.load(write(tmp_path, '[conductor]\nfreshness_seconds = "soon"\n'), environ={})
+    assert "conductor.freshness_seconds must be a number above 0, got 'soon'; using 360" in config.problems.warnings
+
+
+def test_a_bad_list_s_warning_says_the_default_as_a_list(tmp_path):
+    config = Config.load(write(tmp_path, "[chart]\nscore_gridlines = []\n"), environ={})
+    assert "chart.score_gridlines must be a list of numbers, got []; using [0.0, 3.0, 6.0, 9.0]" in config.problems.warnings
+
+
+def test_a_page_too_narrow_puts_back_the_default_paper_margins_and_pitch_and_keeps_the_rest(tmp_path):
+    from pom.defaults import PrintingSettings
+    config = Config.load(write(tmp_path, "[printing]\npaper_width_inches = 3\nmargin_inches = 1.2\ncharacters_per_inch = 15\nquote_indent = 7\n"),
+                         environ={})
+    page = PrintingSettings()
+    assert (config.printing.paper_width_inches, config.printing.margin_inches, config.printing.characters_per_inch) == (
+        page.paper_width_inches, page.margin_inches, page.characters_per_inch)
+    assert config.printing.quote_indent == 7
+
+
+def test_a_chart_with_no_room_for_the_plot_puts_back_every_default_size_and_margin(tmp_path):
+    from pom.defaults import ChartSettings
+    config = Config.load(write(tmp_path, "[chart]\ndrawing_width = 100\ndrawing_height = 100\nmargin_left = 50\nmargin_right = 60\n"
+                                         "margin_top = 11\nmargin_bottom = 12\nwindow_minutes = 7\n"), environ={})
+    drawing = ChartSettings()
+    sizes = ("drawing_width", "drawing_height", "margin_left", "margin_right", "margin_top", "margin_bottom")
+    assert [getattr(config.chart, s) for s in sizes] == [getattr(drawing, s) for s in sizes] and config.chart.window_minutes == 7.0

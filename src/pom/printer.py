@@ -240,8 +240,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     slip = config.boot_slip
     slipper = None
     if terminal is not None and slip.enabled:
-        slipper = BootSlipper(floor, terminal, formatter, slip.text, AddressFinder(bookkeeper=bookkeeper).find, grace_seconds=slip.address_grace_seconds,
-                              retry_seconds=slip.retry_seconds, ears_shut_seconds=conductor_settings.check_seconds + 1.0, bookkeeper=bookkeeper)
+        slipper = BootSlipper(floor, terminal, formatter, AddressFinder(bookkeeper=bookkeeper).find, boot_slip=slip,
+                              ears_shut_seconds=conductor_settings.check_seconds + 1.0, bookkeeper=bookkeeper)
 
     # the keyboard: only a real typewriter has one
     keyboard = None

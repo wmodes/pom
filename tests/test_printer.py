@@ -602,10 +602,10 @@ class TestTheBootSlip:
         assert build(tmp_path, '[terminal]\nmode = "console"\n[boot_slip]\nenabled = false\n').parts["boot_slipper"] is None
 
     def test_the_settings_reach_the_slipper(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nmode = "console"\n[conductor]\ncheck_seconds = 2\n'
-                            '[boot_slip]\ntext = "HELLO {address}"\naddress_grace_seconds = 7\nretry_seconds = 3\n')
-        s = p.parts["boot_slipper"]
-        assert (s._template, s._grace, s._retry) == ("HELLO {address}", 7.0, 3.0)
+        config = config_from(tmp_path, '[terminal]\nmode = "console"\n[conductor]\ncheck_seconds = 2\n'
+                                       '[boot_slip]\ntext = "HELLO {address}"\naddress_grace_seconds = 7\nretry_seconds = 3\n')
+        s = build_printer(config, Options()).parts["boot_slipper"]
+        assert s.boot_slip is config.boot_slip
         assert s._ears_shut == 3.0                                  # the Conductor's check interval (2 s) plus a second
 
     def test_the_slip_is_found_with_the_address_finder(self, tmp_path):

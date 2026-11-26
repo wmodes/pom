@@ -36,12 +36,10 @@ import time
 from typing import Callable, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import BootSlipSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_GRACE_SECONDS = 15.0            # how long to wait for an address once the typewriter is online
-DEFAULT_RETRY_SECONDS = 5.0             # how often to ask whether the typewriter is online, and whether the floor is free
-DEFAULT_EARS_SHUT_SECONDS = 2.0         # after taking the floor: the Conductor's check interval plus a margin
 WHO = "boot slip"                       # the label the floor knows this holder by
 NO_NETWORK_ADDRESS = "127.0.0.1"
 
@@ -50,31 +48,33 @@ class BootSlipper:
     """Types the boot slip once, when the typewriter is online.
 
     Attributes:
+        boot_slip: The `[boot_slip]` settings it was handed (it reads `text`, `address_grace_seconds` and `retry_seconds`).
         typed: True once the slip has been typed.
         text: The slip as it was typed (the template filled in and formatted), or None until then.
     """
 
-    def __init__(self, floor, terminal, formatter, template: str, find_addresses: Callable[[], list],
-                 hostname: Callable[[], str] = socket.gethostname, grace_seconds: float = DEFAULT_GRACE_SECONDS,
-                 retry_seconds: float = DEFAULT_RETRY_SECONDS, ears_shut_seconds: float = DEFAULT_EARS_SHUT_SECONDS,
-                 clock: Callable[[], float] = time.monotonic, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, floor, terminal, formatter, find_addresses: Callable[[], list], *, boot_slip: BootSlipSettings, ears_shut_seconds: float,
+                 hostname: Callable[[], str] = socket.gethostname, clock: Callable[[], float] = time.monotonic,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             floor: The FloorKeeper (`take_floor(who)` gives a Turn or None).
             terminal: The TerminalPort or ConsoleTerminal (`online()` and `transmit(text, still_alive)`).
             formatter: The PortentFormatter that sets text for the paper (`format(text)`).
-            template: The slip's words, with `{address}` and `{hostname}` slots.
             find_addresses: Returns the machine's usable IPv4 addresses as a list of strings (the AddressFinder's `find`).
+            boot_slip: The `[boot_slip]` section: `text` (the slip's words, with `{address}` and `{hostname}` slots),
+                `address_grace_seconds` (how long, once the typewriter is online, to wait for an address before typing without one) and
+                `retry_seconds` (seconds between asks while the typewriter is offline or the floor is held).
+            ears_shut_seconds: Seconds to wait after taking the floor, so the ears are shut before the first character (worked out by the
+                entry point from the Conductor's check interval).
             hostname: Returns the machine's name.
-            grace_seconds: How long, once the typewriter is online, to wait for an address before typing without one. 0 or more.
-            retry_seconds: Seconds between asks while the typewriter is offline or the floor is held. 0 or more.
-            ears_shut_seconds: Seconds to wait after taking the floor, so the ears are shut before the first character. 0 or more.
             clock: Returns seconds; injected so tests need no waiting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
-        self._floor, self._terminal, self._formatter, self._template = floor, terminal, formatter, template
+        self._floor, self._terminal, self._formatter = floor, terminal, formatter
+        self.boot_slip = boot_slip
         self._find_addresses, self._hostname = find_addresses, hostname
-        self._grace, self._retry, self._ears_shut, self._clock = grace_seconds, retry_seconds, ears_shut_seconds, clock
+        self._ears_shut, self._clock = ears_shut_seconds, clock
         self._stopped = threading.Event()
         self._thread = None
         self.typed = False
@@ -96,7 +96,7 @@ class BootSlipper:
         """Waits for the typewriter, then types the slip; blocks until typed, started and failed, or stopped. True if it was all typed."""
         while not self._stopped.is_set():
             if not self._terminal.online():
-                self._stopped.wait(self._retry)
+                self._stopped.wait(self.boot_slip.retry_seconds)
                 continue
             addresses = self._wait_for_an_address()
             turn = self._take_the_floor()
@@ -120,12 +120,12 @@ class BootSlipper:
 
     def _wait_for_an_address(self) -> list:
         """The machine's addresses, waiting up to the grace period for the first one to appear. May be empty."""
-        deadline = self._clock() + self._grace
+        deadline = self._clock() + self.boot_slip.address_grace_seconds
         while True:
             addresses = self._find_addresses()
             if addresses or self._clock() >= deadline or self._stopped.is_set():
                 return addresses
-            self._stopped.wait(min(self._retry, max(0.0, deadline - self._clock())))
+            self._stopped.wait(min(self.boot_slip.retry_seconds, max(0.0, deadline - self._clock())))
 
     def _take_the_floor(self):
         """A Turn once the floor is free (first come, first served), or None if stopped first."""
@@ -133,7 +133,7 @@ class BootSlipper:
             turn = self._floor.take_floor(WHO)
             if turn is not None:
                 return turn
-            self._stopped.wait(self._retry)
+            self._stopped.wait(self.boot_slip.retry_seconds)
         return None
 
     def _filled(self, addresses: list) -> str:
@@ -142,7 +142,7 @@ class BootSlipper:
             name = self._hostname()
         except Exception:                                     # a machine with no name still gets a slip
             name = "unknown"
-        return self._template.replace("{address}", ", ".join(addresses) or NO_NETWORK_ADDRESS).replace("{hostname}", name)
+        return self.boot_slip.text.replace("{address}", ", ".join(addresses) or NO_NETWORK_ADDRESS).replace("{hostname}", name)
 
     def _run_safely(self) -> None:
         """The thread's body: `run`, with anything that goes wrong made a warning, since a slip is never worth a crash."""

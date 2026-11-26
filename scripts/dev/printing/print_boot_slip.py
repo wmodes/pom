@@ -57,8 +57,9 @@ def main():
     ears_shut = 0.0 if args.fast else conductor.check_seconds + 1.0
 
     print(f"--- addresses found: {find() or 'none'}")
-    slipper = BootSlipper(floor, terminal, formatter, slip.text, find, grace_seconds=0.0 if args.fast else slip.address_grace_seconds,
-                          retry_seconds=slip.retry_seconds, ears_shut_seconds=ears_shut)
+    if args.fast:
+        slip = dataclasses.replace(slip, address_grace_seconds=0.0)
+    slipper = BootSlipper(floor, terminal, formatter, find, boot_slip=slip, ears_shut_seconds=ears_shut)
     print("--- the slip:")
     typed = slipper.run()
     print(f"--- {'all typed' if typed else 'NOT typed'}")

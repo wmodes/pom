@@ -334,7 +334,7 @@ Use the example below for the style of your passage:
 {exemplars}
 
 ## STEP 2: APPLY THE THEME
-In the style of the example, create a single passage inspired by this theme without using the theme text.
+In the style of the example, create a single passage inspired by this theme without copying theme text. Pay special attention to end rhymes. It's okay to be a little spicy.
 
 {hinge}
 """
@@ -512,16 +512,16 @@ paper_width_inches = 8.5
 # set them. The paper, margins and pitch must leave a line of at least 20 characters.
 margin_inches = 1.0
 
-# The print wheel's pitch: 10, 12 or 15 on the Wheelwriter. The machine's pitch switch must match the wheel. 10 is the
+# The print wheel's pitch: 10, 12 or 15 on the printer. The machine's pitch switch must match the wheel. 10 is the
 # widest letters, so the shortest line, and fits any wheel.
-characters_per_inch = 10
+characters_per_inch = 12
 
 # How many spaces a quotation (text the model put in triple backticks) is indented. 0 or more.
 quote_indent = 4
 
 # How many line feeds are typed after each portent, 0 or more. The first ends the last line; the rest are blank lines,
 # so the paper has moved on when the next portent is typed.
-linefeeds_after_portent = 12
+linefeeds_after_portent = 13
 
 # Most print wheels lack nine ASCII characters: < > \ ^ ` { | } ~. The CadetWriter builds them from periods and
 # micro-movements ("period graphics"), which is correct but slow and dotty. < and > can carry meaning and are rare, so

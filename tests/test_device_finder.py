@@ -174,30 +174,22 @@ def test_nothing_there_is_a_warning_every_time_and_the_finder_does_no_muting_of_
     assert not any("not logging" in w for w in warnings)
 
 
-def test_the_count_of_tries_starts_again_when_a_device_is_found(caplog):
+def test_the_finder_counts_nothing_so_coming_back_is_just_the_found_line_after_the_warnings(caplog):
     finder = ListedFinder([])
     with caplog.at_level(logging.INFO, logger=LOGGER):
-        for _ in range(3):
+        for _ in range(4):
             finder.resolve("auto")
         finder.devices = [MIC]
         finder.resolve("auto")
-        finder.devices = []
-        for _ in range(2):
-            finder.resolve("auto")
-        finder.devices = [MIC]
-        finder.resolve("auto")
-    found_lines = [m for m in lines(caplog, logging.INFO) if "found after" in m]
-    assert len(found_lines) == 2 and "after 3 tries" in found_lines[0] and "after 2 tries" in found_lines[1]
+    assert not any("tries" in m for m in lines(caplog, logging.INFO) + lines(caplog, logging.WARNING))
+    assert len(lines(caplog, logging.WARNING)) == 4 and len(lines(caplog, logging.INFO)) == 1
 
 
-def test_finding_a_device_after_trying_says_how_many_tries_it_took(caplog):
+def test_a_problem_is_reported_once_through_the_recorder_not_logged_a_second_way(caplog):
     finder = ListedFinder([])
-    for _ in range(4):
-        finder.resolve("auto")
-    finder.devices = [MIC]
     with caplog.at_level(logging.INFO, logger=LOGGER):
         finder.resolve("auto")
-    assert any("after 4 tries" in m for m in lines(caplog, logging.INFO))
+    assert len(lines(caplog, logging.WARNING)) == 1 and len(finder.report.warnings) == 1
 
 
 def test_a_listing_that_fails_hands_back_a_name_as_written_too():

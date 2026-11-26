@@ -119,7 +119,7 @@ class MicDeck:
             pass
         try:
             if not self._closing.is_set():
-                self._fault("critical", f"the microphone stopped sending sound ({self._TOOL} ended); the Printer can no longer hear")
+                self._fault("critical", "the microphone stopped sending sound (%s ended); the Printer can no longer hear", self._TOOL)
         finally:
             self._put(None)                                 # tells frames() the sound has ended
 
@@ -129,7 +129,7 @@ class MicDeck:
             try:
                 self._heard()
             except Exception as problem:                    # the board must never stop the sound
-                self._fault("warning", f"telling that sound arrived failed ({type(problem).__name__}); the sound goes on")
+                self._fault("warning", "telling that sound arrived failed (%s); the sound goes on", type(problem).__name__)
 
     def _put(self, item: Optional[bytes]) -> None:
         """Adds to the buffer, throwing away the oldest frame if it is full (the end marker is never lost)."""
@@ -149,11 +149,11 @@ class MicDeck:
             self._fault("warning", "sound is arriving faster than it is used; dropping the oldest")
         self._dropping = dropped_now
 
-    def _fault(self, mode: str, message: str) -> None:
+    def _fault(self, mode: str, message: str, *args) -> None:
         """Says a problem found in the reader thread, in its mode ("warning" or "critical"). In strict mode the error cannot be raised here, where nobody is
         waiting for it, so it is kept and raised by frames() when the sound ends."""
         try:
-            getattr(self.logger, mode)(message)
+            getattr(self.logger, mode)(message, *args)
         except MicDeckError as problem:
             self._thread_error = problem
 

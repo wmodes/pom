@@ -279,22 +279,22 @@ class FloorKeeper:
         now = self._clock()
         elapsed = max(0.0, now - self._since)
         if self._state is FloorState.WRITING and elapsed > self._writing_seconds:
-            self._overrun(f"writing ran more than {self._writing_seconds:g} s")
+            self._overrun("writing", self._writing_seconds)
         elif self._state is FloorState.PRINTING and elapsed > self._printing_seconds:
-            self._overrun(f"printing ran more than {self._printing_seconds:g} s")
+            self._overrun("printing", self._printing_seconds)
         elif self._state is FloorState.RECOVERING and elapsed >= self._recovering_seconds:
             self._enter(FloorState.LISTENING)
             self._who = ""
 
-    def _overrun(self, what: str) -> None:
-        """The watchdog takes the floor from a turn that ran too long. The turn's thread is not stopped; its Turn just stops counting."""
+    def _overrun(self, stage: str, limit_seconds: float) -> None:
+        """The watchdog takes the floor from a turn whose `stage` ran past its limit. The turn's thread is not stopped; its Turn just stops counting."""
         who = self._current.holder if self._current is not None else UNKNOWN_WHO
         if self._current is not None:
             self._current._ended = "lost"
         self._current = None
         self.overruns += 1
         self._enter(FloorState.RECOVERING)
-        self.logger.warning("%s, so the %s's turn lost the floor; listening resumes after the recovery", what, who)
+        self.logger.warning("%s ran more than %g s, so the %s's turn lost the floor; listening resumes after the recovery", stage, limit_seconds, who)
 
     @contextmanager
     def _held(self, call: str) -> Iterator[bool]:

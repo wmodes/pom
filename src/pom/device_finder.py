@@ -77,11 +77,11 @@ class DeviceFinder:
             devices = sorted(self._available(), key=lambda device: device.address)
         except Exception as problem:                                   # a failed listing is the same as nothing there
             self.found = False
-            self._found_nothing(f"could not list the {self.KIND}s ({type(problem).__name__})", setting)
+            self.logger.warning("could not list the %ss (%s) (setting %r); trying again", self.KIND, type(problem).__name__, setting)
             return setting
         if not devices:
             self.found = False
-            self._found_nothing(f"no {self.KIND} was found", setting)
+            self.logger.warning("no %s was found (setting %r); trying again", self.KIND, setting)
             return setting
         self.found = True
 
@@ -91,19 +91,12 @@ class DeviceFinder:
         available = ", ".join(device.address for device in devices)
         if not auto and not pool:
             pool = devices
-            self._warn(f"no {self.KIND} matches {setting!r}; using what is there instead. available: {available}; chosen: {pool[0].address}")
+            self.logger.warning("no %s matches %r; using what is there instead. available: %s; chosen: %s", self.KIND, setting, available,
+                                pool[0].address)
         chosen = pool[0].address
         self.logger.info("%s: setting %r; available: %s; chosen: %s", self.KIND, setting, available, chosen)
         if len(pool) > 1:
             which = "auto" if auto else f"{setting!r}"
-            self._warn(f"several {self.KIND}s to choose from ({which}), so the first is used. chosen: {chosen}; available: {available}. "
-                       f"Set the name to choose another")
+            self.logger.warning("several %ss to choose from (%s), so the first is used. chosen: %s; available: %s. Set the name to choose another",
+                                self.KIND, which, chosen, available)
         return chosen
-
-    def _found_nothing(self, what: str, setting: str) -> None:
-        """Reports a lookup that found nothing. Nothing is counted here: a warning that keeps repeating is muted by the log, not by the finder."""
-        self._warn(f"{what} (setting {setting!r}); trying again")
-
-    def _warn(self, message: str) -> None:
-        """Reports a problem through the logger: raised in strict mode, otherwise logged as a warning."""
-        self.logger.warning(message)

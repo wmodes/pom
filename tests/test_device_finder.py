@@ -226,3 +226,31 @@ def test_strict_raises_instead_of_recording(devices, setting):
 
 def test_strict_is_quiet_when_all_is_well():
     assert ListedFinder([MIC], strict=True).resolve("auto") == "/dev/gadget/mic-1"
+
+
+# --- The exact words of each warning --------------------------------------------------------
+
+def test_the_listing_failed_warning_says_the_kind_the_error_and_the_setting(logged):
+    finder = ListedFinder(OSError("secret detail"))
+    finder.resolve("auto")
+    assert logged.of(finder).warnings() == ["could not list the gadgets (OSError) (setting 'auto'); trying again"]
+
+
+def test_the_nothing_found_warning_says_the_kind_and_the_setting(logged):
+    finder = ListedFinder([])
+    finder.resolve("MicOne")
+    assert logged.of(finder).warnings() == ["no gadget was found (setting 'MicOne'); trying again"]
+
+
+def test_the_not_found_warning_says_the_setting_what_is_there_and_what_was_chosen(logged):
+    finder = ListedFinder([MIC, CAM])
+    finder.resolve("Nonesuch")
+    assert logged.of(finder).warnings()[0] == ("no gadget matches 'Nonesuch'; using what is there instead. "
+                                               "available: /dev/gadget/cam-2, /dev/gadget/mic-1; chosen: /dev/gadget/cam-2")
+
+
+def test_the_several_warning_says_which_setting_what_was_chosen_and_what_was_there(logged):
+    finder = ListedFinder([MIC, CAM])
+    finder.resolve("Mic")
+    assert logged.of(finder).warnings() == ["several gadgets to choose from ('Mic'), so the first is used. chosen: /dev/gadget/cam-2; "
+                                            "available: /dev/gadget/cam-2, /dev/gadget/mic-1. Set the name to choose another"]

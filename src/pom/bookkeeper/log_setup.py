@@ -1,36 +1,37 @@
-"""Logging setup for the whole project, done once by the entry point.
+"""How the log is set up: the plumbing under the Bookkeeper. Classes never use this file; they get their logger from the Bookkeeper.
 
-The Printer will run as a systemd service, so everything it logs goes to stdout and journald
-collects it (`journalctl -u pom`). Modules never configure handlers; they ask `get_logger` for a
-logger, and the entry point calls `configure_logging` once.
+HOW LOGGING WORKS (see bookkeeper.py): the entry point reads the config, builds ONE Bookkeeper with the LogMuter, and calls its `set_up` once;
+`set_up` calls `configure_logging` here. Then it hands the same Bookkeeper to every class it builds, and each class asks it once for its logger:
+`self.logger = bookkeeper.logger_for(__name__, ItsError, DEBUG, strict)`. The config is read before the log exists, so its problems wait in
+`ConfigProblems` and the entry point logs them once the log is set up.
+
+The Printer runs as a systemd service, so everything it logs goes to stdout and journald collects it (`journalctl -u pom`).
 
 THE DEBUG FLAG. There is one flag, `debug`, with two places to set it:
   * Project-wide: `debug = true` in config/pom.toml (or POM_DEBUG=1). Every module then logs its
     DEBUG lines.
-  * Per module: each module has a line `DEBUG = None` near the top. None means "follow the
+  * Per module: each module that logs has a line `DEBUG = None` near the top, which it hands to `logger_for`. None means "follow the
     project flag"; set it to True to see this module's DEBUG output even when the project flag is
     off, or to False to keep it quiet even when the project flag is on. Edit that one line while
-    chasing a tricky problem in one module, and put it back to None afterwards.
+    chasing a tricky problem in one module, and put it back to None afterwards. (`logger_for` applies it with `get_logger` below.)
 
 LOCAL LOG FILE. While developing on the Mac there is no journald, so `local_logs=True` (the
 `local_logs` config flag, or POM_LOCAL_LOGS=1) also copies the log into `logs/pom.log`. That
 folder is gitignored. The file has timestamps (journald adds its own, a file does not), and it
-rotates at 1 MB with three backups so a long session cannot fill the disk. If the folder cannot be
+rotates at `MAX_BYTES` with `BACKUPS` old files kept, so a long session cannot fill the disk. If the folder cannot be
 created or the file cannot be opened, logging carries on to stdout and says so in one warning.
 
 Design decisions, and why:
   * stdout is the service's log: journald does the storage, rotation and timestamping there, so
     the stdout line has no timestamp of its own. The file is for local work only and is off by
     default.
-  * Start-up order for the entry point: call `configure_logging()` once with defaults, load the
-    Config (so any config problem is logged in the same format), then call `configure_logging`
-    again with the Config's values. Calling it twice is safe.
   * Only the `pom` logger is configured. The root logger and other libraries are left alone.
-  * Idempotent: calling it twice (a test, a reload) must not print every line twice.
-  * Per-module overrides survive reconfiguration: `configure_logging` sets only the `pom`
-    logger's level, and a module's own logger keeps the level `get_logger` gave it.
+  * The LogMuter goes on each handler, not on the `pom` logger, because a filter on a logger does not see its child loggers' lines.
+  * Idempotent: setting up twice (a test, a tool) must not print every line twice.
+  * A module's DEBUG line survives a second setup: `configure_logging` sets only the `pom`
+    logger's level, and a module's own logger keeps the level its DEBUG line gave it.
   * It cannot fail: an unknown level name falls back to INFO instead of raising, in keeping with
-    the rule that nothing may stop the oracle over a typo.
+    the rule that nothing may stop the Printer over a typo.
 """
 import logging
 import sys
@@ -108,9 +109,7 @@ def _add_file_handler(logger: logging.Logger, directory: Path, muter: Optional[l
 
 
 def get_logger(name: str, debug: Optional[bool] = None) -> logging.Logger:
-    """A module's logger, with the module's own override of the debug flag applied.
-
-    Use it at the top of a module: `DEBUG = None` then `_log = get_logger(__name__, DEBUG)`.
+    """A module's Python logger, with the module's own DEBUG line applied. The Bookkeeper's `logger_for` uses it; classes never call it.
 
     Args:
         name: The module's `__name__`.

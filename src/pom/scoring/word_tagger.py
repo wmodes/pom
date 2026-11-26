@@ -118,7 +118,7 @@ class WordTagger:
             nltk_data: Folder holding the NLTK data (the project's data/nltk). None uses NLTK's
                 own search path.
             fillers: Words and short phrases that are spoken padding.
-            strict: Raise WordTaggerError on any problem instead of recording it.
+            strict: Raise WordTaggerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             tagger: A function taking a list of words and returning (word, tag) pairs. Default:
                 NLTK's perceptron tagger.

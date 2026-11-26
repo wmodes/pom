@@ -96,7 +96,7 @@ class Bibliomancer:
             circulation: The draw weights (shelf shares and holding weights).
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
-            strict: Raise BibliomancerError on any problem instead of recording it.
+            strict: Raise BibliomancerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             exemplar_range: The (fewest, most) passages `draw()` returns when not told how many.
             redraw_limit: How many times one pick that lands on an unfinished passage is drawn again before the

@@ -28,7 +28,7 @@ Design decisions, and why:
     would silence the Printer. So every way a turn can end (it finished, it raised, or it ran too long) ends in RECOVERING and then
     LISTENING, and nothing here waits on anything.
   * THE WATCHDOG. Each of WRITING and PRINTING has a limit, and a turn that runs past it loses the floor: the keeper moves to
-    RECOVERING, records a WARNING (a fault it recovered from) and counts an overrun. The watchdog cannot stop a thread that is stuck; it
+    RECOVERING, logs a WARNING (a fault it recovered from) and counts an overrun. The watchdog cannot stop a thread that is stuck; it
     only takes the floor back, so the Printer listens again. A turn that waits patiently for the printer (unplugged, held, out of paper)
     is not hung, so it sends a heartbeat, `Turn.still_printing()`, which restarts the printing clock; the watchdog then fires only if
     the beats stop. (Printing has priority over listening: there is no hurry to go back to listening while the portent cannot be printed.) Whoever does the work (the TurnTaker) must give each blocking
@@ -50,7 +50,7 @@ Design decisions, and why:
   * Time is the caller's (a clock function, by default `time.monotonic`): the Pi has no battery clock, so its wall clock jumps when the
     network sets it at boot, and a monotonic clock does not. Tests give a clock they move by hand.
   * The lock is in memory only (no file, so nothing can be left stuck by a crash), and a call that cannot get it within
-    `LOCK_TIMEOUT_SECONDS` records a CRITICAL fault and answers safely (no turn is given, the state reads as listening) instead of
+    `LOCK_TIMEOUT_SECONDS` logs a CRITICAL and answers safely (no turn is given, the state reads as listening) instead of
     waiting for ever. Nothing inside the lock waits on anything, so this should never happen.
   * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged.
     `strict=True` raises FloorKeeperError instead, for tests and dev tools.
@@ -147,7 +147,7 @@ class FloorKeeper:
             printing_seconds: The longest the formatting and typing of one portent may take, above 0.
             recovering_seconds: How long the ears stay shut after a turn, 0 or more (0 means none).
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
-            strict: Raise FloorKeeperError on any problem instead of recording it.
+            strict: Raise FloorKeeperError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, FloorKeeperError, DEBUG, strict)
@@ -298,7 +298,7 @@ class FloorKeeper:
 
     @contextmanager
     def _held(self, call: str) -> Iterator[bool]:
-        """Takes the lock for the length of the `with`, yielding True; or yields False (and records a fault) if it waited too long."""
+        """Takes the lock for the length of the `with`, yielding True; or yields False (and logs a CRITICAL) if it waited too long."""
         got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
         if not got:
             self.logger.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if the floor were free of turns")

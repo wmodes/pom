@@ -55,7 +55,7 @@ class WavDeck:
             speed: 1 plays at real time, 2 twice as fast, 0 as fast as possible. 0 or more.
             end_pause_seconds: Silence added after the last frame. 0 or more.
             sleep: A function that waits that many seconds. Default: time.sleep.
-            strict: Raise WavDeckError on any problem instead of recording it.
+            strict: Raise WavDeckError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WavDeckError, DEBUG, strict)

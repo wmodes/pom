@@ -43,7 +43,7 @@ class CaptureCardFinder(DeviceFinder):
             timeout_seconds: How long to wait for `arecord -l` before giving up, above 0 (setting `listening.device_lookup_seconds`).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             lister: Returns the text `arecord -l` prints. Defaults to running the program.
-            strict: Raise CaptureCardFinderError on any problem instead of recording it.
+            strict: Raise CaptureCardFinderError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         super().__init__(strict=strict, error=CaptureCardFinderError, bookkeeper=bookkeeper)

@@ -68,7 +68,7 @@ class PortentWriter:
             builder: Draws the exemplars and builds the prompt.
             client: Sends the prompt to the oracle model.
             rng: The random generator the builder's Bibliomancer was built with; needed only for seeded writes.
-            strict: Raise PortentWriterError on the writer's own problem instead of recording it.
+            strict: Raise PortentWriterError on the writer's own problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PortentWriterError, DEBUG, strict)

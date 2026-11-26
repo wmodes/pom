@@ -97,7 +97,7 @@ class TakeCutter:
         """Args:
             max_words: The most words a clip may have; longer ones are cut into windows of
                 this size. A whole number of at least 1.
-            strict: Raise TakeCutterError on any problem instead of recording it.
+            strict: Raise TakeCutterError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TakeCutterError, DEBUG, strict)

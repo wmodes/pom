@@ -37,7 +37,7 @@ class TerminalPortFinder(DeviceFinder):
             search_pattern: Where the serial devices are looked for (setting `terminal.port_search`), a glob such as /dev/serial/by-id/*.
             lister: A function pattern -> list of matching paths. Default: glob.glob. Tests give a fake.
             real_path: A function path -> the real device it points to. Default: os.path.realpath. Tests give a fake.
-            strict: Raise TerminalPortFinderError on any problem instead of recording it.
+            strict: Raise TerminalPortFinderError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         super().__init__(strict=strict, error=TerminalPortFinderError, bookkeeper=bookkeeper)

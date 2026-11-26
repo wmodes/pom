@@ -88,7 +88,7 @@ class DecayingQuantileBar(Bar):
             discard_scores_older_than_minutes: Minutes after which a score, or a tick, is dropped from the bar's memory, above 0.
             started_at: The stream time at which the bar begins, in the same seconds as the times it is given: the tick grid and the starting bar's fade both run
                 from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
-            strict: Raise DecayingQuantileBarError on any problem instead of recording it.
+            strict: Raise DecayingQuantileBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, DecayingQuantileBarError, DEBUG, strict)

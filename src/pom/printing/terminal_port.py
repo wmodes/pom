@@ -113,7 +113,7 @@ class PrintResult:
 
 
 def _open_serial(port: str, baud: int, flow_control: str, data_bits: int, parity: str, stop_bits: int):
-    """Opens the real serial port (pyserial is imported here, so a missing library is a recorded fault, not a crash)."""
+    """Opens the real serial port (pyserial is imported here, so a missing library is a logged problem, not a crash)."""
     import serial
     return serial.Serial(port, baud, bytesize=data_bits, parity=PARITIES[parity], stopbits=stop_bits, timeout=_READ_SLICE_SECONDS, write_timeout=10,
                          xonxoff=flow_control == "xon_xoff", rtscts=flow_control == "rts_cts")
@@ -159,7 +159,7 @@ class TerminalPort:
                 and reset_input_buffer(), and optionally `out_waiting` (the bytes accepted but not yet taken). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
             sleep: Waits for that many seconds.
-            strict: Raise TerminalPortError on any problem instead of recording it.
+            strict: Raise TerminalPortError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TerminalPortError, DEBUG, strict)

@@ -58,7 +58,7 @@ class PercentileBar(Bar):
             min_scores: The window always holds at least this many scores, and until this many have been heard the bar is
                 `starting_bar`; a whole number of at least 2.
             starting_bar: The bar until `min_scores` scores have been heard.
-            strict: Raise PercentileBarError on any problem instead of recording it.
+            strict: Raise PercentileBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PercentileBarError, DEBUG, strict)

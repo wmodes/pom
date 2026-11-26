@@ -118,7 +118,7 @@ class Eavesdropper:
             start_seconds: Where the stream clock begins, 0 or more: 0 for a first room, and for one that replaces a room that stopped, what the old
                 one's `stream_time_at` gave, so the clock carries on.
             wall: Returns seconds that steadily increase, for noting when sound last arrived (real time, not stream time). Injected so tests need not wait.
-            strict: Raise EavesdropperError on any problem instead of recording it.
+            strict: Raise EavesdropperError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, EavesdropperError, DEBUG, strict)

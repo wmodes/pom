@@ -71,7 +71,7 @@ class OracleModelClient:
             max_tokens: The most the model may write, a whole number of at least 1.
             temperature: How adventurous the word choice is, 0 or more.
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
-            strict: Raise OracleModelClientError on any problem instead of recording it.
+            strict: Raise OracleModelClientError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, OracleModelClientError, DEBUG, strict)

@@ -58,7 +58,7 @@ class KeyboardWatcher:
             poll_seconds: How long one look at the keyboard waits for a line, above 0.
             error_pause_seconds: How long to pause after an error, 0 or more.
             sleep: A function that waits that many seconds. Default: time.sleep.
-            strict: Raise KeyboardWatcherError on any problem instead of recording it.
+            strict: Raise KeyboardWatcherError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, KeyboardWatcherError, DEBUG, strict)

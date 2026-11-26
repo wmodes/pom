@@ -90,7 +90,7 @@ class TurnHistory:
             max_age_seconds: How long a record is kept, above 0 (3600 is an hour), unless `keep_heard_since` keeps it longer.
             max_records: The most records kept, a whole number of at least 1; the oldest go first.
             clock: Returns seconds since the epoch; injected so tests need not wait.
-            strict: Raise TurnHistoryError on any problem instead of recording it.
+            strict: Raise TurnHistoryError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             keep_heard_since: A function returning the audio time (as `heard_at`) from which turns are kept whatever their age, or None for no such
                 time: the chart notebook's oldest attempt, so a turn stays while its dot is on the chart. Without one, or if it fails or gives

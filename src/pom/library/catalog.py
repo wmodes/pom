@@ -74,7 +74,7 @@ class Catalog:
         """Indexes the passages. Use the `load` / `from_passages` constructors.
 
         A passage whose id was already seen is skipped and reported. A store with no passages at all
-        records a CRITICAL fault (and raises CatalogError in strict mode).
+        logs a CRITICAL (and raises CatalogError in strict mode).
         """
         self.logger = logger if logger is not None else _new_logger(strict, bookkeeper)
         self._tree: dict[str, dict[str, list[Passage]]] = {}

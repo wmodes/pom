@@ -61,7 +61,7 @@ class MovingAverageBar(Bar):
             floor_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
             starting_bar: The bar before any score has counted.
             score_range: (lowest, highest) possible score; the lowest must be below the highest.
-            strict: Raise MovingAverageBarError on any problem instead of recording it.
+            strict: Raise MovingAverageBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MovingAverageBarError, DEBUG, strict)

@@ -37,7 +37,7 @@ Design decisions, and why:
     is per call, not per sequence: a caller that asks `bar_at` and then `rule` may find the other thread's score came between the two,
     so the bar it reports can differ slightly from the one the ruling used. The ruling itself is always consistent.
   * The lock is in memory only, never a file, so a crash or a power cut cannot leave it stuck. And no call can wait on it forever: after
-    `LOCK_TIMEOUT_SECONDS` a call gives up, records a CRITICAL fault, and answers as if it had nothing (NO_MARK, no bar, a window of 0)
+    `LOCK_TIMEOUT_SECONDS` a call gives up, logs a CRITICAL, and answers as if it had nothing (NO_MARK, no bar, a window of 0)
     rather than freeze the thread that is listening. Nothing inside the lock waits on anything, so this should never happen; it is there
     so that a bug somewhere cannot deafen the Printer.
 """
@@ -85,7 +85,7 @@ class BarKeeper:
             cooldown_seconds: How many seconds after a qualifier before another score may qualify, 0 or more (0 means no cooldown).
             qualifier_bar_influence: How far up from the bar to the score a score that stood above the bar goes into the bar: 1 is the score
                 itself, 0 is the bar itself. Any number (not limited to 0 to 1).
-            strict: Raise BarKeeperError on any problem instead of recording it.
+            strict: Raise BarKeeperError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, BarKeeperError, DEBUG, strict)
@@ -132,7 +132,7 @@ class BarKeeper:
 
     @contextmanager
     def _held(self, call: str) -> Iterator[bool]:
-        """Takes the lock for the length of the `with`, yielding True; or yields False (and records a fault) if it waited too long."""
+        """Takes the lock for the length of the `with`, yielding True; or yields False (and logs a CRITICAL) if it waited too long."""
         got = self._lock.acquire(timeout=LOCK_TIMEOUT_SECONDS)
         if not got:
             self.logger.critical(f"{call} could not get the lock in {LOCK_TIMEOUT_SECONDS:g} s; answering as if it had nothing")

@@ -99,7 +99,7 @@ class RollingCutter:
             max_cut_seconds: Seconds without a finished segment before one is forced out, above 0.
             vad: Whether whisper's voice detection is on for the rounds.
             clock: A function giving seconds, used only to time whisper. Default: time.perf_counter.
-            strict: Raise RollingCutterError on any problem instead of recording it.
+            strict: Raise RollingCutterError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, RollingCutterError, DEBUG, strict)

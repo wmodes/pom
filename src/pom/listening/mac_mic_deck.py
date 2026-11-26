@@ -46,7 +46,7 @@ class MacMicDeck(MicDeck):
             device: The AVFoundation audio input: `default` for the system's default input, or a device name.
             ffmpeg: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
-            strict: Raise MicDeckError on any problem instead of recording it.
+            strict: Raise MicDeckError on any problem instead of logging it.
             heard: Called as each frame comes from the microphone (see MicDeck).
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """

@@ -136,7 +136,7 @@ class TurnTaker:
             print_pause_seconds: The wait between two tries at a terminal that cannot print yet, above 0.
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
             sleep: A function that waits that many seconds. Default: time.sleep.
-            strict: Raise TurnTakerError on any problem instead of recording it.
+            strict: Raise TurnTakerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnTakerError, DEBUG, strict)

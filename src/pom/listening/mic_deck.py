@@ -63,7 +63,7 @@ class MicDeck:
             device: The ALSA capture device, e.g. plughw:0,0 (`arecord -l` lists them).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
-            strict: Raise MicDeckError on any problem instead of recording it.
+            strict: Raise MicDeckError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             heard: Called, with no arguments, as each frame comes from the microphone (by the thread that reads it), so the status board can
                 tell that sound is arriving. A callback that raises is ignored: it must never stop the sound.

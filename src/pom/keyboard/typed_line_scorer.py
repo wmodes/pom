@@ -53,7 +53,7 @@ class TypedLineScorer:
             score_multiplier: What a score is multiplied by before it meets the bar, 0 or more.
             bar_influence: How far up from the bar to the typed score it goes into the bar: 1 is the score itself, 0 is the bar itself.
                 Any number (not limited to 0 to 1).
-            strict: Raise TypedLineScorerError on any problem instead of recording it.
+            strict: Raise TypedLineScorerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TypedLineScorerError, DEBUG, strict)

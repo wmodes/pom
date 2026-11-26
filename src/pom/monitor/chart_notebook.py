@@ -70,7 +70,7 @@ class ChartNotebook:
         """Args:
             max_age_seconds: How much drawn time is kept, above 0: the chart's own width (`[chart] window_minutes`), since nothing older is ever drawn.
             max_entries: The most entries kept, a whole number of at least 1; the oldest go first.
-            strict: Raise ChartNotebookError on any problem instead of recording it.
+            strict: Raise ChartNotebookError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             ticks_source: A function from (start, end) to the ticks in that stretch, each as (time, anchor score, the bar at that tick), oldest
                 first (the bar's `ticks_between`). Without one, no ticks are written.

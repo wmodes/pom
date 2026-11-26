@@ -39,7 +39,7 @@ class StatusBoard:
     def __init__(self, clock: Callable[[], float] = time.monotonic, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             clock: Returns seconds, steadily increasing (monotonic).
-            strict: Raise StatusBoardError on any problem instead of recording it.
+            strict: Raise StatusBoardError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, StatusBoardError, DEBUG, strict)

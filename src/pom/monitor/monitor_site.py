@@ -286,7 +286,7 @@ class MonitorSite:
             show_hinges: False hides the hinge text everywhere, leaving numbers only.
             status_source: A function returning the MonitorStatus now; optional.
             clock: Returns seconds since the epoch; injected so tests need not wait.
-            strict: Raise MonitorSiteError on any problem instead of recording it.
+            strict: Raise MonitorSiteError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             notebook: A ChartNotebook to draw the chart from; without one the page has no chart.
             chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.

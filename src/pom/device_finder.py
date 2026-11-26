@@ -21,7 +21,7 @@ Design decisions, and why:
   * IT NEVER RAISES (a helper must never stop the oracle; see pom/__init__.py). A listing that fails is the same as nothing there, and the
     warning names only the kind of error. `strict=True` raises DeviceFinderError instead, for tests and dev tools.
   * The lines it logs hold device names, never anything that was said or heard.
-  * A finder is asked from one thread at a time (its owner holds a lock, or has one thread), so the count of tries needs no lock of its own.
+  * A finder is asked from one thread at a time (its owner holds a lock, or has one thread), so its `found` flag needs no lock of its own.
 """
 from dataclasses import dataclass
 from typing import List, Optional
@@ -60,11 +60,11 @@ class DeviceFinder:
 
     def __init__(self, strict: bool = False, error: type = DeviceFinderError, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            strict: Raise `error` on any problem instead of recording it.
+            strict: Raise `error` on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             error: The exception type strict mode raises (a subclass gives its own).
         """
-        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, error, DEBUG, strict)   # every problem goes through it: logged once, kept for reading
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, error, DEBUG, strict)
         self.found = False
 
     def _available(self) -> List[Device]:
@@ -105,5 +105,5 @@ class DeviceFinder:
         self._warn(f"{what} (setting {setting!r}); trying again")
 
     def _warn(self, message: str) -> None:
-        """Reports a problem through the recorder: raised in strict mode, otherwise logged (once) and kept for reading."""
+        """Reports a problem through the logger: raised in strict mode, otherwise logged as a warning."""
         self.logger.warning(message)

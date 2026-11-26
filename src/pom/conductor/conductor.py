@@ -88,7 +88,7 @@ class Conductor:
             restart_room: True to build the room again after it ends (a microphone); False when its ending is the end of the run (a recording).
             restart_pause_seconds: The wait before a part is started again, 0 or more.
             check_seconds: How often the watching thread looks at the floor and the threads, above 0.
-            strict: Raise ConductorError on any problem instead of recording it.
+            strict: Raise ConductorError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ConductorError, DEBUG, strict)

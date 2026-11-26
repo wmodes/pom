@@ -102,7 +102,7 @@ class ClipScorer:
             failure_limit: Model failures in a row that open the circuit breaker.
             retry_seconds: How long the breaker stays open before the model gets another try.
             clock: Returns seconds; injected so tests need not wait.
-            strict: Raise ClipScorerError on any problem instead of recording it.
+            strict: Raise ClipScorerError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ClipScorerError, DEBUG, strict)

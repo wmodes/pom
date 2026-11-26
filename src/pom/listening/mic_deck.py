@@ -10,7 +10,7 @@ Design decisions, and why:
     buffer fills, the OLDEST frames are dropped (the room has moved on), counted in `dropped_frames`, and a warning is
     recorded once for each stretch of dropping.
   * Nothing here may stop the oracle (see pom/__init__.py). No `arecord`, a microphone that cannot be opened, or a
-    microphone that stops sending (unplugged) is a CRITICAL fault in `report` and `frames()` simply ends; it never
+    microphone that stops sending (unplugged) is a CRITICAL line in the log and `frames()` simply ends; it never
     raises. The Conductor decides what to do about it. `strict=True` raises MicDeckError instead, for tests and dev
     tools.
   * The program that is run is a setting (`arecord`), so tests can use a stand-in; the capture format is fixed at
@@ -25,12 +25,10 @@ import subprocess
 import threading
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_RATE
-from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_DEVICE = "plughw:0,0"
 DEFAULT_BUFFER_SECONDS = 10.0
@@ -49,7 +47,7 @@ class MicDeck:
     """Frames from the microphone.
 
     Attributes:
-        report: Problems met (no arecord, the microphone stopped, frames dropped). CRITICAL means no sound will come.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         dropped_frames: How many frames were thrown away because the eavesdropper fell behind.
     """
 
@@ -60,24 +58,25 @@ class MicDeck:
     _MISSING_HINT = "this is meant to run on the Pi"
 
     def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord",
-                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False, heard: Optional[Callable[[], None]] = None):
+                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False, heard: Optional[Callable[[], None]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             device: The ALSA capture device, e.g. plughw:0,0 (`arecord -l` lists them).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
             strict: Raise MicDeckError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             heard: Called, with no arguments, as each frame comes from the microphone (by the thread that reads it), so the status board can
                 tell that sound is arriving. A callback that raises is ignored: it must never stop the sound.
         """
-        self.report = ReportRecorder(strict=strict, error=MicDeckError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MicDeckError, DEBUG, strict)
         self.dropped_frames = 0
         self._heard = heard
         if not (isinstance(device, str) and device.strip()):
-            self.report.warn(f"the capture device must be a name such as {self._FALLBACK_DEVICE}, got {device!r}; "
+            self.logger.warning(f"the capture device must be a name such as {self._FALLBACK_DEVICE}, got {device!r}; "
                              f"using {self._FALLBACK_DEVICE}")
             device = self._FALLBACK_DEVICE
         if not (_is_number(buffer_seconds) and buffer_seconds > 0):
-            self.report.warn(f"buffer_seconds must be a number above 0, got {buffer_seconds!r}; using {DEFAULT_BUFFER_SECONDS:g}")
+            self.logger.warning(f"buffer_seconds must be a number above 0, got {buffer_seconds!r}; using {DEFAULT_BUFFER_SECONDS:g}")
             buffer_seconds = DEFAULT_BUFFER_SECONDS
         self._queue: "queue.Queue[Optional[bytes]]" = queue.Queue(maxsize=max(1, round(buffer_seconds / FRAME_SECONDS)))
         self._closing = threading.Event()
@@ -91,13 +90,13 @@ class MicDeck:
     def _start(self, device: str, arecord: str) -> None:
         program = shutil.which(arecord) if isinstance(arecord, str) else None
         if program is None:
-            self.report.critical(f"{self._TOOL} was not found; the Printer cannot hear ({self._MISSING_HINT})")
+            self.logger.critical(f"{self._TOOL} was not found; the Printer cannot hear ({self._MISSING_HINT})")
             return
         try:
             self._process = subprocess.Popen(self._command(program, device), stdout=subprocess.PIPE,
                                              stderr=subprocess.DEVNULL)
         except OSError as problem:
-            self.report.critical(f"{self._TOOL} could not be started ({type(problem).__name__}); the Printer cannot hear")
+            self.logger.critical(f"{self._TOOL} could not be started ({type(problem).__name__}); the Printer cannot hear")
             return
         self._reader = threading.Thread(target=self._read, name="mic-reader", daemon=True)
         self._reader.start()
@@ -147,14 +146,14 @@ class MicDeck:
                 except queue.Empty:
                     pass
         if dropped_now and not self._dropping:
-            self._fault("warn", "sound is arriving faster than it is used; dropping the oldest")
+            self._fault("warning", "sound is arriving faster than it is used; dropping the oldest")
         self._dropping = dropped_now
 
-    def _fault(self, severity: str, message: str) -> None:
-        """Records a fault found in the reader thread. In strict mode the error cannot be raised here, where nobody is
+    def _fault(self, mode: str, message: str) -> None:
+        """Says a problem found in the reader thread, in its mode ("warning" or "critical"). In strict mode the error cannot be raised here, where nobody is
         waiting for it, so it is kept and raised by frames() when the sound ends."""
         try:
-            getattr(self.report, severity)(message)
+            getattr(self.logger, mode)(message)
         except MicDeckError as problem:
             self._thread_error = problem
 

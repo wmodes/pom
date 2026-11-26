@@ -23,7 +23,7 @@ Design decisions, and why:
     live stream would be. The one clock reading is how long whisper took, for display (`took`), and it is injected.
   * Nothing here may stop the oracle (see pom/__init__.py). If whisper cannot be reached the round returns nothing and
     the audio stays in the buffer, so the next round tries it again; a client that raises is treated the same way. A bad
-    setting is replaced by its default and recorded in `report`. `strict=True` raises RollingCutterError instead, for
+    setting is replaced by its default and logged. `strict=True` raises RollingCutterError instead, for
     tests and dev tools.
   * Audio is only held in memory, and neither audio nor text is logged.
   * `feed` and `cut` may be called from different threads; a lock guards the buffer.
@@ -35,13 +35,11 @@ import threading
 import time
 from typing import Callable, List, Optional, Protocol
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.audio_format import BYTES_PER_SECOND, SAMPLE_BYTES
 from pom.listening.whisper_model_client import Segment
-from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_CUT_EVERY_SECONDS = 5.0
 DEFAULT_HOLD_BACK_SECONDS = 2.0
@@ -85,14 +83,14 @@ class RollingCutter:
     """Feed it audio; ask it for the segments whisper has finished.
 
     Attributes:
-        report: Problems met (a bad setting, a client that raised). Never holds audio or text.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         took: How long the most recent whisper request took, in seconds.
         forced: How many times a segment had to be forced out at the buffer limit.
     """
 
     def __init__(self, client: SegmentFinder, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
                  rewind_seconds: float = DEFAULT_REWIND_SECONDS, max_cut_seconds: float = DEFAULT_MAX_CUT_SECONDS, vad: bool = True,
-                 clock: Optional[Callable[[], float]] = None, strict: bool = False):
+                 clock: Optional[Callable[[], float]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             client: Asks whisper for segments (a WhisperModelClient, or anything with its `segments` and `error`).
             cut_every_seconds: Seconds of new audio between whisper runs, above 0.
@@ -102,8 +100,9 @@ class RollingCutter:
             vad: Whether whisper's voice detection is on for the rounds.
             clock: A function giving seconds, used only to time whisper. Default: time.perf_counter.
             strict: Raise RollingCutterError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=RollingCutterError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, RollingCutterError, DEBUG, strict)
         self._client = client
         self._cut_every_seconds = self._setting(cut_every_seconds, "cut_every_seconds", DEFAULT_CUT_EVERY_SECONDS, lambda v: v > 0, "above 0")
         self._hold_back_seconds = self._setting(hold_back_seconds, "hold_back_seconds", DEFAULT_HOLD_BACK_SECONDS, lambda v: v >= 0, "at least 0")
@@ -124,7 +123,7 @@ class RollingCutter:
         """The value if it is a number that passes `is_good`, otherwise the default with a warning."""
         if _is_number(value) and is_good(value):
             return float(value)
-        self.report.warn(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be a number {wanted}, got {value!r}; using {default:g}")
         return default
 
     @property
@@ -198,7 +197,7 @@ class RollingCutter:
             try:
                 found = join_unfinished(self._client.segments(window, self._start, vad=self._vad))
             except Exception as problem:             # a misbehaving client must never stop the oracle
-                self.report.warn(f"whisper could not be asked for segments ({type(problem).__name__})")
+                self.logger.warning(f"whisper could not be asked for segments ({type(problem).__name__})")
                 return []
             self.took = self._clock() - started
             if self._client.error:                   # whisper did not answer: keep the audio and try again

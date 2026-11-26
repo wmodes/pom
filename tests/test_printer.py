@@ -109,7 +109,7 @@ class TestTheWiring:
                 return f"found-{len(asked)}"
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None):
+            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
                 opened.append((device, buffer_seconds))
 
         monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
@@ -125,7 +125,7 @@ class TestTheWiring:
         decks = []
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None):
+            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
                 self.heard = heard
                 decks.append(self)
 
@@ -140,7 +140,7 @@ class TestTheWiring:
         decks, now = [], [1000.0]
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None):
+            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
                 self.heard = heard
                 decks.append(self)
 
@@ -188,7 +188,7 @@ class TestTheWiring:
                 return device
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None):
+            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
                 opened.append(device)
 
         monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)

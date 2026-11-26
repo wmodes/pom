@@ -907,7 +907,7 @@ def test_the_shipped_config_finds_the_terminal_by_itself():
     assert written["port"] == "auto" and written["port_search"] == "/dev/serial/by-id/*"
 
 
-def test_the_listening_settings_plug_straight_into_the_modules():
+def test_the_listening_settings_plug_straight_into_the_modules(logged):
     from pom.listening import Eavesdropper, RollingCutter, WhisperModelClient
 
     class NoSound:
@@ -922,7 +922,7 @@ def test_the_listening_settings_plug_straight_into_the_modules():
     cutter = RollingCutter(client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds)
     eavesdropper = Eavesdropper(NoSound(), client, settings.cut_every_seconds, settings.hold_back_seconds, settings.rewind_seconds, settings.max_cut_seconds,
                         settings.room_tone_pass_every, settings.room_tone_pass_seconds, settings.room_tone_memory)
-    assert client.report.ok and cutter.report.ok and eavesdropper.report.ok
+    assert logged.ok("pom.listening")                                    # the client, the cutter and the eavesdropper said nothing
 
 
 # --- The [oracle] section --------------------------------------------------------------

@@ -14,7 +14,7 @@ are set when it starts.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow or answering oddly gives an
-    empty result and a warning in `report`, never an exception. `error` says what went wrong with the latest request
+    empty result and a warning in the log, never an exception. `error` says what went wrong with the latest request
     (or is None), so a caller can tell "heard nothing" from "could not ask". `strict=True` raises
     WhisperModelClientError instead, for tests and dev tools.
   * The audio goes to the server from memory, as a WAV made in memory, so no audio file is ever written to disk.
@@ -35,12 +35,10 @@ import uuid
 import wave
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.audio_format import SAMPLE_BYTES, SAMPLE_RATE
-from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_URL = "http://127.0.0.1:8110"
 DEFAULT_TIMEOUT = 180.0
@@ -115,29 +113,30 @@ class WhisperModelClient:
     """Asks a running whisper-server to transcribe audio.
 
     Attributes:
-        report: Problems met (server down, bad setting). Never holds audio or text.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         error: The kind of failure of the most recent request, or None if it worked.
     """
 
     def __init__(self, url: str = DEFAULT_URL, timeout: float = DEFAULT_TIMEOUT,
-                 post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: bool = False):
+                 post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             url: The server's address, e.g. http://127.0.0.1:8110.
             timeout: Seconds to wait for one transcription, above 0.
             post: A function (url, fields, wav bytes, timeout) -> the reply text. Default: real HTTP.
             strict: Raise WhisperModelClientError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=WhisperModelClientError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WhisperModelClientError, DEBUG, strict)
         self.error: Optional[str] = None
         self._usable = isinstance(url, str) and url.startswith(("http://", "https://"))
         self._url = url.rstrip("/") if self._usable else DEFAULT_URL
         if not self._usable:
-            self.report.warn(f"the whisper address must start with http:// or https://, got {url!r}; "
+            self.logger.warning(f"the whisper address must start with http:// or https://, got {url!r}; "
                              f"whisper will not be asked")
         if _is_number(timeout) and timeout > 0:
             self._timeout = float(timeout)
         else:
-            self.report.warn(f"the whisper timeout must be a positive number of seconds, got {timeout!r}; "
+            self.logger.warning(f"the whisper timeout must be a positive number of seconds, got {timeout!r}; "
                              f"using {DEFAULT_TIMEOUT:g}")
             self._timeout = DEFAULT_TIMEOUT
         self._post = post if post is not None else _http_post
@@ -180,7 +179,7 @@ class WhisperModelClient:
             return None
         if not isinstance(pcm, (bytes, bytearray, memoryview)):
             self.error = "BadAudio"
-            self.report.warn(f"the audio for whisper must be bytes, got {type(pcm).__name__}")
+            self.logger.warning(f"the audio for whisper must be bytes, got {type(pcm).__name__}")
             return None
         if len(pcm) < SAMPLE_BYTES:                             # not even one sample: nothing to transcribe, nothing failed
             self.error = None
@@ -189,11 +188,11 @@ class WhisperModelClient:
             reply = self._post(self._url, fields, wav_bytes(bytes(pcm)), self._timeout)
         except Exception as problem:                 # a dead or slow server must never stop the oracle
             self.error = type(problem).__name__
-            self.report.warn(f"whisper did not answer ({self.error})")
+            self.logger.warning(f"whisper did not answer ({self.error})")
             return None
         if not isinstance(reply, str):
             self.error = "BadReply"
-            self.report.warn("whisper's reply was not text")
+            self.logger.warning("whisper's reply was not text")
             return None
         self.error = None
         return reply

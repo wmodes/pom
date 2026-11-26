@@ -126,10 +126,10 @@ class TestTheStreamClockCarriesOn:
         assert eavesdropper.stream_time_at(10.0) == pytest.approx(3.0, abs=0.05)
 
     @pytest.mark.parametrize("bad", [-1, "10", None, True, [5], float("nan"), float("inf")])
-    def test_a_bad_start_is_zero_with_a_warning(self, bad):
+    def test_a_bad_start_is_zero_with_a_warning(self, bad, logged):
         eavesdropper, _, whisper = make(7, [], start_seconds=bad)
         hear(eavesdropper)
-        assert whisper.calls[0][0] == 0.0 and len(eavesdropper.report.warnings) == 1 and "start_seconds" in eavesdropper.report.warnings[0]
+        assert whisper.calls[0][0] == 0.0 and len(logged.of(eavesdropper).warnings()) == 1 and "start_seconds" in logged.of(eavesdropper).warnings()[0]
 
     def test_strict_raises_on_a_bad_start(self):
         with pytest.raises(EavesdropperError):
@@ -283,26 +283,26 @@ class TestTheSoundPass:
 
 
 class TestWhenWhisperIsDown:
-    def test_it_is_warned_about_once_for_a_whole_outage(self):
+    def test_it_is_warned_about_once_for_a_whole_outage(self, logged):
         eavesdropper, _, _ = make(22, failing=[0, 1, 2])
         hear(eavesdropper)
-        assert len(eavesdropper.report.warnings) == 1 and "not answering" in eavesdropper.report.warnings[0]
-        assert "URLError" in eavesdropper.report.warnings[0]
+        assert len(logged.of(eavesdropper).warnings()) == 1 and "not answering" in logged.of(eavesdropper).warnings()[0]
+        assert "URLError" in logged.of(eavesdropper).warnings()[0]
 
-    def test_a_second_outage_is_warned_about_again(self):
+    def test_a_second_outage_is_warned_about_again(self, logged):
         eavesdropper, _, _ = make(32, failing=[0, 3])
         hear(eavesdropper)
-        assert len(eavesdropper.report.warnings) == 2
+        assert len(logged.of(eavesdropper).warnings()) == 2
 
     def test_the_audio_is_kept_and_heard_when_whisper_comes_back(self):
         eavesdropper, _, whisper = make(12, [], [seg(0.5, 3.0, "Said while whisper was down.")], failing=[0])
         assert [h.words for h in hear(eavesdropper)] == ["Said while whisper was down."]
         assert whisper.calls[1] == (0.0, 10.0)
 
-    def test_coming_back_is_not_a_warning(self):
+    def test_coming_back_is_not_a_warning(self, logged):
         eavesdropper, _, _ = make(22, failing=[0])
         hear(eavesdropper)
-        assert len(eavesdropper.report.warnings) == 1
+        assert len(logged.of(eavesdropper).warnings()) == 1
 
 
 class TestStopping:
@@ -341,12 +341,12 @@ class TestSettings:
                                           ("room_tone_pass_seconds", float("inf")),
                                           ("room_tone_memory", 0), ("room_tone_memory", 2.5), ("room_tone_memory", "6"),
                                           ("room_tone_memory", None), ("room_tone_memory", True)])
-    def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad):
+    def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad, logged):
         eavesdropper = make(5, **{name: bad})[0]
-        assert len(eavesdropper.report.warnings) == 1 and name in eavesdropper.report.warnings[0]
+        assert len(logged.of(eavesdropper).warnings()) == 1 and name in logged.of(eavesdropper).warnings()[0]
 
-    def test_zero_room_tone_passes_is_allowed(self):
-        assert make(5, room_tone_pass_every=0)[0].report.ok
+    def test_zero_room_tone_passes_is_allowed(self, logged):
+        assert logged.of(make(5, room_tone_pass_every=0)[0]).ok()
 
     def test_the_cutters_settings_are_checked_too_and_logged_once(self, caplog):
         with caplog.at_level(logging.WARNING):
@@ -396,16 +396,16 @@ class TestSettings:
         with pytest.raises(RollingCutterError, match="cut_every_seconds"):
             make(5, strict=True, cut_every_seconds=0)
 
-    def test_good_settings_are_quiet(self):
-        assert make(5)[0].report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(make(5)[0]).ok()
 
 
 class TestPrivacy:
-    def test_what_was_said_never_gets_into_the_report_or_the_log(self, caplog):
+    def test_what_was_said_never_gets_into_the_report_or_the_log(self, caplog, logged):
         with caplog.at_level(logging.DEBUG):
             eavesdropper, _, _ = make(12, [seg(0.5, 3.0, "abracadabra says the room")], failing=[1])
             hear(eavesdropper)
-        assert "abracadabra" not in " ".join(eavesdropper.report.lines()) and "abracadabra" not in caplog.text
+        assert "abracadabra" not in " ".join(logged.of(eavesdropper).lines()) and "abracadabra" not in caplog.text
 
 
 class TestWithARealCutterAndSorter:

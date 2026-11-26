@@ -227,9 +227,7 @@ def main() -> None:
         finder.close()
         if site is not None:
             site.stop()
-    lines = [*deck.report.lines(), *scorer_client.report.lines()]            # the other parts' problems were logged when they happened
-    for line in lines:
-        print(line)
+    # every part's problems were logged as they happened, above
 
 
 if __name__ == "__main__":

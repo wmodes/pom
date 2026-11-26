@@ -64,10 +64,10 @@ class TestHearing:
 
 
 class TestFaults:
-    def test_a_missing_ffmpeg_is_critical_and_says_how_to_get_it(self):
+    def test_a_missing_ffmpeg_is_critical_and_says_how_to_get_it(self, logged):
         deck = MacMicDeck(ffmpeg="no-such-program-anywhere")
         assert collect(deck) == []
-        text = " ".join(deck.report.lines())
+        text = " ".join(logged.of(deck).lines())
         assert "ffmpeg was not found" in text and "brew install ffmpeg" in text
         assert "arecord" not in text and "Pi" not in text
 
@@ -75,30 +75,30 @@ class TestFaults:
         with pytest.raises(MicDeckError):
             MacMicDeck(ffmpeg="no-such-program-anywhere", strict=True)
 
-    def test_an_ffmpeg_that_stops_is_reported_by_name(self, tmp_path):
+    def test_an_ffmpeg_that_stops_is_reported_by_name(self, tmp_path, logged):
         deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(1)"))
         wait_for_the_reader(deck)
         collect(deck)
-        assert any("ffmpeg ended" in line for line in deck.report.lines())
+        assert any("ffmpeg ended" in line for line in logged.of(deck).lines())
         deck.close()
 
-    def test_a_bad_device_falls_back_to_the_default_and_names_it(self, tmp_path):
+    def test_a_bad_device_falls_back_to_the_default_and_names_it(self, tmp_path, logged):
         record = tmp_path / "argv.txt"
         program = fake_ffmpeg(tmp_path, f"open({str(record)!r}, 'w').write('|'.join(sys.argv[1:]))\nemit(1)")
         deck = MacMicDeck(device="  ", ffmpeg=program)
         wait_for_the_reader(deck)
         deck.close()
         assert ":default" in record.read_text().split("|")
-        text = " ".join(deck.report.lines())
+        text = " ".join(logged.of(deck).lines())
         assert "using default" in text and "plughw" not in text
 
-    def test_an_ffmpeg_that_cannot_be_started_is_reported_by_name(self, tmp_path):
+    def test_an_ffmpeg_that_cannot_be_started_is_reported_by_name(self, tmp_path, logged):
         program = tmp_path / "ffmpeg"
         program.write_text("#!/no/such/interpreter\n")
         program.chmod(0o755)
         deck = MacMicDeck(ffmpeg=str(program))
         assert collect(deck) == []
-        assert any("ffmpeg could not be started" in line for line in deck.report.lines())
+        assert any("ffmpeg could not be started" in line for line in logged.of(deck).lines())
 
 
 class TestTheBuffer:

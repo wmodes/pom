@@ -6,7 +6,7 @@ trying a change on a meeting we already have.
 
 A frame is `audio_format.FRAME_BYTES` bytes (30 ms of 16 kHz mono 16-bit sound). `frames()` yields frames until the
 sound ends: a recording runs out, or the microphone stops. It is meant to be iterated once. A deck that could not
-start (a missing file, no microphone) yields nothing and says why in its `report`; it never raises.
+start (a missing file, no microphone) yields nothing and says why in the log; it never raises.
 """
 from typing import Iterator, Protocol
 

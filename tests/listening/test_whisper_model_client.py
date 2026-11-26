@@ -109,7 +109,7 @@ class TestAgainstAStandInServer:
         server.stop()
         assert client.ping() is False
 
-    def test_text_asks_for_plain_text_with_the_voice_detector_on(self, server):
+    def test_text_asks_for_plain_text_with_the_voice_detector_on(self, server, logged):
         server.reply = "Hello there.\n"
         client = WhisperModelClient(server.url)
         assert client.text(PCM) == "Hello there.\n"
@@ -117,7 +117,7 @@ class TestAgainstAStandInServer:
         assert path == "/inference" and content_type.startswith("multipart/form-data")
         assert b'name="response_format"\r\n\r\ntext' in body and b'name="no_timestamps"\r\n\r\ntrue' in body
         assert b'name="vad"\r\n\r\ntrue' in body and b"RIFF" in body
-        assert client.error is None and client.report.ok
+        assert client.error is None and logged.of(client).ok()
 
     def test_text_can_turn_the_voice_detector_off(self, server):
         WhisperModelClient(server.url).text(PCM, vad=False)
@@ -138,22 +138,22 @@ class TestAgainstAStandInServer:
         server.reply = "1\n00:00:00,000 --> 00:00:01,000\n\n\n2\n00:00:02,000 --> 00:00:03,000\nreal\n"
         assert [s.text for s in WhisperModelClient(server.url).segments(PCM)] == ["real"]
 
-    def test_no_speech_is_an_empty_list_and_not_an_error(self, server):
+    def test_no_speech_is_an_empty_list_and_not_an_error(self, server, logged):
         server.reply = ""
         client = WhisperModelClient(server.url)
-        assert client.segments(PCM) == [] and client.text(PCM) == "" and client.error is None and client.report.ok
+        assert client.segments(PCM) == [] and client.text(PCM) == "" and client.error is None and logged.of(client).ok()
 
-    def test_a_server_error_gives_nothing_and_says_so(self, server):
+    def test_a_server_error_gives_nothing_and_says_so(self, server, logged):
         server.status = 500
         client = WhisperModelClient(server.url)
         assert client.segments(PCM) == [] and client.text(PCM) == ""
-        assert client.error == "HTTPError" and len(client.report.warnings) == 2
+        assert client.error == "HTTPError" and len(logged.of(client).warnings()) == 2
 
-    def test_a_dead_server_gives_nothing_and_says_so(self, server):
+    def test_a_dead_server_gives_nothing_and_says_so(self, server, logged):
         url = server.url
         server.stop()
         client = WhisperModelClient(url)
-        assert client.text(PCM) == "" and client.error is not None and not client.report.ok
+        assert client.text(PCM) == "" and client.error is not None and not logged.of(client).ok()
 
     def test_the_error_clears_when_the_server_comes_back(self, server):
         client = WhisperModelClient(server.url)
@@ -198,11 +198,11 @@ class TestWithAFakePost:
         assert client.text(PCM) == "" and client.segments(PCM) == []
         assert client.error == type(problem).__name__
 
-    def test_a_reply_that_is_not_text_is_a_problem(self):
+    def test_a_reply_that_is_not_text_is_a_problem(self, logged):
         client = WhisperModelClient("http://x.test", post=lambda *args: {"text": "hello"})
-        assert client.text(PCM) == "" and client.error == "BadReply" and len(client.report.warnings) == 1
+        assert client.text(PCM) == "" and client.error == "BadReply" and len(logged.of(client).warnings()) == 1
 
-    def test_what_was_said_never_gets_into_the_report_or_the_log(self, caplog):
+    def test_what_was_said_never_gets_into_the_report_or_the_log(self, caplog, logged):
         def post(*args):
             raise RuntimeError("the secret phrase was abracadabra")
 
@@ -210,22 +210,22 @@ class TestWithAFakePost:
             client = WhisperModelClient("http://x.test", post=post)
             client.text(PCM)
             WhisperModelClient("http://x.test", post=lambda *args: "abracadabra said the room").text(PCM)
-        assert "abracadabra" not in " ".join(client.report.lines()) and "abracadabra" not in caplog.text
+        assert "abracadabra" not in " ".join(logged.of(client).lines()) and "abracadabra" not in caplog.text
 
 
 class TestAudioItCannotSend:
     @pytest.mark.parametrize("not_audio", [None, "text", 5, [1, 2], {"a": 1}])
-    def test_audio_that_is_not_bytes_is_a_problem_and_is_not_sent(self, not_audio):
+    def test_audio_that_is_not_bytes_is_a_problem_and_is_not_sent(self, not_audio, logged):
         sent = []
         client = WhisperModelClient("http://x.test", post=lambda *args: sent.append(args) or "x")
-        assert client.text(not_audio) == "" and client.error == "BadAudio" and len(client.report.warnings) == 1
+        assert client.text(not_audio) == "" and client.error == "BadAudio" and len(logged.of(client).warnings()) == 1
         assert sent == []
 
     @pytest.mark.parametrize("silence", [b"", b"\x00"])
-    def test_less_than_a_sample_is_not_sent_and_is_not_a_problem(self, silence):
+    def test_less_than_a_sample_is_not_sent_and_is_not_a_problem(self, silence, logged):
         sent = []
         client = WhisperModelClient("http://x.test", post=lambda *args: sent.append(args) or "x")
-        assert client.text(silence) == "" and client.segments(silence) == [] and client.error is None and client.report.ok
+        assert client.text(silence) == "" and client.segments(silence) == [] and client.error is None and logged.of(client).ok()
         assert sent == []
 
     @pytest.mark.parametrize("make", [bytearray, memoryview])
@@ -236,26 +236,26 @@ class TestAudioItCannotSend:
 
 class TestSettings:
     @pytest.mark.parametrize("bad", [None, "", "ftp://x.test", "127.0.0.1:8110", 5, ["http://x"]])
-    def test_a_bad_address_means_whisper_is_never_asked(self, bad):
+    def test_a_bad_address_means_whisper_is_never_asked(self, bad, logged):
         sent = []
         client = WhisperModelClient(bad, post=lambda *args: sent.append(args) or "x")
-        assert client.available is False and len(client.report.warnings) == 1 and "address" in client.report.warnings[0]
+        assert client.available is False and len(logged.of(client).warnings()) == 1 and "address" in logged.of(client).warnings()[0]
         assert client.text(PCM) == "" and client.segments(PCM) == [] and client.ping() is False
         assert client.error == "UnusableAddress" and sent == []
 
     @pytest.mark.parametrize("good", ["http://127.0.0.1:8110", "https://whisper.test"])
-    def test_http_and_https_addresses_are_fine(self, good):
-        assert WhisperModelClient(good).available is True and WhisperModelClient(good).report.ok
+    def test_http_and_https_addresses_are_fine(self, good, logged):
+        assert WhisperModelClient(good).available is True and logged.of(WhisperModelClient(good)).ok()
 
     @pytest.mark.parametrize("bad", [0, -1, "180", None, True, [180], float("nan")])
-    def test_a_bad_timeout_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_timeout_means_the_default_with_a_warning(self, bad, logged):
         seen = []
         client = WhisperModelClient("http://x.test", timeout=bad, post=lambda url, fields, audio, timeout: seen.append(timeout) or "x")
         client.text(PCM)
-        assert seen == [DEFAULT_TIMEOUT] and len(client.report.warnings) == 1 and "timeout" in client.report.warnings[0]
+        assert seen == [DEFAULT_TIMEOUT] and len(logged.of(client).warnings()) == 1 and "timeout" in logged.of(client).warnings()[0]
 
-    def test_the_defaults_are_the_pis_whisper_server(self):
-        assert WhisperModelClient().available and WhisperModelClient().report.ok
+    def test_the_defaults_are_the_pis_whisper_server(self, logged):
+        assert WhisperModelClient().available and logged.of(WhisperModelClient()).ok()
 
     @pytest.mark.parametrize("make", [lambda: WhisperModelClient("nope", strict=True),
                                       lambda: WhisperModelClient("http://x.test", timeout=0, strict=True)])

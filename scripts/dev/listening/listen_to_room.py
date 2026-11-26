@@ -97,8 +97,7 @@ def main():
         print()
     finally:
         finder.close()
-    for line in [*deck.report.lines(), *scorer_client.report.lines()]:        # the hinge finder's problems were logged when they happened
-        print(line)
+    # every part's problems were logged as they happened, above
 
 
 if __name__ == "__main__":

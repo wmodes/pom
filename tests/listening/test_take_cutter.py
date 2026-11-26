@@ -247,12 +247,12 @@ def test_text_that_is_not_a_string_gives_nothing(bad):
     assert TakeCutter().split(bad) == []
 
 
-def test_non_text_other_than_none_is_reported():
+def test_non_text_other_than_none_is_reported(logged):
     take_cutter = TakeCutter()
     take_cutter.split(None)
-    assert take_cutter.report.ok                       # None is just "nothing heard"
+    assert logged.of(take_cutter).ok()                       # None is just "nothing heard"
     take_cutter.split(5)
-    assert any("expects text" in w for w in take_cutter.report.warnings)
+    assert any("expects text" in w for w in logged.of(take_cutter).warnings())
 
 
 def test_a_number_alone_is_a_clip():
@@ -283,10 +283,10 @@ def test_the_default_limit_is_forty_words():
 
 
 @pytest.mark.parametrize("bad", [0, -1, "10", None, True, 2.5])
-def test_a_bad_limit_falls_back_to_the_default_with_a_warning(bad):
+def test_a_bad_limit_falls_back_to_the_default_with_a_warning(bad, logged):
     take_cutter = TakeCutter(max_words=bad)
     assert take_cutter.max_words == 40
-    assert any("max_words must be" in w for w in take_cutter.report.warnings)
+    assert any("max_words must be" in w for w in logged.of(take_cutter).warnings())
 
 
 @pytest.mark.parametrize("bad", [0, -1, "10", None, True, 2.5])

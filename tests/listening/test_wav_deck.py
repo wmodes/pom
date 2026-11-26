@@ -90,41 +90,41 @@ class TestThePace:
         assert len(self.waits(three_frames, 1)) == 3
 
     @pytest.mark.parametrize("bad", [-1, "fast", None, True, float("nan"), float("inf")])
-    def test_a_bad_speed_means_real_time_with_a_warning(self, three_frames, bad):
+    def test_a_bad_speed_means_real_time_with_a_warning(self, three_frames, bad, logged):
         waited = []
         deck = WavDeck(three_frames, speed=bad, sleep=waited.append)
         play(deck)
         assert waited == pytest.approx([FRAME_SECONDS] * 3)
-        assert len(deck.report.warnings) == 1 and "speed" in deck.report.warnings[0]
+        assert len(logged.of(deck).warnings()) == 1 and "speed" in logged.of(deck).warnings()[0]
 
     @pytest.mark.parametrize("bad", [-1, "long", None, True, float("nan")])
-    def test_a_bad_pause_means_the_default_with_a_warning(self, three_frames, bad):
+    def test_a_bad_pause_means_the_default_with_a_warning(self, three_frames, bad, logged):
         deck = WavDeck(three_frames, speed=0, end_pause_seconds=bad)
         assert len(play(deck)) == 3 + 40
-        assert len(deck.report.warnings) == 1 and "end_pause_seconds" in deck.report.warnings[0]
+        assert len(logged.of(deck).warnings()) == 1 and "end_pause_seconds" in logged.of(deck).warnings()[0]
 
 
 class TestARecordingThatCannotBePlayed:
     @pytest.mark.parametrize("rate,channels,width", [(8000, 1, 2), (44100, 1, 2), (SAMPLE_RATE, 2, 2), (SAMPLE_RATE, 1, 1)])
-    def test_the_wrong_format_is_critical_and_plays_nothing(self, tmp_path, rate, channels, width):
+    def test_the_wrong_format_is_critical_and_plays_nothing(self, tmp_path, rate, channels, width, logged):
         path = make_wav(tmp_path / "odd.wav", b"\x00" * 4000, rate=rate, channels=channels, width=width)
         deck = WavDeck(path, speed=0)
-        assert play(deck) == [] and deck.report.has_critical and deck.seconds == 0.0
-        assert "ffmpeg" in deck.report.criticals[0] and "16 kHz mono 16-bit" in deck.report.criticals[0]
+        assert play(deck) == [] and bool(logged.of(deck).criticals()) and deck.seconds == 0.0
+        assert "ffmpeg" in logged.of(deck).criticals()[0] and "16 kHz mono 16-bit" in logged.of(deck).criticals()[0]
 
-    def test_a_missing_file_is_critical_and_plays_nothing(self, tmp_path):
+    def test_a_missing_file_is_critical_and_plays_nothing(self, tmp_path, logged):
         deck = WavDeck(tmp_path / "nothing.wav", speed=0)
-        assert play(deck) == [] and deck.report.has_critical
+        assert play(deck) == [] and bool(logged.of(deck).criticals())
 
-    def test_a_file_that_is_not_a_wav_is_critical(self, tmp_path):
+    def test_a_file_that_is_not_a_wav_is_critical(self, tmp_path, logged):
         (tmp_path / "notes.txt").write_text("not audio")
         deck = WavDeck(tmp_path / "notes.txt", speed=0)
-        assert play(deck) == [] and deck.report.has_critical
+        assert play(deck) == [] and bool(logged.of(deck).criticals())
 
     @pytest.mark.parametrize("path", [None, 5, ""])
-    def test_a_path_that_is_not_a_path_is_critical(self, path):
+    def test_a_path_that_is_not_a_path_is_critical(self, path, logged):
         deck = WavDeck(path, speed=0)
-        assert play(deck) == [] and deck.report.has_critical
+        assert play(deck) == [] and bool(logged.of(deck).criticals())
 
     def test_strict_mode_raises_on_a_missing_file(self, tmp_path):
         with pytest.raises(WavDeckError, match="cannot open"):
@@ -139,9 +139,9 @@ class TestARecordingThatCannotBePlayed:
         with pytest.raises(WavDeckError, match="speed"):
             WavDeck(three_frames, speed=-1, strict=True)
 
-    def test_what_the_report_says_does_not_include_the_path(self, tmp_path):
+    def test_what_the_report_says_does_not_include_the_path(self, tmp_path, logged):
         deck = WavDeck(tmp_path / "private-meeting.wav")
-        assert "private-meeting" not in " ".join(deck.report.lines())
+        assert "private-meeting" not in " ".join(logged.of(deck).lines())
 
 
 class TestClosing:

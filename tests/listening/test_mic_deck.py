@@ -99,14 +99,14 @@ class TestWhatItRuns:
         assert "-D hw:2,0 " in record.read_text()
 
     @pytest.mark.parametrize("bad", [None, "", "   ", 5, ["hw:0"]])
-    def test_a_bad_device_means_the_default_with_a_warning(self, tmp_path, bad):
+    def test_a_bad_device_means_the_default_with_a_warning(self, tmp_path, bad, logged):
         record = tmp_path / "argv.txt"
         program = fake_arecord(tmp_path, f"open({str(record)!r}, 'w').write(' '.join(sys.argv[1:]))\nemit(1)")
         deck = MicDeck(bad, arecord=program)
         wait_for_the_reader(deck)
         deck.close()
         assert f"-D {DEFAULT_DEVICE} " in record.read_text()
-        assert len(deck.report.warnings) == 1 and "device" in deck.report.warnings[0]
+        assert len(logged.of(deck).warnings()) == 1 and "device" in logged.of(deck).warnings()[0]
 
 
 class TestTheFrames:
@@ -138,14 +138,14 @@ class TestTheFrames:
         collect(deck)
         assert collect(deck) == []
 
-    def test_the_microphone_stopping_by_itself_is_a_critical_fault(self, tmp_path):
+    def test_the_microphone_stopping_by_itself_is_a_critical_fault(self, tmp_path, logged):
         deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2)"))
         collect(deck)
-        assert deck.report.has_critical and "stopped" in deck.report.criticals[0]
+        assert bool(logged.of(deck).criticals()) and "stopped" in logged.of(deck).criticals()[0]
 
-    def test_arecord_dying_at_once_gives_no_frames_and_a_critical_fault(self, tmp_path):
+    def test_arecord_dying_at_once_gives_no_frames_and_a_critical_fault(self, tmp_path, logged):
         deck = MicDeck(arecord=fake_arecord(tmp_path, "sys.exit(1)"))
-        assert collect(deck) == [] and deck.report.has_critical
+        assert collect(deck) == [] and bool(logged.of(deck).criticals())
 
 
 class TestWhenTheEavesdropperFallsBehind:
@@ -156,35 +156,35 @@ class TestWhenTheEavesdropperFallsBehind:
         assert got == list(range(192, 201))                              # ten places: nine frames and the end marker
         assert deck.dropped_frames == 191
 
-    def test_dropping_is_warned_about_once_for_one_stretch(self, tmp_path):
+    def test_dropping_is_warned_about_once_for_one_stretch(self, tmp_path, logged):
         deck = MicDeck(buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
-        assert len([w for w in deck.report.warnings if "dropping" in w]) == 1
+        assert len([w for w in logged.of(deck).warnings() if "dropping" in w]) == 1
 
-    def test_a_second_stretch_of_dropping_is_warned_about_again(self):
+    def test_a_second_stretch_of_dropping_is_warned_about_again(self, logged):
         deck = MicDeck(buffer_seconds=0.06, arecord="no-such-program-anywhere")            # no microphone: two places
         for n in range(4):
             deck._put(frame_of(n))                                      # the first stretch: two frames are dropped
-        assert len([w for w in deck.report.warnings if "dropping" in w]) == 1
+        assert len([w for w in logged.of(deck).warnings() if "dropping" in w]) == 1
         deck._queue.get_nowait()                                         # the eavesdropper catches up a little
         deck._put(frame_of(10))                                         # room for it: the stretch is over
         for n in range(11, 14):
             deck._put(frame_of(n))                                      # the second stretch
-        assert len([w for w in deck.report.warnings if "dropping" in w]) == 2
+        assert len([w for w in logged.of(deck).warnings() if "dropping" in w]) == 2
 
-    def test_no_dropping_when_the_buffer_is_big_enough(self, tmp_path):
+    def test_no_dropping_when_the_buffer_is_big_enough(self, tmp_path, logged):
         deck = MicDeck(buffer_seconds=10, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
         assert len(collect(deck)) == 200 and deck.dropped_frames == 0
-        assert not any("dropping" in w for w in deck.report.warnings)
+        assert not any("dropping" in w for w in logged.of(deck).warnings())
 
     @pytest.mark.parametrize("bad", [0, -1, "10", None, True, float("nan"), float("inf")])
-    def test_a_bad_buffer_means_the_default_with_a_warning(self, tmp_path, bad):
+    def test_a_bad_buffer_means_the_default_with_a_warning(self, tmp_path, bad, logged):
         deck = MicDeck(buffer_seconds=bad, arecord=fake_arecord(tmp_path, "emit(*range(1, 401))"))
         wait_for_the_reader(deck)
         got = collect(deck)
         assert len(got) == 332 and value_of(got[-1]) == 400 and deck.dropped_frames == 68   # ten seconds is 333 places
-        assert any("buffer_seconds" in w for w in deck.report.warnings)
+        assert any("buffer_seconds" in w for w in logged.of(deck).warnings())
 
 
 class TestClosing:
@@ -198,14 +198,14 @@ class TestClosing:
         eavesdropper.join(5)
         assert not eavesdropper.is_alive() and [value_of(f) for f in got] == [1]
 
-    def test_closing_on_purpose_is_not_a_fault(self, tmp_path):
+    def test_closing_on_purpose_is_not_a_fault(self, tmp_path, logged):
         deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         eavesdropper = threading.Thread(target=lambda: collect(deck))
         eavesdropper.start()
         time.sleep(0.3)
         deck.close()
         eavesdropper.join(5)
-        assert deck.report.ok
+        assert logged.of(deck).ok()
 
     def test_closing_twice_is_fine(self, tmp_path):
         deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
@@ -225,21 +225,21 @@ class TestClosing:
 
 
 class TestNoMicrophone:
-    def test_no_arecord_is_critical_and_gives_no_frames(self):
+    def test_no_arecord_is_critical_and_gives_no_frames(self, logged):
         deck = MicDeck(arecord="no-such-program-anywhere")
-        assert collect(deck) == [] and deck.report.has_critical and "arecord" in deck.report.criticals[0]
+        assert collect(deck) == [] and bool(logged.of(deck).criticals()) and "arecord" in logged.of(deck).criticals()[0]
 
-    def test_a_program_that_cannot_run_is_critical(self, tmp_path):
+    def test_a_program_that_cannot_run_is_critical(self, tmp_path, logged):
         not_runnable = tmp_path / "arecord"
         not_runnable.write_text("not a program")
         not_runnable.chmod(0o755)
         deck = MicDeck(arecord=str(not_runnable))
-        assert collect(deck) == [] and deck.report.has_critical
+        assert collect(deck) == [] and bool(logged.of(deck).criticals())
 
     @pytest.mark.parametrize("bad", [None, 5, ["arecord"]])
-    def test_a_program_name_that_is_not_text_is_critical(self, bad):
+    def test_a_program_name_that_is_not_text_is_critical(self, bad, logged):
         deck = MicDeck(arecord=bad)
-        assert collect(deck) == [] and deck.report.has_critical
+        assert collect(deck) == [] and bool(logged.of(deck).criticals())
 
     def test_closing_a_deck_that_never_started_is_fine(self):
         MicDeck(arecord="no-such-program-anywhere").close()
@@ -267,8 +267,8 @@ class TestStrictMode:
         with pytest.raises(MicDeckError):
             collect(deck)
 
-    def test_what_the_report_says_never_includes_sound(self, tmp_path):
+    def test_what_the_report_says_never_includes_sound(self, tmp_path, logged):
         deck = MicDeck(buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
         collect(deck)
-        assert all(len(line) < 200 for line in deck.report.lines())
+        assert all(len(line) < 200 for line in logged.of(deck).lines())

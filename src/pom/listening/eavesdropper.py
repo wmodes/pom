@@ -38,10 +38,10 @@ Design decisions, and why:
     live stream would be. `ends_at` is the place in the stream where the segment ended, in seconds; it is the time the
     BarKeeper is given. (In a fast replay the room-tone pass looks at the audio received when the round ran, which is also what a
     live run would have; the hearing-debug experiment, whose audio thread ran ahead, looked further on.)
-  * Nothing here may stop the oracle (see pom/__init__.py). Whisper being down is a warning in `report`, once for each
+  * Nothing here may stop the oracle (see pom/__init__.py). Whisper being down is a warning in the log, once for each
     outage, and the audio is kept and tried again. A bad setting is replaced by its default and recorded.
     `strict=True` raises EavesdropperError instead, for tests and dev tools.
-  * Neither what was said nor the audio is logged or put in a report.
+  * Neither what was said nor the audio is logged.
   * The settings are passed in (the entry point takes them from Config); this module never reads Config.
 """
 import collections
@@ -51,15 +51,13 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Iterator, Optional, Tuple
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.audio_deck import AudioDeck
 from pom.listening.audio_format import FRAME_SECONDS
 from pom.listening.rolling_cutter import (DEFAULT_HOLD_BACK_SECONDS, DEFAULT_MAX_CUT_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_CUT_EVERY_SECONDS, RollingCutter)
 from pom.listening.track_splitter import TrackSplitter
-from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_ROOM_TONE_PASS_EVERY = 3
 DEFAULT_ROOM_TONE_PASS_SECONDS = 10.0
@@ -98,7 +96,7 @@ class Eavesdropper:
     """Turns a deck into the things that were said, sung or sounded in the room.
 
     Attributes:
-        report: Problems met (a bad setting, whisper not answering). Includes the cutter's.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, deck: AudioDeck, client, cut_every_seconds: float = DEFAULT_CUT_EVERY_SECONDS, hold_back_seconds: float = DEFAULT_HOLD_BACK_SECONDS,
@@ -106,7 +104,7 @@ class Eavesdropper:
                  room_tone_pass_every: int = DEFAULT_ROOM_TONE_PASS_EVERY, room_tone_pass_seconds: float = DEFAULT_ROOM_TONE_PASS_SECONDS,
                  room_tone_memory: int = DEFAULT_ROOM_TONE_MEMORY, splitter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, start_seconds: float = 0.0, wall: Callable[[], float] = time.monotonic,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
@@ -121,8 +119,9 @@ class Eavesdropper:
                 one's `stream_time_at` gave, so the clock carries on.
             wall: Returns seconds that steadily increase, for noting when sound last arrived (real time, not stream time). Injected so tests need not wait.
             strict: Raise EavesdropperError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=EavesdropperError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, EavesdropperError, DEBUG, strict)
         self._deck, self._client = deck, client
         self._room_tone_every = self._setting(room_tone_pass_every, "room_tone_pass_every", DEFAULT_ROOM_TONE_PASS_EVERY,
                                           lambda v: _is_whole(v, 0), "a whole number of at least 0")
@@ -131,7 +130,8 @@ class Eavesdropper:
         memory = self._setting(room_tone_memory, "room_tone_memory", DEFAULT_ROOM_TONE_MEMORY,
                                lambda v: _is_whole(v, 1), "a whole number of at least 1")
         self._splitter = splitter if splitter is not None else TrackSplitter()
-        self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict)
+        self._cutter = cutter if cutter is not None else RollingCutter(client, cut_every_seconds, hold_back_seconds, rewind_seconds, max_cut_seconds, strict=strict,
+                                                                                 bookkeeper=bookkeeper)
         self._recent_room_tone = collections.deque(maxlen=memory)
         self._last_words = ""
         self._last_room_tone: Tuple[str, ...] = ()
@@ -150,7 +150,7 @@ class Eavesdropper:
         """The value if it passes `is_good`, otherwise the default with a warning."""
         if is_good(value):
             return value
-        self.report.warn(f"{name} must be {wanted}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be {wanted}, got {value!r}; using {default:g}")
         return default
 
     @property
@@ -256,7 +256,7 @@ class Eavesdropper:
         error = self._client.error
         if error and not self._whisper_down:
             self._whisper_down = True
-            self.report.warn(f"whisper is not answering ({error}); the audio is kept and tried again")
+            self.logger.warning(f"whisper is not answering ({error}); the audio is kept and tried again")
         elif not error and self._whisper_down:
             self._whisper_down = False
-            self.report.info("whisper is answering again")
+            self.logger.info("whisper is answering again")

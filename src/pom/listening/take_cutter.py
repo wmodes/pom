@@ -36,11 +36,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_MAX_WORDS = 40
 
@@ -92,20 +90,21 @@ class TakeCutter:
     """Cuts transcript text into sentence, clause and phrase clips.
 
     Attributes:
-        report: Problems recovered from (a bad setting, input that was not text).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
-    def __init__(self, max_words: int = DEFAULT_MAX_WORDS, strict: bool = False):
+    def __init__(self, max_words: int = DEFAULT_MAX_WORDS, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             max_words: The most words a clip may have; longer ones are cut into windows of
                 this size. A whole number of at least 1.
             strict: Raise TakeCutterError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=TakeCutterError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TakeCutterError, DEBUG, strict)
         if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
             self._max_words = max_words
         else:
-            self.report.warn(f"max_words must be a whole number of at least 1, got {max_words!r}; "
+            self.logger.warning(f"max_words must be a whole number of at least 1, got {max_words!r}; "
                              f"using {DEFAULT_MAX_WORDS}")
             self._max_words = DEFAULT_MAX_WORDS
 
@@ -126,13 +125,13 @@ class TakeCutter:
         """
         if not isinstance(text, str):
             if text is not None:
-                self.report.warn(f"take cutter expects text, got {type(text).__name__}; ignoring it")
+                self.logger.warning(f"take cutter expects text, got {type(text).__name__}; ignoring it")
             return []
         clips: list = []
         sentences = self._sentences(" ".join(text.split()))
         for index, sentence in enumerate(sentences):
             clips.extend(self._levels(sentence, index, heard_at))
-        self.report.debug("split %d character(s) into %d sentence(s) and %d clip(s)",
+        self.logger.debug("split %d character(s) into %d sentence(s) and %d clip(s)",
                           len(text), len(sentences), len(clips))
         return clips
 

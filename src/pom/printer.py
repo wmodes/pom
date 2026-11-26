@@ -170,7 +170,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     started = time.monotonic()
 
     # listening: a fresh deck, Eavesdropper and finder each time the room is built (a microphone that comes back is heard)
-    whisper = WhisperModelClient(listening.whisper_url, listening.whisper_timeout)
+    whisper = WhisperModelClient(listening.whisper_url, listening.whisper_timeout, bookkeeper=bookkeeper)
     nltk_dir = root / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug, bookkeeper=bookkeeper)
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=bookkeeper),
@@ -180,7 +180,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                           attempts=scoring.warmup_attempts, bookkeeper=bookkeeper)     # sends the scorer one throwaway request once its server is up
     stream_started_at = 0.0           # the stream time at which listening starts: the first room's clock begins here, and the bar begins here too
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at, bookkeeper=bookkeeper)
-    take_cutter = TakeCutter(max_words=listening.max_clip_words)
+    take_cutter = TakeCutter(max_words=listening.max_clip_words, bookkeeper=bookkeeper)
 
     # the status board: every light on the monitoring page, kept in one place. The microphone posts to it for itself as sound arrives; a poller asks the
     # servers and the printer. NO NEWS IS DOWN: a light whose last post is too old shows down (see pom/monitor/status_board.py). A recording has no microphone.
@@ -197,13 +197,13 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
 
     def make_deck():
         if options.wav:
-            return WavDeck(options.wav, speed=options.speed)
+            return WavDeck(options.wav, speed=options.speed, bookkeeper=bookkeeper)
         if options.mac_mic is not None:
-            return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds, heard=sound_arrived)
+            return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds, heard=sound_arrived, bookkeeper=bookkeeper)
         device = card_finder.resolve(listening.device)
         if not card_finder.found:
             raise NoSoundSource("no sound card was found")       # the finder has logged it; arecord is not started for a card that is not there
-        return MicDeck(device, buffer_seconds=listening.buffer_seconds, heard=sound_arrived)
+        return MicDeck(device, buffer_seconds=listening.buffer_seconds, heard=sound_arrived, bookkeeper=bookkeeper)
 
     last_room = {"ears": None}     # the Eavesdropper of the room that ran last, so the next one's clock can carry on from it
 
@@ -213,7 +213,8 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         old = last_room["ears"]
         ears = Eavesdropper(make_deck(), whisper, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
                             listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
-                            listening.room_tone_memory, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at, wall=time.monotonic)
+                            listening.room_tone_memory, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at, wall=time.monotonic,
+                            bookkeeper=bookkeeper)
         last_room["ears"] = ears
         return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening.score_room_tone), ears
 

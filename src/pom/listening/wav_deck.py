@@ -9,7 +9,7 @@ is followed by a pause, as it would be in a room. A last piece of less than one 
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing file, or a file in the wrong format, gives a
-    CRITICAL fault in `report` and a deck that yields nothing, never an exception. `strict=True` raises
+    CRITICAL line in the log and a deck that yields nothing, never an exception. `strict=True` raises
     WavDeckError instead, for tests and dev tools. The message for a wrong format says how to convert it.
   * Pacing is only a pause after each frame, and the pause function is injected (`sleep`), so tests run instantly.
     The listening side counts time in the audio it has received, not in wall-clock time, so a recording replayed at
@@ -22,12 +22,10 @@ import wave
 from pathlib import Path
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_BYTES, SAMPLE_RATE
-from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_SPEED = 1.0
 DEFAULT_END_PAUSE_SECONDS = 1.2
@@ -45,21 +43,22 @@ class WavDeck:
     """Frames from a recording.
 
     Attributes:
-        report: Problems met (file missing or in the wrong format, bad setting). A recording that cannot be played is
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
             a CRITICAL fault and the deck yields nothing.
         seconds: The length of the recording in seconds, or 0.0 if it could not be opened.
     """
 
     def __init__(self, path, speed: float = DEFAULT_SPEED, end_pause_seconds: float = DEFAULT_END_PAUSE_SECONDS,
-                 sleep: Optional[Callable[[float], None]] = None, strict: bool = False):
+                 sleep: Optional[Callable[[float], None]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             path: The WAV file: 16 kHz, mono, 16-bit. Convert another with: ffmpeg -i in -ar 16000 -ac 1 out.wav
             speed: 1 plays at real time, 2 twice as fast, 0 as fast as possible. 0 or more.
             end_pause_seconds: Silence added after the last frame. 0 or more.
             sleep: A function that waits that many seconds. Default: time.sleep.
             strict: Raise WavDeckError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=WavDeckError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WavDeckError, DEBUG, strict)
         self.seconds = 0.0
         self._speed = self._valid(speed, "speed", DEFAULT_SPEED)
         self._end_frames = round(self._valid(end_pause_seconds, "end_pause_seconds", DEFAULT_END_PAUSE_SECONDS) / FRAME_SECONDS)
@@ -71,18 +70,18 @@ class WavDeck:
         """The value if it is a number of 0 or more, otherwise the default with a warning."""
         if _is_number(value) and value >= 0:
             return float(value)
-        self.report.warn(f"{name} must be a number of at least 0, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be a number of at least 0, got {value!r}; using {default:g}")
         return default
 
     def _open(self, path) -> None:
         try:
             wav = wave.open(str(Path(path)), "rb")
         except (OSError, EOFError, wave.Error, TypeError, ValueError) as problem:
-            self.report.critical(f"cannot open the recording ({type(problem).__name__}); nothing will be played")
+            self.logger.critical(f"cannot open the recording ({type(problem).__name__}); nothing will be played")
             return
         if (wav.getframerate(), wav.getnchannels(), wav.getsampwidth()) != (SAMPLE_RATE, 1, SAMPLE_BYTES):
             wav.close()
-            self.report.critical(f"the recording must be 16 kHz mono 16-bit; convert it with: "
+            self.logger.critical(f"the recording must be 16 kHz mono 16-bit; convert it with: "
                                  f"ffmpeg -i in -ar {SAMPLE_RATE} -ac 1 out.wav")
             return
         self._wav = wav

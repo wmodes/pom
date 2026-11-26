@@ -365,7 +365,7 @@ class TestWhenWhisperDoesNotAnswer:
         cutter.cut()
         assert not cutter.due()
 
-    def test_a_client_that_raises_is_a_warning_not_a_crash(self):
+    def test_a_client_that_raises_is_a_warning_not_a_crash(self, logged):
         class Broken:
             error = None
 
@@ -375,7 +375,7 @@ class TestWhenWhisperDoesNotAnswer:
         cutter = RollingCutter(Broken())
         cutter.feed(audio(5.0))
         assert cutter.cut() == []
-        assert len(cutter.report.warnings) == 1 and "RuntimeError" in cutter.report.warnings[0]
+        assert len(logged.of(cutter).warnings()) == 1 and "RuntimeError" in logged.of(cutter).warnings()[0]
 
     def test_a_failed_round_still_says_how_long_it_took(self):
         ticks = iter([10.0, 10.5])
@@ -458,24 +458,24 @@ class TestFeeding:
 
 
 class TestSettings:
-    def test_the_defaults_are_the_known_good_ones(self):
+    def test_the_defaults_are_the_known_good_ones(self, logged):
         assert (DEFAULT_CUT_EVERY_SECONDS, DEFAULT_HOLD_BACK_SECONDS, DEFAULT_REWIND_SECONDS, DEFAULT_MAX_CUT_SECONDS) == (5.0, 2.0, 0.0, 30.0)
-        assert RollingCutter(FakeWhisper()).report.ok
+        assert logged.of(RollingCutter(FakeWhisper())).ok()
 
     @pytest.mark.parametrize("name,bad", [("cut_every_seconds", 0), ("cut_every_seconds", -1), ("cut_every_seconds", "5"), ("cut_every_seconds", None), ("cut_every_seconds", True),
                                           ("cut_every_seconds", float("nan")), ("cut_every_seconds", float("inf")),
                                           ("hold_back_seconds", -1), ("hold_back_seconds", "2"), ("hold_back_seconds", None), ("hold_back_seconds", True),
                                           ("rewind_seconds", -0.5), ("rewind_seconds", "0"), ("rewind_seconds", None), ("rewind_seconds", True),
                                           ("max_cut_seconds", 0), ("max_cut_seconds", -5), ("max_cut_seconds", "30"), ("max_cut_seconds", None)])
-    def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad):
+    def test_a_bad_setting_means_the_default_with_a_warning(self, name, bad, logged):
         cutter = RollingCutter(FakeWhisper(), **{name: bad})
-        assert len(cutter.report.warnings) == 1 and name in cutter.report.warnings[0]
+        assert len(logged.of(cutter).warnings()) == 1 and name in logged.of(cutter).warnings()[0]
         defaults = {"cut_every_seconds": DEFAULT_CUT_EVERY_SECONDS, "hold_back_seconds": DEFAULT_HOLD_BACK_SECONDS, "rewind_seconds": DEFAULT_REWIND_SECONDS, "max_cut_seconds": DEFAULT_MAX_CUT_SECONDS}
         assert getattr(cutter, "_" + name) == defaults[name]
 
     @pytest.mark.parametrize("name,low", [("hold_back_seconds", 0), ("rewind_seconds", 0)])
-    def test_zero_is_allowed_where_it_makes_sense(self, name, low):
-        assert RollingCutter(FakeWhisper(), **{name: low}).report.ok
+    def test_zero_is_allowed_where_it_makes_sense(self, name, low, logged):
+        assert logged.of(RollingCutter(FakeWhisper(), **{name: low})).ok()
 
     @pytest.mark.parametrize("name,bad", [("cut_every_seconds", 0), ("hold_back_seconds", -1), ("rewind_seconds", -1), ("max_cut_seconds", 0)])
     def test_strict_mode_raises_on_a_bad_setting(self, name, bad):

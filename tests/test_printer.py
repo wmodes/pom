@@ -681,8 +681,9 @@ class TestTheMonitoringSite:
         assert p.parts["notebook"].ticks() == []
 
     def test_the_notebook_keeps_what_the_chart_can_show_not_an_hour(self, tmp_path):
-        p = build(tmp_path, "[chart]\nwindow_minutes = 45\n")
-        assert p.parts["notebook"]._max_age == 45 * 60.0
+        config = config_from(tmp_path, "[chart]\nwindow_minutes = 45\n")
+        notebook = build_printer(config, Options()).parts["notebook"]
+        assert notebook.chart is config.chart and notebook.monitor is config.monitor
 
     def test_the_notebooks_size_limit_is_the_configured_one(self, tmp_path):
         p = build(tmp_path, "[monitor]\nchart_notebook_max_entries = 2\n")

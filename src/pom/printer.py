@@ -229,7 +229,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     # the turn
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
     # (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)
-    notebook = ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries, ticks_source=bar_keeper.ticks_between,
+    notebook = ChartNotebook(config.chart, monitor, ticks_source=bar_keeper.ticks_between,
                              silence_shape=silence_shape(config.chart), began_at=stream_started_at, bookkeeper=bookkeeper)
     # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
     history = TurnHistory(monitor, keep_heard_since=lambda: notebook.earliest_at, bookkeeper=bookkeeper)

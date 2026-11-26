@@ -81,7 +81,7 @@ class InventedRoom:
                  history_seconds: Optional[float] = None):
         self._begun = time.monotonic() - head_start_minutes * 60.0 / speed
         self.keeper = bar_keeper_from_settings(config.qualifying, 0.0)
-        self.notebook = ChartNotebook(config.chart.window_minutes * 60.0, config.monitor.chart_notebook_max_entries, ticks_source=self.keeper.ticks_between,
+        self.notebook = ChartNotebook(config.chart, config.monitor, ticks_source=self.keeper.ticks_between,
                                       silence_shape=silence_shape(config.chart), began_at=0.0)
         # the turns are aged on the stream's own clock (an hour of history is an hour of stream), and a turn stays while its dot is on the chart, as in the Printer
         monitor = config.monitor if history_seconds is None else dataclasses.replace(config.monitor, history_seconds=history_seconds)

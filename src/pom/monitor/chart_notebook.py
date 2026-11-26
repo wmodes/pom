@@ -40,6 +40,7 @@ from collections import deque
 from typing import Callable, Deque, List, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ChartSettings, MonitorSettings
 from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 from pom.monitor.tick_writer import TickWriter
@@ -48,8 +49,6 @@ DEBUG = None   # None follows the project debug flag; True/False overrides it fo
 
 # Only the fallbacks for a missing or bad setting (with a warning); the real values are `[monitor] history_seconds`, `[monitor] chart_notebook_max_entries`
 # and `[chart] longest_silence_minutes` in config/pom.toml.
-DEFAULT_MAX_AGE_SECONDS = 3600.0
-DEFAULT_MAX_ENTRIES = 5000
 DEFAULT_SILENCE_SHAPE = SilenceShape(300.0)            # a silence over 300 s, drawn as nothing but its cut: so no ticks are written for one
 
 
@@ -62,14 +61,15 @@ class ChartNotebook:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        chart, monitor: The `[chart]` and `[monitor]` settings it was handed (it reads `window_minutes` and `chart_notebook_max_entries`).
     """
 
-    def __init__(self, max_age_seconds: float = DEFAULT_MAX_AGE_SECONDS, max_entries: int = DEFAULT_MAX_ENTRIES, strict: bool = False,
+    def __init__(self, chart: ChartSettings, monitor: MonitorSettings, strict: bool = False,
                  ticks_source: Optional[Callable[[float, float], list]] = None, silence_shape: Optional[SilenceShape] = None,
                  began_at: Optional[float] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            max_age_seconds: How much drawn time is kept, above 0: the chart's own width (`[chart] window_minutes`), since nothing older is ever drawn.
-            max_entries: The most entries kept, a whole number of at least 1; the oldest go first.
+            chart: The `[chart]` section: `window_minutes`, how much drawn time is kept (the chart's own width, since nothing older is ever drawn).
+            monitor: The `[monitor]` section: `chart_notebook_max_entries`, the most entries kept; the oldest go first.
             strict: Raise ChartNotebookError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             ticks_source: A function from (start, end) to the ticks in that stretch, each as (time, anchor score, the bar at that tick), oldest
@@ -79,20 +79,14 @@ class ChartNotebook:
             began_at: The stream time at which listening began, so the stretch before the first attempt gets its ticks too. None means it does not.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ChartNotebookError, DEBUG, strict)
-        if not (is_number(max_age_seconds) and max_age_seconds > 0):
-            self.logger.warning("max_age_seconds must be a number above 0, got %r; using %g", max_age_seconds, DEFAULT_MAX_AGE_SECONDS)
-            max_age_seconds = DEFAULT_MAX_AGE_SECONDS
-        if not (isinstance(max_entries, int) and not isinstance(max_entries, bool) and max_entries >= 1):
-            self.logger.warning("max_entries must be a whole number of at least 1, got %r; using %s", max_entries, DEFAULT_MAX_ENTRIES)
-            max_entries = DEFAULT_MAX_ENTRIES
+        self.chart, self.monitor = chart, monitor
         if silence_shape is None:
             silence_shape = DEFAULT_SILENCE_SHAPE
         elif not isinstance(silence_shape, SilenceShape):
             self.logger.warning("silence_shape must be a SilenceShape, got %s; using the default", type(silence_shape).__name__)
             silence_shape = DEFAULT_SILENCE_SHAPE
         self._head: List[NotebookEntry] = []                    # the ticks for the first minutes after the newest attempt, worked out when it was heard
-        self._max_age = float(max_age_seconds)
-        self._entries: Deque[NotebookEntry] = deque(maxlen=max_entries)
+        self._entries: Deque[NotebookEntry] = deque(maxlen=monitor.chart_notebook_max_entries)
         self._tick_writer = TickWriter(ticks_source, silence_shape, began_at, self.logger)
         self._lock = threading.Lock()
         self._total_added = 0
@@ -184,7 +178,7 @@ class ChartNotebook:
         shape = self._tick_writer.shape
         began = self._tick_writer.began_at if self._total_added == len(entries) else None   # the quiet before the first attempt is a silence, if nothing before it was forgotten
         squeeze = SilenceCompressor([entry.at for entry in entries if entry.kind == ATTEMPT], entries[-1].at, shape, began)
-        cutoff = squeeze.drawn(entries[-1].at) - self._max_age
+        cutoff = squeeze.drawn(entries[-1].at) - self.chart.window_minutes * 60.0
         first = 0
         while first < len(entries) and squeeze.drawn(entries[first].at) < cutoff:
             first += 1

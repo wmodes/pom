@@ -9,7 +9,7 @@ import urllib.request
 
 import pytest
 
-from pom.defaults import MonitorSettings
+from pom.defaults import ChartSettings, MonitorSettings
 from pom.library import Passage
 from pom.monitor import Light, MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, SilenceShape, TurnHistory
 from pom.writing import Portent
@@ -181,7 +181,7 @@ class TestTurnsKeptForTheChart:
         """A page whose one turn (heard at 600) is `hours` old, with the chart reaching back to `reach`; the notebook has that qualifier."""
         clock = Clock()
         history = TurnHistory(MonitorSettings(history_seconds=3600), clock=clock, keep_heard_since=lambda: reach)
-        notebook = ChartNotebook()
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings())
         notebook.add(8.0, 6.0, 600.0, True)
         _, _, client, _ = make(clock, history=history, notebook=notebook)
         record = add(history, "a hinge from long ago", heard_at=600.0)
@@ -377,7 +377,7 @@ class TestTheTurnRule:
 class TestTheChart:
     @staticmethod
     def with_notebook(**options):
-        notebook = ChartNotebook()
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings())
         site, history, client, clock = make(notebook=notebook, **options)
         return notebook, history, client
 
@@ -934,8 +934,7 @@ class TestTheChartMovesWithTheStream:
     @staticmethod
     def moving(now=1000.0, ticks=None, status=None, notebook=None, began_at=None, head_seconds=0.0, **options):
         stream = [now]
-        notebook = notebook if notebook is not None else ChartNotebook(ticks_source=lambda start, end: list(ticks or []), began_at=began_at,
-                                                                      silence_shape=SilenceShape(300.0, 300.0 - 2.0 * head_seconds))
+        notebook = notebook if notebook is not None else ChartNotebook(ChartSettings(), MonitorSettings(), ticks_source=lambda start, end: list(ticks or []), began_at=began_at, silence_shape=SilenceShape(300.0, 300.0 - 2.0 * head_seconds))
         site, history, client, clock = make(notebook=notebook, stream_now=lambda: stream[0], status=status, **options)
         return notebook, client, stream
 
@@ -959,13 +958,13 @@ class TestTheChartMovesWithTheStream:
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="tick"') == 2
 
     def test_the_ticks_the_notebook_wrote_and_the_live_ones_are_both_drawn(self):
-        notebook = ChartNotebook(ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0, 240.0, 300.0) if a < t <= b], began_at=0.0)
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings(), ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0, 240.0, 300.0) if a < t <= b], began_at=0.0)
         notebook.add(3.0, 6.0, 150.0)                                               # writes ticks 60 and 120
         _, client, _ = self.moving(now=330.0, notebook=notebook)                    # and 240 and 300 are live
         assert get(client, "/chart.svg").get_data(as_text=True).count('class="tick"') == 4
 
     def test_a_tick_from_before_a_long_silence_is_still_drawn(self):
-        notebook = ChartNotebook(ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0) if a < t <= b], began_at=0.0)
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings(), ticks_source=lambda a, b: [(t, 5.85, 6.0) for t in (60.0, 120.0) if a < t <= b], began_at=0.0)
         notebook.add(3.0, 6.0, 150.0)
         _, client, _ = self.moving(now=150.0 + 14 * 3600.0, notebook=notebook)              # fifteen hours of nothing, and the ticks are still in the notebook
         svg = get(client, "/chart.svg").get_data(as_text=True)
@@ -973,7 +972,7 @@ class TestTheChartMovesWithTheStream:
 
     def test_the_first_and_last_minutes_of_a_silence_are_drawn_and_nothing_between(self):
         grid = [(float(t), 5.85, 6.0) for t in range(60, 40_000, 60)]
-        notebook = ChartNotebook(ticks_source=lambda a, b: [tick for tick in grid if a < tick[0] <= b], silence_shape=SilenceShape(300.0, 100.0))
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings(), ticks_source=lambda a, b: [tick for tick in grid if a < tick[0] <= b], silence_shape=SilenceShape(300.0, 100.0))
         notebook.add(3.0, 6.0, 30.0)                                                # its first 100 s run to 130: the ticks at 60 and 120, and not the rest
         _, client, _ = self.moving(now=30.0 + 10_000.0, notebook=notebook)
         svg = get(client, "/chart.svg").get_data(as_text=True)
@@ -981,7 +980,7 @@ class TestTheChartMovesWithTheStream:
 
     def test_the_page_never_asks_the_notebook_for_anything_but_the_stream_time(self):
         asked = []
-        notebook = ChartNotebook()
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings())
         notebook.ticks_up_to = lambda now: asked.append(now) or []
         _, client, _ = self.moving(now=1234.0, notebook=notebook)
         get(client, "/chart.svg")
@@ -1002,14 +1001,14 @@ class TestTheChartMovesWithTheStream:
         assert high != get(client2, "/chart.svg").get_data(as_text=True)
 
     def test_with_a_notebook_that_has_no_ticks_the_chart_still_moves(self):
-        notebook = ChartNotebook()
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings())
         site, _, client, _ = make(notebook=notebook, stream_now=lambda: 1000.0)
         notebook.add(3.0, 5.0, 900.0)
         svg = get(client, "/chart.svg").get_data(as_text=True)
         assert svg.count('class="dot"') == 1 and 'class="tick"' not in svg
 
     def test_without_the_stream_clock_the_chart_stands_still_at_the_newest_attempt(self):
-        notebook = ChartNotebook()
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings())
         _, _, client, _ = make(notebook=notebook)
         notebook.add(3.0, 5.0, 900.0)
         assert 'cx="714.0"' in get(client, "/chart.svg").get_data(as_text=True)
@@ -1028,7 +1027,7 @@ class TestTheChartMovesWithTheStream:
 
     def test_the_stream_clock_is_read_afresh_for_every_drawing(self):
         reads = []
-        _, _, client, _ = make(notebook=ChartNotebook(), stream_now=lambda: reads.append(1) or 1000.0)
+        _, _, client, _ = make(notebook=ChartNotebook(ChartSettings(), MonitorSettings()), stream_now=lambda: reads.append(1) or 1000.0)
         get(client, "/chart.svg")
         get(client, "/chart.svg")
         assert len(reads) == 2
@@ -1039,7 +1038,7 @@ class TestTheQuietStart:
 
     @staticmethod
     def site(began_at=0.0, now=3960.0, notebook=None, **options):
-        notebook = notebook if notebook is not None else ChartNotebook()
+        notebook = notebook if notebook is not None else ChartNotebook(ChartSettings(), MonitorSettings())
         _, _, client, _ = make(notebook=notebook, stream_now=lambda: now, stream_began_at=began_at, **options)
         return notebook, client
 
@@ -1058,7 +1057,7 @@ class TestTheQuietStart:
         assert 'class="gap"' not in get(client, "/chart.svg").get_data(as_text=True)
 
     def test_once_the_notebook_has_forgotten_an_attempt_the_start_is_not_used(self):
-        notebook = ChartNotebook(max_entries=2)
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings(chart_notebook_max_entries=2))
         for at in (3000.0, 3010.0, 3020.0):
             notebook.add(3.0, 5.0, at)
         notebook, client = self.site(now=3030.0, notebook=notebook)
@@ -1127,12 +1126,12 @@ class TestTheServiceLights:
 
 class TestTheStyleOfTheNewMarks:
     def test_ticks_are_the_grid_s_grey_and_the_gap_is_the_card_s_color(self):
-        page = get(make(notebook=ChartNotebook())[2], "/").get_data(as_text=True)
+        page = get(make(notebook=ChartNotebook(ChartSettings(), MonitorSettings()))[2], "/").get_data(as_text=True)
         assert ".chart .tick { fill:var(--line); }" in page and ".chart .gap { fill:var(--card); }" in page
         assert ".chart .break { stroke:var(--muted); fill:none; stroke-width:1; }" in page
 
     def test_the_grid_and_the_ticks_use_the_same_variable(self):
-        page = get(make(notebook=ChartNotebook())[2], "/").get_data(as_text=True)
+        page = get(make(notebook=ChartNotebook(ChartSettings(), MonitorSettings()))[2], "/").get_data(as_text=True)
         assert ".chart .grid, .chart .vgrid { stroke:var(--line); stroke-width:1; }" in page and "fill:var(--line)" in page
 
 
@@ -1237,7 +1236,7 @@ class TestThePasswordOnLocalhost:
     def site(**options):
         history = TurnHistory(MONITOR)
         add(history)
-        notebook = ChartNotebook()
+        notebook = ChartNotebook(ChartSettings(), MonitorSettings())
         notebook.add(3.0, 5.0, 10.0)
         _, _, client, _ = make(history=history, notebook=notebook, **options)
         return client

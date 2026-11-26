@@ -3,7 +3,8 @@ import threading
 
 import pytest
 
-from pom.monitor.chart_notebook import (DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_ENTRIES, ChartNotebook, ChartNotebookError, NotebookEntry)
+from pom.defaults import ChartSettings, MonitorSettings
+from pom.monitor.chart_notebook import (ChartNotebook, ChartNotebookError, NotebookEntry)
 from pom.monitor.silence_compressor import SilenceShape
 
 
@@ -13,7 +14,9 @@ def shaped(options):
     if "longest_silence_seconds" in options or "head_seconds" in options:
         longest, head = options.pop("longest_silence_seconds", 300.0), options.pop("head_seconds", 0.0)
         options["silence_shape"] = SilenceShape(longest, longest - 2.0 * head)
-    return options
+    chart = ChartSettings(window_minutes=options.pop("max_age_seconds") / 60.0) if "max_age_seconds" in options else ChartSettings()
+    monitor = MonitorSettings(chart_notebook_max_entries=options.pop("max_entries")) if "max_entries" in options else MonitorSettings()
+    return dict(options, chart=chart, monitor=monitor)
 
 
 def notebook(**options):
@@ -27,7 +30,7 @@ def feed(t, scores, start=0.0, step=1.0, bar=5.0):
 
 class TestTheDefaults:
     def test_the_starting_values(self):
-        assert (DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_ENTRIES) == (3600.0, 5000)
+        assert (ChartSettings().window_minutes * 60.0, MonitorSettings().chart_notebook_max_entries) == (1800.0, 5000)
 
     def test_good_settings_are_quiet(self, logged):
         assert logged.of(notebook()).ok() and logged.of(notebook(max_age_seconds=0.001, max_entries=1)).ok()
@@ -214,33 +217,8 @@ class TestTheLockAndTheMemory:
 
 
 class TestBadSettings:
-    @pytest.mark.parametrize("bad", [0, -1, "3600", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_age_means_the_default_with_a_warning(self, bad, logged):
-        t = notebook(max_age_seconds=bad, longest_silence_seconds=10 ** 9)                  # no silence is ever drawn short, so drawn time is plain time
-        assert len(logged.of(t).warnings()) == 1 and "max_age_seconds" in logged.of(t).warnings()[0]
-        t.add(1, 1, 0.0)
-        t.add(2, 1, 3599.0)
-        assert len(t.recent()) == 2
-        t.add(3, 1, 3601.0)
-        assert len(t.recent()) == 2                           # the first has aged out: the default hour
-
-    @pytest.mark.parametrize("bad", [0, -1, 2.5, "5000", None, True])
-    def test_a_bad_point_limit_means_the_default_with_a_warning(self, bad, logged):
-        t = notebook(max_entries=bad)
-        assert len(logged.of(t).warnings()) == 1 and "max_entries" in logged.of(t).warnings()[0]
-        feed(t, [1.0] * (DEFAULT_MAX_ENTRIES + 5), step=0.0)
-        assert len(t.recent()) == DEFAULT_MAX_ENTRIES
-
-    @pytest.mark.parametrize("option,bad", [("max_age_seconds", 0), ("max_entries", 0)])
-    def test_strict_mode_raises(self, option, bad):
-        with pytest.raises(ChartNotebookError, match=option):
-            notebook(strict=True, **{option: bad})
-
     def test_strict_mode_with_good_settings_does_not_raise(self, logged):
         assert logged.of(notebook(strict=True)).ok()
-
-    def test_two_bad_settings_give_two_warnings(self, logged):
-        assert len(logged.of(notebook(max_age_seconds=0, max_entries=0)).warnings()) == 2
 
 
 class TestNothingIsLogged:
@@ -393,7 +371,7 @@ class TestTicksAreEntriesToo:
 
     def test_with_no_start_known_the_first_attempt_has_no_ticks_before_it(self):
         asked = []
-        t = ChartNotebook(ticks_source=grid(asked=asked))
+        t = ChartNotebook(ChartSettings(), MonitorSettings(), ticks_source=grid(asked=asked))
         t.add(3.0, 5.0, 150.0)
         assert t.ticks() == [] and asked == []
 
@@ -410,7 +388,7 @@ class TestTicksAreEntriesToo:
         assert [tick.at for tick in t.ticks()] == [60.0, 120.0]
 
     def test_without_a_ticks_source_there_are_none(self):
-        t = ChartNotebook(began_at=0.0)
+        t = ChartNotebook(ChartSettings(), MonitorSettings(), began_at=0.0)
         t.add(3.0, 5.0, 10.0)
         t.add(3.0, 5.0, 200.0)
         assert t.ticks() == []
@@ -541,7 +519,7 @@ class TestWhenTheBarCannotBeAsked:
 
     def test_the_bar_is_asked_without_the_lock_held(self):
         seen = []
-        t = ChartNotebook(ticks_source=lambda start, end: seen.append(len(t.recent())) or [], began_at=0.0)          # would hang if `add` still held the lock
+        t = ChartNotebook(ChartSettings(), MonitorSettings(), ticks_source=lambda start, end: seen.append(len(t.recent())) or [], began_at=0.0)          # would hang if `add` still held the lock
         asker = threading.Thread(target=lambda: t.add(3.0, 5.0, 10.0))
         asker.start()
         asker.join(2)
@@ -650,7 +628,7 @@ class TestReadingTheTicksAsOfNow:
         assert t.ticks_up_to(500.0) == []
 
     def test_without_a_ticks_source_only_what_was_written(self):
-        t = ChartNotebook(began_at=0.0)
+        t = ChartNotebook(ChartSettings(), MonitorSettings(), began_at=0.0)
         t.add(3.0, 5.0, 10.0)
         assert t.ticks_up_to(500.0) == []
 

@@ -18,7 +18,7 @@ Design decisions, and why:
     score_chart), as inline SVG made on the server; the same script refreshes it from `/chart.svg` on each poll. It is numbers only,
     so it is drawn whether or not hinges are hidden, and its qualifier dots link to the turn pages.
   * Nothing here may stop the oracle (see pom/__init__.py). A missing password, a port that is taken, or a status function
-    that fails is recorded in `report` (CRITICAL for the first two: the site is not running) and never raises.
+    that fails is logged (CRITICAL for the first two: the site is not running) and never raises.
     `strict=True` raises MonitorSiteError instead, for tests and dev tools.
   * The server is werkzeug's own, in a thread of its own, one request at a time per connection and several connections at
     once. It is the server Flask ships for development, meant for a single reader on a trusted network behind a password,
@@ -39,7 +39,7 @@ from typing import Callable, Mapping, Optional
 from flask import Flask, Response, abort, jsonify, render_template_string, request
 from werkzeug.serving import WSGIRequestHandler, make_server
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
 from pom.monitor.score_chart import ChartLook, render_score_chart
@@ -270,7 +270,7 @@ class MonitorSite:
     """The monitoring site.
 
     Attributes:
-        report: Problems met (no password, the port taken, the status function failing).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         app: The Flask application, or None if there is no password (the site cannot run).
     """
 
@@ -279,7 +279,7 @@ class MonitorSite:
                  clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None, chart=None,
                  poll_seconds: float = DEFAULT_POLL_SECONDS, stream_now: Optional[Callable[[], float]] = None,
                  stream_began_at: Optional[float] = None,
-                 password_on_localhost: bool = True, hinge_snippet_chars: int = DEFAULT_SNIPPET_CHARS):
+                 password_on_localhost: bool = True, hinge_snippet_chars: int = DEFAULT_SNIPPET_CHARS, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             history: Where the turns are read from.
             password: The site's password; the site does not run without one.
@@ -287,6 +287,7 @@ class MonitorSite:
             status_source: A function returning the MonitorStatus now; optional.
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise MonitorSiteError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             notebook: A ChartNotebook to draw the chart from; without one the page has no chart.
             chart: The `[chart]` settings that shape the chart (anything with the fields of `ChartLook`); None means the fallbacks.
             poll_seconds: How often the open page asks for news and redraws (`[monitor] poll_seconds`), above 0; a bad value is the fallback, with a warning.
@@ -298,7 +299,7 @@ class MonitorSite:
             hinge_snippet_chars: How many characters of a hinge the list shows before cutting it (`[monitor] hinge_snippet_chars`), a whole number of at least 1;
                 a bad value is the fallback, with a warning.
         """
-        self.report = ReportRecorder(strict=strict, error=MonitorSiteError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MonitorSiteError, DEBUG, strict)
         self._history = history
         self._show_hinges = bool(show_hinges)
         self._status_source = status_source
@@ -308,15 +309,15 @@ class MonitorSite:
         self._stream_now = stream_now
         self._stream_began_at = stream_began_at
         if not isinstance(password_on_localhost, bool):
-            self.report.warn(f"password_on_localhost must be true or false, not {password_on_localhost!r}; asking everyone for the password")
+            self.logger.warning(f"password_on_localhost must be true or false, not {password_on_localhost!r}; asking everyone for the password")
             password_on_localhost = True
         self._password_on_localhost = password_on_localhost
         self._poll_seconds = poll_seconds
         if not (isinstance(poll_seconds, (int, float)) and not isinstance(poll_seconds, bool) and math.isfinite(poll_seconds) and poll_seconds > 0):
-            self.report.warn(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
+            self.logger.warning(f"poll_seconds must be a number above 0, not {poll_seconds!r}; using {DEFAULT_POLL_SECONDS:g}")
             self._poll_seconds = DEFAULT_POLL_SECONDS
         if not (isinstance(hinge_snippet_chars, int) and not isinstance(hinge_snippet_chars, bool) and hinge_snippet_chars >= 1):
-            self.report.warn(f"hinge_snippet_chars must be a whole number of at least 1, not {hinge_snippet_chars!r}; using {DEFAULT_SNIPPET_CHARS}")
+            self.logger.warning(f"hinge_snippet_chars must be a whole number of at least 1, not {hinge_snippet_chars!r}; using {DEFAULT_SNIPPET_CHARS}")
             hinge_snippet_chars = DEFAULT_SNIPPET_CHARS
         self._hinge_snippet_chars = hinge_snippet_chars
         self._started_at = clock()
@@ -324,7 +325,7 @@ class MonitorSite:
         self._thread: Optional[threading.Thread] = None
         self.app: Optional[Flask] = None
         if not (isinstance(password, str) and password):
-            self.report.critical("the monitoring site needs a password and none was set (put one under [monitor] in "
+            self.logger.critical("the monitoring site needs a password and none was set (put one under [monitor] in "
                                  "config/pom.local.toml), so it will not start")
             return
         self._password = password.encode("utf-8")
@@ -333,18 +334,18 @@ class MonitorSite:
     # --- Starting and stopping ------------------------------------------------------
 
     def start(self, host: str, port: int) -> bool:
-        """Starts serving in a thread of its own. True if it is running; False (see `report`) if not."""
+        """Starts serving in a thread of its own. True if it is running; False (the log says why) if not."""
         if self.app is None or self._server is not None:
             return self._server is not None
         try:
             self._server = make_server(host, port, self.app, threaded=True, request_handler=_PollingRequestHandler)
         except (OSError, OverflowError, ValueError, SystemExit) as problem:      # werkzeug exits the process if the port is taken
-            self.report.critical(f"the monitoring site could not listen on port {port} ({type(problem).__name__}); "
+            self.logger.critical(f"the monitoring site could not listen on port {port} ({type(problem).__name__}); "
                                  f"it is not running")
             return False
         self._thread = threading.Thread(target=self._server.serve_forever, name="monitor-site", daemon=True)
         self._thread.start()
-        self.report.info("monitoring site listening on port %d", self._server.server_port)
+        self.logger.info("monitoring site listening on port %d", self._server.server_port)
         return True
 
     @property
@@ -372,9 +373,9 @@ class MonitorSite:
             status = self._status_source()
             if isinstance(status, MonitorStatus):
                 return status
-            self.report.warn("the status function did not return a MonitorStatus; the page shows no state")
+            self.logger.warning("the status function did not return a MonitorStatus; the page shows no state")
         except Exception as problem:               # a failing status function must never take the page down
-            self.report.warn(f"the status function failed ({type(problem).__name__}); the page shows no state")
+            self.logger.warning(f"the status function failed ({type(problem).__name__}); the page shows no state")
         return MonitorStatus()
 
     def _stats(self, records) -> dict:

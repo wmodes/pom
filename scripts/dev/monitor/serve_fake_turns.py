@@ -162,7 +162,7 @@ def main() -> None:
         site = MonitorSite(history, args.password, show_hinges=not args.hide_hinges,
                            status_source=lambda: MonitorStatus(bar=6.84, window_size=118, attempts_heard=1432, attempts_scored=1391, services=services))
     if not site.start("127.0.0.1" if args.check else "0.0.0.0", 0 if args.check else args.port):
-        sys.exit("the site did not start: " + "; ".join(site.report.lines()))
+        sys.exit("the site did not start (the log above says why)")
 
     if args.check:
         request = urllib.request.Request(f"http://127.0.0.1:{site.port}/api/turns", headers={

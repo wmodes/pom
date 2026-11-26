@@ -1,11 +1,12 @@
 """Tests for the TickWriter: which ticks the chart draws for a stretch, as entries, with problems reported and never raised."""
 import pytest
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.monitor.notebook_entry import NotebookEntry
 from pom.monitor.silence_compressor import SilenceShape
 from pom.monitor.tick_writer import TickWriter
+
+LOGGER = "pom.test.tick_writer"
 
 
 def grid(interval=60.0, anchor=5.85, bar=lambda at: 6.0, asked=None):
@@ -19,9 +20,10 @@ def grid(interval=60.0, anchor=5.85, bar=lambda at: 6.0, asked=None):
 
 
 def writer(source="grid", longest=300.0, head=150.0, began_at=0.0):
-    """A TickWriter over the grid (or `source`), and the recorder it reports to. `head` is how much of each end of a silence is drawn at true scale."""
-    report = ReportRecorder(strict=False, error=ValueError, logger=get_logger("test_tick_writer", False))
-    return TickWriter(grid() if source == "grid" else source, SilenceShape(longest, longest - 2.0 * head), began_at, report), report
+    """A TickWriter over the grid (or `source`), and the name of the logger it says things through (read with the `logged` fixture).
+    `head` is how much of each end of a silence is drawn at true scale."""
+    logger = Bookkeeper().logger_for(LOGGER, ValueError)
+    return TickWriter(grid() if source == "grid" else source, SilenceShape(longest, longest - 2.0 * head), began_at, logger), LOGGER
 
 
 def times(entries):
@@ -41,25 +43,25 @@ class TestTicksBetween:
         w, _ = writer(source=lambda start, end: [(5.0, 5.0, 6.0), (100.0, 5.0, 6.0), (999.0, 5.0, 6.0)])
         assert times(w.ticks_between(10.0, 200.0)) == [100.0]
 
-    def test_without_a_source_there_are_none(self):
+    def test_without_a_source_there_are_none(self, logged):
         w, report = writer(source=None)
-        assert w.ticks_between(0.0, 1000.0) == [] and report.warnings == []
+        assert w.ticks_between(0.0, 1000.0) == [] and logged.of(report).warnings() == []
 
     def test_a_bar_that_is_not_a_number_is_none(self):
         w, _ = writer(source=lambda start, end: [(60.0, 5.85, None)])
         assert w.ticks_between(0.0, 100.0)[0].bar is None
 
-    def test_a_source_that_fails_is_a_warning_and_no_ticks(self):
+    def test_a_source_that_fails_is_a_warning_and_no_ticks(self, logged):
         def broken(start, end):
             raise RuntimeError("the bar is gone")
         w, report = writer(source=broken)
-        assert w.ticks_between(0.0, 100.0) == [] and len(report.warnings) == 1
-        assert "the bar is gone" not in report.warnings[0]                        # never a value from the room
+        assert w.ticks_between(0.0, 100.0) == [] and len(logged.of(report).warnings()) == 1
+        assert "the bar is gone" not in logged.of(report).warnings()[0]                        # never a value from the room
 
     @pytest.mark.parametrize("bad", [(60.0,), (60.0, 5.0), ("60", 5.0, 6.0), (60.0, None, 6.0), (float("nan"), 5.0, 6.0), 7])
-    def test_a_tick_that_is_not_numbers_is_a_warning_and_skipped(self, bad):
+    def test_a_tick_that_is_not_numbers_is_a_warning_and_skipped(self, bad, logged):
         w, report = writer(source=lambda start, end: [bad, (100.0, 5.0, 6.0)])
-        assert times(w.ticks_between(0.0, 200.0)) == [100.0] and len(report.warnings) == 1
+        assert times(w.ticks_between(0.0, 200.0)) == [100.0] and len(logged.of(report).warnings()) == 1
 
 
 class TestTheFirstMinutes:

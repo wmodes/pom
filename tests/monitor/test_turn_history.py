@@ -38,9 +38,9 @@ class TestTheDefaults:
     def test_the_starting_values(self):
         assert (DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_RECORDS) == (3600.0, 500)
 
-    def test_good_settings_are_quiet(self):
-        assert history().report.ok
-        assert history(max_age_seconds=0.001, max_records=1).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(history()).ok()
+        assert logged.of(history(max_age_seconds=0.001, max_records=1)).ok()
 
     def test_the_age_limit_can_be_read(self):
         assert history(max_age_seconds=900).max_age_seconds == 900.0
@@ -112,16 +112,16 @@ class TestRecording:
 
 class TestWhatCannotBeRecorded:
     @pytest.mark.parametrize("hinge", ["", "   ", "\n", None, 5, ["x"]])
-    def test_a_missing_hinge_is_not_recorded(self, hinge):
+    def test_a_missing_hinge_is_not_recorded(self, hinge, logged):
         h = history()
         assert add(h, hinge) is None
-        assert h.recent() == [] and len(h.report.warnings) == 1
+        assert h.recent() == [] and len(logged.of(h).warnings()) == 1
 
     @pytest.mark.parametrize("score", [None, "7", float("nan"), float("inf"), True, [7]])
-    def test_a_score_that_is_not_a_number_is_not_recorded(self, score):
+    def test_a_score_that_is_not_a_number_is_not_recorded(self, score, logged):
         h = history()
         assert add(h, score=score) is None
-        assert h.recent() == [] and len(h.report.warnings) == 1
+        assert h.recent() == [] and len(logged.of(h).warnings()) == 1
 
     def test_strict_mode_raises_for_them(self):
         with pytest.raises(TurnHistoryError):
@@ -297,12 +297,12 @@ class TestKeepingATurnWhileItsDotIsOnTheChart:
         clock.now += 10_000
         assert h.recent() == []
 
-    def test_no_time_means_only_age_counts(self):
+    def test_no_time_means_only_age_counts(self, logged):
         clock = Clock()
         h = history(clock, max_age_seconds=60, keep_heard_since=lambda: None)
         add(h, heard_at=150.0)
         clock.now += 10_000
-        assert h.recent() == [] and h.report.ok
+        assert h.recent() == [] and logged.of(h).ok()
 
     @pytest.mark.parametrize("bad", ["100", True, [1], float("nan"), float("inf")])
     def test_something_that_is_not_a_number_means_only_age_counts(self, bad):
@@ -312,15 +312,15 @@ class TestKeepingATurnWhileItsDotIsOnTheChart:
         clock.now += 10_000
         assert h.recent() == []
 
-    def test_a_function_that_fails_is_a_warning_and_only_age_counts(self):
+    def test_a_function_that_fails_is_a_warning_and_only_age_counts(self, logged):
         def broken():
             raise RuntimeError("the secret hinge")
         clock = Clock()
         h = history(clock, max_age_seconds=60, keep_heard_since=broken)
         add(h, heard_at=150.0)
         clock.now += 10_000
-        assert h.recent() == [] and len(h.report.warnings) >= 1
-        assert "secret" not in "\n".join(h.report.lines())
+        assert h.recent() == [] and len(logged.of(h).warnings()) >= 1
+        assert "secret" not in "\n".join(logged.of(h).lines())
 
     def test_the_function_is_asked_without_the_lock_held(self):
         seen = []
@@ -387,9 +387,9 @@ class TestTheLockAndTheMemory:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, "3600", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_age_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_age_means_the_default_with_a_warning(self, bad, logged):
         h = history(max_age_seconds=bad)
-        assert len(h.report.warnings) == 1 and "max_age_seconds" in h.report.warnings[0]
+        assert len(logged.of(h).warnings()) == 1 and "max_age_seconds" in logged.of(h).warnings()[0]
         clock = Clock()
         h = history(clock, max_age_seconds=bad)
         add(h)
@@ -399,9 +399,9 @@ class TestBadSettings:
         assert h.recent() == []                            # the default hour
 
     @pytest.mark.parametrize("bad", [0, -1, 2.5, "500", None, True])
-    def test_a_bad_record_limit_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_record_limit_means_the_default_with_a_warning(self, bad, logged):
         h = history(max_records=bad)
-        assert len(h.report.warnings) == 1 and "max_records" in h.report.warnings[0]
+        assert len(logged.of(h).warnings()) == 1 and "max_records" in logged.of(h).warnings()[0]
         for _ in range(DEFAULT_MAX_RECORDS + 5):
             add(h)
         assert len(h.recent()) == DEFAULT_MAX_RECORDS
@@ -411,21 +411,21 @@ class TestBadSettings:
         with pytest.raises(TurnHistoryError, match=option):
             history(strict=True, **{option: bad})
 
-    def test_strict_mode_with_good_settings_does_not_raise(self):
-        assert history(strict=True).report.ok
+    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
+        assert logged.of(history(strict=True)).ok()
 
-    def test_two_bad_settings_give_two_warnings(self):
-        assert len(history(max_age_seconds=0, max_records=0).report.warnings) == 2
+    def test_two_bad_settings_give_two_warnings(self, logged):
+        assert len(logged.of(history(max_age_seconds=0, max_records=0)).warnings()) == 2
 
 
 class TestNothingSaidInTheRoomIsKept:
-    def test_neither_the_hinge_nor_the_portent_reaches_the_log_or_the_report(self, caplog):
+    def test_neither_the_hinge_nor_the_portent_reaches_the_log_or_the_report(self, caplog, logged):
         caplog.set_level(logging.DEBUG)
         h = history()
         add(h, "My secret is the neighbor.", portent=portent("the neighbor keeps secret hours"))
         add(h, "", portent=None)
         add(h, "A hinge.", score="not a number")
-        text = caplog.text + "\n".join(h.report.lines())
+        text = caplog.text + "\n".join(logged.of(h).lines())
         assert "secret" not in text and "neighbor" not in text and "hinge" not in text.replace("without a hinge", "")
 
 
@@ -463,20 +463,20 @@ class TestTheOutcome:
         h.set_outcome(record.id, "  printed ")
         assert h.get(record.id).outcome == "printed"
 
-    def test_a_record_that_has_expired_or_never_was_changes_nothing(self):
+    def test_a_record_that_has_expired_or_never_was_changes_nothing(self, logged):
         clock = Clock()
         h = history(clock)
         record = add(h)
         clock.now += DEFAULT_MAX_AGE_SECONDS + 1
         assert h.set_outcome(record.id, "printed") is False and h.set_outcome(999, "printed") is False
-        assert h.recent() == [] and h.report.ok
+        assert h.recent() == [] and logged.of(h).ok()
 
     @pytest.mark.parametrize("bad", ["", "   ", None, 5, ["printed"]])
-    def test_an_outcome_that_is_not_a_label_is_refused_with_a_warning(self, bad):
+    def test_an_outcome_that_is_not_a_label_is_refused_with_a_warning(self, bad, logged):
         h = history()
         record = add(h)
         assert h.set_outcome(record.id, bad) is False
-        assert h.get(record.id).outcome is None and len(h.report.warnings) == 1
+        assert h.get(record.id).outcome is None and len(logged.of(h).warnings()) == 1
 
     def test_in_strict_mode_a_bad_outcome_raises(self):
         h = history(strict=True)

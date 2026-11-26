@@ -30,8 +30,8 @@ class TestTheDefaults:
     def test_the_starting_values(self):
         assert (DEFAULT_MAX_AGE_SECONDS, DEFAULT_MAX_ENTRIES) == (3600.0, 5000)
 
-    def test_good_settings_are_quiet(self):
-        assert notebook().report.ok and notebook(max_age_seconds=0.001, max_entries=1).report.ok
+    def test_good_settings_are_quiet(self, logged):
+        assert logged.of(notebook()).ok() and logged.of(notebook(max_age_seconds=0.001, max_entries=1)).ok()
 
     def test_it_starts_empty(self):
         t = notebook()
@@ -95,16 +95,16 @@ class TestAdding:
 
 class TestWhatCannotBeKept:
     @pytest.mark.parametrize("score", [None, "7", float("nan"), float("inf"), True, [7]])
-    def test_a_score_that_is_not_a_number_is_not_kept(self, score):
+    def test_a_score_that_is_not_a_number_is_not_kept(self, score, logged):
         t = notebook()
         assert t.add(score, 5.0, 1.0) is False
-        assert t.recent() == [] and len(t.report.warnings) == 1
+        assert t.recent() == [] and len(logged.of(t).warnings()) == 1
 
     @pytest.mark.parametrize("at", [None, "7", float("nan"), float("inf"), True, [7]])
-    def test_a_time_that_is_not_a_number_is_not_kept(self, at):
+    def test_a_time_that_is_not_a_number_is_not_kept(self, at, logged):
         t = notebook()
         assert t.add(5.0, 5.0, at) is False
-        assert t.recent() == [] and len(t.report.warnings) == 1
+        assert t.recent() == [] and len(logged.of(t).warnings()) == 1
 
     def test_strict_mode_raises_for_it(self):
         with pytest.raises(ChartNotebookError):
@@ -216,9 +216,9 @@ class TestTheLockAndTheMemory:
 
 class TestBadSettings:
     @pytest.mark.parametrize("bad", [0, -1, "3600", None, True, [60], float("nan"), float("inf")])
-    def test_a_bad_age_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_age_means_the_default_with_a_warning(self, bad, logged):
         t = notebook(max_age_seconds=bad, longest_silence_seconds=10 ** 9)                  # no silence is ever drawn short, so drawn time is plain time
-        assert len(t.report.warnings) == 1 and "max_age_seconds" in t.report.warnings[0]
+        assert len(logged.of(t).warnings()) == 1 and "max_age_seconds" in logged.of(t).warnings()[0]
         t.add(1, 1, 0.0)
         t.add(2, 1, 3599.0)
         assert len(t.recent()) == 2
@@ -226,9 +226,9 @@ class TestBadSettings:
         assert len(t.recent()) == 2                           # the first has aged out: the default hour
 
     @pytest.mark.parametrize("bad", [0, -1, 2.5, "5000", None, True])
-    def test_a_bad_point_limit_means_the_default_with_a_warning(self, bad):
+    def test_a_bad_point_limit_means_the_default_with_a_warning(self, bad, logged):
         t = notebook(max_entries=bad)
-        assert len(t.report.warnings) == 1 and "max_entries" in t.report.warnings[0]
+        assert len(logged.of(t).warnings()) == 1 and "max_entries" in logged.of(t).warnings()[0]
         feed(t, [1.0] * (DEFAULT_MAX_ENTRIES + 5), step=0.0)
         assert len(t.recent()) == DEFAULT_MAX_ENTRIES
 
@@ -237,21 +237,21 @@ class TestBadSettings:
         with pytest.raises(ChartNotebookError, match=option):
             notebook(strict=True, **{option: bad})
 
-    def test_strict_mode_with_good_settings_does_not_raise(self):
-        assert notebook(strict=True).report.ok
+    def test_strict_mode_with_good_settings_does_not_raise(self, logged):
+        assert logged.of(notebook(strict=True)).ok()
 
-    def test_two_bad_settings_give_two_warnings(self):
-        assert len(notebook(max_age_seconds=0, max_entries=0).report.warnings) == 2
+    def test_two_bad_settings_give_two_warnings(self, logged):
+        assert len(logged.of(notebook(max_age_seconds=0, max_entries=0)).warnings()) == 2
 
 
 class TestNothingIsLogged:
-    def test_no_value_reaches_the_log_or_the_report(self, caplog):
+    def test_no_value_reaches_the_log_or_the_report(self, caplog, logged):
         caplog.set_level(logging.DEBUG)
         t = notebook()
         t.add(7.123456, 6.654321, 99.0, True)
         t.add("secret", 1.0, 1.0)
-        assert "7.123456" not in caplog.text + "\n".join(t.report.lines())
-        assert "secret" not in caplog.text + "\n".join(t.report.lines())
+        assert "7.123456" not in caplog.text + "\n".join(logged.of(t).lines())
+        assert "secret" not in caplog.text + "\n".join(logged.of(t).lines())
 
 
 class TestEarliestAt:
@@ -513,13 +513,13 @@ class TestTicksAndTheLimits:
 
 
 class TestWhenTheBarCannotBeAsked:
-    def test_a_failing_source_is_a_warning_and_the_attempt_is_kept(self):
+    def test_a_failing_source_is_a_warning_and_the_attempt_is_kept(self, logged):
         def broken(start, end):
             raise RuntimeError("the secret in the room")
         t = with_ticks(ticks_source=broken, began_at=None)
         t.add(3.0, 5.0, 10.0)
         assert t.add(4.0, 5.0, 200.0) is True and t.ticks() == [] and len(t.recent()) == 2
-        assert t.report.warnings and "secret" not in " ".join(t.report.warnings)
+        assert logged.of(t).warnings() and "secret" not in " ".join(logged.of(t).warnings())
 
     def test_in_strict_mode_it_raises(self):
         def broken(start, end):
@@ -529,11 +529,11 @@ class TestWhenTheBarCannotBeAsked:
         with pytest.raises(ChartNotebookError):
             t.add(4.0, 5.0, 200.0)
 
-    def test_a_tick_without_a_number_is_skipped_with_a_warning(self):
+    def test_a_tick_without_a_number_is_skipped_with_a_warning(self, logged):
         t = with_ticks(ticks_source=lambda start, end: [("x", 5.0, 6.0), (60.0, "y", 6.0), (90.0, 5.0, 6.0), "junk"], began_at=None)
         t.add(3.0, 5.0, 10.0)
         t.add(4.0, 5.0, 200.0)
-        assert [tick.at for tick in t.ticks()] == [90.0] and len(t.report.warnings) == 3
+        assert [tick.at for tick in t.ticks()] == [90.0] and len(logged.of(t).warnings()) == 3
 
     def test_ticks_outside_the_stretch_asked_for_are_not_kept(self):
         t = with_ticks(ticks_source=lambda start, end: [(5.0, 5.0, 6.0), (100.0, 5.0, 6.0), (999.0, 5.0, 6.0)], began_at=None)
@@ -550,9 +550,9 @@ class TestWhenTheBarCannotBeAsked:
         assert not asker.is_alive() and seen == [0]
 
     @pytest.mark.parametrize("bad", [300, "x", (300.0, 0.0), 0, object()])
-    def test_a_silence_shape_that_is_not_one_is_a_warning_and_the_default(self, bad):
+    def test_a_silence_shape_that_is_not_one_is_a_warning_and_the_default(self, bad, logged):
         t = with_ticks(silence_shape=bad)
-        assert len(t.report.warnings) == 1 and "silence_shape" in t.report.warnings[0]
+        assert len(logged.of(t).warnings()) == 1 and "silence_shape" in logged.of(t).warnings()[0]
         t.add(3.0, 5.0, 10.0)
         t.add(3.0, 5.0, 310.0)
         t.add(3.0, 5.0, 700.0)
@@ -607,10 +607,10 @@ class TestTheFirstMinutesOfASilence:
         t.add(3.0, 5.0, 4000.0)
         assert [tick.at for tick in t.ticks()] == [60.0, 120.0, 3900.0, 3960.0]                    # the start's first 150 s and the 150 s before the attempt
 
-    def test_with_no_shape_given_a_silence_has_no_true_scale_sides_and_nothing_is_said(self):
+    def test_with_no_shape_given_a_silence_has_no_true_scale_sides_and_nothing_is_said(self, logged):
         t = with_ticks()
         t.add(3.0, 5.0, 10.0)
-        assert t.report.ok and t.head_ticks() == []
+        assert logged.of(t).ok() and t.head_ticks() == []
 
 
 class TestReadingTheTicksAsOfNow:
@@ -678,7 +678,7 @@ class TestReadingTheTicksAsOfNow:
         got = [tick.at for tick in t.ticks_up_to(320.0)]
         assert got == sorted(set(got)) and got == [60.0, 240.0, 300.0]
 
-    def test_a_failing_source_is_a_warning_and_what_was_written(self):
+    def test_a_failing_source_is_a_warning_and_what_was_written(self, logged):
         calls = []
 
         def source(start, end):
@@ -688,7 +688,7 @@ class TestReadingTheTicksAsOfNow:
             return []
         t = with_ticks(ticks_source=source, began_at=None, head_seconds=100.0)
         t.add(3.0, 5.0, 10.0)
-        assert t.ticks_up_to(200.0) == [] and t.report.warnings and "secret" not in " ".join(t.report.warnings)
+        assert t.ticks_up_to(200.0) == [] and logged.of(t).warnings() and "secret" not in " ".join(logged.of(t).warnings())
 
 
 class TestWhatTheNotebookKeeps:

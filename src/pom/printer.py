@@ -127,7 +127,7 @@ class Printer:
     def run(self) -> None:
         """Starts the monitoring site (if any), the status poller, the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
         if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
-            self.logger.warning("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
+            self.logger.warning("the monitoring site did not start (it logged why, just above); going on without it")
             self.site = None
         elif self.site is not None:
             self.logger.info("monitoring site listening on port %s", self.site.port)
@@ -184,7 +184,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
 
     # the status board: every light on the monitoring page, kept in one place. The microphone posts to it for itself as sound arrives; a poller asks the
     # servers and the printer. NO NEWS IS DOWN: a light whose last post is too old shows down (see pom/monitor/status_board.py). A recording has no microphone.
-    board = StatusBoard()
+    board = StatusBoard(bookkeeper=bookkeeper)
     if not options.wav:
         board.expect("mic", monitor.mic_down_after_seconds)
     for name in ("whisper", "scorer", "oracle", "printer"):
@@ -234,9 +234,9 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
     # (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)
     notebook = ChartNotebook(config.chart.window_minutes * 60.0, monitor.chart_notebook_max_entries, ticks_source=bar_keeper.ticks_between,
-                             silence_shape=silence_shape(config.chart), began_at=stream_started_at)
+                             silence_shape=silence_shape(config.chart), began_at=stream_started_at, bookkeeper=bookkeeper)
     # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
-    history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at)
+    history = TurnHistory(monitor.history_seconds, monitor.history_max_turns, keep_heard_since=lambda: notebook.earliest_at, bookkeeper=bookkeeper)
     floor = FloorKeeper(conductor_settings.writing_seconds, conductor_settings.printing_seconds, conductor_settings.recovering_seconds)
     turn_taker = TurnTaker(writer, formatter, terminal, history, freshness_seconds=conductor_settings.freshness_seconds,
                            write_attempts=conductor_settings.write_attempts, write_pause_seconds=conductor_settings.write_pause_seconds,
@@ -289,7 +289,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, chart=config.chart,
                                poll_seconds=monitor.poll_seconds, hinge_snippet_chars=monitor.hinge_snippet_chars, stream_now=stream_now,
                                stream_began_at=stream_started_at, password_on_localhost=monitor.password_on_localhost,
-                               status_source=status_now)
+                               status_source=status_now, bookkeeper=bookkeeper)
 
     def turned(attempt, result) -> None:
         logger.info("turn over: %s", result.outcome.value)

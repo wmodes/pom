@@ -581,7 +581,7 @@ class TestTheMonitoringSite:
         p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n')
         assert p.parts["turn_taker"]._history is p.history and p.site._history is p.history
 
-    def test_every_attempt_is_noted_for_the_chart_as_numbers(self, tmp_path):
+    def test_every_attempt_is_noted_for_the_chart_as_numbers(self, tmp_path, logged):
         from pom.qualifying import Attempt, Ruling
         from pom.scoring import ScoredBy
         p = build(tmp_path)
@@ -589,7 +589,7 @@ class TestTheMonitoringSite:
         p.conductor._on_attempt(Attempt("Room tone.", "room_tone", None, ScoredBy.NONE if hasattr(ScoredBy, "NONE") else ScoredBy.MODEL,
                                         None, 13.0, None, 3, 1))
         assert len(p.parts["notebook"].recent()) == 1                  # only the scored one is a point on the chart
-        assert p.parts["notebook"].report.ok                           # and the unscored one was never offered to it
+        assert logged.of(p.parts["notebook"]).ok()                     # and the unscored one was never offered to it
 
     @staticmethod
     def attempt(at):

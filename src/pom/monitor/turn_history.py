@@ -6,8 +6,7 @@ turns and, for each, its details. It is only a memory: the list is for looking a
 
 Design decisions, and why:
   * MEMORY ONLY. A hinge is something that was said in the room, and the project keeps nothing that was said in the
-    room. So the records live in this object and nowhere else: never written to disk, never logged, never put in a
-    report (those hold counts only). They are dropped after `max_age_seconds` (an hour), unless the chart still shows the turn's qualifier dot, and
+    room. So the records live in this object and nowhere else: never written to disk, never logged (the log holds counts only). They are dropped after `max_age_seconds` (an hour), unless the chart still shows the turn's qualifier dot, and
     when the Printer restarts.
   * A TURN STAYS WHILE ITS DOT IS ON THE CHART. After a long silence the chart reaches back hours of clock time, so a dot can outlive its turn and
     link to nothing. So the history is handed a function (`keep_heard_since`) that says the audio time from which turns are kept whatever their age; the
@@ -33,12 +32,10 @@ from collections import deque
 from dataclasses import dataclass, replace
 from typing import Callable, Deque, List, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.writing.portent_writer import Portent
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_MAX_AGE_SECONDS = 3600.0
 DEFAULT_MAX_RECORDS = 500
@@ -82,29 +79,30 @@ class TurnHistory:
     """Keeps the recent turns, newest first.
 
     Attributes:
-        report: Problems met (a bad setting, a record that could not be made). Never holds a hinge or a portent.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         total_added: How many records have been accepted since the history was made, expired ones included.
     """
 
     def __init__(self, max_age_seconds: float = DEFAULT_MAX_AGE_SECONDS, max_records: int = DEFAULT_MAX_RECORDS,
                  clock: Callable[[], float] = time.time, strict: bool = False,
-                 keep_heard_since: Optional[Callable[[], Optional[float]]] = None):
+                 keep_heard_since: Optional[Callable[[], Optional[float]]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             max_age_seconds: How long a record is kept, above 0 (3600 is an hour), unless `keep_heard_since` keeps it longer.
             max_records: The most records kept, a whole number of at least 1; the oldest go first.
             clock: Returns seconds since the epoch; injected so tests need not wait.
             strict: Raise TurnHistoryError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             keep_heard_since: A function returning the audio time (as `heard_at`) from which turns are kept whatever their age, or None for no such
                 time: the chart notebook's oldest attempt, so a turn stays while its dot is on the chart. Without one, or if it fails or gives
                 something that is not a number, the age limit alone decides.
         """
-        self.report = ReportRecorder(strict=strict, error=TurnHistoryError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnHistoryError, DEBUG, strict)
         if not (_is_number(max_age_seconds) and max_age_seconds > 0):
-            self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; "
+            self.logger.warning(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; "
                              f"using {DEFAULT_MAX_AGE_SECONDS:g}")
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS
         if not (isinstance(max_records, int) and not isinstance(max_records, bool) and max_records >= 1):
-            self.report.warn(f"max_records must be a whole number of at least 1, got {max_records!r}; "
+            self.logger.warning(f"max_records must be a whole number of at least 1, got {max_records!r}; "
                              f"using {DEFAULT_MAX_RECORDS}")
             max_records = DEFAULT_MAX_RECORDS
         self._max_age = float(max_age_seconds)
@@ -122,12 +120,12 @@ class TurnHistory:
 
     def add(self, hinge: str, score: float, bar: Optional[float], window_size: int, heard_at: float,
             portent: Optional[Portent] = None) -> Optional[TurnRecord]:
-        """Records a turn and returns its record, or None if it could not be made (see `report`)."""
+        """Records a turn and returns its record, or None if it could not be made (the log says why)."""
         if not (isinstance(hinge, str) and hinge.strip()):
-            self.report.warn("a turn was given without a hinge, so it was not recorded")
+            self.logger.warning("a turn was given without a hinge, so it was not recorded")
             return None
         if not _is_number(score):
-            self.report.warn("a turn was given without a numeric score, so it was not recorded")
+            self.logger.warning("a turn was given without a numeric score, so it was not recorded")
             return None
         keep_from = self._keep_from()                       # asked for outside the lock: the function belongs to another object
         with self._lock:
@@ -139,7 +137,7 @@ class TurnHistory:
             self.total_added += 1
             self._records.append(record)
             self._forget_old(keep_from)
-        self.report.debug("recorded turn %d (%d kept)", record.id, len(self._records))
+        self.logger.debug("recorded turn %d (%d kept)", record.id, len(self._records))
         return record
 
     def set_outcome(self, record_id: int, outcome: str) -> bool:
@@ -149,7 +147,7 @@ class TurnHistory:
         expired, or an outcome that is not a non-blank string, changes nothing (the second is also recorded as a warning).
         """
         if not (isinstance(outcome, str) and outcome.strip()):
-            self.report.warn("a turn's outcome must be a short label, so it was not recorded")
+            self.logger.warning("a turn's outcome must be a short label, so it was not recorded")
             return False
         keep_from = self._keep_from()
         with self._lock:
@@ -181,7 +179,7 @@ class TurnHistory:
         try:
             found = self._keep_heard_since()
         except Exception:                                                    # nothing here may stop the oracle; say what, never a hinge
-            self.report.warn("the function that says which turns the chart still shows failed, so only the age limit applies")
+            self.logger.warning("the function that says which turns the chart still shows failed, so only the age limit applies")
             return None
         return float(found) if _is_number(found) else None
 

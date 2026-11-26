@@ -103,13 +103,13 @@ def test_the_old_true_and_false_are_taken_as_lights():
     assert b.lights() == {"a": Light.UP, "b": Light.DOWN}
 
 
-def test_a_post_from_a_part_that_was_never_registered_is_ignored_and_recorded_once():
+def test_a_post_from_a_part_that_was_never_registered_is_ignored_and_recorded_once(logged):
     b, _ = board()
     b.expect("mic", 5)
     b.post("nonesuch", Light.UP)
     b.post("nonesuch", Light.UP)
     assert list(b.lights()) == ["mic"]
-    assert len(b.report.warnings) == 1 and "'nonesuch'" in b.report.warnings[0]
+    assert len(logged.of(b).warnings()) == 1 and "'nonesuch'" in logged.of(b).warnings()[0]
 
 
 def test_strict_raises_for_a_part_that_was_never_registered():

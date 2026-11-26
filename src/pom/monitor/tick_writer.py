@@ -10,13 +10,13 @@ The rule it carries (see the ChartNotebook's module note for why):
   * The first minutes are worked out when the attempt that begins the silence is heard (`first_minutes`), because the bar may have forgotten the
     scores they depend on by the time anyone asks again. The last minutes are worked out when they are wanted.
 
-Nothing here may stop the oracle (see pom/__init__.py): a ticks source that fails or a tick that is not numbers is a warning on the `report` it is
+Nothing here may stop the oracle (see pom/__init__.py): a ticks source that fails or a tick that is not numbers is a warning through the logger it is
 given (the notebook's), never a value from the room, and no ticks for that stretch. This module never reads Config and never imports the bar: it is
 handed a function.
 """
 from typing import Callable, List, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.log_recorder import LogRecorder
 from pom.monitor.notebook_entry import TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceShape
 
@@ -31,17 +31,17 @@ class TickWriter:
         began_at: The stream time at which listening began, or None; the stretch before the first attempt runs from here.
     """
 
-    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], report: ReportRecorder):
+    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], logger: LogRecorder):
         """Args:
             ticks_source: See the attribute. Without one, every method answers an empty list.
             shape: How a silence is drawn. An `edge_seconds` of 0 means a silence has no ticks at all.
             began_at: The stream time at which listening began; anything that is not a number means it is not known.
-            report: Where problems are recorded (the notebook's own), so they are reported in one place.
+            logger: The notebook's logger, so its problems are said under the notebook's name.
         """
         self.ticks_source = ticks_source
         self.shape = shape
         self.began_at = float(began_at) if is_number(began_at) else None
-        self._report = report
+        self._logger = logger
 
     def ticks_between(self, start: float, end: float) -> List[NotebookEntry]:
         """The source's ticks after `start` and up to `end`, as entries. The start's own tick belongs to whatever was heard then."""
@@ -50,12 +50,12 @@ class TickWriter:
         try:
             found = list(self.ticks_source(start, end))
         except Exception:                                          # nothing here may stop the oracle; say what, never a value from the room
-            self._report.warn("the ticks source failed, so no ticks were written for this stretch")
+            self._logger.warning("the ticks source failed, so no ticks were written for this stretch")
             return []
         ticks = []
         for item in found:
             if not (isinstance(item, (tuple, list)) and len(item) == 3 and is_number(item[0]) and is_number(item[1])):
-                self._report.warn("a tick was given without a numeric time and score, so it was not kept")
+                self._logger.warning("a tick was given without a numeric time and score, so it was not kept")
                 continue
             if start < item[0] <= end:
                 ticks.append(NotebookEntry(float(item[0]), float(item[1]), float(item[2]) if is_number(item[2]) else None, False, TICK))

@@ -39,14 +39,12 @@ import threading
 from collections import deque
 from typing import Callable, Deque, List, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 from pom.monitor.tick_writer import TickWriter
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 # Only the fallbacks for a missing or bad setting (with a warning); the real values are `[monitor] history_seconds`, `[monitor] chart_notebook_max_entries`
 # and `[chart] longest_silence_minutes` in config/pom.toml.
@@ -63,45 +61,46 @@ class ChartNotebook:
     """Keeps the recent attempts and ticks as numbers, oldest first.
 
     Attributes:
-        report: Problems met (a bad setting, an entry that could not be made). Never holds a value from the room.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, max_age_seconds: float = DEFAULT_MAX_AGE_SECONDS, max_entries: int = DEFAULT_MAX_ENTRIES, strict: bool = False,
                  ticks_source: Optional[Callable[[float, float], list]] = None, silence_shape: Optional[SilenceShape] = None,
-                 began_at: Optional[float] = None):
+                 began_at: Optional[float] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             max_age_seconds: How much drawn time is kept, above 0: the chart's own width (`[chart] window_minutes`), since nothing older is ever drawn.
             max_entries: The most entries kept, a whole number of at least 1; the oldest go first.
             strict: Raise ChartNotebookError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             ticks_source: A function from (start, end) to the ticks in that stretch, each as (time, anchor score, the bar at that tick), oldest
                 first (the bar's `ticks_between`). Without one, no ticks are written.
             silence_shape: How the chart draws a silence (`score_chart.silence_shape(look)`): a stretch between two attempts longer than its `longest_seconds`
                 is one, and only its first and last `edge_seconds` have ticks. None means the default shape, which has no true-scale sides, so none.
             began_at: The stream time at which listening began, so the stretch before the first attempt gets its ticks too. None means it does not.
         """
-        self.report = ReportRecorder(strict=strict, error=ChartNotebookError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ChartNotebookError, DEBUG, strict)
         if not (is_number(max_age_seconds) and max_age_seconds > 0):
-            self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; using {DEFAULT_MAX_AGE_SECONDS:g}")
+            self.logger.warning(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; using {DEFAULT_MAX_AGE_SECONDS:g}")
             max_age_seconds = DEFAULT_MAX_AGE_SECONDS
         if not (isinstance(max_entries, int) and not isinstance(max_entries, bool) and max_entries >= 1):
-            self.report.warn(f"max_entries must be a whole number of at least 1, got {max_entries!r}; using {DEFAULT_MAX_ENTRIES}")
+            self.logger.warning(f"max_entries must be a whole number of at least 1, got {max_entries!r}; using {DEFAULT_MAX_ENTRIES}")
             max_entries = DEFAULT_MAX_ENTRIES
         if silence_shape is None:
             silence_shape = DEFAULT_SILENCE_SHAPE
         elif not isinstance(silence_shape, SilenceShape):
-            self.report.warn(f"silence_shape must be a SilenceShape, got {type(silence_shape).__name__}; using the default")
+            self.logger.warning(f"silence_shape must be a SilenceShape, got {type(silence_shape).__name__}; using the default")
             silence_shape = DEFAULT_SILENCE_SHAPE
         self._head: List[NotebookEntry] = []                    # the ticks for the first minutes after the newest attempt, worked out when it was heard
         self._max_age = float(max_age_seconds)
         self._entries: Deque[NotebookEntry] = deque(maxlen=max_entries)
-        self._tick_writer = TickWriter(ticks_source, silence_shape, began_at, self.report)
+        self._tick_writer = TickWriter(ticks_source, silence_shape, began_at, self.logger)
         self._lock = threading.Lock()
         self._total_added = 0
 
     def add(self, score: float, bar: Optional[float], at: float, qualified: bool = False) -> bool:
-        """Adds an attempt, after the ticks since the previous one. True if it was kept; False (see `report`) if the score or the time was not a number."""
+        """Adds an attempt, after the ticks since the previous one. True if it was kept; False (the log says why) if the score or the time was not a number."""
         if not (is_number(score) and is_number(at)):
-            self.report.warn("an attempt was given without a numeric score and time, so it was not kept")
+            self.logger.warning("an attempt was given without a numeric score and time, so it was not kept")
             return False
         attempt = NotebookEntry(float(at), float(score), float(bar) if is_number(bar) else None, bool(qualified), ATTEMPT)
         ticks = self._stretch_ticks(attempt.at)                   # asked for outside the lock: the bar has its own

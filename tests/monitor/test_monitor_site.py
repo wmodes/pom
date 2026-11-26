@@ -94,23 +94,23 @@ class TestThePassword:
         assert calls == [(PASSWORD.encode(), PASSWORD.encode())]
 
     @pytest.mark.parametrize("bad", ["", None, 5, b"bytes", ["pw"]])
-    def test_without_a_usable_password_the_site_does_not_exist(self, bad):
+    def test_without_a_usable_password_the_site_does_not_exist(self, bad, logged):
         site = MonitorSite(TurnHistory(), bad)
         assert site.app is None
         assert site.start("127.0.0.1", 0) is False and site.port is None
-        assert len(site.report.criticals) == 1 and "password" in site.report.criticals[0]
+        assert len(logged.of(site).criticals()) == 1 and "password" in logged.of(site).criticals()[0]
 
     def test_strict_mode_raises_for_a_missing_password(self):
         with pytest.raises(MonitorSiteError, match="password"):
             MonitorSite(TurnHistory(), "", strict=True)
 
-    def test_the_password_is_never_in_a_report_or_a_log(self, caplog):
+    def test_the_password_is_never_in_a_report_or_a_log(self, caplog, logged):
         caplog.set_level(logging.DEBUG)
         site = MonitorSite(TurnHistory(), "")
         _, _, client, _ = make()
         client.get("/", headers=basic(password="wrong-guess-1234"))
         assert PASSWORD not in caplog.text and "wrong-guess-1234" not in caplog.text
-        assert "wrong-guess-1234" not in "\n".join(site.report.lines())
+        assert "wrong-guess-1234" not in "\n".join(logged.of(site).lines())
 
 
 class TestTheList:
@@ -291,17 +291,17 @@ class TestTheStats:
         assert stats["bar"] is None and stats["bar_text"] == "none yet" and stats["services"] == {}
         assert get(client, "/").status_code == 200
 
-    def test_a_status_function_that_fails_does_not_take_the_page_down(self):
+    def test_a_status_function_that_fails_does_not_take_the_page_down(self, logged):
         def broken():
             raise RuntimeError("secret detail")
         site, _, client, _ = make(status=broken)
         assert get(client, "/").status_code == 200 and get(client, "/api/turns").status_code == 200
-        assert len(site.report.warnings) >= 1 and "RuntimeError" in site.report.warnings[0]
-        assert "secret detail" not in "\n".join(site.report.lines())
+        assert len(logged.of(site).warnings()) >= 1 and "RuntimeError" in logged.of(site).warnings()[0]
+        assert "secret detail" not in "\n".join(logged.of(site).lines())
 
-    def test_a_status_function_that_returns_the_wrong_thing_is_ignored(self):
+    def test_a_status_function_that_returns_the_wrong_thing_is_ignored(self, logged):
         site, _, client, _ = make(status=lambda: {"bar": 5})
-        assert get(client, "/").status_code == 200 and "MonitorStatus" in site.report.warnings[0]
+        assert get(client, "/").status_code == 200 and "MonitorStatus" in logged.of(site).warnings()[0]
 
 
 class TestTheTurnRule:
@@ -893,21 +893,21 @@ class TestRunningForReal:
         site.stop()
         site.stop()
 
-    def test_a_port_that_is_taken_is_reported_not_raised(self):
+    def test_a_port_that_is_taken_is_reported_not_raised(self, logged):
         first = MonitorSite(TurnHistory(), PASSWORD)
         first.start("127.0.0.1", 0)
         try:
             second = MonitorSite(TurnHistory(), PASSWORD)
             assert second.start("127.0.0.1", first.port) is False
-            assert second.port is None and len(second.report.criticals) == 1
-            assert str(first.port) in second.report.criticals[0]
+            assert second.port is None and len(logged.of(second).criticals()) == 1
+            assert str(first.port) in logged.of(second).criticals()[0]
         finally:
             first.stop()
 
     @pytest.mark.parametrize("port", [-1, 70000, "x"])
-    def test_a_bad_port_is_reported_not_raised(self, port):
+    def test_a_bad_port_is_reported_not_raised(self, port, logged):
         site = MonitorSite(TurnHistory(), PASSWORD)
-        assert site.start("127.0.0.1", port) is False and len(site.report.criticals) == 1
+        assert site.start("127.0.0.1", port) is False and len(logged.of(site).criticals()) == 1
 
     def test_the_site_does_not_keep_the_process_alive(self):
         site = MonitorSite(TurnHistory(), PASSWORD)
@@ -919,14 +919,14 @@ class TestRunningForReal:
 
 
 class TestNothingSaidInTheRoomIsLogged:
-    def test_hinges_and_portents_reach_neither_the_log_nor_the_report(self, caplog):
+    def test_hinges_and_portents_reach_neither_the_log_nor_the_report(self, caplog, logged):
         caplog.set_level(logging.DEBUG)
         site, history, client, _ = make(status=lambda: 1 / 0)
         record = add(history, "My secret is the neighbour.", portent=portent("the neighbour keeps secret hours"))
         get(client, "/")
         get(client, f"/turn/{record.id}")
         get(client, "/api/turns")
-        text = caplog.text + "\n".join(site.report.lines())
+        text = caplog.text + "\n".join(logged.of(site).lines())
         assert "secret" not in text and "neighbour" not in text
 
 
@@ -1155,14 +1155,14 @@ class TestThePollBeat:
         assert "setInterval(poll, 2.5 * 1000)" in self.beat(poll_seconds=2.5)
 
     @pytest.mark.parametrize("bad", [0, -1, "5", None, True, float("inf"), float("nan")])
-    def test_a_bad_beat_is_the_fallback_with_a_warning(self, bad):
+    def test_a_bad_beat_is_the_fallback_with_a_warning(self, bad, logged):
         site, _, client, _ = make(poll_seconds=bad)
         assert "setInterval(poll, 5 * 1000)" in get(client, "/").get_data(as_text=True)
-        assert any("poll_seconds" in w for w in site.report.warnings)
+        assert any("poll_seconds" in w for w in logged.of(site).warnings())
 
-    def test_a_good_beat_says_nothing(self):
+    def test_a_good_beat_says_nothing(self, logged):
         site, _, _, _ = make(poll_seconds=7)
-        assert not site.report.warnings
+        assert not logged.of(site).warnings()
 
 
     def test_the_beat_is_the_same_for_everything_the_page_asks_for(self):
@@ -1197,14 +1197,14 @@ class TestTheHingeSnippetLength:
         assert "x" * 90 + "…" in page and "x" * 91 not in page
 
     @pytest.mark.parametrize("bad", [0, -1, 2.5, "90", None, True])
-    def test_a_bad_length_is_the_fallback_with_a_warning(self, bad):
+    def test_a_bad_length_is_the_fallback_with_a_warning(self, bad, logged):
         site, page = self.listed("x" * 100, hinge_snippet_chars=bad)
         assert "x" * 90 + "…" in page and "x" * 91 not in page
-        assert any("hinge_snippet_chars" in w for w in site.report.warnings)
+        assert any("hinge_snippet_chars" in w for w in logged.of(site).warnings())
 
-    def test_a_good_length_says_nothing(self):
+    def test_a_good_length_says_nothing(self, logged):
         site, _ = self.listed("x" * 100, hinge_snippet_chars=20)
-        assert not site.report.warnings
+        assert not logged.of(site).warnings()
 
 
 class TestTheTilesAreReadOnEveryPoll:
@@ -1296,13 +1296,13 @@ class TestThePasswordOnLocalhost:
         assert self.ask(self.site(password_on_localhost=True)).status_code == 401
 
     @pytest.mark.parametrize("bad", ["no", "false", None, 0, 1, "", [False]])
-    def test_a_setting_that_is_not_a_bool_asks_everyone_with_a_warning(self, bad):
+    def test_a_setting_that_is_not_a_bool_asks_everyone_with_a_warning(self, bad, logged):
         site, _, client, _ = make(password_on_localhost=bad)
-        assert self.ask(client).status_code == 401 and any("password_on_localhost" in w for w in site.report.warnings)
+        assert self.ask(client).status_code == 401 and any("password_on_localhost" in w for w in logged.of(site).warnings())
 
-    def test_a_good_setting_says_nothing(self):
+    def test_a_good_setting_says_nothing(self, logged):
         site, _, _, _ = make(password_on_localhost=False)
-        assert not site.report.warnings
+        assert not logged.of(site).warnings()
 
     def test_the_refusal_is_unchanged(self):
         response = self.ask(self.site(password_on_localhost=False), address="192.168.1.5")

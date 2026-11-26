@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 from pom.setting_rules import (above_zero, any_number, at_least, below_one, count, flag, list_of_numbers, list_of_text, log_level,
                                nonblank_text, not_negative, one_of, only_characters, percent, port_number, setting, text, whole_at_least,
-                               whole_one_of)
+                               web_address, whole_one_of)
 
 BAR_ALGORITHMS = ("percentile", "decaying_quantile", "moving_average")
 # Seven of the nine ASCII characters most print wheels lack (< and > are the others, and are always typed as they are); some terminals build
@@ -88,7 +88,7 @@ class ScorerSettings:
     debug view is `prompt_debug` (scoring plus the debug output); each is the two parts joined
     by a blank line.
     """
-    url: str = setting("http://127.0.0.1:8098/v1/chat/completions", text())
+    url: str = setting("http://127.0.0.1:8098/v1/chat/completions", web_address())
     timeout: float = setting(30.0, at_least(0.1))
     prompt_scoring: str = setting("", text())
     clip_filter_score: float = setting(1.0, at_least(0.0))
@@ -128,7 +128,7 @@ class OracleSettings:
         exemplars_max: The most library passages in each pull of exemplars, a whole number of at least 1 (more than `exemplars_min`, or the two
             are swapped with a warning).
     """
-    url: str = setting("http://127.0.0.1:8099/v1/chat/completions", text())
+    url: str = setting("http://127.0.0.1:8099/v1/chat/completions", web_address())
     timeout: float = setting(240.0, at_least(0.1))
     prompt: str = setting("", text())
     max_tokens: int = setting(300, whole_at_least(1))
@@ -225,7 +225,7 @@ class ListeningSettings:
         device_lookup_seconds: How long to wait for `arecord -l` when `device` is `auto`, above 0. Up: a slow sound system is waited for; down: a stuck
             listing is given up on sooner (the keyword is then handed to arecord, which fails, and the lookup is tried again at the next start).
     """
-    whisper_url: str = setting("http://127.0.0.1:8110", text())
+    whisper_url: str = setting("http://127.0.0.1:8110", web_address())
     whisper_timeout: float = setting(180.0, above_zero())
     device: str = setting("auto", text())
     buffer_seconds: float = setting(10.0, above_zero())

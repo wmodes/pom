@@ -194,6 +194,17 @@ def text() -> SettingRule:
     return SettingRule("text", read)
 
 
+def web_address() -> SettingRule:
+    """A server's address: text that starts with http:// or https://."""
+    wanted = "a web address (http:// or https://)"
+
+    def read(value):
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
+            return value
+        raise SettingRejected(wanted)
+    return SettingRule(wanted, read)
+
+
 def nonblank_text() -> SettingRule:
     """Text with something in it."""
     wanted = "text with something in it"

@@ -1635,3 +1635,21 @@ def test_an_unreadable_file_is_its_own_warning_not_one_per_setting(tmp_path):
 
 def test_the_shipped_config_sets_everything_so_the_printer_starts_without_a_word():
     assert Config.load(Path(__file__).resolve().parents[1] / "config" / "pom.toml", environ={}).problems.ok
+
+
+# --- Server addresses are checked where every setting is: here ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("key", ["scorer.url", "oracle.url", "listening.whisper_url"])
+@pytest.mark.parametrize("bad", ['"nope"', '"ftp://x.test"', '""', "5"])
+def test_a_server_address_that_is_not_a_web_address_is_the_default_with_a_warning(tmp_path, key, bad):
+    from pom.defaults import SECTIONS
+    section, name = key.split(".")
+    config = Config.load(write(tmp_path, f"[{section}]\n{name} = {bad}\n"), environ={})
+    assert getattr(getattr(config, section), name) == getattr(SECTIONS[section](), name)
+    assert any(w.startswith(f"{key} must be a web address (http:// or https://)") for w in config.problems.warnings)
+
+
+@pytest.mark.parametrize("good", ["http://10.0.0.5:9000/v1/chat/completions", "https://pi.test"])
+def test_an_http_or_https_address_is_read(tmp_path, good):
+    config = Config.load(write(tmp_path, f'[listening]\nwhisper_url = "{good}"\n'), environ={})
+    assert config.listening.whisper_url == good and config.problems.ok

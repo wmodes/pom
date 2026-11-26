@@ -125,7 +125,7 @@ def main() -> None:
     listening, qualifying, scoring = config.listening, config.qualifying, config.scorer
     if args.monitor and not config.monitor.password:
         sys.exit("--monitor needs a password: put  password = \"...\"  under [monitor] in config/pom.local.toml (git ignores that file)")
-    client = WhisperModelClient(listening.whisper_url, listening.whisper_timeout)
+    client = WhisperModelClient(listening)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
     if not answers(scoring.url):

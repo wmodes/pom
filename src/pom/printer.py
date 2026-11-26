@@ -170,7 +170,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     started = time.monotonic()
 
     # listening: a fresh deck, Eavesdropper and finder each time the room is built (a microphone that comes back is heard)
-    whisper = WhisperModelClient(listening.whisper_url, listening.whisper_timeout, bookkeeper=bookkeeper)
+    whisper = WhisperModelClient(listening, bookkeeper=bookkeeper)
     nltk_dir = root / "data" / "nltk"
     scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug, bookkeeper=bookkeeper)
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=bookkeeper),

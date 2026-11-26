@@ -24,8 +24,8 @@ Design decisions, and why:
     `verbose_json` with voice detection on CRASHES the server when the audio holds no speech (found with a noise-only
     slice). `text` and `srt` are safe.
   * The transport is injected (`post`), so tests can use a fake; the default uses the standard library, so there is
-    nothing to install. Only http and https addresses are accepted, so a mistyped setting cannot open a file.
-  * The settings are passed in (the entry point takes them from Config); this module never reads Config.
+    nothing to install. The address is checked by the config (http or https only, so a mistyped setting cannot open a file).
+  * The `[listening]` settings object is passed in (the entry point takes it from Config); this module never reads Config.
 """
 import io
 import re
@@ -36,12 +36,11 @@ import wave
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 from pom.listening.audio_format import SAMPLE_BYTES, SAMPLE_RATE
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_URL = "http://127.0.0.1:8110"
-DEFAULT_TIMEOUT = 180.0
 PING_TIMEOUT = 5.0
 _SRT_ENTRY = re.compile(r"(\d+):(\d\d):(\d\d)[,.](\d\d\d)\s*-->\s*(\d+):(\d\d):(\d\d)[,.](\d\d\d)[^\n]*\n(.*?)(?:\n\s*\n|\Z)",
                         re.DOTALL)
@@ -105,49 +104,32 @@ def _http_post(url: str, fields: dict, audio: bytes, timeout: float) -> str:
         return response.read().decode("utf-8", "replace")
 
 
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
-
-
 class WhisperModelClient:
     """Asks a running whisper-server to transcribe audio.
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        listening: The `[listening]` settings it was handed (it reads `whisper_url` and `whisper_timeout`).
         error: The kind of failure of the most recent request, or None if it worked.
     """
 
-    def __init__(self, url: str = DEFAULT_URL, timeout: float = DEFAULT_TIMEOUT,
-                 post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, listening: ListeningSettings, post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: bool = False,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            url: The server's address, e.g. http://127.0.0.1:8110.
-            timeout: Seconds to wait for one transcription, above 0.
+            listening: The `[listening]` section: `whisper_url` (the server's address, e.g. http://127.0.0.1:8110) and `whisper_timeout`
+                (seconds to wait for one transcription).
             post: A function (url, fields, wav bytes, timeout) -> the reply text. Default: real HTTP.
             strict: Raise WhisperModelClientError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WhisperModelClientError, DEBUG, strict)
         self.error: Optional[str] = None
-        self._usable = isinstance(url, str) and url.startswith(("http://", "https://"))
-        self._url = url.rstrip("/") if self._usable else DEFAULT_URL
-        if not self._usable:
-            self.logger.warning("the whisper address must start with http:// or https://, got %r; whisper will not be asked", url)
-        if _is_number(timeout) and timeout > 0:
-            self._timeout = float(timeout)
-        else:
-            self.logger.warning("the whisper timeout must be a positive number of seconds, got %r; using %g", timeout, DEFAULT_TIMEOUT)
-            self._timeout = DEFAULT_TIMEOUT
+        self.listening = listening
+        self._url = listening.whisper_url.rstrip("/")
         self._post = post if post is not None else _http_post
-
-    @property
-    def available(self) -> bool:
-        """False if the address was unusable, so whisper will never be asked."""
-        return self._usable
 
     def ping(self) -> bool:
         """True if the server answers."""
-        if not self._usable:
-            return False
         try:
             with urllib.request.urlopen(self._url + "/", timeout=PING_TIMEOUT):      # nosec: scheme checked
                 return True
@@ -172,9 +154,6 @@ class WhisperModelClient:
 
     def _ask(self, pcm: bytes, fields: dict) -> Optional[str]:
         """Sends the audio and returns the reply, or None if it could not be had (the kind is in `error`)."""
-        if not self._usable:
-            self.error = "UnusableAddress"                      # warned about once, when the client was made
-            return None
         if not isinstance(pcm, (bytes, bytearray, memoryview)):
             self.error = "BadAudio"
             self.logger.warning("the audio for whisper must be bytes, got %s", type(pcm).__name__)
@@ -183,7 +162,7 @@ class WhisperModelClient:
             self.error = None
             return None
         try:
-            reply = self._post(self._url, fields, wav_bytes(bytes(pcm)), self._timeout)
+            reply = self._post(self._url, fields, wav_bytes(bytes(pcm)), self.listening.whisper_timeout)
         except Exception as problem:                 # a dead or slow server must never stop the oracle
             self.error = type(problem).__name__
             self.logger.warning("whisper did not answer (%s)", self.error)

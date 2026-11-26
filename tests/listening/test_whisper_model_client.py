@@ -7,11 +7,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
+from pom.defaults import ListeningSettings
 from pom.listening.audio_format import SAMPLE_RATE
-from pom.listening.whisper_model_client import (DEFAULT_TIMEOUT, Segment, WhisperModelClient,
-                                                 WhisperModelClientError, multipart, parse_srt, wav_bytes)
+from pom.listening.whisper_model_client import (Segment, WhisperModelClient, WhisperModelClientError, multipart, parse_srt,
+                                                 wav_bytes)
 
 PCM = b"\x01\x00" * 1600                       # a tenth of a second
+
+
+def whisper_at(url, timeout=None, **options):
+    """A client of the whisper server at `url`; the rest of `[listening]` at its defaults."""
+    settings = ListeningSettings(whisper_url=url) if timeout is None else ListeningSettings(whisper_url=url, whisper_timeout=timeout)
+    return WhisperModelClient(settings, **options)
 SRT = ("1\n00:00:00,000 --> 00:00:02,500\nHello there.\n\n"
        "2\n00:00:03,000 --> 00:00:05,250\nHow are you?\n\n")
 
@@ -103,14 +110,14 @@ class TestTheRequestPieces:
 
 class TestAgainstAStandInServer:
     def test_ping_is_true_while_the_server_is_up_and_false_after(self, server):
-        client = WhisperModelClient(server.url)
+        client = whisper_at(server.url)
         assert client.ping() is True
         server.stop()
         assert client.ping() is False
 
     def test_text_asks_for_plain_text_with_the_voice_detector_on(self, server, logged):
         server.reply = "Hello there.\n"
-        client = WhisperModelClient(server.url)
+        client = whisper_at(server.url)
         assert client.text(PCM) == "Hello there.\n"
         path, content_type, body = server.requests[0]
         assert path == "/inference" and content_type.startswith("multipart/form-data")
@@ -119,43 +126,43 @@ class TestAgainstAStandInServer:
         assert client.error is None and logged.of(client).ok()
 
     def test_text_can_turn_the_voice_detector_off(self, server):
-        WhisperModelClient(server.url).text(PCM, vad=False)
+        whisper_at(server.url).text(PCM, vad=False)
         assert b'name="vad"\r\n\r\nfalse' in server.requests[0][2]
 
     def test_segments_ask_for_srt_and_come_back_shifted_by_the_offset(self, server):
-        client = WhisperModelClient(server.url)
+        client = whisper_at(server.url)
         found = client.segments(PCM, offset_s=100.0)
         assert found == [Segment(100.0, 102.5, "Hello there."), Segment(103.0, 105.25, "How are you?")]
         assert b'name="response_format"\r\n\r\nsrt' in server.requests[0][2]
         assert b'name="vad"\r\n\r\ntrue' in server.requests[0][2]
 
     def test_a_segment_can_be_unpacked_like_a_tuple(self, server):
-        start, end, text = WhisperModelClient(server.url).segments(PCM)[0]
+        start, end, text = whisper_at(server.url).segments(PCM)[0]
         assert (start, end, text) == (0.0, 2.5, "Hello there.")
 
     def test_segments_with_no_text_are_left_out(self, server):
         server.reply = "1\n00:00:00,000 --> 00:00:01,000\n\n\n2\n00:00:02,000 --> 00:00:03,000\nreal\n"
-        assert [s.text for s in WhisperModelClient(server.url).segments(PCM)] == ["real"]
+        assert [s.text for s in whisper_at(server.url).segments(PCM)] == ["real"]
 
     def test_no_speech_is_an_empty_list_and_not_an_error(self, server, logged):
         server.reply = ""
-        client = WhisperModelClient(server.url)
+        client = whisper_at(server.url)
         assert client.segments(PCM) == [] and client.text(PCM) == "" and client.error is None and logged.of(client).ok()
 
     def test_a_server_error_gives_nothing_and_says_so(self, server, logged):
         server.status = 500
-        client = WhisperModelClient(server.url)
+        client = whisper_at(server.url)
         assert client.segments(PCM) == [] and client.text(PCM) == ""
         assert client.error == "HTTPError" and len(logged.of(client).warnings()) == 2
 
     def test_a_dead_server_gives_nothing_and_says_so(self, server, logged):
         url = server.url
         server.stop()
-        client = WhisperModelClient(url)
+        client = whisper_at(url)
         assert client.text(PCM) == "" and client.error is not None and not logged.of(client).ok()
 
     def test_the_error_clears_when_the_server_comes_back(self, server):
-        client = WhisperModelClient(server.url)
+        client = whisper_at(server.url)
         server.status = 500
         client.text(PCM)
         assert client.error == "HTTPError"
@@ -165,11 +172,11 @@ class TestAgainstAStandInServer:
 
     def test_a_slow_server_times_out(self, server):
         server.delay = 0.4
-        client = WhisperModelClient(server.url, timeout=0.1)
+        client = whisper_at(server.url, timeout=0.1)
         assert client.text(PCM) == "" and client.error is not None
 
     def test_a_trailing_slash_on_the_address_is_fine(self, server):
-        assert WhisperModelClient(server.url + "/").text(PCM) == SRT
+        assert whisper_at(server.url + "/").text(PCM) == SRT
         assert server.requests[0][0] == "/inference"
 
 
@@ -181,7 +188,7 @@ class TestWithAFakePost:
             calls.append((url, fields, audio, timeout))
             return "hello"
 
-        client = WhisperModelClient("http://example.test:8110/", timeout=7, post=post)
+        client = whisper_at("http://example.test:8110/", timeout=7, post=post)
         assert client.text(PCM, vad=False) == "hello"
         url, fields, audio, timeout = calls[0]
         assert url == "http://example.test:8110" and timeout == 7.0
@@ -193,21 +200,21 @@ class TestWithAFakePost:
         def post(*args):
             raise problem
 
-        client = WhisperModelClient("http://x.test", post=post)
+        client = whisper_at("http://x.test", post=post)
         assert client.text(PCM) == "" and client.segments(PCM) == []
         assert client.error == type(problem).__name__
 
     def test_a_reply_that_is_not_text_is_a_problem(self, logged):
-        client = WhisperModelClient("http://x.test", post=lambda *args: {"text": "hello"})
+        client = whisper_at("http://x.test", post=lambda *args: {"text": "hello"})
         assert client.text(PCM) == "" and client.error == "BadReply" and len(logged.of(client).warnings()) == 1
 
     def test_what_was_said_never_gets_into_the_report_or_the_log(self, logged):
         def post(*args):
             raise RuntimeError("the secret phrase was abracadabra")
 
-        client = WhisperModelClient("http://x.test", post=post)
+        client = whisper_at("http://x.test", post=post)
         client.text(PCM)
-        WhisperModelClient("http://x.test", post=lambda *args: "abracadabra said the room").text(PCM)
+        whisper_at("http://x.test", post=lambda *args: "abracadabra said the room").text(PCM)
         assert "abracadabra" not in " ".join(logged.of(client).lines()) and "abracadabra" not in logged.text()
 
 
@@ -215,62 +222,34 @@ class TestAudioItCannotSend:
     @pytest.mark.parametrize("not_audio", [None, "text", 5, [1, 2], {"a": 1}])
     def test_audio_that_is_not_bytes_is_a_problem_and_is_not_sent(self, not_audio, logged):
         sent = []
-        client = WhisperModelClient("http://x.test", post=lambda *args: sent.append(args) or "x")
+        client = whisper_at("http://x.test", post=lambda *args: sent.append(args) or "x")
         assert client.text(not_audio) == "" and client.error == "BadAudio" and len(logged.of(client).warnings()) == 1
         assert sent == []
 
     @pytest.mark.parametrize("silence", [b"", b"\x00"])
     def test_less_than_a_sample_is_not_sent_and_is_not_a_problem(self, silence, logged):
         sent = []
-        client = WhisperModelClient("http://x.test", post=lambda *args: sent.append(args) or "x")
+        client = whisper_at("http://x.test", post=lambda *args: sent.append(args) or "x")
         assert client.text(silence) == "" and client.segments(silence) == [] and client.error is None and logged.of(client).ok()
         assert sent == []
 
     @pytest.mark.parametrize("make", [bytearray, memoryview])
     def test_other_byte_containers_are_fine(self, make):
-        client = WhisperModelClient("http://x.test", post=lambda *args: "heard")
+        client = whisper_at("http://x.test", post=lambda *args: "heard")
         assert client.text(make(PCM)) == "heard"
 
 
-class TestSettings:
-    @pytest.mark.parametrize("bad", [None, "", "ftp://x.test", "127.0.0.1:8110", 5, ["http://x"]])
-    def test_a_bad_address_means_whisper_is_never_asked(self, bad, logged):
-        sent = []
-        client = WhisperModelClient(bad, post=lambda *args: sent.append(args) or "x")
-        assert client.available is False and len(logged.of(client).warnings()) == 1 and "address" in logged.of(client).warnings()[0]
-        assert client.text(PCM) == "" and client.segments(PCM) == [] and client.ping() is False
-        assert client.error == "UnusableAddress" and sent == []
-
-    @pytest.mark.parametrize("good", ["http://127.0.0.1:8110", "https://whisper.test"])
-    def test_http_and_https_addresses_are_fine(self, good, logged):
-        assert WhisperModelClient(good).available is True and logged.of(WhisperModelClient(good)).ok()
-
-    @pytest.mark.parametrize("bad", [0, -1, "180", None, True, [180], float("nan")])
-    def test_a_bad_timeout_means_the_default_with_a_warning(self, bad, logged):
-        seen = []
-        client = WhisperModelClient("http://x.test", timeout=bad, post=lambda url, fields, audio, timeout: seen.append(timeout) or "x")
-        client.text(PCM)
-        assert seen == [DEFAULT_TIMEOUT] and len(logged.of(client).warnings()) == 1 and "timeout" in logged.of(client).warnings()[0]
-
-    def test_the_defaults_are_the_pis_whisper_server(self, logged):
-        assert WhisperModelClient().available and logged.of(WhisperModelClient()).ok()
-
-    @pytest.mark.parametrize("make", [lambda: WhisperModelClient("nope", strict=True),
-                                      lambda: WhisperModelClient("http://x.test", timeout=0, strict=True)])
-    def test_strict_mode_raises_on_a_bad_setting(self, make):
-        with pytest.raises(WhisperModelClientError):
-            make()
-
+class TestStrictMode:
     def test_strict_mode_raises_when_a_request_fails(self):
         def post(*args):
             raise OSError("down")
 
         with pytest.raises(WhisperModelClientError, match="did not answer"):
-            WhisperModelClient("http://x.test", post=post, strict=True).text(PCM)
+            whisper_at("http://x.test", post=post, strict=True).text(PCM)
 
     def test_strict_mode_raises_on_audio_that_is_not_bytes(self):
         with pytest.raises(WhisperModelClientError, match="bytes"):
-            WhisperModelClient("http://x.test", strict=True).text("not audio")
+            whisper_at("http://x.test", strict=True).text("not audio")
 
     def test_strict_mode_with_good_settings_and_a_good_request_does_not_raise(self):
-        assert WhisperModelClient("http://x.test", post=lambda *args: "fine", strict=True).text(PCM) == "fine"
+        assert whisper_at("http://x.test", post=lambda *args: "fine", strict=True).text(PCM) == "fine"

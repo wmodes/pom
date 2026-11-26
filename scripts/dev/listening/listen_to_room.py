@@ -56,7 +56,7 @@ def main():
     configure_logging("WARNING")
     config = Config.load(args.config)
     listening, qualifying = config.listening, config.qualifying
-    client = WhisperModelClient(listening.whisper_url, listening.whisper_timeout)
+    client = WhisperModelClient(listening)
     if not client.ping():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
     device = CaptureCardFinder(listening.device_lookup_seconds).resolve(listening.device)     # "auto" becomes the microphone's card

@@ -301,8 +301,13 @@ class TestTheMovedSettingsReachTheirParts:
         assert build(tmp_path, "[listening]\nmax_clip_words = 12\n").parts["take_cutter"].max_words == 12
 
     def test_the_scorer_warm_up(self, tmp_path):
-        p = build(tmp_path, "[scorer]\nwarmup_poll_seconds = 2.5\nwarmup_attempts = 7\n")
-        assert (p._warmer._poll_seconds, p._warmer._attempts) == (2.5, 7)
+        config = config_from(tmp_path, "[scorer]\nwarmup_poll_seconds = 2.5\nwarmup_attempts = 7\n")
+        warmer = build_printer(config, Options()).parts["warmer"]
+        assert warmer.scorer_settings is config.scorer and (config.scorer.warmup_poll_seconds, config.scorer.warmup_attempts) == (2.5, 7)
+
+    def test_the_whisper_server(self, tmp_path):
+        config = config_from(tmp_path, '[listening]\nwhisper_url = "http://pi.test:9000"\nwhisper_timeout = 33\n')
+        assert build_printer(config, Options()).parts["whisper"].listening is config.listening
 
     def test_the_service_check_interval(self, tmp_path):
         assert build(tmp_path, "[monitor]\nservice_check_seconds = 40\n").parts["poller"]._every_seconds == 40.0

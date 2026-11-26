@@ -31,6 +31,7 @@ class ScorerWarmer:
     """Warms the scorer model once its server answers.
 
     Attributes:
+        scorer_settings: The `[scorer]` settings it was handed (it reads `warmup_poll_seconds` and `warmup_attempts`).
         warmed: True once a warm-up request has been answered with a score.
     """
 
@@ -46,7 +47,7 @@ class ScorerWarmer:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._scorer, self._server_answers = scorer, server_answers
-        self._poll_seconds, self._attempts, self._clock = scorer_settings.warmup_poll_seconds, scorer_settings.warmup_attempts, clock
+        self.scorer_settings, self._clock = scorer_settings, clock
         self._stopped = threading.Event()
         self._thread = None
         self.warmed = False
@@ -74,10 +75,10 @@ class ScorerWarmer:
                     self.logger.info("the scorer model is warmed up (its scoring prompt is cached): %.1f s", self._clock() - started)
                     return True
                 failures += 1
-                if failures >= self._attempts:
+                if failures >= self.scorer_settings.warmup_attempts:
                     self.logger.warning("the scorer model did not answer %d warm-up requests; the first clip will pay for the first request", failures)
                     return False
-            self._stopped.wait(self._poll_seconds)
+            self._stopped.wait(self.scorer_settings.warmup_poll_seconds)
         return False
 
     def _run_safely(self) -> None:

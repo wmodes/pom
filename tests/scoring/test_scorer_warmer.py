@@ -1,4 +1,5 @@
 """Tests for pom.scoring.scorer_warmer: one throwaway request to the scorer once its server answers."""
+import time
 
 import pytest
 
@@ -110,6 +111,14 @@ class TestInTheBackground:
         assert warmer._thread is first
         first.join(timeout=5)
         assert scorer.calls == 1
+
+    def test_it_waits_the_poll_between_checks_of_a_server_that_is_down(self):
+        server = FakeServer(False)
+        warmer = warmer_for(FakeScorer(True), server, poll_seconds=60.0)
+        warmer.start()
+        time.sleep(0.2)                                 # far less than a poll: one check so far, not a busy loop of them
+        warmer.stop()
+        assert server.checks == 1
 
     def test_stop_ends_the_wait_for_a_server_that_never_comes(self):
         warmer = warmer_for(FakeScorer(True), FakeServer(False), poll_seconds=60.0)

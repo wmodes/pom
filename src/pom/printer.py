@@ -41,9 +41,8 @@ from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
-from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_muter import LogMuter
-from pom.bookkeeper.log_setup import configure_logging, get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
 from pom.qualifying import bar_keeper_from_settings
@@ -51,7 +50,6 @@ from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
 from pom.writing import OracleModelClient, PortentWriter, PromptBuilder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "config" / "pom.toml"
@@ -120,22 +118,23 @@ class Printer:
     """
 
     def __init__(self, conductor: Conductor, history: TurnHistory, site: Optional[MonitorSite], terminal, floor: FloorKeeper, parts: dict,
-                 services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None, poller: Optional[ServicePoller] = None):
+                 services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None, poller: Optional[ServicePoller] = None,
+                 bookkeeper: Optional[Bookkeeper] = None):
         self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
         self._services, self._warmer, self._slipper, self._poller = services, warmer, slipper, poller
-        self.report = ReportRecorder(logger=_log)      # everything the Printer itself says goes through it
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
 
     def run(self) -> None:
         """Starts the monitoring site (if any), the status poller, the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
         if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
-            self.report.warn("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
+            self.logger.warning("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
             self.site = None
         elif self.site is not None:
-            self.report.info("monitoring site listening on port %s", self.site.port)
+            self.logger.info("monitoring site listening on port %s", self.site.port)
         if self._poller is not None:
             self._poller.poll_once()                     # one round now, so the line below says how things are; then it goes on in its own thread
             self._poller.start()
-        self.report.info("services: %s", ", ".join(f"{name} {light}" for name, light in self._services().items()))
+        self.logger.info("services: %s", ", ".join(f"{name} {light}" for name, light in self._services().items()))
         if self._warmer is not None:
             self._warmer.start()                         # in the background: the Printer listens at once, whatever state the servers are in
         if self._slipper is not None:
@@ -164,10 +163,11 @@ class Printer:
         return self.conductor.report_lines()
 
 
-def build_printer(config: Config, options: Optional[Options] = None, root: Path = ROOT) -> Printer:
+def build_printer(config: Config, options: Optional[Options] = None, root: Path = ROOT, bookkeeper: Optional[Bookkeeper] = None) -> Printer:
     """Builds every part from `config` and `options` and joins them in a Conductor. Contacts no server and opens no port or microphone."""
     options = options or Options()
-    report = ReportRecorder(logger=_log)             # what the building and the callbacks below say goes through it
+    bookkeeper = bookkeeper or Bookkeeper()           # the one the entry point built; a plain one when a test or tool builds the Printer
+    logger = bookkeeper.logger_for(__name__, debug=DEBUG)
     listening, qualifying, scoring, oracle = config.listening, config.qualifying, config.scorer, config.oracle
     terminal_settings, conductor_settings, monitor = config.terminal, config.conductor, config.monitor
     mode = options.terminal or terminal_settings.mode
@@ -287,7 +287,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     site = None
     if monitor.enabled:
         if not monitor.password:
-            report.warn("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
+            logger.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, chart=config.chart,
                                poll_seconds=monitor.poll_seconds, hinge_snippet_chars=monitor.hinge_snippet_chars, stream_now=stream_now,
@@ -295,14 +295,14 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                                status_source=status_now)
 
     def turned(attempt, result) -> None:
-        report.info("turn over: %s", result.outcome.value)
+        logger.info("turn over: %s", result.outcome.value)
 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
              "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
              "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller}
-    return Printer(conductor, history, site, terminal, floor, parts, board.lights, warmer, slipper, poller)
+    return Printer(conductor, history, site, terminal, floor, parts, board.lights, warmer, slipper, poller, bookkeeper)
 
 
 def _make_terminal(mode: str, settings):
@@ -341,22 +341,22 @@ def main(argv=None) -> int:
     """Reads the options and the config, builds the Printer and runs it until it is stopped. Returns the exit code."""
     options = parse_options(argv)
     config = Config.load(options.config_path)
-    muter = LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds)
-    configure_logging(config.log_level, debug=config.debug, local_logs=config.local_logs, muter=muter)
-    report = ReportRecorder(logger=_log)
-    for line in config.report.lines():
-        report.warn("config: %s", line)
-    printer = build_printer(config, options)
+    bookkeeper = Bookkeeper(LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds))
+    bookkeeper.set_up(config.log_level, debug=config.debug, local_logs=config.local_logs)
+    logger = bookkeeper.logger_for(__name__, debug=DEBUG)
+    for line in config.report.lines():               # the config was read before the log existed, so its problems are logged now
+        logger.warning("config: %s", line)
+    printer = build_printer(config, options, bookkeeper=bookkeeper)
 
     def stop_cleanly(signum, frame) -> None:
-        report.info("signal %s: stopping", signum)
+        logger.info("signal %s: stopping", signum)
         printer.stop()
     signal.signal(signal.SIGTERM, stop_cleanly)
     signal.signal(signal.SIGINT, stop_cleanly)
-    report.info("the Printer starts (terminal: %s)", printer.parts["mode"])
+    logger.info("the Printer starts (terminal: %s)", printer.parts["mode"])
     printer.run()
     for line in printer.report_lines():
-        report.warn("report: %s", line)
+        logger.warning("report: %s", line)
     return 0
 
 

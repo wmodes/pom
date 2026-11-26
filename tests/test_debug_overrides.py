@@ -5,6 +5,7 @@ True turns that module's DEBUG output on whatever the project flag says; False k
 tests prove the line works by running each module's source with the line edited, and they guard the
 committed default, since a forgotten `DEBUG = True` would flood the journal in the gallery.
 """
+import ast
 import logging
 import re
 from pathlib import Path
@@ -41,17 +42,41 @@ def test_the_committed_default_follows_the_project_flag(path):
     assert matches[0][0] == "None", f"{path} is committed with DEBUG = {matches[0][0]}; put it back to None"
 
 
+OLD_FORM = re.compile(r"^_log = get_logger\(__name__", re.MULTILINE)                 # a module-level logger (going away)
+
+
+def logger_for_calls(source: str) -> list:
+    """The real `<something>.logger_for(__name__, ...)` calls in a module's code (read with ast, so a docstring's example never counts)."""
+    calls = []
+    for node in ast.walk(ast.parse(source)):
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "logger_for"
+                and node.args and isinstance(node.args[0], ast.Name) and node.args[0].id == "__name__"):
+            calls.append(node)
+    return calls
+
+
+def passes_debug(call) -> bool:
+    """Whether a logger_for call hands on the module's DEBUG line."""
+    values = list(call.args) + [keyword.value for keyword in call.keywords]
+    return any(isinstance(value, ast.Name) and value.id == "DEBUG" for value in values)
+
+
 def test_every_runtime_module_that_logs_declares_the_override():
-    """A module that gets a logger must offer the DEBUG line, so the pattern stays uniform."""
-    assignment = re.compile(r"^_log = get_logger\(__name__", re.MULTILINE)
+    """A module that gets a logger must offer the DEBUG line and pass it on, so the pattern stays uniform.
+
+    A module still on the old form must hand DEBUG to get_logger; one on the new form must hand it to every logger_for (the Bookkeeper's own tests
+    prove logger_for honours it)."""
     found = 0
     for file in sorted((SRC / "pom").rglob("*.py")):
         source = file.read_text(encoding="utf-8")
-        if assignment.search(source):
+        calls = logger_for_calls(source)
+        if OLD_FORM.search(source) or calls:
             found += 1
             assert DEBUG_LINE.search(source), f"{file.relative_to(SRC)} logs but has no DEBUG line"
-            assert re.search(r"^_log = get_logger\(__name__, DEBUG\)", source, re.MULTILINE), \
-                f"{file.name} ignores its DEBUG line"
+            if OLD_FORM.search(source):
+                assert re.search(r"^_log = get_logger\(__name__, DEBUG\)", source, re.MULTILINE), f"{file.name} ignores its DEBUG line"
+            for call in calls:
+                assert passes_debug(call), f"{file.name}:{call.lineno} asks for a logger without its DEBUG line"
     assert found == len(MODULES)   # a new logging module must also be added to MODULES above
 
 
@@ -60,6 +85,8 @@ def test_every_runtime_module_that_logs_declares_the_override():
                                            ("None", logging.NOTSET)])
 def test_a_module_follows_its_own_debug_line(path, flag, expected):
     source = (SRC / path).read_text(encoding="utf-8")
+    if not OLD_FORM.search(source):
+        pytest.skip("on the Bookkeeper: its DEBUG line is passed to logger_for, which test_bookkeeper.py proves is honoured")
     patched = DEBUG_LINE.sub(f"DEBUG = {flag}", source, count=1)
     name = dotted(path)
     try:

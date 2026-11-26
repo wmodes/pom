@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.bookkeeper.log_muter import LogMuter
 from pom import printer as printer_module
 from pom.config import Config
@@ -686,10 +687,22 @@ class FakeTerminalClose:
         self.closed += 1
 
 
-def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None, slipper=None, poller=None):
+def assembled(site=None, terminal=None, conductor=None, services=None, warmer=None, slipper=None, poller=None, bookkeeper=None):
     monitor = type("M", (), {"host": "0.0.0.0", "port": 8080})()
     return Printer(conductor or FakeConductor(), None, site, terminal, None, {"monitor": monitor, "mode": "none"},
-                   services or (lambda: {"whisper": Light.UP, "scorer": Light.DOWN}), warmer, slipper, poller)
+                   services or (lambda: {"whisper": Light.UP, "scorer": Light.DOWN}), warmer, slipper, poller, bookkeeper)
+
+
+class AskedBookkeeper(Bookkeeper):
+    """A Bookkeeper that remembers which loggers it was asked for."""
+
+    def __init__(self):
+        super().__init__()
+        self.asked = []
+
+    def logger_for(self, name, *args, **kwargs):
+        self.asked.append(name)
+        return super().logger_for(name, *args, **kwargs)
 
 
 class FakeWarmer:
@@ -768,6 +781,16 @@ class TestRunningAndStopping:
         assembled(None, None, conductor).run()
         assert conductor.ran
 
+    def test_the_printer_gets_its_logger_from_the_bookkeeper_it_was_handed(self):
+        keeper = AskedBookkeeper()
+        assembled(bookkeeper=keeper)
+        assert keeper.asked == ["pom.printer"]
+
+    def test_the_build_hands_its_bookkeeper_on_to_the_printer(self, tmp_path):
+        keeper = AskedBookkeeper()
+        build_printer(config_from(tmp_path, '[terminal]\nmode = "none"\n'), Options(), bookkeeper=keeper)
+        assert keeper.asked.count("pom.printer") == 2                               # one for the build itself, one for the Printer it built
+
     def test_the_services_that_do_not_answer_are_in_the_log_but_do_not_stop_it(self, caplog):
         conductor = FakeConductor()
         with caplog.at_level(logging.INFO, logger="pom.printer"):
@@ -824,8 +847,8 @@ class TestMain:
         fake = assembled(None, None, conductor)
         fake.parts["mode"] = "none"
         built = []
-        monkeypatch.setattr(printer_module, "build_printer", lambda config, options: built.append(options) or fake)
-        monkeypatch.setattr(printer_module, "configure_logging", lambda *a, **k: None)
+        monkeypatch.setattr(printer_module, "build_printer", lambda config, options, **kept: built.append(options) or fake)
+        monkeypatch.setattr(printer_module.Bookkeeper, "set_up", lambda self, *a, **k: None)      # leave the test's log alone
         handlers = {}
         monkeypatch.setattr(signal, "signal", lambda number, handler: handlers.update({number: handler}))
         path = tmp_path / "pom.toml"
@@ -838,16 +861,27 @@ class TestMain:
         assert conductor.stopped == 1
         assert any("report: a problem" in r.getMessage() for r in caplog.records)
 
-    def test_the_log_muter_is_built_from_the_three_logmute_settings_and_given_to_the_logging(self, monkeypatch, tmp_path):
+    def test_one_bookkeeper_is_built_with_the_log_muter_from_the_three_logmute_settings_and_handed_to_the_build(self, monkeypatch, tmp_path):
         fake = assembled(None, None, FakeConductor())
-        monkeypatch.setattr(printer_module, "build_printer", lambda config, options: fake)
-        configured = []
-        monkeypatch.setattr(printer_module, "configure_logging", lambda *a, **k: configured.append(k))
+        monkeypatch.setattr(printer_module, "build_printer", lambda config, options, **kept: fake)
+        made, handed = [], []
+
+        class RecordingBookkeeper(printer_module.Bookkeeper):
+            def __init__(self, muter=None):
+                made.append(muter)
+                super().__init__(muter)
+
+            def set_up(self, *a, **k):
+                pass
+
+        monkeypatch.setattr(printer_module, "Bookkeeper", RecordingBookkeeper)
+        monkeypatch.setattr(printer_module, "build_printer", lambda config, options, **kept: handed.append(kept) or fake)
         monkeypatch.setattr(signal, "signal", lambda *a: None)
         path = tmp_path / "pom.toml"
         path.write_text("logmute_after_repeats = 7\nlogmute_remind_every_repeats = 9\nlogmute_quiet_seconds = 42\n", encoding="utf-8")
         printer_module.main(["--config", str(path)])
-        muter = configured[0]["muter"]
+        assert len(made) == 1 and isinstance(handed[0]["bookkeeper"], RecordingBookkeeper)     # ONE Bookkeeper, and it is the one handed on
+        muter = made[0]
         assert isinstance(muter, LogMuter)
         lines = []
         for _ in range(8):                                   # the seventh line reaches the limit, the eighth is dropped
@@ -857,8 +891,8 @@ class TestMain:
 
     def test_config_problems_are_in_the_log(self, monkeypatch, tmp_path, caplog):
         fake = assembled(None, None, FakeConductor())
-        monkeypatch.setattr(printer_module, "build_printer", lambda config, options: fake)
-        monkeypatch.setattr(printer_module, "configure_logging", lambda *a, **k: None)
+        monkeypatch.setattr(printer_module, "build_printer", lambda config, options, **kept: fake)
+        monkeypatch.setattr(printer_module.Bookkeeper, "set_up", lambda self, *a, **k: None)      # leave the test's log alone
         monkeypatch.setattr(signal, "signal", lambda *a: None)
         path = tmp_path / "pom.toml"
         path.write_text("[conductor]\nwriting_seconds = -1\n", encoding="utf-8")

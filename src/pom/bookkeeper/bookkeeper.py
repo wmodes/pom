@@ -47,7 +47,9 @@ class Bookkeeper:
         Args:
             name: The module's `__name__`; the log shows it on every line.
             strict_exception: The class's own error type, raised in strict mode.
-            debug: The module's `DEBUG` line: None follows the project setting, True shows its debug lines, False hides them.
+            debug: The module's `DEBUG` line: None follows the project setting (the logger's level is left as it is, so a class built later
+                never undoes a level set elsewhere), True shows its debug lines, False hides them.
             strict: Strict mode for this class (development and tests only).
         """
-        return LogRecorder(get_logger(name, debug), strict_exception, strict)
+        logger = logging.getLogger(name) if debug is None else get_logger(name, debug)
+        return LogRecorder(logger, strict_exception, strict)

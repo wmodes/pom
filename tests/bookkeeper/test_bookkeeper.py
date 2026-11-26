@@ -117,3 +117,13 @@ def test_the_project_debug_setting_shows_every_module_s_debug_lines_even_with_th
     keeper.set_up("INFO", stream, debug=True)
     keeper.logger_for("pom.test.any", TrialError).debug("shown by the project setting")
     assert "shown by the project setting" in stream.getvalue()
+
+
+def test_a_module_whose_debug_line_is_none_leaves_its_logger_s_level_as_it_is():
+    logger = logging.getLogger("pom.test.left_alone")
+    logger.setLevel(logging.ERROR)
+    try:
+        Bookkeeper().logger_for("pom.test.left_alone", TrialError)                       # a class built later must not undo a level set elsewhere
+        assert logger.level == logging.ERROR
+    finally:
+        logger.setLevel(logging.NOTSET)

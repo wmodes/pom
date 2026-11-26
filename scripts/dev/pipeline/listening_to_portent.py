@@ -170,7 +170,7 @@ def main() -> None:
             bar=snapshot["bar"], window_size=snapshot["window"], sentences_heard=snapshot["heard"], sentences_scored=snapshot["scored"],
             services=watch(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe()))
         if not site.start(monitor.host, monitor.port):
-            sys.exit("the monitoring site did not start: " + "; ".join(site.report.lines()))
+            sys.exit("the monitoring site did not start (the log above says why)")
 
     print("listening_to_portent: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  listening to {where}; whisper at {listening.whisper_url}; scorer at {scoring.url}; oracle at {config.oracle.url}")

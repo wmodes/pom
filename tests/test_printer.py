@@ -653,7 +653,6 @@ class TestOptions:
 class FakeSite:
     def __init__(self, starts=True):
         self.started, self.stopped, self.starts, self.port = False, False, starts, 8080
-        self.report = type("R", (), {"lines": lambda self: ["site problem"]})()
 
     def start(self, host, port):
         self.started = True

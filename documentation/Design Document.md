@@ -498,7 +498,7 @@ What the burn test could not show: the real CadetWriter's flow-control behavior 
 ### Rules that cut across modules
 
 - All runtime code is object-oriented: small classes with one concern each, methods that each do one thing, plain data objects passed between them. Helper scripts (`scripts/`) import `pom`; `pom` never imports them. Logic that needs no hardware is kept apart from code that touches the mic, a model or the serial port, so most of it is tested on the Mac (3,396 tests).
-- The Printer never stops because of a typo or a recoverable fault. A module recovers and records the problem in a `LogRecorder` (WARNING = recovered, ERROR = failed and skipped or retried while the module still does its job, CRITICAL = cannot do its job; even then nothing raises). `strict=True` raises, for tests and dev tools only. The recorder (`report`) is also the one way a module logs anything: `report.debug` and `report.info` are only logged, never kept; every line goes through the log's muting, except DEBUG.
+- The Printer never stops because of a typo or a recoverable fault. A class recovers and says so through its logger (`self.logger`, handed out by the one `Bookkeeper` the entry point builds): WARNING = recovered, ERROR = failed and skipped or retried while the class still does its job, CRITICAL = cannot do its job; even then nothing raises. `strict=True` raises the class's own error instead, for tests and dev tools only. Nothing keeps what was said: it is in the log, where one LogMuter mutes a message that keeps repeating (DEBUG never).
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in. Time is passed in too, never read inside a leaf module, so a recording replayed fast behaves like a live run.
 - Logs hold counts and scores, never words. One `debug` flag turns debug output on everywhere; each module can override it with a `DEBUG = None` line at its top (a test refuses a committed override). Logging goes to stdout, which journald collects.
 - (open) Failing loudly. If the scorer model or the oracle model is down the Printer can never respond, and a log line is not loud when someone is switching a printer on. Decide what loud means (a beep, an email to the project owner, something at the venue) and make those start-up steps critical in that way. Today the scorer step is not critical and an unscorable clip is left unscored.
@@ -507,7 +507,7 @@ What the burn test could not show: the real CadetWriter's flow-control behavior 
 
 ```
 src/pom/
-  bookkeeper/                                    log_recorder.py (what a module says), log_book.py (the faults it kept), fault.py (their types), log_setup.py (where the logs go), log_muter.py (mutes a message that keeps repeating)
+  bookkeeper/                                    bookkeeper.py (the one Bookkeeper), log_recorder.py (a class's logger), log_setup.py (where the logs go), log_muter.py (mutes a message that keeps repeating)
   config.py                                      the shared settings
   startup.py                                     the runner; the ten duties are placeholders
   printer.py                                     the entry point (python -m pom): builds everything from one Config

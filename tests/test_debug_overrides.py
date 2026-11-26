@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 SRC = Path(__file__).resolve().parents[1] / "src"
-MODULES = ["pom/config.py", "pom/bookkeeper/log_muter.py", "pom/library/circulation.py", "pom/library/catalog.py",
+MODULES = ["pom/bookkeeper/log_muter.py", "pom/library/circulation.py", "pom/library/catalog.py",
            "pom/library/bibliomancer.py", "pom/listening/take_cutter.py",
            "pom/scoring/word_tagger.py", "pom/scoring/scorer_model_client.py",
            "pom/scoring/clip_scorer.py", "pom/scoring/fallback_scorer.py", "pom/scoring/scorer_warmer.py",
@@ -80,13 +80,16 @@ def test_every_runtime_module_that_logs_declares_the_override():
     assert found == len(MODULES)   # a new logging module must also be added to MODULES above
 
 
-@pytest.mark.parametrize("path", MODULES)
+# A module on the Bookkeeper passes its DEBUG line to logger_for (checked above, and test_bookkeeper.py proves logger_for honours it); only a
+# module that still makes its logger at import time is run here with the line edited.
+IMPORT_TIME = [path for path in MODULES if OLD_FORM.search((SRC / path).read_text(encoding="utf-8"))]
+
+
+@pytest.mark.parametrize("path", IMPORT_TIME)
 @pytest.mark.parametrize("flag,expected", [("True", logging.DEBUG), ("False", logging.INFO),
                                            ("None", logging.NOTSET)])
 def test_a_module_follows_its_own_debug_line(path, flag, expected):
     source = (SRC / path).read_text(encoding="utf-8")
-    if not OLD_FORM.search(source):
-        pytest.skip("on the Bookkeeper: its DEBUG line is passed to logger_for, which test_bookkeeper.py proves is honoured")
     patched = DEBUG_LINE.sub(f"DEBUG = {flag}", source, count=1)
     name = dotted(path)
     try:

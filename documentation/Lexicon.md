@@ -382,12 +382,14 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **startup**: The one-time preparation when the Printer starts: each step checked (the config's corrections, the data, the
   microphone, whisper, the model servers, the terminal), then a one-line readiness summary. Only the runner is built; the steps are
   placeholders. Example: `Startup`, `StepStatus`, `StepOutcome` (was: `Status`, `Outcome`)
-- **fault**: A problem a module recovered from and recorded instead of crashing. Example: `Fault` (was/still)
-- **bookkeeper**: The module (`src/pom/bookkeeper/`) that keeps the Printer's books: what a module recovered from (`LogRecorder`, in
-  `log_recorder.py`) and where everything it logs goes (`log_setup.py`). Example: `pom.bookkeeper.LogRecorder` (was: `pom.log_recorder`,
-  `pom.log_setup`, loose at the top of `pom/`)
-- **Bookkeeper**: The one instance the entry point builds: it sets up the log once and hands each class its logger with `logger_for(__name__, ItsError)`, like Python's `logging.getLogger(__name__)`. It holds nothing that changes, so any number of threads can use it. Example: `Bookkeeper` (was: none; each class built its own recorder)
-- **ReportRecorder**: (going away) the old per-class recorder with its own book, renamed from `LogRecorder` while the classes move to `logger_for`.
+- **a problem**: A log line in mode `warning`, `error` or `critical`. Nothing keeps it: it is in the log. Strict mode raises it instead. (was: fault,
+  `Fault`, kept by each class in a book; retired 2026-11-26)
+- **bookkeeper**: The module (`src/pom/bookkeeper/`) that holds everything about the log, in one place: the `Bookkeeper`, the `LogRecorder` it hands
+  out, the `LogMuter`, and `log_setup`. No other module keeps what it said, mutes, or sets up the log.
+- **Bookkeeper**: The one instance the entry point builds: it sets up the log once (`set_up`, with the LogMuter on it) and hands each class its
+  logger, `self.logger = bookkeeper.logger_for(__name__, ItsError, DEBUG, strict)`, like Python's `logging.getLogger(__name__)`. Every class takes it
+  as an optional `bookkeeper` argument (a plain one when a test or tool gives none). It holds nothing that changes, so any number of threads can use
+  it. Example: `Bookkeeper` (was: none; each class built its own recorder)
 - **log muter**: The one filter, on every log handler, that lets a message that keeps repeating through a few times and then mutes it, for every
   module at once, so no module counts its own repeats. Example: `LogMuter` (settings `logmute_after_repeats`, `logmute_remind_every_repeats`,
   `logmute_quiet_seconds`)
@@ -399,14 +401,13 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **LOGMUTE line**: The second line the log muter writes under a line it lets through when it has something to say: `LOGMUTE: Last message
   repeating and muted`, `LOGMUTE: Last message repeated N times so far, still muted`, or `LOGMUTE: Last message repeated N times`. Searching for
   `^LOGMUTE` finds every one.
-- **log recorder**: The one way a module says anything (`report.debug`, `.info`, `.warn`, `.error`, `.critical`, each logged at its level through the log muter, DEBUG never muted). `debug` and `info` are only logged; `warn` (recovered), `error` (failed and skipped or retried, the module still does its job) and `critical` (the module cannot do its job) are faults: kept for reading and raised in strict mode. It logs every one; it
-  keeps the first `limit` for reading and counts the rest, and mutes nothing (the log muter does that, for every module at once). The Printer never
-  stops because of a fault. Example: `LogRecorder` (was: `FaultRecorder`, which named only one thing it reports)
-- **log book**: The class that holds what a log recorder kept: the first `limit` faults (and every critical), a count of the rest, the readers
-  (`warnings`, `errors`, `criticals`, `lines()`, `has_critical`) and its own lock. It neither logs nor raises. One per recorder. Example: `LogBook`
-  (was: part of `FaultRecorder`)
-- **fault**: (see above) the kept kind of thing a recorder says: a `warn`, `error` or `critical`; `debug` and `info` are not faults. Its types, `Fault`
-  and `Severity`, are in `bookkeeper/fault.py`.
+- **config problems**: What reading the config had to correct (a bad value replaced by its default, an unknown key ignored), held as plain
+  messages until the log exists, because the log's own settings are in the config; the entry point then logs each as `config: warning: ...`.
+  Example: `ConfigProblems`, `config.problems` (was: `config.report`)
+- **log recorder**: A class's logger, handed out by the Bookkeeper and kept in `self.logger`. It is Python's own logger (a `logging.LoggerAdapter`):
+  `debug`, `info`, `warning`, `error`, `critical`, `exception`, with Python's lazy %-formatting. It adds one thing, strict mode: in tests and dev,
+  `warning` and above raise the class's own error type instead. It keeps nothing. Example: `LogRecorder` (was: `FaultRecorder`, then a recorder
+  with a book of its own, `report.warn(...)`)
 
 **Watching**
 

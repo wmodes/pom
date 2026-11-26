@@ -37,13 +37,11 @@ Design decisions, and why:
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional
 
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 
 class StartupError(RuntimeError):
@@ -101,16 +99,15 @@ class StartupResult:
     """What startup found.
 
     Attributes:
-        results: Each step's result, in the order run.
-        report: The problems: a WARNING for a failed optional step, a CRITICAL for a failed critical one.
+        results: Each step's result, in the order run. (The problems were logged as they happened: a WARNING for a failed optional step,
+            a CRITICAL for a failed critical one.)
     """
     results: tuple
-    report: ReportRecorder
 
     @property
     def ready(self) -> bool:
-        """False if any critical step failed; the Conductor decides what that means."""
-        return not self.report.has_critical
+        """False if any critical step failed; the Conductor decides what that means. Read from the results themselves, not from the log."""
+        return not any(r.critical for r in self.failed)
 
     @property
     def failed(self) -> tuple:
@@ -133,18 +130,19 @@ class Startup:
     """Runs the startup steps in order and collects what happened."""
 
     def __init__(self, steps: Iterable[Step], clock: Callable[[], float] = time.monotonic,
-                 strict: bool = False):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             steps: The duties, in the order to run them.
             clock: Returns seconds; injected so tests need no waiting.
             strict: Raise StartupError at the first failed step instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self._steps = list(steps)
-        self._clock, self._strict = clock, strict
+        self._clock = clock
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, StartupError, DEBUG, strict)
 
     def run(self) -> StartupResult:
         """Runs every step. Never raises (except in strict mode); a failed step does not stop the rest."""
-        report = ReportRecorder(strict=self._strict, error=StartupError, logger=_log)
         results = []
         for step in self._steps:
             started = self._clock()
@@ -156,25 +154,24 @@ class Startup:
                 outcome = StepOutcome(StepStatus.FAILED, f"raised {type(error).__name__}")
             result = StepResult(step.name, outcome.status, outcome.note, self._clock() - started, step.critical)
             results.append(result)
-            self._record(result, report)
-        final = StartupResult(tuple(results), report)
-        report.info(final.summary())
+            self._record(result)
+        final = StartupResult(tuple(results))
+        self.logger.info(final.summary())
         return final
 
-    @staticmethod
-    def _record(result: StepResult, report: ReportRecorder) -> None:
-        """Logs a step's result, and files a failure in the report at the right severity."""
-        report.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
-                    f" ({result.note})" if result.note else "")
+    def _record(self, result: StepResult) -> None:
+        """Logs a step's result, and a failure at the right mode: critical for a critical step, warning for an optional one."""
+        self.logger.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
+                         f" ({result.note})" if result.note else "")
         if result.status is StepStatus.FAILED:
             message = f"startup step '{result.name}' failed" + (f": {result.note}" if result.note else "")
-            (report.critical if result.critical else report.warn)(message)
+            (self.logger.critical if result.critical else self.logger.warning)(message)
 
 
 def planned_steps() -> list:
     """The startup duties, in order, each still a placeholder. See the module docstring."""
     return [
-        PlannedStep("config-report", "log what the config loader had to correct (config.report)"),
+        PlannedStep("config-report", "log what the config loader had to correct (config.problems)"),
         PlannedStep("data-check", "the library passages, circulation.json and the NLTK data are present; the "
                     "Bibliomancer cannot draw without passages", critical=True),
         PlannedStep("mic-gain", "set the microphone's capture gain from config (24 of 30 worked on the "

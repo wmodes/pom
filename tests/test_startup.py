@@ -54,28 +54,28 @@ class TestRunning:
         result = run([Fake("a"), Fake("b"), Fake("c")])
         assert [r.seconds for r in result.results] == [1.5, 1.5, 1.5]
 
-    def test_an_empty_list_is_ready(self):
+    def test_an_empty_list_is_ready(self, logged):
         result = run([])
-        assert result.ready and result.results == () and result.report.ok
+        assert result.ready and result.results == () and logged.of("pom.startup").ok()
 
-    def test_a_clean_run_is_ready_and_quiet(self):
+    def test_a_clean_run_is_ready_and_quiet(self, logged):
         result = run([Fake("a"), Fake("b")])
-        assert result.ready and result.report.ok and result.failed == ()
+        assert result.ready and logged.of("pom.startup").ok() and result.failed == ()
 
-    def test_skipped_steps_are_not_a_problem(self):
+    def test_skipped_steps_are_not_a_problem(self, logged):
         result = run([Fake("pi-only", StepOutcome(StepStatus.SKIPPED, "not on a Pi"), critical=True)])
-        assert result.ready and result.report.ok and len(result.skipped) == 1
+        assert result.ready and logged.of("pom.startup").ok() and len(result.skipped) == 1
 
 
 class TestFailures:
-    def test_a_failed_optional_step_is_a_warning_and_the_printer_is_still_ready(self):
+    def test_a_failed_optional_step_is_a_warning_and_the_printer_is_still_ready(self, logged):
         result = run([Fake("scorer", StepOutcome(StepStatus.FAILED, "no answer"))])
-        assert result.ready and len(result.report.warnings) == 1 and not result.report.criticals
-        assert "scorer" in result.report.warnings[0] and "no answer" in result.report.warnings[0]
+        assert result.ready and len(logged.of("pom.startup").warnings()) == 1 and not logged.of("pom.startup").criticals()
+        assert "scorer" in logged.of("pom.startup").warnings()[0] and "no answer" in logged.of("pom.startup").warnings()[0]
 
-    def test_a_failed_critical_step_is_critical_and_the_printer_is_not_ready(self):
+    def test_a_failed_critical_step_is_critical_and_the_printer_is_not_ready(self, logged):
         result = run([Fake("mic", StepOutcome(StepStatus.FAILED, "no device"), critical=True)])
-        assert not result.ready and len(result.report.criticals) == 1 and not result.report.warnings
+        assert not result.ready and len(logged.of("pom.startup").criticals()) == 1 and not logged.of("pom.startup").warnings()
 
     def test_the_steps_after_a_failure_still_run(self):
         order = []
@@ -87,9 +87,9 @@ class TestFailures:
         assert result.results[0].status is StepStatus.FAILED and result.results[1].status is StepStatus.DONE
         assert result.results[0].note == "raised RuntimeError"
 
-    def test_the_text_of_an_exception_is_not_recorded(self):
+    def test_the_text_of_an_exception_is_not_recorded(self, logged):
         result = run([Fake("a", error=ValueError("something said in the room"))])
-        assert "room" not in result.results[0].note and all("room" not in w for w in result.report.warnings)
+        assert "room" not in result.results[0].note and all("room" not in w for w in logged.of("pom.startup").warnings())
 
     def test_a_step_that_returns_the_wrong_thing_is_a_failure(self):
         result = run([Fake("a", outcome="done")])
@@ -140,9 +140,9 @@ class TestPlannedSteps:
     def test_every_planned_step_has_a_description(self):
         assert all(isinstance(step, PlannedStep) and len(step.description) > 20 for step in planned_steps())
 
-    def test_running_the_stub_skips_everything_and_is_ready(self):
+    def test_running_the_stub_skips_everything_and_is_ready(self, logged):
         result = run(planned_steps())
-        assert len(result.skipped) == len(self.NAMES) and result.ready and result.report.ok
+        assert len(result.skipped) == len(self.NAMES) and result.ready and logged.of("pom.startup").ok()
         assert all(r.note.startswith("planned, not written yet") for r in result.results)
 
     def test_the_module_docstring_lists_every_duty(self):

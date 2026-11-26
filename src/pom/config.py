@@ -69,7 +69,7 @@ Where values come from, highest priority first:
 Design decisions, and why:
   * Config obeys the project principle: it never raises. A missing file is normal (no warning), an
     unreadable or invalid one, an unknown key, or a wrong type each fall back to the default and
-    are recorded in `config.report`.
+    are recorded in `config.problems`.
   * Modules do not read Config themselves. The entry point builds one Config and passes its values
     (for example `strict=config.strict`) into the modules, so there is no hidden global state and
     any module can still be tested alone with its own `strict` argument.
@@ -81,8 +81,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional
 
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
 
 DEFAULT_PATH = Path("config") / "pom.toml"
 _LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
@@ -251,9 +249,37 @@ DEFAULT_BOOT_SLIP_TEXT = ("CADETWRITER - IBM-1620\nMODE ......... TERMINAL\nSELF
 DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS = 15.0
 DEFAULT_BOOT_SLIP_RETRY_SECONDS = 5.0
 MIN_PRINTING_LINE_WIDTH = 20
-DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
+
+
+class ConfigProblems:
+    """What reading the config had to correct, held until the log exists.
+
+    The config is read before the log is set up (the log's own settings are in it), so its problems cannot be logged as they are found. They are
+    held here, as plain messages, and the entry point logs each once the log exists (as `config: ...` lines). Every one is a warning: a bad
+    value was replaced by its default, an unknown key was ignored. It holds strings only, never a value it was not given.
+    """
+
+    def __init__(self):
+        self._messages: list = []
+
+    def add(self, message: str) -> None:
+        """Holds one problem."""
+        self._messages.append(message)
+
+    @property
+    def warnings(self) -> list:
+        """The problems, in the order they were found (a copy)."""
+        return list(self._messages)
+
+    @property
+    def ok(self) -> bool:
+        """True when reading the config found nothing to correct."""
+        return not self._messages
+
+    def lines(self) -> list:
+        """The problems as `warning: text` lines, for the log."""
+        return [f"warning: {message}" for message in self._messages]
 
 @dataclass(frozen=True)
 class ScorerSettings:
@@ -672,7 +698,7 @@ class ChartSettings:
 
 
 class Config:
-    """The project's shared settings, plus a report of anything that had to be recovered from.
+    """The project's shared settings, plus a problems of anything that had to be recovered from.
 
     Attributes:
         strict: Raise on every recoverable problem (development and tests only).
@@ -694,11 +720,11 @@ class Config:
         boot_slip: The `[boot_slip]` section, as a BootSlipSettings.
         chart: The `[chart]` section, as a ChartSettings.
         display: The `[display]` section, as a DisplaySettings.
-        report: Problems found while loading (bad file, unknown key, wrong type).
+        problems: Problems found while loading (bad file, unknown key, wrong type).
     """
 
     def __init__(self, strict: bool = False, log_level: str = "INFO",
-                 report: Optional[ReportRecorder] = None, debug: bool = False, local_logs: bool = False,
+                 problems: Optional[ConfigProblems] = None, debug: bool = False, local_logs: bool = False,
                  exemplar_range: tuple = DEFAULT_EXEMPLAR_RANGE, scorer: Optional[ScorerSettings] = None,
                  qualifying: Optional[QualifyingSettings] = None, oracle: Optional[OracleSettings] = None,
                  listening: Optional[ListeningSettings] = None, monitor: Optional[MonitorSettings] = None,
@@ -728,7 +754,7 @@ class Config:
         self.logmute_quiet_seconds = logmute_quiet_seconds
         self.exemplar_range = tuple(exemplar_range)
         self.log_level = log_level
-        self.report = report if report is not None else ReportRecorder(logger=_log)
+        self.problems = problems if problems is not None else ConfigProblems()
 
     @classmethod
     def load(cls, path=None, environ: Optional[Mapping[str, str]] = None) -> "Config":
@@ -740,254 +766,254 @@ class Config:
             environ: The environment to read; defaults to os.environ (tests pass a dict).
 
         Returns:
-            A Config. Any problem becomes a warning in `config.report`; this never raises.
+            A Config. Any problem becomes a warning in `config.problems`; this never raises.
         """
         environ = os.environ if environ is None else environ
-        report = ReportRecorder(logger=_log)
+        problems = ConfigProblems()
         values = {}
         if path is not None:
             path = Path(path)
-            values = _read_file(path, report)
-            values.update(_read_file(path.with_name(f"{path.stem}.local{path.suffix}"), report))
+            values = _read_file(path, problems)
+            values.update(_read_file(path.with_name(f"{path.stem}.local{path.suffix}"), problems))
 
-        strict = _bool(values.get("strict", False), "strict", report)
-        debug = _bool(values.get("debug", False), "debug", report)
-        local_logs = _bool(values.get("local_logs", False), "local_logs", report)
+        strict = _bool(values.get("strict", False), "strict", problems)
+        debug = _bool(values.get("debug", False), "debug", problems)
+        local_logs = _bool(values.get("local_logs", False), "local_logs", problems)
         logmute_after_repeats = _count(values.get("logmute_after_repeats", DEFAULT_LOGMUTE_AFTER_REPEATS), "logmute_after_repeats",
-                                       DEFAULT_LOGMUTE_AFTER_REPEATS, report)
+                                       DEFAULT_LOGMUTE_AFTER_REPEATS, problems)
         logmute_remind_every_repeats = _count(values.get("logmute_remind_every_repeats", DEFAULT_LOGMUTE_REMIND_EVERY_REPEATS),
-                                              "logmute_remind_every_repeats", DEFAULT_LOGMUTE_REMIND_EVERY_REPEATS, report)
+                                              "logmute_remind_every_repeats", DEFAULT_LOGMUTE_REMIND_EVERY_REPEATS, problems)
         logmute_quiet_seconds = _positive(values.get("logmute_quiet_seconds", DEFAULT_LOGMUTE_QUIET_SECONDS), "logmute_quiet_seconds",
-                                          DEFAULT_LOGMUTE_QUIET_SECONDS, report)
+                                          DEFAULT_LOGMUTE_QUIET_SECONDS, problems)
         low = _count(values.get("oracle.exemplars_min", DEFAULT_EXEMPLAR_RANGE[0]), "oracle.exemplars_min",
-                     DEFAULT_EXEMPLAR_RANGE[0], report)
+                     DEFAULT_EXEMPLAR_RANGE[0], problems)
         high = _count(values.get("oracle.exemplars_max", DEFAULT_EXEMPLAR_RANGE[1]), "oracle.exemplars_max",
-                      DEFAULT_EXEMPLAR_RANGE[1], report)
-        log_level = _level(values.get("log_level", "INFO"), "log_level", report)
-        scorer_url = _text(values.get("scorer.url", DEFAULT_SCORER_URL), "scorer.url", DEFAULT_SCORER_URL, report)
+                      DEFAULT_EXEMPLAR_RANGE[1], problems)
+        log_level = _level(values.get("log_level", "INFO"), "log_level", problems)
+        scorer_url = _text(values.get("scorer.url", DEFAULT_SCORER_URL), "scorer.url", DEFAULT_SCORER_URL, problems)
         scorer_timeout = _number(values.get("scorer.timeout", DEFAULT_SCORER_TIMEOUT), "scorer.timeout",
-                                 DEFAULT_SCORER_TIMEOUT, 0.1, report)
-        scorer_prompt = _text(values.get("scorer.prompt_scoring", ""), "scorer.prompt_scoring", "", report)
-        scorer_output = _text(values.get("scorer.prompt_output", ""), "scorer.prompt_output", "", report)
+                                 DEFAULT_SCORER_TIMEOUT, 0.1, problems)
+        scorer_prompt = _text(values.get("scorer.prompt_scoring", ""), "scorer.prompt_scoring", "", problems)
+        scorer_output = _text(values.get("scorer.prompt_output", ""), "scorer.prompt_output", "", problems)
         scorer_output_debug = _text(values.get("scorer.prompt_output_debug", ""),
-                                    "scorer.prompt_output_debug", "", report)
+                                    "scorer.prompt_output_debug", "", problems)
         if scorer_prompt.strip() and not scorer_output.strip():
-            report.warn("scorer.prompt_output is empty, so the model is not told how to reply")
+            problems.add("scorer.prompt_output is empty, so the model is not told how to reply")
         scorer_clip_filter_score = _number(
             values.get("scorer.clip_filter_score", DEFAULT_SCORER_CLIP_FILTER_SCORE),
-            "scorer.clip_filter_score", DEFAULT_SCORER_CLIP_FILTER_SCORE, 0.0, report)
+            "scorer.clip_filter_score", DEFAULT_SCORER_CLIP_FILTER_SCORE, 0.0, problems)
         scorer_min_content = _whole(values.get("scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS),
-                                    "scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS, 0, report)
+                                    "scorer.min_content_words", DEFAULT_SCORER_MIN_CONTENT_WORDS, 0, problems)
         scorer_failure_limit = _whole(values.get("scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT),
-                                      "scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT, 1, report)
+                                      "scorer.failure_limit", DEFAULT_SCORER_FAILURE_LIMIT, 1, problems)
         scorer_retry = _number(values.get("scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS),
-                               "scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS, 0.0, report)
+                               "scorer.retry_seconds", DEFAULT_SCORER_RETRY_SECONDS, 0.0, problems)
         scorer_warmup_poll = _positive(values.get("scorer.warmup_poll_seconds", DEFAULT_SCORER_WARMUP_POLL_SECONDS),
-                                       "scorer.warmup_poll_seconds", DEFAULT_SCORER_WARMUP_POLL_SECONDS, report)
+                                       "scorer.warmup_poll_seconds", DEFAULT_SCORER_WARMUP_POLL_SECONDS, problems)
         scorer_warmup_attempts = _whole(values.get("scorer.warmup_attempts", DEFAULT_SCORER_WARMUP_ATTEMPTS),
-                                        "scorer.warmup_attempts", DEFAULT_SCORER_WARMUP_ATTEMPTS, 1, report)
+                                        "scorer.warmup_attempts", DEFAULT_SCORER_WARMUP_ATTEMPTS, 1, problems)
 
         if "POM_STRICT" in environ:
-            strict = _bool(environ["POM_STRICT"], "POM_STRICT", report)
+            strict = _bool(environ["POM_STRICT"], "POM_STRICT", problems)
         if "POM_DEBUG" in environ:
-            debug = _bool(environ["POM_DEBUG"], "POM_DEBUG", report)
+            debug = _bool(environ["POM_DEBUG"], "POM_DEBUG", problems)
         if "POM_LOCAL_LOGS" in environ:
-            local_logs = _bool(environ["POM_LOCAL_LOGS"], "POM_LOCAL_LOGS", report)
+            local_logs = _bool(environ["POM_LOCAL_LOGS"], "POM_LOCAL_LOGS", problems)
         if "POM_EXEMPLARS_MIN" in environ:
             low = _count(environ["POM_EXEMPLARS_MIN"], "POM_EXEMPLARS_MIN",
-                         DEFAULT_EXEMPLAR_RANGE[0], report)
+                         DEFAULT_EXEMPLAR_RANGE[0], problems)
         if "POM_EXEMPLARS_MAX" in environ:
             high = _count(environ["POM_EXEMPLARS_MAX"], "POM_EXEMPLARS_MAX",
-                          DEFAULT_EXEMPLAR_RANGE[1], report)
+                          DEFAULT_EXEMPLAR_RANGE[1], problems)
         if low > high:
-            report.warn(f"oracle.exemplars_min ({low}) is more than oracle.exemplars_max ({high}); swapping them")
+            problems.add(f"oracle.exemplars_min ({low}) is more than oracle.exemplars_max ({high}); swapping them")
             low, high = high, low
         if "POM_LOG_LEVEL" in environ:
-            log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", report)
+            log_level = _level(environ["POM_LOG_LEVEL"], "POM_LOG_LEVEL", problems)
         if "POM_SCORER_URL" in environ:
-            scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, report)
+            scorer_url = _text(environ["POM_SCORER_URL"], "POM_SCORER_URL", DEFAULT_SCORER_URL, problems)
         scorer = ScorerSettings(scorer_url, scorer_timeout, scorer_prompt, scorer_clip_filter_score,
                                 scorer_min_content, scorer_failure_limit, scorer_retry, scorer_output,
                                 scorer_output_debug, scorer_warmup_poll, scorer_warmup_attempts)
         oracle = OracleSettings(
-            _text(values.get("oracle.url", DEFAULT_ORACLE_URL), "oracle.url", DEFAULT_ORACLE_URL, report),
+            _text(values.get("oracle.url", DEFAULT_ORACLE_URL), "oracle.url", DEFAULT_ORACLE_URL, problems),
             _number(values.get("oracle.timeout", DEFAULT_ORACLE_TIMEOUT), "oracle.timeout",
-                    DEFAULT_ORACLE_TIMEOUT, 0.1, report),
-            _text(values.get("oracle.prompt", ""), "oracle.prompt", "", report),
+                    DEFAULT_ORACLE_TIMEOUT, 0.1, problems),
+            _text(values.get("oracle.prompt", ""), "oracle.prompt", "", problems),
             _whole(values.get("oracle.max_tokens", DEFAULT_ORACLE_MAX_TOKENS), "oracle.max_tokens",
-                   DEFAULT_ORACLE_MAX_TOKENS, 1, report),
+                   DEFAULT_ORACLE_MAX_TOKENS, 1, problems),
             _number(values.get("oracle.temperature", DEFAULT_ORACLE_TEMPERATURE), "oracle.temperature",
-                    DEFAULT_ORACLE_TEMPERATURE, 0.0, report),
+                    DEFAULT_ORACLE_TEMPERATURE, 0.0, problems),
             _whole(values.get("oracle.exemplar_redraws", DEFAULT_ORACLE_EXEMPLAR_REDRAWS), "oracle.exemplar_redraws",
-                   DEFAULT_ORACLE_EXEMPLAR_REDRAWS, 0, report))
+                   DEFAULT_ORACLE_EXEMPLAR_REDRAWS, 0, problems))
         qualifying = QualifyingSettings(
             _percent(values.get("qualifying.bar_percentile", DEFAULT_QUALIFYING_BAR_PERCENTILE),
-                     "qualifying.bar_percentile", DEFAULT_QUALIFYING_BAR_PERCENTILE, report),
+                     "qualifying.bar_percentile", DEFAULT_QUALIFYING_BAR_PERCENTILE, problems),
             _positive(values.get("qualifying.window_seconds", DEFAULT_QUALIFYING_WINDOW_SECONDS),
-                      "qualifying.window_seconds", DEFAULT_QUALIFYING_WINDOW_SECONDS, report),
+                      "qualifying.window_seconds", DEFAULT_QUALIFYING_WINDOW_SECONDS, problems),
             _whole(values.get("qualifying.min_scores", DEFAULT_QUALIFYING_MIN_SCORES),
-                   "qualifying.min_scores", DEFAULT_QUALIFYING_MIN_SCORES, 2, report),
+                   "qualifying.min_scores", DEFAULT_QUALIFYING_MIN_SCORES, 2, problems),
             _number(values.get("qualifying.cooldown_seconds", DEFAULT_QUALIFYING_COOLDOWN_SECONDS),
-                    "qualifying.cooldown_seconds", DEFAULT_QUALIFYING_COOLDOWN_SECONDS, 0.0, report),
+                    "qualifying.cooldown_seconds", DEFAULT_QUALIFYING_COOLDOWN_SECONDS, 0.0, problems),
             _finite(values.get("qualifying.starting_bar", DEFAULT_QUALIFYING_STARTING_BAR), "qualifying.starting_bar",
-                    DEFAULT_QUALIFYING_STARTING_BAR, report),
+                    DEFAULT_QUALIFYING_STARTING_BAR, problems),
             _finite(values.get("qualifying.qualifier_bar_influence", DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE),
-                    "qualifying.qualifier_bar_influence", DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE, report),
+                    "qualifying.qualifier_bar_influence", DEFAULT_QUALIFYING_QUALIFIER_BAR_INFLUENCE, problems),
             _positive(values.get("qualifying.half_life_seconds", DEFAULT_QUALIFYING_HALF_LIFE_SECONDS),
-                      "qualifying.half_life_seconds", DEFAULT_QUALIFYING_HALF_LIFE_SECONDS, report),
+                      "qualifying.half_life_seconds", DEFAULT_QUALIFYING_HALF_LIFE_SECONDS, problems),
             _number(values.get("qualifying.average_fraction", DEFAULT_QUALIFYING_AVERAGE_FRACTION),
-                    "qualifying.average_fraction", DEFAULT_QUALIFYING_AVERAGE_FRACTION, 0.0, report),
+                    "qualifying.average_fraction", DEFAULT_QUALIFYING_AVERAGE_FRACTION, 0.0, problems),
             _positive(values.get("qualifying.average_half_life_scores", DEFAULT_QUALIFYING_AVERAGE_HALF_LIFE_SCORES),
-                      "qualifying.average_half_life_scores", DEFAULT_QUALIFYING_AVERAGE_HALF_LIFE_SCORES, report),
+                      "qualifying.average_half_life_scores", DEFAULT_QUALIFYING_AVERAGE_HALF_LIFE_SCORES, problems),
             _below_one(values.get("qualifying.average_floor_fraction", DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION),
-                       "qualifying.average_floor_fraction", DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION, report),
+                       "qualifying.average_floor_fraction", DEFAULT_QUALIFYING_AVERAGE_FLOOR_FRACTION, problems),
             _choice(values.get("qualifying.algorithm", DEFAULT_QUALIFYING_ALGORITHM), "qualifying.algorithm",
-                    DEFAULT_QUALIFYING_ALGORITHM, BAR_ALGORITHMS, report),
+                    DEFAULT_QUALIFYING_ALGORITHM, BAR_ALGORITHMS, problems),
             _number(values.get("qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER),
-                    "qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER, 0.0, report),
+                    "qualifying.typed_lines_score_multiplier", DEFAULT_QUALIFYING_TYPED_LINES_SCORE_MULTIPLIER, 0.0, problems),
             _finite(values.get("qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE),
-                    "qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE, report),
+                    "qualifying.typed_lines_bar_influence", DEFAULT_QUALIFYING_TYPED_LINES_BAR_INFLUENCE, problems),
             _finite(values.get("qualifying.anchor_score", DEFAULT_QUALIFYING_ANCHOR_SCORE), "qualifying.anchor_score",
-                    DEFAULT_QUALIFYING_ANCHOR_SCORE, report),
+                    DEFAULT_QUALIFYING_ANCHOR_SCORE, problems),
             _positive(values.get("qualifying.anchor_interval_minutes", DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES),
-                      "qualifying.anchor_interval_minutes", DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES, report),
+                      "qualifying.anchor_interval_minutes", DEFAULT_QUALIFYING_ANCHOR_INTERVAL_MINUTES, problems),
             _positive(values.get("qualifying.discard_scores_older_than_minutes", DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES),
-                      "qualifying.discard_scores_older_than_minutes", DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES, report),
+                      "qualifying.discard_scores_older_than_minutes", DEFAULT_QUALIFYING_DISCARD_SCORES_OLDER_THAN_MINUTES, problems),
             _positive(values.get("qualifying.starting_bar_weight", DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT),
-                      "qualifying.starting_bar_weight", DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT, report))
+                      "qualifying.starting_bar_weight", DEFAULT_QUALIFYING_STARTING_BAR_WEIGHT, problems))
         whisper_url = _text(values.get("listening.whisper_url", DEFAULT_LISTENING_WHISPER_URL), "listening.whisper_url",
-                            DEFAULT_LISTENING_WHISPER_URL, report)
+                            DEFAULT_LISTENING_WHISPER_URL, problems)
         if "POM_WHISPER_URL" in environ:
-            whisper_url = _text(environ["POM_WHISPER_URL"], "POM_WHISPER_URL", DEFAULT_LISTENING_WHISPER_URL, report)
+            whisper_url = _text(environ["POM_WHISPER_URL"], "POM_WHISPER_URL", DEFAULT_LISTENING_WHISPER_URL, problems)
         listening = ListeningSettings(
             whisper_url,
             _positive(values.get("listening.whisper_timeout", DEFAULT_LISTENING_WHISPER_TIMEOUT),
-                      "listening.whisper_timeout", DEFAULT_LISTENING_WHISPER_TIMEOUT, report),
+                      "listening.whisper_timeout", DEFAULT_LISTENING_WHISPER_TIMEOUT, problems),
             _text(values.get("listening.device", DEFAULT_LISTENING_DEVICE), "listening.device",
-                  DEFAULT_LISTENING_DEVICE, report),
+                  DEFAULT_LISTENING_DEVICE, problems),
             _positive(values.get("listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS),
-                      "listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS, report),
+                      "listening.buffer_seconds", DEFAULT_LISTENING_BUFFER_SECONDS, problems),
             _positive(values.get("listening.cut_every_seconds", DEFAULT_LISTENING_CUT_EVERY_SECONDS), "listening.cut_every_seconds",
-                      DEFAULT_LISTENING_CUT_EVERY_SECONDS, report),
+                      DEFAULT_LISTENING_CUT_EVERY_SECONDS, problems),
             _number(values.get("listening.hold_back_seconds", DEFAULT_LISTENING_HOLD_BACK_SECONDS), "listening.hold_back_seconds",
-                    DEFAULT_LISTENING_HOLD_BACK_SECONDS, 0.0, report),
+                    DEFAULT_LISTENING_HOLD_BACK_SECONDS, 0.0, problems),
             _number(values.get("listening.rewind_seconds", DEFAULT_LISTENING_REWIND_SECONDS), "listening.rewind_seconds",
-                    DEFAULT_LISTENING_REWIND_SECONDS, 0.0, report),
+                    DEFAULT_LISTENING_REWIND_SECONDS, 0.0, problems),
             _positive(values.get("listening.max_cut_seconds", DEFAULT_LISTENING_MAX_CUT_SECONDS), "listening.max_cut_seconds",
-                      DEFAULT_LISTENING_MAX_CUT_SECONDS, report),
+                      DEFAULT_LISTENING_MAX_CUT_SECONDS, problems),
             _whole(values.get("listening.room_tone_pass_every", DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY),
-                   "listening.room_tone_pass_every", DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY, 0, report),
+                   "listening.room_tone_pass_every", DEFAULT_LISTENING_ROOM_TONE_PASS_EVERY, 0, problems),
             _positive(values.get("listening.room_tone_pass_seconds", DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS),
-                      "listening.room_tone_pass_seconds", DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS, report),
+                      "listening.room_tone_pass_seconds", DEFAULT_LISTENING_ROOM_TONE_PASS_SECONDS, problems),
             _whole(values.get("listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY),
-                   "listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY, 1, report),
+                   "listening.room_tone_memory", DEFAULT_LISTENING_ROOM_TONE_MEMORY, 1, problems),
             _bool(values.get("listening.score_room_tone", DEFAULT_LISTENING_SCORE_ROOM_TONE),
-                  "listening.score_room_tone", report),
+                  "listening.score_room_tone", problems),
             _whole(values.get("listening.max_clip_words", DEFAULT_LISTENING_MAX_CLIP_WORDS), "listening.max_clip_words",
-                   DEFAULT_LISTENING_MAX_CLIP_WORDS, 1, report),
+                   DEFAULT_LISTENING_MAX_CLIP_WORDS, 1, problems),
             _positive(values.get("listening.device_lookup_seconds", DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS), "listening.device_lookup_seconds",
-                      DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS, report))
+                      DEFAULT_LISTENING_DEVICE_LOOKUP_SECONDS, problems))
         monitor = MonitorSettings(
-            _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", report, DEFAULT_MONITOR_ENABLED),
-            _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, report),
-            _port(values.get("monitor.port", DEFAULT_MONITOR_PORT), "monitor.port", DEFAULT_MONITOR_PORT, report),
-            _text(values.get("monitor.password", ""), "monitor.password", "", report),
-            _bool(values.get("monitor.show_hinges", DEFAULT_MONITOR_SHOW_HINGES), "monitor.show_hinges", report),
+            _bool(values.get("monitor.enabled", DEFAULT_MONITOR_ENABLED), "monitor.enabled", problems, DEFAULT_MONITOR_ENABLED),
+            _text(values.get("monitor.host", DEFAULT_MONITOR_HOST), "monitor.host", DEFAULT_MONITOR_HOST, problems),
+            _port(values.get("monitor.port", DEFAULT_MONITOR_PORT), "monitor.port", DEFAULT_MONITOR_PORT, problems),
+            _text(values.get("monitor.password", ""), "monitor.password", "", problems),
+            _bool(values.get("monitor.show_hinges", DEFAULT_MONITOR_SHOW_HINGES), "monitor.show_hinges", problems),
             _positive(values.get("monitor.history_seconds", DEFAULT_MONITOR_HISTORY_SECONDS), "monitor.history_seconds",
-                      DEFAULT_MONITOR_HISTORY_SECONDS, report),
+                      DEFAULT_MONITOR_HISTORY_SECONDS, problems),
             _positive(values.get("monitor.service_check_seconds", DEFAULT_MONITOR_SERVICE_CHECK_SECONDS), "monitor.service_check_seconds",
-                      DEFAULT_MONITOR_SERVICE_CHECK_SECONDS, report),
+                      DEFAULT_MONITOR_SERVICE_CHECK_SECONDS, problems),
             _positive(values.get("monitor.poll_seconds", DEFAULT_MONITOR_POLL_SECONDS), "monitor.poll_seconds",
-                      DEFAULT_MONITOR_POLL_SECONDS, report),
-            _bool(values.get("monitor.password_on_localhost", DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST), "monitor.password_on_localhost", report,
+                      DEFAULT_MONITOR_POLL_SECONDS, problems),
+            _bool(values.get("monitor.password_on_localhost", DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST), "monitor.password_on_localhost", problems,
                   DEFAULT_MONITOR_PASSWORD_ON_LOCALHOST),
             _whole(values.get("monitor.chart_notebook_max_entries", DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES), "monitor.chart_notebook_max_entries",
-                   DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES, 1, report),
+                   DEFAULT_MONITOR_CHART_NOTEBOOK_MAX_ENTRIES, 1, problems),
             _whole(values.get("monitor.hinge_snippet_chars", DEFAULT_MONITOR_HINGE_SNIPPET_CHARS), "monitor.hinge_snippet_chars",
-                   DEFAULT_MONITOR_HINGE_SNIPPET_CHARS, 1, report),
+                   DEFAULT_MONITOR_HINGE_SNIPPET_CHARS, 1, problems),
             _whole(values.get("monitor.history_max_turns", DEFAULT_MONITOR_HISTORY_MAX_TURNS), "monitor.history_max_turns",
-                   DEFAULT_MONITOR_HISTORY_MAX_TURNS, 1, report),
+                   DEFAULT_MONITOR_HISTORY_MAX_TURNS, 1, problems),
             _positive(values.get("monitor.mic_down_after_seconds", DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS), "monitor.mic_down_after_seconds",
-                      DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS, report),
+                      DEFAULT_MONITOR_MIC_DOWN_AFTER_SECONDS, problems),
             _positive(values.get("monitor.service_down_after_seconds", DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS), "monitor.service_down_after_seconds",
-                      DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS, report))
+                      DEFAULT_MONITOR_SERVICE_DOWN_AFTER_SECONDS, problems))
         printing = PrintingSettings(
             _positive(values.get("printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES),
-                      "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, report),
+                      "printing.paper_width_inches", DEFAULT_PRINTING_PAPER_WIDTH_INCHES, problems),
             _number(values.get("printing.margin_inches", DEFAULT_PRINTING_MARGIN_INCHES), "printing.margin_inches",
-                    DEFAULT_PRINTING_MARGIN_INCHES, 0.0, report),
+                    DEFAULT_PRINTING_MARGIN_INCHES, 0.0, problems),
             _positive(values.get("printing.characters_per_inch", DEFAULT_PRINTING_CHARACTERS_PER_INCH),
-                      "printing.characters_per_inch", DEFAULT_PRINTING_CHARACTERS_PER_INCH, report),
+                      "printing.characters_per_inch", DEFAULT_PRINTING_CHARACTERS_PER_INCH, problems),
             _whole(values.get("printing.quote_indent", DEFAULT_PRINTING_QUOTE_INDENT), "printing.quote_indent",
-                   DEFAULT_PRINTING_QUOTE_INDENT, 0, report),
+                   DEFAULT_PRINTING_QUOTE_INDENT, 0, problems),
             _whole(values.get("printing.linefeeds_after_portent", DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT),
-                   "printing.linefeeds_after_portent", DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT, 0, report),
+                   "printing.linefeeds_after_portent", DEFAULT_PRINTING_LINEFEEDS_AFTER_PORTENT, 0, problems),
             _composed(values.get("printing.keep_composed_characters", DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS),
-                      "printing.keep_composed_characters", DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS, report),
-            _bool(values.get("printing.ascii_printwheel", DEFAULT_PRINTING_ASCII_PRINTWHEEL), "printing.ascii_printwheel", report))
+                      "printing.keep_composed_characters", DEFAULT_PRINTING_KEEP_COMPOSED_CHARACTERS, problems),
+            _bool(values.get("printing.ascii_printwheel", DEFAULT_PRINTING_ASCII_PRINTWHEEL), "printing.ascii_printwheel", problems))
         if printing.line_width < MIN_PRINTING_LINE_WIDTH:
-            report.warn(f"printing: the paper, margins and pitch leave a line of {printing.line_width} characters, under "
+            problems.add(f"printing: the paper, margins and pitch leave a line of {printing.line_width} characters, under "
                         f"{MIN_PRINTING_LINE_WIDTH}; using the default paper, margins and pitch")
             printing = PrintingSettings(quote_indent=printing.quote_indent,
                                     linefeeds_after_portent=printing.linefeeds_after_portent,
                                     keep_composed_characters=printing.keep_composed_characters,
                                     ascii_printwheel=printing.ascii_printwheel)
         terminal = TerminalSettings(
-            _text(values.get("terminal.port", DEFAULT_TERMINAL_PORT), "terminal.port", DEFAULT_TERMINAL_PORT, report),
-            _baud(values.get("terminal.baud", DEFAULT_TERMINAL_BAUD), "terminal.baud", DEFAULT_TERMINAL_BAUD, report),
+            _text(values.get("terminal.port", DEFAULT_TERMINAL_PORT), "terminal.port", DEFAULT_TERMINAL_PORT, problems),
+            _baud(values.get("terminal.baud", DEFAULT_TERMINAL_BAUD), "terminal.baud", DEFAULT_TERMINAL_BAUD, problems),
             _choice(values.get("terminal.flow_control", DEFAULT_TERMINAL_FLOW_CONTROL), "terminal.flow_control",
-                    DEFAULT_TERMINAL_FLOW_CONTROL, TERMINAL_FLOW_CONTROLS, report),
+                    DEFAULT_TERMINAL_FLOW_CONTROL, TERMINAL_FLOW_CONTROLS, problems),
             _choice(values.get("terminal.end_of_line", DEFAULT_TERMINAL_END_OF_LINE), "terminal.end_of_line",
-                    DEFAULT_TERMINAL_END_OF_LINE, TERMINAL_END_OF_LINES, report),
+                    DEFAULT_TERMINAL_END_OF_LINE, TERMINAL_END_OF_LINES, problems),
             _positive(values.get("terminal.characters_per_second", DEFAULT_TERMINAL_CHARACTERS_PER_SECOND),
-                      "terminal.characters_per_second", DEFAULT_TERMINAL_CHARACTERS_PER_SECOND, report),
+                      "terminal.characters_per_second", DEFAULT_TERMINAL_CHARACTERS_PER_SECOND, problems),
             _number(values.get("terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS),
-                    "terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS, 0.0, report),
-            _bool(values.get("terminal.echoplex", DEFAULT_TERMINAL_ECHOPLEX), "terminal.echoplex", report,
+                    "terminal.finish_wait_seconds", DEFAULT_TERMINAL_FINISH_WAIT_SECONDS, 0.0, problems),
+            _bool(values.get("terminal.echoplex", DEFAULT_TERMINAL_ECHOPLEX), "terminal.echoplex", problems,
                   DEFAULT_TERMINAL_ECHOPLEX),
             _bool(values.get("terminal.type_during_printing", DEFAULT_TERMINAL_TYPE_DURING_PRINTING),
-                  "terminal.type_during_printing", report, DEFAULT_TERMINAL_TYPE_DURING_PRINTING),
+                  "terminal.type_during_printing", problems, DEFAULT_TERMINAL_TYPE_DURING_PRINTING),
             _positive(values.get("terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS),
-                      "terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, report),
+                      "terminal.stall_patience_seconds", DEFAULT_TERMINAL_STALL_PATIENCE_SECONDS, problems),
             _positive(values.get("terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS),
-                      "terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS, report),
-            _choice(values.get("terminal.mode", DEFAULT_TERMINAL_MODE), "terminal.mode", DEFAULT_TERMINAL_MODE, TERMINAL_MODES, report),
+                      "terminal.reconnect_seconds", DEFAULT_TERMINAL_RECONNECT_SECONDS, problems),
+            _choice(values.get("terminal.mode", DEFAULT_TERMINAL_MODE), "terminal.mode", DEFAULT_TERMINAL_MODE, TERMINAL_MODES, problems),
             _whole(values.get("terminal.max_typed_line_characters", DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS),
-                   "terminal.max_typed_line_characters", DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS, 1, report),
+                   "terminal.max_typed_line_characters", DEFAULT_TERMINAL_MAX_TYPED_LINE_CHARACTERS, 1, problems),
             _positive(values.get("terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS),
-                      "terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS, report),
+                      "terminal.refused_character_retry_seconds", DEFAULT_TERMINAL_REFUSED_CHARACTER_RETRY_SECONDS, problems),
             _positive(values.get("terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS),
-                      "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, report),
+                      "terminal.wait_log_reminder_seconds", DEFAULT_TERMINAL_WAIT_LOG_REMINDER_SECONDS, problems),
             _whole_choice(values.get("terminal.data_bits", DEFAULT_TERMINAL_DATA_BITS), "terminal.data_bits", DEFAULT_TERMINAL_DATA_BITS,
-                          TERMINAL_DATA_BITS, report),
-            _choice(values.get("terminal.parity", DEFAULT_TERMINAL_PARITY), "terminal.parity", DEFAULT_TERMINAL_PARITY, TERMINAL_PARITIES, report),
+                          TERMINAL_DATA_BITS, problems),
+            _choice(values.get("terminal.parity", DEFAULT_TERMINAL_PARITY), "terminal.parity", DEFAULT_TERMINAL_PARITY, TERMINAL_PARITIES, problems),
             _whole_choice(values.get("terminal.stop_bits", DEFAULT_TERMINAL_STOP_BITS), "terminal.stop_bits", DEFAULT_TERMINAL_STOP_BITS,
-                          TERMINAL_STOP_BITS, report),
-            _nonblank(values.get("terminal.port_search", DEFAULT_TERMINAL_PORT_SEARCH), "terminal.port_search", DEFAULT_TERMINAL_PORT_SEARCH, report))
+                          TERMINAL_STOP_BITS, problems),
+            _nonblank(values.get("terminal.port_search", DEFAULT_TERMINAL_PORT_SEARCH), "terminal.port_search", DEFAULT_TERMINAL_PORT_SEARCH, problems))
         chart = ChartSettings(
-            _positive(values.get("chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES), "chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES, report),
+            _positive(values.get("chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES), "chart.window_minutes", DEFAULT_CHART_WINDOW_MINUTES, problems),
             _positive(values.get("chart.gridline_every_minutes", DEFAULT_CHART_GRIDLINE_EVERY_MINUTES), "chart.gridline_every_minutes",
-                      DEFAULT_CHART_GRIDLINE_EVERY_MINUTES, report),
-            _positive(values.get("chart.score_max", DEFAULT_CHART_SCORE_MAX), "chart.score_max", DEFAULT_CHART_SCORE_MAX, report),
+                      DEFAULT_CHART_GRIDLINE_EVERY_MINUTES, problems),
+            _positive(values.get("chart.score_max", DEFAULT_CHART_SCORE_MAX), "chart.score_max", DEFAULT_CHART_SCORE_MAX, problems),
             _numbers(values.get("chart.score_gridlines", DEFAULT_CHART_SCORE_GRIDLINES), "chart.score_gridlines",
-                     DEFAULT_CHART_SCORE_GRIDLINES, report),
-            _positive(values.get("chart.drawing_width", DEFAULT_CHART_DRAWING_WIDTH), "chart.drawing_width", DEFAULT_CHART_DRAWING_WIDTH, report),
-            _positive(values.get("chart.drawing_height", DEFAULT_CHART_DRAWING_HEIGHT), "chart.drawing_height", DEFAULT_CHART_DRAWING_HEIGHT, report),
-            _not_negative(values.get("chart.margin_left", DEFAULT_CHART_MARGIN_LEFT), "chart.margin_left", DEFAULT_CHART_MARGIN_LEFT, report),
-            _not_negative(values.get("chart.margin_right", DEFAULT_CHART_MARGIN_RIGHT), "chart.margin_right", DEFAULT_CHART_MARGIN_RIGHT, report),
-            _not_negative(values.get("chart.margin_top", DEFAULT_CHART_MARGIN_TOP), "chart.margin_top", DEFAULT_CHART_MARGIN_TOP, report),
-            _not_negative(values.get("chart.margin_bottom", DEFAULT_CHART_MARGIN_BOTTOM), "chart.margin_bottom", DEFAULT_CHART_MARGIN_BOTTOM, report),
+                     DEFAULT_CHART_SCORE_GRIDLINES, problems),
+            _positive(values.get("chart.drawing_width", DEFAULT_CHART_DRAWING_WIDTH), "chart.drawing_width", DEFAULT_CHART_DRAWING_WIDTH, problems),
+            _positive(values.get("chart.drawing_height", DEFAULT_CHART_DRAWING_HEIGHT), "chart.drawing_height", DEFAULT_CHART_DRAWING_HEIGHT, problems),
+            _not_negative(values.get("chart.margin_left", DEFAULT_CHART_MARGIN_LEFT), "chart.margin_left", DEFAULT_CHART_MARGIN_LEFT, problems),
+            _not_negative(values.get("chart.margin_right", DEFAULT_CHART_MARGIN_RIGHT), "chart.margin_right", DEFAULT_CHART_MARGIN_RIGHT, problems),
+            _not_negative(values.get("chart.margin_top", DEFAULT_CHART_MARGIN_TOP), "chart.margin_top", DEFAULT_CHART_MARGIN_TOP, problems),
+            _not_negative(values.get("chart.margin_bottom", DEFAULT_CHART_MARGIN_BOTTOM), "chart.margin_bottom", DEFAULT_CHART_MARGIN_BOTTOM, problems),
             _positive(values.get("chart.attempt_dot_radius", DEFAULT_CHART_ATTEMPT_DOT_RADIUS), "chart.attempt_dot_radius",
-                      DEFAULT_CHART_ATTEMPT_DOT_RADIUS, report),
+                      DEFAULT_CHART_ATTEMPT_DOT_RADIUS, problems),
             _positive(values.get("chart.qualifier_dot_radius", DEFAULT_CHART_QUALIFIER_DOT_RADIUS), "chart.qualifier_dot_radius",
-                      DEFAULT_CHART_QUALIFIER_DOT_RADIUS, report),
-            _positive(values.get("chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH), "chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH, report),
+                      DEFAULT_CHART_QUALIFIER_DOT_RADIUS, problems),
+            _positive(values.get("chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH), "chart.bar_line_width", DEFAULT_CHART_BAR_LINE_WIDTH, problems),
             _positive(values.get("chart.longest_silence_minutes", DEFAULT_CHART_LONGEST_SILENCE_MINUTES), "chart.longest_silence_minutes",
-                      DEFAULT_CHART_LONGEST_SILENCE_MINUTES, report),
-            _positive(values.get("chart.break_mark_size", DEFAULT_CHART_BREAK_MARK_SIZE), "chart.break_mark_size", DEFAULT_CHART_BREAK_MARK_SIZE, report),
-            _positive(values.get("chart.break_gap_width", DEFAULT_CHART_BREAK_GAP_WIDTH), "chart.break_gap_width", DEFAULT_CHART_BREAK_GAP_WIDTH, report))
+                      DEFAULT_CHART_LONGEST_SILENCE_MINUTES, problems),
+            _positive(values.get("chart.break_mark_size", DEFAULT_CHART_BREAK_MARK_SIZE), "chart.break_mark_size", DEFAULT_CHART_BREAK_MARK_SIZE, problems),
+            _positive(values.get("chart.break_gap_width", DEFAULT_CHART_BREAK_GAP_WIDTH), "chart.break_gap_width", DEFAULT_CHART_BREAK_GAP_WIDTH, problems))
         if chart.drawing_width - chart.margin_left - chart.margin_right <= 0 or chart.drawing_height - chart.margin_top - chart.margin_bottom <= 0:
-            report.warn("chart: the margins leave no room for the plot; using the default drawing size and margins")
+            problems.add("chart: the margins leave no room for the plot; using the default drawing size and margins")
             chart = ChartSettings(chart.window_minutes, chart.gridline_every_minutes, chart.score_max,
                                   chart.score_gridlines, attempt_dot_radius=chart.attempt_dot_radius,
                                   qualifier_dot_radius=chart.qualifier_dot_radius, bar_line_width=chart.bar_line_width,
@@ -995,40 +1021,40 @@ class Config:
                                   break_gap_width=chart.break_gap_width)
         conductor = ConductorSettings(
             _positive(values.get("conductor.writing_seconds", DEFAULT_CONDUCTOR_WRITING_SECONDS), "conductor.writing_seconds",
-                      DEFAULT_CONDUCTOR_WRITING_SECONDS, report),
+                      DEFAULT_CONDUCTOR_WRITING_SECONDS, problems),
             _positive(values.get("conductor.printing_seconds", DEFAULT_CONDUCTOR_PRINTING_SECONDS), "conductor.printing_seconds",
-                      DEFAULT_CONDUCTOR_PRINTING_SECONDS, report),
+                      DEFAULT_CONDUCTOR_PRINTING_SECONDS, problems),
             _number(values.get("conductor.recovering_seconds", DEFAULT_CONDUCTOR_RECOVERING_SECONDS), "conductor.recovering_seconds",
-                    DEFAULT_CONDUCTOR_RECOVERING_SECONDS, 0.0, report),
+                    DEFAULT_CONDUCTOR_RECOVERING_SECONDS, 0.0, problems),
             _positive(values.get("conductor.freshness_seconds", DEFAULT_CONDUCTOR_FRESHNESS_SECONDS), "conductor.freshness_seconds",
-                      DEFAULT_CONDUCTOR_FRESHNESS_SECONDS, report),
+                      DEFAULT_CONDUCTOR_FRESHNESS_SECONDS, problems),
             _whole(values.get("conductor.write_attempts", DEFAULT_CONDUCTOR_WRITE_ATTEMPTS), "conductor.write_attempts",
-                   DEFAULT_CONDUCTOR_WRITE_ATTEMPTS, 1, report),
+                   DEFAULT_CONDUCTOR_WRITE_ATTEMPTS, 1, problems),
             _number(values.get("conductor.write_pause_seconds", DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS), "conductor.write_pause_seconds",
-                    DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS, 0.0, report),
+                    DEFAULT_CONDUCTOR_WRITE_PAUSE_SECONDS, 0.0, problems),
             _positive(values.get("conductor.write_budget_seconds", DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS),
-                      "conductor.write_budget_seconds", DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS, report),
+                      "conductor.write_budget_seconds", DEFAULT_CONDUCTOR_WRITE_BUDGET_SECONDS, problems),
             _positive(values.get("conductor.print_pause_seconds", DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS), "conductor.print_pause_seconds",
-                      DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS, report),
+                      DEFAULT_CONDUCTOR_PRINT_PAUSE_SECONDS, problems),
             _number(values.get("conductor.restart_pause_seconds", DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS),
-                    "conductor.restart_pause_seconds", DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS, 0.0, report),
+                    "conductor.restart_pause_seconds", DEFAULT_CONDUCTOR_RESTART_PAUSE_SECONDS, 0.0, problems),
             _positive(values.get("conductor.check_seconds", DEFAULT_CONDUCTOR_CHECK_SECONDS), "conductor.check_seconds",
-                      DEFAULT_CONDUCTOR_CHECK_SECONDS, report))
-        _check_the_limits_fit(conductor, oracle, terminal, report)
-        _check_the_lights_fit(monitor, report)
+                      DEFAULT_CONDUCTOR_CHECK_SECONDS, problems))
+        _check_the_limits_fit(conductor, oracle, terminal, problems)
+        _check_the_lights_fit(monitor, problems)
         boot_slip = BootSlipSettings(
-            _bool(values.get("boot_slip.enabled", DEFAULT_BOOT_SLIP_ENABLED), "boot_slip.enabled", report, DEFAULT_BOOT_SLIP_ENABLED),
-            _text(values.get("boot_slip.text", DEFAULT_BOOT_SLIP_TEXT), "boot_slip.text", DEFAULT_BOOT_SLIP_TEXT, report),
+            _bool(values.get("boot_slip.enabled", DEFAULT_BOOT_SLIP_ENABLED), "boot_slip.enabled", problems, DEFAULT_BOOT_SLIP_ENABLED),
+            _text(values.get("boot_slip.text", DEFAULT_BOOT_SLIP_TEXT), "boot_slip.text", DEFAULT_BOOT_SLIP_TEXT, problems),
             _number(values.get("boot_slip.address_grace_seconds", DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS),
-                    "boot_slip.address_grace_seconds", DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS, 0.0, report),
+                    "boot_slip.address_grace_seconds", DEFAULT_BOOT_SLIP_ADDRESS_GRACE_SECONDS, 0.0, problems),
             _number(values.get("boot_slip.retry_seconds", DEFAULT_BOOT_SLIP_RETRY_SECONDS), "boot_slip.retry_seconds",
-                    DEFAULT_BOOT_SLIP_RETRY_SECONDS, 0.0, report))
+                    DEFAULT_BOOT_SLIP_RETRY_SECONDS, 0.0, problems))
         display = DisplaySettings(
-            _nonblank(values.get("display.browser", DEFAULT_DISPLAY_BROWSER), "display.browser", DEFAULT_DISPLAY_BROWSER, report),
-            _strings(values.get("display.browser_flags", DEFAULT_DISPLAY_BROWSER_FLAGS), "display.browser_flags", DEFAULT_DISPLAY_BROWSER_FLAGS, report),
+            _nonblank(values.get("display.browser", DEFAULT_DISPLAY_BROWSER), "display.browser", DEFAULT_DISPLAY_BROWSER, problems),
+            _strings(values.get("display.browser_flags", DEFAULT_DISPLAY_BROWSER_FLAGS), "display.browser_flags", DEFAULT_DISPLAY_BROWSER_FLAGS, problems),
             _nonblank(values.get("display.browser_profile_dir", DEFAULT_DISPLAY_BROWSER_PROFILE_DIR), "display.browser_profile_dir",
-                      DEFAULT_DISPLAY_BROWSER_PROFILE_DIR, report))
-        return cls(strict, log_level, report, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
+                      DEFAULT_DISPLAY_BROWSER_PROFILE_DIR, problems))
+        return cls(strict, log_level, problems, debug, local_logs, (low, high), scorer, qualifying, oracle, listening, monitor,
                    printing, terminal, conductor, boot_slip, chart, display,
                    logmute_after_repeats, logmute_remind_every_repeats, logmute_quiet_seconds)
 
@@ -1037,36 +1063,36 @@ class Config:
 _CHARACTERS_PER_TOKEN = 5
 
 
-def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSettings", terminal: "TerminalSettings", report: ReportRecorder) -> None:
+def _check_the_limits_fit(conductor: "ConductorSettings", oracle: "OracleSettings", terminal: "TerminalSettings", problems: ConfigProblems) -> None:
     """Warns when the Conductor's limits do not fit the settings they depend on. The values are kept: this only tells the person.
 
     A watchdog shorter than the thing it watches cuts off healthy turns, which is worse than a limit that is too long, so each warning
     names the limit that is too short.
     """
     if conductor.writing_seconds <= oracle.timeout:
-        report.warn(f"conductor.writing_seconds ({conductor.writing_seconds:g}) should be longer than oracle.timeout ({oracle.timeout:g}), "
+        problems.add(f"conductor.writing_seconds ({conductor.writing_seconds:g}) should be longer than oracle.timeout ({oracle.timeout:g}), "
                     f"or the watchdog can cut off a turn the oracle is still allowed to finish")
     if conductor.write_budget_seconds >= conductor.writing_seconds:
-        report.warn(f"conductor.write_budget_seconds ({conductor.write_budget_seconds:g}) should be shorter than "
+        problems.add(f"conductor.write_budget_seconds ({conductor.write_budget_seconds:g}) should be shorter than "
                     f"conductor.writing_seconds ({conductor.writing_seconds:g}), or a retry can run into the watchdog")
     if conductor.write_budget_seconds < oracle.timeout + conductor.write_pause_seconds:
-        report.warn(f"conductor.write_budget_seconds ({conductor.write_budget_seconds:g}) is shorter than oracle.timeout "
+        problems.add(f"conductor.write_budget_seconds ({conductor.write_budget_seconds:g}) is shorter than oracle.timeout "
                     f"({oracle.timeout:g}) plus conductor.write_pause_seconds ({conductor.write_pause_seconds:g}), so no second attempt to "
                     f"write can ever fit")
     longest_print = oracle.max_tokens * _CHARACTERS_PER_TOKEN / terminal.characters_per_second
     if terminal.mode != "none" and conductor.printing_seconds < longest_print:
-        report.warn(f"conductor.printing_seconds ({conductor.printing_seconds:g}) is shorter than the time to type the longest portent "
+        problems.add(f"conductor.printing_seconds ({conductor.printing_seconds:g}) is shorter than the time to type the longest portent "
                     f"({longest_print:.0f} s for {oracle.max_tokens} tokens at {terminal.characters_per_second:g} characters a second)")
 
 
-def _check_the_lights_fit(monitor: "MonitorSettings", report: ReportRecorder) -> None:
+def _check_the_lights_fit(monitor: "MonitorSettings", problems: ConfigProblems) -> None:
     """Warns about a light that would go down between two checks: a check's answer must stay good longer than the time to the next check."""
     if monitor.service_down_after_seconds <= monitor.service_check_seconds:
-        report.warn(f"monitor.service_down_after_seconds ({monitor.service_down_after_seconds:g}) should be longer than monitor.service_check_seconds "
+        problems.add(f"monitor.service_down_after_seconds ({monitor.service_down_after_seconds:g}) should be longer than monitor.service_check_seconds "
                     f"({monitor.service_check_seconds:g}), or a light goes down between two checks")
 
 
-def _read_file(path: Path, report: ReportRecorder) -> dict:
+def _read_file(path: Path, problems: ConfigProblems) -> dict:
     """The file's known top-level keys; {} if it is missing (fine) or bad (warned)."""
     if not path.exists():
         return {}
@@ -1074,12 +1100,12 @@ def _read_file(path: Path, report: ReportRecorder) -> dict:
         with path.open("rb") as handle:
             document = tomllib.load(handle)
     except (OSError, tomllib.TOMLDecodeError) as error:
-        report.warn(f"cannot read config file {path}: {error}; using defaults")
+        problems.add(f"cannot read config file {path}: {error}; using defaults")
         return {}
     document = _flatten(document)
     unknown = sorted(k for k in document if k not in _KEYS)
     if unknown:
-        report.warn(f"config file {path} has unknown key(s): {', '.join(unknown)}; ignoring them")
+        problems.add(f"config file {path} has unknown key(s): {', '.join(unknown)}; ignoring them")
     return {k: v for k, v in document.items() if k in _KEYS}
 
 
@@ -1102,7 +1128,7 @@ def _flatten(document: dict) -> dict:
     return flat
 
 
-def _bool(value, label: str, report: ReportRecorder, default: bool = False) -> bool:
+def _bool(value, label: str, problems: ConfigProblems, default: bool = False) -> bool:
     """A boolean from a TOML bool or an on/off style string; otherwise `default` (False unless given) with a warning."""
     if isinstance(value, bool):
         return value
@@ -1111,11 +1137,11 @@ def _bool(value, label: str, report: ReportRecorder, default: bool = False) -> b
         return True
     if text in _FALSE:
         return False
-    report.warn(f"{label} must be true or false, got {value!r}; using {'true' if default else 'false'}")
+    problems.add(f"{label} must be true or false, got {value!r}; using {'true' if default else 'false'}")
     return default
 
 
-def _count(value, label: str, default: int, report: ReportRecorder) -> int:
+def _count(value, label: str, default: int, problems: ConfigProblems) -> int:
     """A whole number of at least 1 (a TOML integer or digits in a string); otherwise the default.
 
     Booleans and decimals are rejected, since `true` or `2.5` is almost certainly a typo.
@@ -1124,146 +1150,146 @@ def _count(value, label: str, default: int, report: ReportRecorder) -> int:
         value = int(value.strip())
     if isinstance(value, int) and not isinstance(value, bool) and value >= 1:
         return value
-    report.warn(f"{label} must be a whole number of at least 1, got {value!r}; using {default}")
+    problems.add(f"{label} must be a whole number of at least 1, got {value!r}; using {default}")
     return default
 
 
-def _number(value, label: str, default: float, minimum: float, report: ReportRecorder) -> float:
+def _number(value, label: str, default: float, minimum: float, problems: ConfigProblems) -> float:
     """A number of at least `minimum` (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
         return float(value)
-    report.warn(f"{label} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
+    problems.add(f"{label} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
     return default
 
 
-def _positive(value, label: str, default: float, report: ReportRecorder) -> float:
+def _positive(value, label: str, default: float, problems: ConfigProblems) -> float:
     """A number above 0 (an int or float, not a boolean, and not infinity); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value < float("inf"):
         return float(value)
-    report.warn(f"{label} must be a number above 0, got {value!r}; using {default:g}")
+    problems.add(f"{label} must be a number above 0, got {value!r}; using {default:g}")
     return default
 
 
-def _percent(value, label: str, default: float, report: ReportRecorder) -> float:
+def _percent(value, label: str, default: float, problems: ConfigProblems) -> float:
     """A number above 0 and at most 100 (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 < value <= 100.0:
         return float(value)
-    report.warn(f"{label} must be a number above 0 and at most 100, got {value!r}; using {default:g}")
+    problems.add(f"{label} must be a number above 0 and at most 100, got {value!r}; using {default:g}")
     return default
 
 
-def _finite(value, label: str, default: float, report: ReportRecorder) -> float:
+def _finite(value, label: str, default: float, problems: ConfigProblems) -> float:
     """Any finite number (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and float("-inf") < value < float("inf"):
         return float(value)
-    report.warn(f"{label} must be a number, got {value!r}; using {default:g}")
+    problems.add(f"{label} must be a number, got {value!r}; using {default:g}")
     return default
 
 
-def _not_negative(value, label: str, default: float, report: ReportRecorder) -> float:
+def _not_negative(value, label: str, default: float, problems: ConfigProblems) -> float:
     """A finite number of 0 or more (not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value < float("inf"):
         return float(value)
-    report.warn(f"{label} must be a number of at least 0, got {value!r}; using {default:g}")
+    problems.add(f"{label} must be a number of at least 0, got {value!r}; using {default:g}")
     return default
 
 
-def _below_one(value, label: str, default: float, report: ReportRecorder) -> float:
+def _below_one(value, label: str, default: float, problems: ConfigProblems) -> float:
     """A number from 0 up to but not including 1 (an int or float, not a boolean); otherwise the default."""
     if isinstance(value, (int, float)) and not isinstance(value, bool) and 0.0 <= value < 1.0:
         return float(value)
-    report.warn(f"{label} must be a number from 0 up to but not including 1, got {value!r}; using {default:g}")
+    problems.add(f"{label} must be a number from 0 up to but not including 1, got {value!r}; using {default:g}")
     return default
 
 
-def _choice(value, label: str, default: str, choices, report: ReportRecorder) -> str:
+def _choice(value, label: str, default: str, choices, problems: ConfigProblems) -> str:
     """One of the named choices (text, in the list); otherwise the default."""
     if isinstance(value, str) and value in choices:
         return value
-    report.warn(f"{label} must be one of {', '.join(choices)}, got {value!r}; using {default}")
+    problems.add(f"{label} must be one of {', '.join(choices)}, got {value!r}; using {default}")
     return default
 
 
-def _whole_choice(value, label: str, default: int, choices, report: ReportRecorder) -> int:
+def _whole_choice(value, label: str, default: int, choices, problems: ConfigProblems) -> int:
     """One of the listed whole numbers (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and value in choices:
         return value
-    report.warn(f"{label} must be one of {', '.join(str(choice) for choice in choices)}, got {value!r}; using {default}")
+    problems.add(f"{label} must be one of {', '.join(str(choice) for choice in choices)}, got {value!r}; using {default}")
     return default
 
 
-def _port(value, label: str, default: int, report: ReportRecorder) -> int:
+def _port(value, label: str, default: int, problems: ConfigProblems) -> int:
     """A whole number from 1 to 65535 (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 65535:
         return value
-    report.warn(f"{label} must be a whole number from 1 to 65535, got {value!r}; using {default}")
+    problems.add(f"{label} must be a whole number from 1 to 65535, got {value!r}; using {default}")
     return default
 
 
-def _whole(value, label: str, default: int, minimum: int, report: ReportRecorder) -> int:
+def _whole(value, label: str, default: int, minimum: int, problems: ConfigProblems) -> int:
     """A whole number of at least `minimum` (not a boolean or a decimal); otherwise the default."""
     if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
         return value
-    report.warn(f"{label} must be a whole number of at least {minimum}, got {value!r}; using {default}")
+    problems.add(f"{label} must be a whole number of at least {minimum}, got {value!r}; using {default}")
     return default
 
 
-def _numbers(value, label: str, default: tuple, report: ReportRecorder) -> tuple:
+def _numbers(value, label: str, default: tuple, problems: ConfigProblems) -> tuple:
     """A non-empty list of finite numbers (no booleans), as a tuple; otherwise the default."""
     if (isinstance(value, (list, tuple)) and value
             and all(isinstance(v, (int, float)) and not isinstance(v, bool) and float("-inf") < v < float("inf") for v in value)):
         return tuple(float(v) for v in value)
-    report.warn(f"{label} must be a list of numbers, got {value!r}; using {list(default)}")
+    problems.add(f"{label} must be a list of numbers, got {value!r}; using {list(default)}")
     return default
 
 
-def _strings(value, label: str, default: tuple, report: ReportRecorder) -> tuple:
+def _strings(value, label: str, default: tuple, problems: ConfigProblems) -> tuple:
     """A list of text (it may be empty), as a tuple; anything else gives the default."""
     if isinstance(value, (list, tuple)) and all(isinstance(v, str) for v in value):
         return tuple(value)
-    report.warn(f"{label} must be a list of text, got {value!r}; using {list(default)}")
+    problems.add(f"{label} must be a list of text, got {value!r}; using {list(default)}")
     return default
 
 
-def _nonblank(value, label: str, default: str, report: ReportRecorder) -> str:
+def _nonblank(value, label: str, default: str, problems: ConfigProblems) -> str:
     """Text with something in it; anything else (a number, empty text) gives the default."""
     if isinstance(value, str) and value.strip():
         return value
-    report.warn(f"{label} must be text with something in it, got {value!r}; using {default!r}")
+    problems.add(f"{label} must be text with something in it, got {value!r}; using {default!r}")
     return default
 
 
-def _composed(value, label: str, default: str, report: ReportRecorder) -> str:
+def _composed(value, label: str, default: str, problems: ConfigProblems) -> str:
     """Text made only of the composed characters (COMPOSED_CHARACTERS); any other character is a mistake and is left out."""
     if not isinstance(value, str):
-        report.warn(f"{label} must be text, got {value!r}; using the default")
+        problems.add(f"{label} must be text, got {value!r}; using the default")
         return default
     kept = "".join(dict.fromkeys(c for c in value if c in COMPOSED_CHARACTERS))
     if kept != value:
-        report.warn(f"{label} may hold only the characters {COMPOSED_CHARACTERS}, got {value!r}; keeping {kept!r}")
+        problems.add(f"{label} may hold only the characters {COMPOSED_CHARACTERS}, got {value!r}; keeping {kept!r}")
     return kept
 
 
-def _baud(value, label: str, default: int, report: ReportRecorder) -> int:
+def _baud(value, label: str, default: int, problems: ConfigProblems) -> int:
     """One of the standard baud rates (a whole number; True is 1 and no baud rate); otherwise the default."""
     if isinstance(value, int) and value in TERMINAL_BAUD_RATES:
         return value
-    report.warn(f"{label} must be a standard baud rate (such as 9600 or 115200), got {value!r}; using {default}")
+    problems.add(f"{label} must be a standard baud rate (such as 9600 or 115200), got {value!r}; using {default}")
     return default
 
 
-def _text(value, label: str, default: str, report: ReportRecorder) -> str:
+def _text(value, label: str, default: str, problems: ConfigProblems) -> str:
     """Text; anything else (a number, a list) is a mistake and gives the default."""
     if isinstance(value, str):
         return value
-    report.warn(f"{label} must be text, got {value!r}; using the default")
+    problems.add(f"{label} must be text, got {value!r}; using the default")
     return default
 
 
-def _level(value, label: str, report: ReportRecorder) -> str:
+def _level(value, label: str, problems: ConfigProblems) -> str:
     """A log level name, upper-cased; otherwise INFO with a warning."""
     text = str(value).strip().upper()
     if text in _LEVELS:
         return text
-    report.warn(f"{label} must be one of {', '.join(sorted(_LEVELS))}, got {value!r}; using INFO")
+    problems.add(f"{label} must be one of {', '.join(sorted(_LEVELS))}, got {value!r}; using INFO")
     return "INFO"

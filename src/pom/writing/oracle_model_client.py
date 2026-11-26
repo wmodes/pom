@@ -13,7 +13,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or answering oddly gives
     None and a warning in the log, never an exception. `strict=True` raises OracleModelClientError instead, for
     tests and dev tools.
-  * Neither the prompt (it holds the hinge) nor the portent is logged or put in a ReportRecorder message: nothing
+  * Neither the prompt (it holds the hinge) nor the portent is logged: nothing
     that was said in the room is kept. Logs and reports hold counts and timings.
   * The settings are passed in (the entry point takes them from Config); this module never reads Config.
   * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.

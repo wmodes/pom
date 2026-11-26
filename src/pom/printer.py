@@ -344,7 +344,7 @@ def main(argv=None) -> int:
     bookkeeper = Bookkeeper(LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds))
     bookkeeper.set_up(config.log_level, debug=config.debug, local_logs=config.local_logs)
     logger = bookkeeper.logger_for(__name__, debug=DEBUG)
-    for line in config.report.lines():               # the config was read before the log existed, so its problems are logged now
+    for line in config.problems.lines():               # the config was read before the log existed, so its problems are logged now
         logger.warning("config: %s", line)
     printer = build_printer(config, options, bookkeeper=bookkeeper)
 

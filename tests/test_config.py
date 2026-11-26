@@ -24,17 +24,17 @@ def write(tmp_path, text):
 
 def test_defaults_when_there_is_no_file_and_no_environment():
     config = Config.load(environ={})
-    assert config.strict is False and config.log_level == "INFO" and config.report.ok
+    assert config.strict is False and config.log_level == "INFO" and config.problems.ok
 
 
 def test_a_missing_file_is_fine_and_silent(tmp_path):
     config = Config.load(tmp_path / "absent.toml", environ={})
-    assert config.report.ok and config.strict is False
+    assert config.problems.ok and config.strict is False
 
 
 def test_file_values_are_read(tmp_path):
     config = Config.load(write(tmp_path, 'strict = true\nlog_level = "debug"\n'), environ={})
-    assert config.strict is True and config.log_level == "DEBUG" and config.report.ok
+    assert config.strict is True and config.log_level == "DEBUG" and config.problems.ok
 
 
 def test_environment_overrides_the_file(tmp_path):
@@ -52,7 +52,7 @@ def test_environment_works_without_a_file():
                                            ("0", False), ("False", False), ("no", False), ("OFF", False)])
 def test_strict_environment_spellings(text, expected):
     config = Config.load(environ={"POM_STRICT": text})
-    assert config.strict is expected and config.report.ok
+    assert config.strict is expected and config.problems.ok
 
 
 def test_debug_defaults_to_off():
@@ -69,8 +69,8 @@ def test_bad_debug_values_mean_off_with_a_warning(tmp_path):
     from_file = Config.load(write(tmp_path, 'debug = "loud"\n'), environ={})
     from_env = Config.load(environ={"POM_DEBUG": "banana"})
     assert from_file.debug is False and from_env.debug is False
-    assert any("debug must be true or false" in w for w in from_file.report.warnings)
-    assert any("POM_DEBUG" in w for w in from_env.report.warnings)
+    assert any("debug must be true or false" in w for w in from_file.problems.warnings)
+    assert any("POM_DEBUG" in w for w in from_env.problems.warnings)
 
 
 def test_local_logs_defaults_to_off():
@@ -86,7 +86,7 @@ def test_local_logs_is_read_from_the_file_and_the_environment(tmp_path):
 def test_the_retired_device_search_log_limit_is_reported_as_an_unknown_key_and_there_is_no_such_setting(tmp_path):
     config = Config.load(write(tmp_path, "device_search_log_limit = 7\n"), environ={})
     assert not hasattr(config, "device_search_log_limit")
-    assert len(config.report.warnings) == 1 and "unknown key" in config.report.warnings[0] and "device_search_log_limit" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "unknown key" in config.problems.warnings[0] and "device_search_log_limit" in config.problems.warnings[0]
 
 
 LOGMUTE = [  # key, a good value in TOML, what it reads as, the setting's default, bad values
@@ -99,13 +99,13 @@ LOGMUTE = [  # key, a good value in TOML, what it reads as, the setting's defaul
 @pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
 def test_each_logmute_setting_has_its_default(key, text, expected, default, bad):
     config = Config.load(environ={})
-    assert getattr(config, key) == default and config.report.ok
+    assert getattr(config, key) == default and config.problems.ok
 
 
 @pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
 def test_each_logmute_setting_is_read_from_the_file(tmp_path, key, text, expected, default, bad):
     config = Config.load(write(tmp_path, f"{key} = {text}\n"), environ={})
-    assert getattr(config, key) == expected and config.report.ok
+    assert getattr(config, key) == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
@@ -113,7 +113,7 @@ def test_a_bad_logmute_setting_is_the_default_with_one_warning(tmp_path, key, te
     for value in bad:
         config = Config.load(write(tmp_path, f"{key} = {value}\n"), environ={})
         assert getattr(config, key) == default, value
-        assert len(config.report.warnings) == 1 and key in config.report.warnings[0], value
+        assert len(config.problems.warnings) == 1 and key in config.problems.warnings[0], value
 
 
 @pytest.mark.parametrize("key, text, expected, default, bad", LOGMUTE)
@@ -133,8 +133,8 @@ def test_bad_local_logs_values_mean_off_with_a_warning(tmp_path):
     from_file = Config.load(write(tmp_path, 'local_logs = "sure"\n'), environ={})
     from_env = Config.load(environ={"POM_LOCAL_LOGS": "banana"})
     assert from_file.local_logs is False and from_env.local_logs is False
-    assert any("local_logs must be true or false" in w for w in from_file.report.warnings)
-    assert any("POM_LOCAL_LOGS" in w for w in from_env.report.warnings)
+    assert any("local_logs must be true or false" in w for w in from_file.problems.warnings)
+    assert any("POM_LOCAL_LOGS" in w for w in from_env.problems.warnings)
 
 
 def test_the_real_environment_is_used_by_default(monkeypatch):
@@ -150,7 +150,7 @@ def test_the_committed_sample_config_is_clean_and_safe_for_the_pi(tmp_path):
     copy = tmp_path / "pom.toml"
     shutil.copy(sample, copy)
     config = Config.load(copy, environ={})
-    assert config.report.ok
+    assert config.problems.ok
     assert config.strict is False and config.debug is False and config.local_logs is False
     assert config.log_level == "INFO"
 
@@ -159,7 +159,7 @@ def test_the_committed_sample_config_is_clean_and_safe_for_the_pi(tmp_path):
 
 def test_samples_default_to_three_to_five():
     config = Config.load(environ={})
-    assert config.exemplar_range == (3, 5) and config.report.ok
+    assert config.exemplar_range == (3, 5) and config.problems.ok
 
 
 def test_the_defaults_match_the_bibliomancers_defaults():
@@ -185,20 +185,20 @@ def test_one_end_alone_can_be_set(tmp_path):
 def test_a_bad_samples_value_in_the_file_means_the_default_with_a_warning(tmp_path, value):
     config = Config.load(write(tmp_path, f"[oracle]\nexemplars_max = {value}\n"), environ={})
     assert config.exemplar_range == (3, 5)
-    assert any("oracle.exemplars_max must be a whole number" in w for w in config.report.warnings)
+    assert any("oracle.exemplars_max must be a whole number" in w for w in config.problems.warnings)
 
 
 @pytest.mark.parametrize("text", ["0", "-1", "2.5", "many", "", "true"])
 def test_a_bad_samples_value_in_the_environment_means_the_default_with_a_warning(text):
     config = Config.load(environ={"POM_EXEMPLARS_MIN": text})
     assert config.exemplar_range == (3, 5)
-    assert any("POM_EXEMPLARS_MIN" in w for w in config.report.warnings)
+    assert any("POM_EXEMPLARS_MIN" in w for w in config.problems.warnings)
 
 
 def test_a_reversed_pair_is_swapped_with_a_warning(tmp_path):
     config = Config.load(write(tmp_path, "[oracle]\nexemplars_min = 7\nexemplars_max = 2\n"), environ={})
     assert config.exemplar_range == (2, 7)
-    assert any("more than oracle.exemplars_max" in w for w in config.report.warnings)
+    assert any("more than oracle.exemplars_max" in w for w in config.problems.warnings)
 
 
 def test_digits_in_a_string_are_accepted_from_the_file_too(tmp_path):
@@ -229,7 +229,7 @@ def test_the_local_file_overrides_the_main_file(tmp_path):
     main = write_pair(tmp_path, 'log_level = "INFO"\nlocal_logs = false\n',
                       'log_level = "DEBUG"\nlocal_logs = true\n')
     config = Config.load(main, environ={})
-    assert config.log_level == "DEBUG" and config.local_logs is True and config.report.ok
+    assert config.log_level == "DEBUG" and config.local_logs is True and config.problems.ok
 
 
 def test_keys_the_local_file_leaves_out_come_from_the_main_file(tmp_path):
@@ -240,7 +240,7 @@ def test_keys_the_local_file_leaves_out_come_from_the_main_file(tmp_path):
 
 def test_no_local_file_is_fine_and_silent(tmp_path):
     config = Config.load(write_pair(tmp_path, "strict = true\n", None), environ={})
-    assert config.strict is True and config.report.ok
+    assert config.strict is True and config.problems.ok
 
 
 def test_the_local_file_works_even_if_the_main_file_is_missing(tmp_path):
@@ -257,12 +257,12 @@ def test_a_broken_local_file_warns_and_the_main_file_still_applies(tmp_path):
     main = write_pair(tmp_path, "strict = true\n", "log_level = = oops")
     config = Config.load(main, environ={})
     assert config.strict is True
-    assert any("pom.local.toml" in w and "cannot read config file" in w for w in config.report.warnings)
+    assert any("pom.local.toml" in w and "cannot read config file" in w for w in config.problems.warnings)
 
 
 def test_unknown_keys_in_the_local_file_are_warned_about(tmp_path):
     main = write_pair(tmp_path, "", "debgu = true\n")
-    assert any("pom.local.toml" in w and "debgu" in w for w in Config.load(main, environ={}).report.warnings)
+    assert any("pom.local.toml" in w and "debgu" in w for w in Config.load(main, environ={}).problems.warnings)
 
 
 def test_local_toml_files_are_gitignored():
@@ -276,40 +276,40 @@ def test_local_toml_files_are_gitignored():
 def test_invalid_toml_gives_defaults_and_a_warning(tmp_path):
     config = Config.load(write(tmp_path, "strict = = oops"), environ={})
     assert config.strict is False and config.log_level == "INFO"
-    assert any("cannot read config file" in w for w in config.report.warnings)
+    assert any("cannot read config file" in w for w in config.problems.warnings)
 
 
 def test_an_unreadable_path_gives_defaults_and_a_warning(tmp_path):
     config = Config.load(tmp_path, environ={})   # a directory, not a file
     assert config.strict is False
-    assert any("cannot read config file" in w for w in config.report.warnings)
+    assert any("cannot read config file" in w for w in config.problems.warnings)
 
 
 def test_unknown_keys_are_ignored_with_a_warning(tmp_path):
     config = Config.load(write(tmp_path, 'strict = true\nstrcit = true\nvolume = 11\n'), environ={})
     assert config.strict is True
-    assert any("unknown key" in w and "strcit" in w and "volume" in w for w in config.report.warnings)
+    assert any("unknown key" in w and "strcit" in w and "volume" in w for w in config.problems.warnings)
 
 
 @pytest.mark.parametrize("value", ['"maybe"', "7", '"truee"'])
 def test_bad_strict_value_in_the_file_means_false_with_a_warning(tmp_path, value):
     config = Config.load(write(tmp_path, f"strict = {value}\n"), environ={})
     assert config.strict is False
-    assert any("strict must be true or false" in w for w in config.report.warnings)
+    assert any("strict must be true or false" in w for w in config.problems.warnings)
 
 
 @pytest.mark.parametrize("value", ['"LOUD"', "5", '""'])
 def test_bad_log_level_in_the_file_means_info_with_a_warning(tmp_path, value):
     config = Config.load(write(tmp_path, f"log_level = {value}\n"), environ={})
     assert config.log_level == "INFO"
-    assert any("log_level must be one of" in w for w in config.report.warnings)
+    assert any("log_level must be one of" in w for w in config.problems.warnings)
 
 
 def test_bad_environment_values_fall_back_with_a_warning_naming_the_variable():
     config = Config.load(environ={"POM_STRICT": "banana", "POM_LOG_LEVEL": "LOUD"})
     assert config.strict is False and config.log_level == "INFO"
-    assert any("POM_STRICT" in w for w in config.report.warnings)
-    assert any("POM_LOG_LEVEL" in w for w in config.report.warnings)
+    assert any("POM_STRICT" in w for w in config.problems.warnings)
+    assert any("POM_LOG_LEVEL" in w for w in config.problems.warnings)
 
 
 def test_a_bad_environment_value_overrides_a_good_file_value_with_the_default(tmp_path):
@@ -322,17 +322,31 @@ def test_load_never_raises_whatever_the_input(tmp_path):
     Config.load(write(tmp_path, "\x00\x01 not toml at all"), environ={"POM_STRICT": "?", "POM_LOG_LEVEL": "?"})
 
 
-def test_problems_are_logged_so_they_reach_journald(tmp_path, caplog):
-    with caplog.at_level(logging.WARNING, logger="pom.config"):
-        Config.load(write(tmp_path, "log_level = 5"), environ={})
-    assert any("log_level must be one of" in r.message for r in caplog.records)
+def test_config_problems_hold_messages_in_order_and_hand_out_copies():
+    from pom.config import ConfigProblems
+    problems = ConfigProblems()
+    assert problems.ok and problems.warnings == [] and problems.lines() == []
+    problems.add("first")
+    problems.add("second")
+    assert not problems.ok and problems.warnings == ["first", "second"]
+    problems.warnings.append("not kept")                                   # a copy: the caller cannot change what is held
+    assert problems.warnings == ["first", "second"] and problems.lines() == ["warning: first", "warning: second"]
+
+
+def test_problems_are_held_for_the_entry_point_to_log_once_the_log_exists(tmp_path, caplog):
+    """The config is read before the log is set up, so it logs nothing itself; main logs `config.problems` (see test_printer's TestMain)."""
+    with caplog.at_level(logging.DEBUG):
+        config = Config.load(write(tmp_path, "log_level = 5"), environ={})
+    assert caplog.records == []
+    assert any("log_level must be one of" in line for line in config.problems.lines())
+    assert config.problems.lines()[0].startswith("warning: ")
 
 
 # --- The [scorer] section --------------------------------------------------------------
 
 def test_scorer_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.scorer == ScorerSettings() and config.report.ok
+    assert config.scorer == ScorerSettings() and config.problems.ok
     assert config.scorer.url == "http://127.0.0.1:8098/v1/chat/completions"
     assert (config.scorer.timeout, config.scorer.clip_filter_score, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (30.0, 1.0, 1, 3, 30.0)
@@ -362,7 +376,7 @@ def test_scorer_values_are_read_from_the_section(tmp_path):
 def test_a_multi_line_prompt_is_kept_whole(tmp_path):
     text = '[scorer]\nprompt_scoring = """\nLine one.\n\nLine "two".\n"""\nprompt_output = "Reply."\n'
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.scorer.prompt_scoring == 'Line one.\n\nLine "two".\n' and config.report.ok
+    assert config.scorer.prompt_scoring == 'Line one.\n\nLine "two".\n' and config.problems.ok
 
 
 def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
@@ -382,13 +396,13 @@ def test_the_environment_can_point_the_scorer_somewhere_else(tmp_path):
 def test_a_bad_scorer_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[scorer]\n{key} = {value}\n"), environ={})
     assert config.scorer == ScorerSettings()
-    assert len(config.report.warnings) == 1 and f"scorer.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"scorer.{key}" in config.problems.warnings[0]
 
 
 def test_the_smallest_allowed_scorer_values_are_accepted(tmp_path):
     text = "[scorer]\ntimeout = 0.1\nclip_filter_score = 0\nmin_content_words = 0\nfailure_limit = 1\nretry_seconds = 0\n"
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.report.ok
+    assert config.problems.ok
     assert (config.scorer.timeout, config.scorer.clip_filter_score, config.scorer.min_content_words,
             config.scorer.failure_limit, config.scorer.retry_seconds) == (0.1, 0.0, 0, 1, 0.0)
 
@@ -396,12 +410,12 @@ def test_the_smallest_allowed_scorer_values_are_accepted(tmp_path):
 def test_an_unknown_scorer_key_is_warned_about(tmp_path):
     config = Config.load(write(tmp_path, "[scorer]\nurll = 5\n"), environ={})
     assert config.scorer == ScorerSettings()
-    assert any("scorer.urll" in w for w in config.report.warnings)
+    assert any("scorer.urll" in w for w in config.problems.warnings)
 
 
 def test_an_unknown_section_is_warned_about(tmp_path):
     config = Config.load(write(tmp_path, "[bogus]\nmodel = 5\n"), environ={})
-    assert any("bogus.model" in w for w in config.report.warnings)
+    assert any("bogus.model" in w for w in config.problems.warnings)
 
 
 def test_the_local_file_overrides_one_scorer_key_and_keeps_the_rest(tmp_path):
@@ -418,7 +432,7 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
     copy = tmp_path / "pom.toml"
     shutil.copy(sample, copy)
     config = Config.load(copy, environ={})
-    assert config.report.ok
+    assert config.problems.ok
     assert "interesting" in config.scorer.prompt_scoring and "Reply with" in config.scorer.prompt_output
     assert "comma-separated" in config.scorer.prompt_output_debug
     scorer = config.scorer
@@ -462,20 +476,20 @@ def test_with_no_scoring_part_there_is_no_prompt_at_all(tmp_path):
 
 def test_a_missing_output_part_is_warned_about_but_the_scoring_part_still_works(tmp_path):
     config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\n'), environ={})
-    assert len(config.report.warnings) == 1 and "prompt_output" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "prompt_output" in config.problems.warnings[0]
     assert config.scorer.prompt == "Score it."
 
 
 def test_the_old_prompt_key_is_now_an_unknown_key(tmp_path):
     config = Config.load(write(tmp_path, '[scorer]\nprompt = "Score it."\n'), environ={})
-    assert any("scorer.prompt" in w for w in config.report.warnings) and config.scorer.prompt == ""
+    assert any("scorer.prompt" in w for w in config.problems.warnings) and config.scorer.prompt == ""
 
 
 # --- The [qualifying] section ---------------------------------------------------------------
 
 def test_the_qualifying_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.qualifying == QualifyingSettings() and config.qualifying.bar_percentile == 99.5 and config.report.ok
+    assert config.qualifying == QualifyingSettings() and config.qualifying.bar_percentile == 99.5 and config.problems.ok
 
 
 def test_the_qualifying_defaults_match_the_bars_defaults():
@@ -503,7 +517,7 @@ def test_all_the_qualifying_values_are_read_from_the_section(tmp_path):
             "average_half_life_scores = 4\naverage_floor_fraction = 0.1\n")
     config = Config.load(write(tmp_path, text), environ={})
     assert config.qualifying == QualifyingSettings(95.0, 120.0, 8, 90.0, 5.5, 0.25, 180.0, 0.5, 4.0, 0.1, "decaying_quantile")
-    assert config.report.ok
+    assert config.problems.ok
 
 
 def test_the_typed_line_settings_start_as_a_multiplier_of_one_and_a_half_that_has_no_influence_on_the_bar():
@@ -513,38 +527,38 @@ def test_the_typed_line_settings_start_as_a_multiplier_of_one_and_a_half_that_ha
 
 def test_the_typed_line_settings_are_read_from_the_section(tmp_path):
     config = Config.load(write(tmp_path, "[qualifying]\ntyped_lines_score_multiplier = 2\ntyped_lines_bar_influence = 0.5\n"), environ={})
-    assert (config.qualifying.typed_lines_score_multiplier, config.qualifying.typed_lines_bar_influence) == (2.0, 0.5) and config.report.ok
+    assert (config.qualifying.typed_lines_score_multiplier, config.qualifying.typed_lines_bar_influence) == (2.0, 0.5) and config.problems.ok
 
 
 def test_a_typed_score_multiplier_of_zero_and_one_are_accepted(tmp_path):
     for text, expected in (("0", 0.0), ("1", 1.0)):
         config = Config.load(write(tmp_path, f"[qualifying]\ntyped_lines_score_multiplier = {text}\n"), environ={})
-        assert config.qualifying.typed_lines_score_multiplier == expected and config.report.ok
+        assert config.qualifying.typed_lines_score_multiplier == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("key, default", [("qualifier_bar_influence", 0.5), ("typed_lines_bar_influence", 0.0)])
 @pytest.mark.parametrize("text, expected", [("0", 0.0), ("1", 1.0), ("0.25", 0.25), ("1.1", 1.1), ("-0.1", -0.1), ("2", 2.0), ("-5", -5.0)])
 def test_a_bar_influence_is_any_number_and_is_not_limited_to_zero_to_one(tmp_path, key, default, text, expected):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {text}\n"), environ={})
-    assert getattr(config.qualifying, key) == expected and config.report.ok
+    assert getattr(config.qualifying, key) == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("text, expected", [("0", 0.0), ("5.85", 5.85), ("-2", -2.0), ("9", 9.0), ("12.5", 12.5)])
 def test_the_anchor_score_is_any_number(tmp_path, text, expected):
     config = Config.load(write(tmp_path, f"[qualifying]\nanchor_score = {text}\n"), environ={})
-    assert config.qualifying.anchor_score == expected and config.report.ok
+    assert config.qualifying.anchor_score == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("text, expected", [("1", 1.0), ("0.25", 0.25), ("2.5", 2.5), ("60", 60.0), ("0.001", 0.001)])
 def test_the_anchor_interval_is_any_number_of_minutes_above_zero(tmp_path, text, expected):
     config = Config.load(write(tmp_path, f"[qualifying]\nanchor_interval_minutes = {text}\n"), environ={})
-    assert config.qualifying.anchor_interval_minutes == expected and config.report.ok
+    assert config.qualifying.anchor_interval_minutes == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("text, expected", [("1440", 1440.0), ("40", 40.0), ("0.5", 0.5), ("100000", 100000.0)])
 def test_the_discard_age_is_any_number_of_minutes_above_zero(tmp_path, text, expected):
     config = Config.load(write(tmp_path, f"[qualifying]\ndiscard_scores_older_than_minutes = {text}\n"), environ={})
-    assert config.qualifying.discard_scores_older_than_minutes == expected and config.report.ok
+    assert config.qualifying.discard_scores_older_than_minutes == expected and config.problems.ok
 
 
 def test_the_anchor_and_discard_settings_fall_back_to_the_bars_own_fallbacks():
@@ -580,7 +594,7 @@ MOVED = [  # section, key, a good value in TOML, what it reads as, the setting's
 def test_a_moved_setting_is_read_and_starts_at_its_old_value(tmp_path, section, key, text, expected, default, bad):
     assert getattr(getattr(Config(), section), key) == default
     config = Config.load(write(tmp_path, f"[{section}]\n{key} = {text}\n"), environ={})
-    assert getattr(getattr(config, section), key) == expected and config.report.ok
+    assert getattr(getattr(config, section), key) == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("section, key, text, expected, default, bad", MOVED)
@@ -588,7 +602,7 @@ def test_a_bad_moved_setting_means_its_default_with_a_warning(tmp_path, section,
     for value in bad:
         config = Config.load(write(tmp_path, f"[{section}]\n{key} = {value}\n"), environ={})
         assert getattr(getattr(config, section), key) == default
-        assert len(config.report.warnings) == 1 and f"{section}.{key}" in config.report.warnings[0]
+        assert len(config.problems.warnings) == 1 and f"{section}.{key}" in config.problems.warnings[0]
 
 
 def test_the_committed_config_sets_every_moved_setting():
@@ -617,7 +631,7 @@ def test_the_display_defaults_are_the_shipped_ones():
 @pytest.mark.parametrize("key, text, expected", DISPLAY_GOOD)
 def test_a_display_setting_is_read(tmp_path, key, text, expected):
     config = Config.load(write(tmp_path, f"[display]\n{key} = {text}\n"), environ={})
-    assert getattr(config.display, key) == expected and config.report.ok
+    assert getattr(config.display, key) == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("key, value", DISPLAY_BAD)
@@ -625,12 +639,12 @@ def test_a_bad_display_setting_means_the_default_with_a_warning(tmp_path, key, v
     from pom.config import DisplaySettings
     config = Config.load(write(tmp_path, f"[display]\n{key} = {value}\n"), environ={})
     assert config.display == DisplaySettings()
-    assert len(config.report.warnings) == 1 and f"display.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"display.{key}" in config.problems.warnings[0]
 
 
 def test_an_unknown_display_key_is_a_warning(tmp_path):
     config = Config.load(write(tmp_path, "[display]\nbrowsr = 1\n"), environ={})
-    assert any("display.browsr" in w for w in config.report.warnings)
+    assert any("display.browsr" in w for w in config.problems.warnings)
 
 
 def test_the_committed_config_sets_every_display_key_to_the_default():
@@ -672,7 +686,7 @@ def test_the_chart_starts_at_the_old_hard_coded_numbers():
 @pytest.mark.parametrize("key, text, expected", CHART_GOOD)
 def test_a_chart_setting_is_read(tmp_path, key, text, expected):
     config = Config.load(write(tmp_path, f"[chart]\n{key} = {text}\n"), environ={})
-    assert getattr(config.chart, key) == expected and config.report.ok
+    assert getattr(config.chart, key) == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("key, value", CHART_BAD)
@@ -680,7 +694,7 @@ def test_a_bad_chart_setting_means_the_default_with_a_warning(tmp_path, key, val
     from pom.config import ChartSettings
     config = Config.load(write(tmp_path, f"[chart]\n{key} = {value}\n"), environ={})
     assert config.chart == ChartSettings()
-    assert len(config.report.warnings) == 1 and f"chart.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"chart.{key}" in config.problems.warnings[0]
 
 
 def test_margins_that_leave_no_room_for_the_plot_mean_the_default_size_and_margins(tmp_path):
@@ -689,7 +703,7 @@ def test_margins_that_leave_no_room_for_the_plot_mean_the_default_size_and_margi
                                          "longest_silence_minutes = 9\nbreak_mark_size = 4\nbreak_gap_width = 50\n"), environ={})
     assert config.chart.drawing_width == 720.0 and config.chart.margin_left == 24.0 and config.chart.bar_line_width == 3.0
     assert (config.chart.longest_silence_minutes, config.chart.break_mark_size, config.chart.break_gap_width) == (9.0, 4.0, 50.0)       # the rest is kept
-    assert any("no room for the plot" in w for w in config.report.warnings)
+    assert any("no room for the plot" in w for w in config.problems.warnings)
     assert Config.load(write(tmp_path, "[chart]\ndrawing_height = 20\nmargin_top = 10\nmargin_bottom = 10\n"), environ={}).chart.drawing_height == 150.0
 
 
@@ -709,14 +723,14 @@ def test_the_qualifier_bar_influence_starts_at_a_half():
 @pytest.mark.parametrize("key", ["exclude_qualifiers", "typed_handicap", "typed_lines_affect_bar"])
 def test_the_old_names_are_gone_and_are_warned_about_as_unknown_keys(tmp_path, key):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = 1\n"), environ={})
-    assert any(f"qualifying.{key}" in w for w in config.report.warnings) and config.qualifying == QualifyingSettings()
+    assert any(f"qualifying.{key}" in w for w in config.problems.warnings) and config.qualifying == QualifyingSettings()
 
 
 def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
     text = ("[qualifying]\nbar_percentile = 0.001\nwindow_seconds = 0.5\nmin_scores = 2\ncooldown_seconds = 0\nstarting_bar = -3\n"
             "half_life_seconds = 0.5\naverage_fraction = 0\naverage_half_life_scores = 0.5\naverage_floor_fraction = 0\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.qualifying == QualifyingSettings(0.001, 0.5, 2, 0.0, -3.0, 0.5, 0.5, 0.0, 0.5, 0.0, "percentile") and config.report.ok
+    assert config.qualifying == QualifyingSettings(0.001, 0.5, 2, 0.0, -3.0, 0.5, 0.5, 0.0, 0.5, 0.0, "percentile") and config.problems.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -751,13 +765,13 @@ def test_the_smallest_allowed_qualifying_values_are_accepted(tmp_path):
 def test_a_bad_qualifying_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = {value}\n"), environ={})
     assert config.qualifying == QualifyingSettings()
-    assert len(config.report.warnings) == 1 and f"qualifying.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"qualifying.{key}" in config.problems.warnings[0]
 
 
 @pytest.mark.parametrize("key", ["floor_ignore_fraction", "turn_fraction", "interest_half_life", "floor_fractoin", "fence_multiple"])
 def test_an_unknown_or_removed_qualifying_key_is_warned_about(tmp_path, key):
     config = Config.load(write(tmp_path, f"[qualifying]\n{key} = 0.1\n"), environ={})
-    assert any(f"qualifying.{key}" in w for w in config.report.warnings) and config.qualifying == QualifyingSettings()
+    assert any(f"qualifying.{key}" in w for w in config.problems.warnings) and config.qualifying == QualifyingSettings()
 
 
 def test_the_qualifying_section_merges_key_by_key_with_the_local_file(tmp_path):
@@ -791,7 +805,7 @@ def test_the_shipped_config_loads_cleanly_with_usable_qualifying_values(logged):
     import dataclasses
     from pom.qualifying import ALGORITHMS, bar_keeper_from_settings
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
-    assert shipped.report.ok
+    assert shipped.problems.ok
     for algorithm in ALGORITHMS:
         bar_keeper = bar_keeper_from_settings(dataclasses.replace(shipped.qualifying, algorithm=algorithm), started_at=0.0)
         assert logged.ok("pom.qualifying")
@@ -810,7 +824,7 @@ KNOWN_GOOD = ListeningSettings("http://127.0.0.1:8110", 180.0, "auto", 10.0, 5.0
 
 def test_the_listening_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.listening == ListeningSettings() and config.report.ok
+    assert config.listening == ListeningSettings() and config.problems.ok
 
 
 def test_the_starting_listening_values_are_the_known_good_ones():
@@ -833,14 +847,14 @@ def test_all_the_listening_values_are_read_from_the_section(tmp_path):
     config = Config.load(write(tmp_path, text), environ={})
     assert config.listening == ListeningSettings("http://pi.test:9000", 60.0, "hw:1,0", 4.0, 3.0, 1.5, 0.5, 20.0, 5, 8.0, 9, True,
                                                  device_lookup_seconds=7.0)
-    assert config.report.ok
+    assert config.problems.ok
 
 
 def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
     text = "[listening]\nhold_back_seconds = 0\nrewind_seconds = 0\nroom_tone_pass_every = 0\nroom_tone_memory = 1\n"
     config = Config.load(write(tmp_path, text), environ={})
     assert config.listening.hold_back_seconds == 0.0 and config.listening.rewind_seconds == 0.0
-    assert config.listening.room_tone_pass_every == 0 and config.listening.room_tone_memory == 1 and config.report.ok
+    assert config.listening.room_tone_pass_every == 0 and config.listening.room_tone_memory == 1 and config.problems.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -863,12 +877,12 @@ def test_the_smallest_allowed_listening_values_are_accepted(tmp_path):
 def test_a_bad_listening_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[listening]\n{key} = {value}\n"), environ={})
     assert config.listening == ListeningSettings()
-    assert len(config.report.warnings) == 1 and f"listening.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"listening.{key}" in config.problems.warnings[0]
 
 
 def test_an_unknown_listening_key_is_warned_about(tmp_path):
     config = Config.load(write(tmp_path, "[listening]\nstepp = 5\n"), environ={})
-    assert any("listening.stepp" in w for w in config.report.warnings) and config.listening == ListeningSettings()
+    assert any("listening.stepp" in w for w in config.problems.warnings) and config.listening == ListeningSettings()
 
 
 def test_the_listening_section_merges_key_by_key_with_the_local_file(tmp_path):
@@ -888,7 +902,7 @@ def test_the_whisper_address_can_come_from_the_environment(tmp_path):
 def test_the_shipped_config_has_the_known_good_listening_values():
     """The combination that worked in the room is fragile, so a change to it must be on purpose: change this test with it."""
     shipped = Config.load(Path(__file__).parent.parent / "config" / "pom.toml", environ={})
-    assert shipped.listening == KNOWN_GOOD and shipped.report.ok
+    assert shipped.listening == KNOWN_GOOD and shipped.problems.ok
 
 
 def test_the_shipped_config_finds_the_microphone_by_itself_and_says_how_long_to_wait():
@@ -929,7 +943,7 @@ def test_the_listening_settings_plug_straight_into_the_modules(logged):
 
 def test_oracle_defaults_when_nothing_is_set():
     config = Config.load(environ={})
-    assert config.oracle == OracleSettings() and config.report.ok
+    assert config.oracle == OracleSettings() and config.problems.ok
     assert config.oracle.url == "http://127.0.0.1:8099/v1/chat/completions"
     assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (240.0, 300, 0.8)
     assert config.oracle.prompt == ""
@@ -937,7 +951,7 @@ def test_oracle_defaults_when_nothing_is_set():
 
 def test_the_exemplar_counts_live_in_the_oracle_section_and_the_old_top_level_keys_are_unknown(tmp_path):
     config = Config.load(write(tmp_path, "exemplars_min = 2\n"), environ={})
-    assert config.exemplar_range == (3, 5) and any("exemplars_min" in w for w in config.report.warnings)
+    assert config.exemplar_range == (3, 5) and any("exemplars_min" in w for w in config.problems.warnings)
 
 
 def test_the_local_file_overrides_the_prompt_and_keeps_the_exemplar_counts(tmp_path):
@@ -960,13 +974,13 @@ def test_oracle_values_are_read_from_the_section(tmp_path):
             "max_tokens = 200\ntemperature = 1.1\n")
     config = Config.load(write(tmp_path, text), environ={})
     assert config.oracle == OracleSettings("http://10.0.0.5:9100/v1/chat/completions", 30.0, "Speak. {hinge}", 200, 1.1)
-    assert config.report.ok
+    assert config.problems.ok
 
 
 def test_a_multiline_oracle_prompt_keeps_its_line_breaks_and_braces(tmp_path):
     text = '[oracle]\nprompt = """\nLine one.\n\n{exemplars}\n\nThey said: {hinge}\n"""\n'
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.oracle.prompt == "Line one.\n\n{exemplars}\n\nThey said: {hinge}\n" and config.report.ok
+    assert config.oracle.prompt == "Line one.\n\n{exemplars}\n\nThey said: {hinge}\n" and config.problems.ok
 
 
 @pytest.mark.parametrize("key,value", [
@@ -976,19 +990,19 @@ def test_a_multiline_oracle_prompt_keeps_its_line_breaks_and_braces(tmp_path):
 def test_a_bad_oracle_value_means_the_default_with_a_warning(tmp_path, key, value):
     config = Config.load(write(tmp_path, f"[oracle]\n{key} = {value}\n"), environ={})
     assert config.oracle == OracleSettings()
-    assert len(config.report.warnings) == 1 and f"oracle.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"oracle.{key}" in config.problems.warnings[0]
 
 
 def test_the_smallest_allowed_oracle_values_are_accepted(tmp_path):
     config = Config.load(write(tmp_path, "[oracle]\ntimeout = 0.1\nmax_tokens = 1\ntemperature = 0\n"), environ={})
     assert (config.oracle.timeout, config.oracle.max_tokens, config.oracle.temperature) == (0.1, 1, 0.0)
-    assert config.report.ok
+    assert config.problems.ok
 
 
 def test_an_unknown_oracle_key_is_warned_about(tmp_path):
     config = Config.load(write(tmp_path, "[oracle]\npromt = 5\n"), environ={})
     assert config.oracle == OracleSettings()
-    assert any("oracle.promt" in w for w in config.report.warnings)
+    assert any("oracle.promt" in w for w in config.problems.warnings)
 
 
 def test_the_local_file_overrides_one_oracle_key_and_keeps_the_rest(tmp_path):
@@ -1005,14 +1019,14 @@ def test_the_committed_sample_config_has_an_oracle_prompt_that_the_builder_accep
     copy = tmp_path / "pom.toml"
     copy.write_text(sample.read_text(encoding="utf-8"), encoding="utf-8")
     config = Config.load(copy, environ={})
-    assert config.report.ok and config.oracle.prompt.strip()
+    assert config.problems.ok and config.oracle.prompt.strip()
     assert logged.of(PromptBuilder(config.oracle.prompt, selector=None)).ok()
 
 
 @pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"yes"', True), ('"off"', False)])
 def test_score_room_tone_takes_a_boolean_or_an_on_off_word(tmp_path, value, expected):
     config = Config.load(write(tmp_path, f"[listening]\nscore_room_tone = {value}\n"), environ={})
-    assert config.listening.score_room_tone is expected and config.report.ok
+    assert config.listening.score_room_tone is expected and config.problems.ok
 
 
 def test_room_tone_sounds_are_not_considered_unless_asked():
@@ -1024,7 +1038,7 @@ def test_room_tone_sounds_are_not_considered_unless_asked():
 def test_the_monitor_defaults_when_nothing_is_set():
     from pom.config import MonitorSettings
     config = Config.load(environ={})
-    assert config.monitor == MonitorSettings() and config.report.ok
+    assert config.monitor == MonitorSettings() and config.problems.ok
     assert (config.monitor.enabled, config.monitor.host, config.monitor.port) == (True, "0.0.0.0", 8080)
     assert (config.monitor.password, config.monitor.show_hinges, config.monitor.history_seconds) == ("", True, 3600.0)
 
@@ -1034,7 +1048,7 @@ def test_all_the_monitor_values_are_read_from_the_section(tmp_path):
     text = ('[monitor]\nenabled = true\nhost = "127.0.0.1"\nport = 9090\npassword = "s3cret"\nshow_hinges = false\n'
             'history_seconds = 1800\n')
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.monitor == MonitorSettings(True, "127.0.0.1", 9090, "s3cret", False, 1800.0) and config.report.ok
+    assert config.monitor == MonitorSettings(True, "127.0.0.1", 9090, "s3cret", False, 1800.0) and config.problems.ok
 
 
 def test_the_smallest_and_largest_ports_are_accepted(tmp_path):
@@ -1053,7 +1067,7 @@ def test_a_bad_monitor_value_means_the_default_with_a_warning(tmp_path, key, val
     from pom.config import MonitorSettings
     config = Config.load(write(tmp_path, f"[monitor]\n{key} = {value}\n"), environ={})
     assert config.monitor == MonitorSettings()
-    assert len(config.report.warnings) == 1 and f"monitor.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"monitor.{key}" in config.problems.warnings[0]
 
 
 @pytest.mark.parametrize("value", ["5", '"maybe"', "[true]"])
@@ -1061,19 +1075,19 @@ def test_a_bad_show_hinges_value_hides_the_hinges_and_warns(tmp_path, value):
     """A flag that cannot be read leans toward privacy: the hinge text is hidden."""
     config = Config.load(write(tmp_path, f"[monitor]\nshow_hinges = {value}\n"), environ={})
     assert config.monitor.show_hinges is False
-    assert len(config.report.warnings) == 1 and "monitor.show_hinges" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "monitor.show_hinges" in config.problems.warnings[0]
 
 
 @pytest.mark.parametrize("value,expected", [("true", True), ("false", False), ('"on"', True), ('"no"', False)])
 def test_monitor_flags_take_a_boolean_or_an_on_off_word(tmp_path, value, expected):
     config = Config.load(write(tmp_path, f"[monitor]\nenabled = {value}\nshow_hinges = {value}\n"), environ={})
-    assert config.monitor.enabled is expected and config.monitor.show_hinges is expected and config.report.ok
+    assert config.monitor.enabled is expected and config.monitor.show_hinges is expected and config.problems.ok
 
 
 def test_an_unknown_monitor_key_is_warned_about(tmp_path):
     from pom.config import MonitorSettings
     config = Config.load(write(tmp_path, "[monitor]\npasword = \"x\"\n"), environ={})
-    assert any("monitor.pasword" in w for w in config.report.warnings) and config.monitor == MonitorSettings()
+    assert any("monitor.pasword" in w for w in config.problems.warnings) and config.monitor == MonitorSettings()
 
 
 def test_the_monitor_section_merges_key_by_key_with_the_local_file(tmp_path):
@@ -1097,7 +1111,7 @@ def test_the_shipped_monitor_section_is_on_and_has_no_password():
 def test_the_output_defaults_are_a_65_character_line_for_letter_paper_at_10_pitch():
     from pom.config import PrintingSettings
     config = Config.load(environ={})
-    assert config.printing == PrintingSettings() and config.report.ok
+    assert config.printing == PrintingSettings() and config.problems.ok
     assert (config.printing.paper_width_inches, config.printing.margin_inches, config.printing.characters_per_inch) == (8.5, 1.0, 10.0)
     assert (config.printing.quote_indent, config.printing.linefeeds_after_portent, config.printing.line_width) == (4, 4, 65)
 
@@ -1107,7 +1121,7 @@ def test_all_the_output_values_are_read_from_the_section(tmp_path):
     text = ("[printing]\npaper_width_inches = 11\nmargin_inches = 0.5\ncharacters_per_inch = 12\n"
             "quote_indent = 6\nlinefeeds_after_portent = 2\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.printing == PrintingSettings(11.0, 0.5, 12.0, 6, 2) and config.report.ok
+    assert config.printing == PrintingSettings(11.0, 0.5, 12.0, 6, 2) and config.problems.ok
     assert config.printing.line_width == 120
 
 
@@ -1120,7 +1134,7 @@ def test_the_line_width_for_letter_paper_with_1_inch_margins_at_each_pitch(tmp_p
 def test_zero_for_the_indent_and_the_line_feeds_is_allowed(tmp_path):
     config = Config.load(write(tmp_path, "[printing]\nquote_indent = 0\nlinefeeds_after_portent = 0\nmargin_inches = 0\n"), environ={})
     assert (config.printing.quote_indent, config.printing.linefeeds_after_portent, config.printing.margin_inches) == (0, 0, 0.0)
-    assert config.report.ok
+    assert config.problems.ok
 
 
 @pytest.mark.parametrize("key, value", [
@@ -1132,19 +1146,19 @@ def test_a_bad_output_value_means_the_default_with_a_warning(tmp_path, key, valu
     from pom.config import PrintingSettings
     config = Config.load(write(tmp_path, f"[printing]\n{key} = {value}\n"), environ={})
     assert config.printing == PrintingSettings()
-    assert len(config.report.warnings) == 1 and f"printing.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"printing.{key}" in config.problems.warnings[0]
 
 
 def test_margins_that_leave_too_short_a_line_mean_the_default_paper_and_pitch_with_a_warning(tmp_path):
     from pom.config import PrintingSettings
     config = Config.load(write(tmp_path, "[printing]\nmargin_inches = 4\nquote_indent = 6\nlinefeeds_after_portent = 1\n"), environ={})
     assert config.printing == PrintingSettings(quote_indent=6, linefeeds_after_portent=1)
-    assert len(config.report.warnings) == 1 and "20" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "20" in config.problems.warnings[0]
 
 
 def test_a_line_of_exactly_the_shortest_width_is_allowed(tmp_path):
     config = Config.load(write(tmp_path, "[printing]\npaper_width_inches = 4\nmargin_inches = 1\ncharacters_per_inch = 10\n"), environ={})
-    assert config.printing.line_width == 20 and config.report.ok
+    assert config.printing.line_width == 20 and config.problems.ok
 
 
 def test_the_committed_config_sets_every_output_key():
@@ -1175,7 +1189,7 @@ def test_by_default_no_composed_character_is_kept_and_the_wheel_is_not_ascii():
 
 def test_the_listed_composed_characters_are_read_and_are_the_ones_kept(tmp_path):
     config = Config.load(write(tmp_path, '[printing]\nkeep_composed_characters = "^|"\n'), environ={})
-    assert config.printing.keep_composed_characters == "^|" and config.printing.composed_characters_kept == "^|" and config.report.ok
+    assert config.printing.keep_composed_characters == "^|" and config.printing.composed_characters_kept == "^|" and config.problems.ok
 
 
 def test_an_ascii_printwheel_keeps_all_the_composed_characters_whatever_is_listed(tmp_path):
@@ -1188,19 +1202,19 @@ def test_an_ascii_printwheel_keeps_all_the_composed_characters_whatever_is_liste
 def test_a_character_that_is_not_swappable_in_the_keep_list_is_left_out_with_a_warning(tmp_path):
     config = Config.load(write(tmp_path, '[printing]\nkeep_composed_characters = "<a^^|"\n'), environ={})
     assert config.printing.keep_composed_characters == "^|"
-    assert len(config.report.warnings) == 1 and "printing.keep_composed_characters" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "printing.keep_composed_characters" in config.problems.warnings[0]
 
 
 def test_a_keep_list_that_is_not_text_means_the_default_with_a_warning(tmp_path):
     config = Config.load(write(tmp_path, "[printing]\nkeep_composed_characters = 5\n"), environ={})
     assert config.printing.keep_composed_characters == ""
-    assert len(config.report.warnings) == 1 and "printing.keep_composed_characters" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "printing.keep_composed_characters" in config.problems.warnings[0]
 
 
 def test_a_bad_ascii_printwheel_value_means_false_with_a_warning(tmp_path):
     config = Config.load(write(tmp_path, '[printing]\nascii_printwheel = "maybe"\n'), environ={})
     assert config.printing.ascii_printwheel is False
-    assert len(config.report.warnings) == 1 and "printing.ascii_printwheel" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "printing.ascii_printwheel" in config.problems.warnings[0]
 
 
 def test_the_fallback_for_a_too_short_line_keeps_the_composed_settings(tmp_path):
@@ -1214,7 +1228,7 @@ def test_the_fallback_for_a_too_short_line_keeps_the_composed_settings(tmp_path)
 def test_the_terminal_defaults_are_the_cadetwriters_own():
     from pom.config import TerminalSettings
     config = Config.load(environ={})
-    assert config.terminal == TerminalSettings() and config.report.ok
+    assert config.terminal == TerminalSettings() and config.problems.ok
     terminal = config.terminal
     assert (terminal.port, terminal.baud, terminal.flow_control, terminal.end_of_line) == ("auto", 9600, "xon_xoff", "crlf")
     assert terminal.port_search == "/dev/serial/by-id/*"
@@ -1233,7 +1247,7 @@ def test_all_the_terminal_values_are_read_from_the_section(tmp_path):
     config = Config.load(write(tmp_path, text), environ={})
     assert config.terminal == TerminalSettings("/dev/ttyUSB0", 115200, "rts_cts", "lf", 12.5, 0.0, False, True, 90.0, 0.5, "console",
                                                data_bits=7, parity="even", stop_bits=2, port_search="/dev/serial/by-path/*") \
-        and config.report.ok
+        and config.problems.ok
 
 
 @pytest.mark.parametrize("key, value", [
@@ -1250,7 +1264,7 @@ def test_a_bad_terminal_value_means_the_default_with_a_warning(tmp_path, key, va
     from pom.config import TerminalSettings
     config = Config.load(write(tmp_path, f"[terminal]\n{key} = {value}\n"), environ={})
     assert config.terminal == TerminalSettings()
-    assert len(config.report.warnings) == 1 and f"terminal.{key} must" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"terminal.{key} must" in config.problems.warnings[0]
 
 
 @pytest.mark.parametrize("data_bits, parity, stop_bits", [(5, "none", 1), (7, "even", 1), (7, "odd", 2), (8, "none", 2)])
@@ -1258,7 +1272,7 @@ def test_every_line_setting_choice_is_accepted(tmp_path, data_bits, parity, stop
     text = f'[terminal]\ndata_bits = {data_bits}\nparity = "{parity}"\nstop_bits = {stop_bits}\n'
     config = Config.load(write(tmp_path, text), environ={})
     assert (config.terminal.data_bits, config.terminal.parity, config.terminal.stop_bits) == (data_bits, parity, stop_bits)
-    assert config.report.ok
+    assert config.problems.ok
 
 
 @pytest.mark.parametrize("baud", [50, 9600, 230400])
@@ -1301,8 +1315,8 @@ def test_a_config_built_without_terminal_settings_has_the_defaults():
 def test_a_bad_flag_falls_back_to_that_flags_own_default_with_the_right_word_in_the_warning(tmp_path):
     config = Config.load(write(tmp_path, '[terminal]\nechoplex = "maybe"\n[monitor]\nenabled = "maybe"\n'), environ={})
     assert config.terminal.echoplex is True and config.monitor.enabled is True
-    assert any("terminal.echoplex" in w and "using true" in w for w in config.report.warnings)
-    assert any("monitor.enabled" in w and "using true" in w for w in config.report.warnings)
+    assert any("terminal.echoplex" in w and "using true" in w for w in config.problems.warnings)
+    assert any("monitor.enabled" in w and "using true" in w for w in config.problems.warnings)
 
 
 # --- The [conductor] section ---------------------------------------------------------------
@@ -1314,7 +1328,7 @@ CONDUCTOR_KEYS = ("writing_seconds", "printing_seconds", "recovering_seconds", "
 def test_the_conductor_defaults_err_long():
     from pom.config import ConductorSettings
     config = Config.load(write_nothing_in(), environ={})
-    assert config.conductor == ConductorSettings() and config.report.ok
+    assert config.conductor == ConductorSettings() and config.problems.ok
     c = config.conductor
     assert (c.writing_seconds, c.printing_seconds, c.recovering_seconds, c.freshness_seconds) == (300.0, 180.0, 3.0, 360.0)
     assert (c.write_attempts, c.write_pause_seconds, c.write_budget_seconds, c.print_pause_seconds) == (3, 10.0, 270.0, 10.0)
@@ -1331,7 +1345,7 @@ def test_all_the_conductor_values_are_read_from_the_section(tmp_path):
             "write_attempts = 5\nwrite_pause_seconds = 0\nwrite_budget_seconds = 450\nprint_pause_seconds = 2\n"
             "restart_pause_seconds = 0\ncheck_seconds = 0.25\n")
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.conductor == ConductorSettings(500.0, 400.0, 0.0, 120.0, 5, 0.0, 450.0, 2.0, 0.0, 0.25) and config.report.ok
+    assert config.conductor == ConductorSettings(500.0, 400.0, 0.0, 120.0, 5, 0.0, 450.0, 2.0, 0.0, 0.25) and config.problems.ok
 
 
 @pytest.mark.parametrize("key, value", [
@@ -1344,7 +1358,7 @@ def test_a_bad_conductor_value_means_the_default_with_a_warning(tmp_path, key, v
     from pom.config import ConductorSettings
     config = Config.load(write(tmp_path, f"[conductor]\n{key} = {value}\n"), environ={})
     assert config.conductor == ConductorSettings()
-    assert len(config.report.warnings) == 1 and f"conductor.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"conductor.{key}" in config.problems.warnings[0]
 
 
 def test_the_committed_config_sets_every_conductor_key_and_fits_its_own_limits():
@@ -1353,7 +1367,7 @@ def test_the_committed_config_sets_every_conductor_key_and_fits_its_own_limits()
     with open(path, "rb") as f:
         section = tomllib.load(f)["conductor"]
     assert set(section) == set(CONDUCTOR_KEYS)
-    assert Config.load(path, environ={}).report.ok                      # no warning: the shipped limits fit the shipped settings
+    assert Config.load(path, environ={}).problems.ok                      # no warning: the shipped limits fit the shipped settings
 
 
 def test_the_conductor_defaults_in_the_code_are_the_ones_the_parts_use():
@@ -1375,7 +1389,7 @@ class TestTheLimitsFitTheirSettings:
     """A watchdog shorter than what it watches cuts off healthy turns, so the limits are checked against the settings they depend on."""
 
     def warnings(self, tmp_path, text):
-        return Config.load(write(tmp_path, text), environ={}).report.warnings
+        return Config.load(write(tmp_path, text), environ={}).problems.warnings
 
     def test_a_writing_limit_not_longer_than_the_oracle_timeout_is_warned_about(self, tmp_path):
         warnings = self.warnings(tmp_path, "[oracle]\ntimeout = 300\n[conductor]\nwriting_seconds = 300\n")
@@ -1431,20 +1445,20 @@ def test_exemplar_redraws_defaults_to_fifty_and_the_shipped_config_says_so():
     assert OracleSettings().exemplar_redraws == 50
     assert Config.load(environ={}).oracle.exemplar_redraws == 50
     shipped = Config.load(Path(__file__).resolve().parents[1] / "config" / "pom.toml", environ={})
-    assert shipped.oracle.exemplar_redraws == 50 and not shipped.report.warnings
+    assert shipped.oracle.exemplar_redraws == 50 and not shipped.problems.warnings
 
 
 @pytest.mark.parametrize("value,expected", [("0", 0), ("1", 1), ("200", 200)])
 def test_exemplar_redraws_takes_any_whole_number_from_zero(tmp_path, value, expected):
     config = Config.load(write(tmp_path, f"[oracle]\nexemplar_redraws = {value}\n"), environ={})
-    assert config.oracle.exemplar_redraws == expected and config.report.ok
+    assert config.oracle.exemplar_redraws == expected and config.problems.ok
 
 
 @pytest.mark.parametrize("value", ["-1", "2.5", '"50"', "true"])
 def test_a_bad_exemplar_redraws_means_the_default_with_a_warning(tmp_path, value):
     config = Config.load(write(tmp_path, f"[oracle]\nexemplar_redraws = {value}\n"), environ={})
     assert config.oracle.exemplar_redraws == 50
-    assert len(config.report.warnings) == 1 and "oracle.exemplar_redraws" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and "oracle.exemplar_redraws" in config.problems.warnings[0]
 
 
 # --- The shipped config and the local template -------------------------------------------
@@ -1486,7 +1500,7 @@ def test_the_template_has_the_password_empty_so_the_page_stays_off_until_one_is_
 
 def test_the_template_loads_cleanly_over_the_shipped_config(tmp_path):
     config = Config.load(CONFIG_DIR / "pom.local.example.toml", environ={})
-    assert config.report.ok
+    assert config.problems.ok
     assert config.monitor.enabled is True and config.monitor.password == ""
 
 
@@ -1504,7 +1518,7 @@ BOOT_SLIP_KEYS = ("enabled", "text", "address_grace_seconds", "retry_seconds")
 def test_the_boot_slip_defaults_type_the_slip_with_a_short_grace():
     from pom.config import BootSlipSettings
     config = Config.load(write_nothing_in(), environ={})
-    assert config.boot_slip == BootSlipSettings() and config.report.ok
+    assert config.boot_slip == BootSlipSettings() and config.problems.ok
     s = config.boot_slip
     assert (s.enabled, s.address_grace_seconds, s.retry_seconds) == (True, 15.0, 5.0)
     assert s.text.splitlines()[0] == "CADETWRITER - IBM-1620" and "{address}" in s.text
@@ -1514,7 +1528,7 @@ def test_all_the_boot_slip_values_are_read_from_the_section(tmp_path):
     from pom.config import BootSlipSettings
     text = '[boot_slip]\nenabled = false\ntext = "HELLO {hostname}\\n{address}"\naddress_grace_seconds = 0\nretry_seconds = 2.5\n'
     config = Config.load(write(tmp_path, text), environ={})
-    assert config.boot_slip == BootSlipSettings(False, "HELLO {hostname}\n{address}", 0.0, 2.5) and config.report.ok
+    assert config.boot_slip == BootSlipSettings(False, "HELLO {hostname}\n{address}", 0.0, 2.5) and config.problems.ok
 
 
 @pytest.mark.parametrize("key, value", [
@@ -1525,7 +1539,7 @@ def test_a_bad_boot_slip_value_means_the_default_with_a_warning(tmp_path, key, v
     from pom.config import BootSlipSettings
     config = Config.load(write(tmp_path, f"[boot_slip]\n{key} = {value}\n"), environ={})
     assert config.boot_slip == BootSlipSettings()
-    assert len(config.report.warnings) == 1 and f"boot_slip.{key}" in config.report.warnings[0]
+    assert len(config.problems.warnings) == 1 and f"boot_slip.{key}" in config.problems.warnings[0]
 
 
 def test_the_committed_config_sets_every_boot_slip_key_and_the_slip_is_the_default_one():
@@ -1536,7 +1550,7 @@ def test_the_committed_config_sets_every_boot_slip_key_and_the_slip_is_the_defau
         section = tomllib.load(f)["boot_slip"]
     assert set(section) == set(BOOT_SLIP_KEYS)
     config = Config.load(path, environ={})
-    assert config.report.ok
+    assert config.problems.ok
     assert config.boot_slip.text.strip() == BootSlipSettings().text         # the code's default and the shipped words agree
     assert "{address}" in config.boot_slip.text
 

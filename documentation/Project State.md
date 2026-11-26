@@ -61,9 +61,9 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
   do one thing, plain data objects passed between them. Scripts in `scripts/` are standalone helpers;
   they may import `pom`, and `pom` never imports them. `src/pom/` never imports from `experiments/`.
 - **The Printer must never stop because of a typo or a recoverable fault** (a gallery cannot crash).
-  A problem a module can recover from is recovered from and recorded in a `pom.bookkeeper.log_recorder.LogRecorder`
-  (WARNING = recovered, ERROR = failed and skipped or retried, CRITICAL = cannot do its job, and even then nothing raises). The same `report` is the one way a module logs: `debug`, `info`, `warn`, `error`, `critical`. `strict=True`
-  turns every fault into an exception, for tests and dev tools only.
+  A problem a module can recover from is recovered from and said through the class's logger (`self.logger`, from the one `Bookkeeper`)
+  (WARNING = recovered, ERROR = failed and skipped or retried, CRITICAL = cannot do its job, and even then nothing raises). Every log line goes through that logger: `debug`, `info`, `warning`, `error`, `critical`. `strict=True`
+  turns every problem into an exception, for tests and dev tools only.
 - Modules do not read `Config`. The entry point builds one `Config` and passes values in
   (for example `BarKeeper(c.percentile, c.window_seconds, c.min_scores, c.cooldown_seconds)`).
   **No hardcoded, user-inaccessible values in code; they belong in the config** (a standing rule, set by Wes 2026-11-07). Every number, threshold, count,
@@ -110,7 +110,7 @@ the Office of Ordinary Hauntings site (officeofordinaryhauntings.net, case study
 
 ```
 src/pom/
-  bookkeeper/          built   log_recorder.py: the LogRecorder, the one way a module says anything (debug/info/warn/error/critical, strict mode); log_book.py: the LogBook, which holds the faults a recorder kept; fault.py: the Fault and Severity types; log_setup.py: stdout logging, debug flag, per-module override, local log file; log_muter.py: the LogMuter, which mutes a message that keeps repeating (settings `logmute_*`)
+  bookkeeper/          built   bookkeeper.py: the Bookkeeper (built once by main; sets up the log, hands each class `logger_for(__name__, ItsError, DEBUG, strict)`); log_recorder.py: the LogRecorder (Python's LoggerAdapter plus strict mode; keeps nothing); log_muter.py: the LogMuter (settings `logmute_*`); log_setup.py: stdout logging, debug flag, per-module override, local log file
   config.py            built   shared settings, layered; [scorer], [qualifying], [oracle]
   startup.py           built   the startup runner; its ten duties are placeholders in planned_steps(), and printer.py does not call it yet
   printer.py           built   the entry point (python -m pom): builds every part from one Config and runs the Conductor; --mac-mic, --wav, --terminal

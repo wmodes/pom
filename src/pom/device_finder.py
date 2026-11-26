@@ -13,7 +13,7 @@ THE RULE. The setting is `auto` or a name.
   * Nothing there: the setting is handed back as written, so opening it fails loudly in the owner's usual way, and the owner asks again at its
     own retry interval, for ever. Every lookup that finds a device logs one INFO line (the setting, what was available, what was chosen).
     A lookup that finds nothing warns every time; the log's LogMuter (bookkeeper/log_muter.py) mutes a warning that keeps repeating, so the
-    finder keeps no limiter and no count of its own. Every problem is reported once, through its ReportRecorder.
+    finder keeps no limiter and no count of its own. Every problem is said once, through its logger (from the Bookkeeper).
 
 Design decisions, and why:
   * IT LOOKS AGAIN EVERY TIME IT IS ASKED. A device plugged in later, or one that came back under another number, is found on the next try

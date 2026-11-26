@@ -24,7 +24,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or
     answering oddly gives None and a warning in the log, never an exception. `strict=True` raises
     ScorerModelClientError instead, for tests and dev tools.
-  * Clip text is never logged and never put in a ReportRecorder message: nothing that was said in the
+  * Clip text is never logged: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
   * The prompt is passed in (the entry point takes it from Config); this module never reads Config
     and has no built-in prompt, so the words that define "interesting" live in one place, the

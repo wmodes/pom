@@ -28,7 +28,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing prompt, an empty hinge, or a selector with
     nothing to draw is logged and `build` carries on if it can (no exemplars) or returns None if
     it cannot. `strict=True` raises PromptBuilderError instead, for tests and dev tools.
-  * The hinge is never logged or put in a ReportRecorder message: nothing that was said in the room is kept.
+  * The hinge is never logged: nothing that was said in the room is kept.
     Logs and reports hold counts only.
   * The two places are filled in one pass over the prompt, not one after the other, so a library passage that
     happens to contain the text "{hinge}", or a hinge that contains "{exemplars}", is left as it is. Other

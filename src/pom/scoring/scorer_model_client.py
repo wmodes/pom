@@ -22,7 +22,7 @@ their order. A clip must score the same wherever it comes in the conversation.
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or
-    answering oddly gives None and a warning in `report`, never an exception. `strict=True` raises
+    answering oddly gives None and a warning in the log, never an exception. `strict=True` raises
     ScorerModelClientError instead, for tests and dev tools.
   * Clip text is never logged and never put in a ReportRecorder message: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
@@ -53,11 +53,9 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 # The user message, word for word as in the experiment, so scores match its saved results.
 USER_TEMPLATE = "Rate this line: {clip_text}"
@@ -129,46 +127,47 @@ class ScorerModelClient:
     """Scores one clip at a time with a language model served by llama-server.
 
     Attributes:
-        report: Problems met (server down, odd reply, bad address). Never holds clip text.
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         last_seconds: How long the most recent request took, or None before the first.
     """
 
     def __init__(self, url: str, prompt: str, timeout: float = DEFAULT_TIMEOUT,
                  post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
-                 explain_prompt: str = "", explain_timeout: float = DEFAULT_EXPLAIN_TIMEOUT):
+                 explain_prompt: str = "", explain_timeout: float = DEFAULT_EXPLAIN_TIMEOUT, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             url: The server's chat-completions address, e.g. http://127.0.0.1:8098/v1/chat/completions.
             prompt: The system message that tells the model how to score (from Config).
             timeout: Seconds to wait for one reply.
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
             strict: Raise ScorerModelClientError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             explain_prompt: The system message for `explain` (from Config); without one `explain`
                 does nothing.
             explain_timeout: Seconds to wait for a written reply, which takes much longer than a score.
         """
-        self.report = ReportRecorder(strict=strict, error=ScorerModelClientError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ScorerModelClientError, DEBUG, strict)
         self._url, self._prompt = url, (prompt or "").strip()
         self._timeout = (timeout if isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
                          and timeout > 0 else DEFAULT_TIMEOUT)
         if self._timeout != timeout:
-            self.report.warn(f"the scorer timeout must be a positive number of seconds, got "
+            self.logger.warning(f"the scorer timeout must be a positive number of seconds, got "
                              f"{timeout!r}; using {DEFAULT_TIMEOUT:g}")
         self._explain_prompt = (explain_prompt or "").strip()
         self._explain_timeout = (explain_timeout if isinstance(explain_timeout, (int, float))
                                  and not isinstance(explain_timeout, bool) and explain_timeout > 0
                                  else DEFAULT_EXPLAIN_TIMEOUT)
         if self._explain_timeout != explain_timeout:
-            self.report.warn(f"the explain timeout must be a positive number of seconds, got "
+            self.logger.warning(f"the explain timeout must be a positive number of seconds, got "
                              f"{explain_timeout!r}; using {DEFAULT_EXPLAIN_TIMEOUT:g}")
         self._post = post if post is not None else _http_post
         self.last_seconds: Optional[float] = None
         self._usable = True
         if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
-            self.report.warn(f"the scorer address must start with http:// or https://, got {url!r}; "
+            self.logger.warning(f"the scorer address must start with http:// or https://, got {url!r}; "
                              f"the model will not be asked")
             self._usable = False
         if not self._prompt:
-            self.report.warn("the scorer has no prompt; the model will not be asked")
+            self.logger.warning("the scorer has no prompt; the model will not be asked")
             self._usable = False
 
     @property
@@ -184,7 +183,7 @@ class ScorerModelClient:
     def score(self, clip_text: str) -> Optional[float]:
         """The model's interest score for one clip (0 to 9), or None if it got none.
 
-        None means no score could be had; the reason is in `report`. Never raises (except in
+        None means no score could be had; the reason is in the log. Never raises (except in
         strict mode).
         """
         if not self._usable or not isinstance(clip_text, str) or not clip_text.strip():
@@ -200,15 +199,15 @@ class ScorerModelClient:
             reply = self._post(self._url, body, self._timeout)
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
-            self.report.warn(f"the scorer model did not answer ({type(error).__name__}); "
+            self.logger.warning(f"the scorer model did not answer ({type(error).__name__}); "
                              f"the clip will go unscored")
             return None
         self.last_seconds = time.perf_counter() - started
         value = score_from_scorecard(reply)
         if value is None:
-            self.report.warn("the scorer model's reply held no score; the clip will go unscored")
+            self.logger.warning("the scorer model's reply held no score; the clip will go unscored")
             return None
-        self.report.debug("scored a clip of %d characters: %.2f in %.0f ms",
+        self.logger.debug("scored a clip of %d characters: %.2f in %.0f ms",
                           len(clip_text), value, self.last_seconds * 1000)
         return value
 
@@ -241,8 +240,8 @@ class ScorerModelClient:
             text = reply["choices"][0]["message"]["content"].strip()
         except Exception as error:               # a dead server or an odd reply must not stop the debug view
             self.last_seconds = time.perf_counter() - started
-            self.report.warn(f"the model did not give an explanation ({type(error).__name__})")
+            self.logger.warning(f"the model did not give an explanation ({type(error).__name__})")
             return None
         self.last_seconds = time.perf_counter() - started
-        self.report.debug("explained a clip of %d characters in %.0f ms", len(clip_text), self.last_seconds * 1000)
+        self.logger.debug("explained a clip of %d characters in %.0f ms", len(clip_text), self.last_seconds * 1000)
         return Explanation(text, score_from_scorecard(reply)) if text else None

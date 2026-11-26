@@ -212,21 +212,21 @@ class TestUnscored:
 
 
 class TestCircuitBreaker:
-    def test_a_few_failures_do_not_open_it(self):
+    def test_a_few_failures_do_not_open_it(self, logged):
         client = FakeClient(None)
         scorer = make(client)
         for _ in range(DEFAULT_FAILURE_LIMIT - 1):
             scorer.score_text("The lamp hums.")
-        assert not scorer.degraded and scorer.report.ok
+        assert not scorer.degraded and logged.of(scorer).ok()
         scorer.score_text("The lamp hums.")
         assert len(client.calls) == DEFAULT_FAILURE_LIMIT
 
-    def test_enough_failures_in_a_row_open_it_and_the_model_is_left_alone(self):
+    def test_enough_failures_in_a_row_open_it_and_the_model_is_left_alone(self, logged):
         client = FakeClient(None)
         scorer = make(client)
         for _ in range(DEFAULT_FAILURE_LIMIT):
             scorer.score_text("The lamp hums.")
-        assert scorer.degraded and len(scorer.report.warnings) == 1
+        assert scorer.degraded and len(logged.of(scorer).warnings()) == 1
         calls = len(client.calls)
         for _ in range(10):
             assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.UNSCORED
@@ -321,12 +321,12 @@ class TestCircuitBreaker:
 
 
 class TestUnavailableModel:
-    def test_the_model_is_never_asked_and_everything_goes_unscored(self):
+    def test_the_model_is_never_asked_and_everything_goes_unscored(self, logged):
         client = FakeClient(available=False)
         scorer = make(client)
         assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.UNSCORED
         assert client.calls == [] and scorer.degraded
-        assert len(scorer.report.warnings) == 1                 # said once, at construction
+        assert len(logged.of(scorer).warnings()) == 1                 # said once, at construction
 
     def test_warm_up_is_false_and_does_not_call_the_client(self):
         client = FakeClient(available=False)
@@ -348,13 +348,13 @@ class TestSettings:
                                           ("min_content_words", -1), ("min_content_words", 1.5),
                                           ("min_content_words", True), ("failure_limit", 0),
                                           ("failure_limit", 2.5), ("retry_seconds", -5), ("retry_seconds", "soon")])
-    def test_bad_settings_fall_back_with_a_warning(self, name, bad):
+    def test_bad_settings_fall_back_with_a_warning(self, name, bad, logged):
         scorer = make(**{name: bad})
-        assert len(scorer.report.warnings) == 1
+        assert len(logged.of(scorer).warnings()) == 1
         assert scorer.score_text("The lamp hums.").scored_by is ScoredBy.MODEL     # still works
 
-    def test_defaults_are_quiet(self):
-        assert make().report.ok
+    def test_defaults_are_quiet(self, logged):
+        assert logged.of(make()).ok()
 
     def test_strict_mode_raises_on_a_bad_setting(self):
         with pytest.raises(ClipScorerError):
@@ -367,11 +367,11 @@ class TestSettings:
 
 
 class TestPrivacy:
-    def test_nothing_said_reaches_a_report_or_a_log(self, caplog):
+    def test_nothing_said_reaches_a_report_or_a_log(self, caplog, logged):
         secret = "the funeral was held on a rainy tuesday"
         scorer = make(FakeClient(None), failure_limit=1)
         with caplog.at_level(logging.DEBUG):
             scorer.score_text(secret)
             make(FakeClient(5.0)).score_text(secret)
-        assert all("funeral" not in message for message in scorer.report.warnings)
+        assert all("funeral" not in message for message in logged.of(scorer).warnings())
         assert "funeral" not in caplog.text and "rainy" not in caplog.text

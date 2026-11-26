@@ -19,13 +19,11 @@ Design decisions, and why:
 """
 import threading
 import time
-from typing import Callable
+from typing import Callable, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_POLL_SECONDS = 5.0           # how often to ask whether the server is up yet
 DEFAULT_ATTEMPTS = 3                 # warm-up requests that may fail, with the server up, before it gives up
@@ -39,15 +37,16 @@ class ScorerWarmer:
     """
 
     def __init__(self, scorer, server_answers: Callable[[], bool], poll_seconds: float = DEFAULT_POLL_SECONDS,
-                 attempts: int = DEFAULT_ATTEMPTS, clock: Callable[[], float] = time.monotonic):
+                 attempts: int = DEFAULT_ATTEMPTS, clock: Callable[[], float] = time.monotonic, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer: Anything with `warm_up() -> bool` (the ClipScorer): True if the model answered with a score.
             server_answers: Returns True when the scorer's server is up and ready for a request.
             poll_seconds: Seconds between checks while the server is not up (and between failed warm-ups).
             attempts: How many warm-up requests may fail, with the server up, before it gives up.
             clock: Returns seconds; injected so tests need no waiting.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(logger=_log)      # everything this class says goes through it
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._scorer, self._server_answers = scorer, server_answers
         self._poll_seconds, self._attempts, self._clock = poll_seconds, attempts, clock
         self._stopped = threading.Event()
@@ -74,11 +73,11 @@ class ScorerWarmer:
                 started = self._clock()
                 if self._scorer.warm_up():
                     self.warmed = True
-                    self.report.info("the scorer model is warmed up (its scoring prompt is cached): %.1f s", self._clock() - started)
+                    self.logger.info("the scorer model is warmed up (its scoring prompt is cached): %.1f s", self._clock() - started)
                     return True
                 failures += 1
                 if failures >= self._attempts:
-                    self.report.warn("the scorer model did not answer %d warm-up requests; the first clip will pay for the first request", failures)
+                    self.logger.warning("the scorer model did not answer %d warm-up requests; the first clip will pay for the first request", failures)
                     return False
             self._stopped.wait(self._poll_seconds)
         return False
@@ -88,4 +87,4 @@ class ScorerWarmer:
         try:
             self.run()
         except Exception as error:                    # nothing here may stop the oracle
-            self.report.warn("the scorer warm-up stopped on an error (%s); the first clip will pay for the first request", type(error).__name__)
+            self.logger.warning("the scorer warm-up stopped on an error (%s); the first clip will pay for the first request", type(error).__name__)

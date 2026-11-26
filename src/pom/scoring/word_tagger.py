@@ -20,7 +20,7 @@ Design decisions, and why:
     by scripts/setup/setup-nltk-data.sh; the entry point passes that path in.
   * Nothing here may stop the oracle (see pom/__init__.py). If the NLTK data is missing, the tools
     fall back to plain rules (no tags, lowercase as the lemma, a short built-in stopword list, a
-    capitalized word that is not the first as a name) and say so in `report`, so the Scorer is
+    capitalized word that is not the first as a name) and say so in the log, so the Scorer is
     weaker but still works. `strict=True` raises WordTaggerError instead, for tests and dev tools.
   * The tagger, lemmatizer and stopword list can be passed in, so tests run with fakes and need no
     data. The defaults load the real ones.
@@ -35,11 +35,9 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Iterable, Optional
 
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_FILLERS = (
     "uh", "um", "umm", "uhh", "er", "erm", "hmm", "mm", "mhm", "like", "you know", "i mean",
@@ -109,25 +107,26 @@ class WordTagger:
     """Turns text into `Word` objects.
 
     Attributes:
-        report: Problems recovered from (missing NLTK data, input that was not text).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         tagging: True if a real part-of-speech tagger is in use.
     """
 
     def __init__(self, nltk_data: Optional[str] = None, fillers: Iterable[str] = DEFAULT_FILLERS,
                  strict: bool = False, tagger: Optional[Callable] = None,
-                 lemmatizer: Optional[Callable] = None, stopwords: Optional[Iterable[str]] = None):
+                 lemmatizer: Optional[Callable] = None, stopwords: Optional[Iterable[str]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             nltk_data: Folder holding the NLTK data (the project's data/nltk). None uses NLTK's
                 own search path.
             fillers: Words and short phrases that are spoken padding.
             strict: Raise WordTaggerError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             tagger: A function taking a list of words and returning (word, tag) pairs. Default:
                 NLTK's perceptron tagger.
             lemmatizer: A function (lowercase word, wordnet pos or None) -> base form. Default:
                 NLTK's WordNet lemmatizer.
             stopwords: The stopword set. Default: NLTK's English list.
         """
-        self.report = ReportRecorder(strict=strict, error=WordTaggerError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WordTaggerError, DEBUG, strict)
         self._fillers = {f.strip().lower() for f in fillers if str(f).strip()}
         self._phrase_fillers = sorted((f for f in self._fillers if " " in f), key=len, reverse=True)
         self._cache: dict = {}
@@ -149,7 +148,7 @@ class WordTagger:
         try:
             import nltk
         except ImportError as error:
-            self.report.warn(f"nltk is not installed ({error}); using plain rules for words")
+            self.logger.warning(f"nltk is not installed ({error}); using plain rules for words")
             return
         if nltk_data:
             nltk.data.path.insert(0, str(nltk_data))
@@ -158,7 +157,7 @@ class WordTagger:
                 nltk.pos_tag(["probe"])
                 self._tagger = nltk.pos_tag
             except Exception as error:      # missing data raises LookupError; never stop on it
-                self.report.warn(f"no part-of-speech tagger ({_first_line(error)}); words will be "
+                self.logger.warning(f"no part-of-speech tagger ({_first_line(error)}); words will be "
                                  f"untagged and names guessed from capital letters")
         if self._lemmatizer is None:
             try:
@@ -167,14 +166,14 @@ class WordTagger:
                 lemmatize("probes", "n")
                 self._lemmatizer = lambda word, pos: lemmatize(word, pos) if pos else word
             except Exception as error:
-                self.report.warn(f"no WordNet lemmatizer ({_first_line(error)}); using words as "
+                self.logger.warning(f"no WordNet lemmatizer ({_first_line(error)}); using words as "
                                  f"they were spoken")
         if self._stopwords is None:
             try:
                 from nltk.corpus import stopwords
                 self._stopwords = stopwords.words("english")
             except Exception as error:
-                self.report.warn(f"no NLTK stopword list ({_first_line(error)}); using a short "
+                self.logger.warning(f"no NLTK stopword list ({_first_line(error)}); using a short "
                                  f"built-in list")
 
     # --- Reading text ---------------------------------------------------------------
@@ -183,7 +182,7 @@ class WordTagger:
         """Reads text as a list of Words, in order. Non-text or empty text gives an empty list."""
         if not isinstance(text, str):
             if text is not None:
-                self.report.warn(f"the word tagger expects text, got {type(text).__name__}; ignoring it")
+                self.logger.warning(f"the word tagger expects text, got {type(text).__name__}; ignoring it")
             return []
         tokens = _TOKEN.findall(text)
         if not tokens:
@@ -217,7 +216,7 @@ class WordTagger:
             tagged = self._tagger(tokens)
             return [tag for _, tag in tagged]
         except Exception as error:
-            self.report.warn(f"tagging failed ({_first_line(error)}); treating words as untagged")
+            self.logger.warning(f"tagging failed ({_first_line(error)}); treating words as untagged")
             return [""] * len(tokens)
 
     def _lemma(self, lower: str, tag: str) -> str:

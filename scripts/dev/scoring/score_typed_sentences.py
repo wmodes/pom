@@ -100,8 +100,7 @@ def main():
                 handle(line)
         except (EOFError, KeyboardInterrupt):
             print()
-    for line in client.report.lines():                      # the BarKeeper's problems are in the log above
-        print(line)
+    # every part's problems were logged as they happened, above
 
 
 if __name__ == "__main__":

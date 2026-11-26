@@ -20,7 +20,7 @@ THREE KINDS OF RESULT, recorded in `ScoredClip.scored_by`:
 
 Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A model that is down, slow or answering
-    oddly means unscored clips and a warning in `report`, never an exception. `strict=True`
+    oddly means unscored clips and a warning in the log, never an exception. `strict=True`
     raises ClipScorerError instead, for tests and dev tools.
   * A circuit breaker keeps a dead server from slowing every sentence: after `failure_limit`
     failures in a row the model is left alone for `retry_seconds`, every clip goes unscored
@@ -30,7 +30,7 @@ Design decisions, and why:
     so tests use fakes.
   * One clip at a time, no context, so a clip scores the same whatever came before it. Any
     memory of what was heard recently (repeats, fading) belongs to the pool the BarKeeper keeps, not here.
-  * Clip text is never logged or put in a report; logs hold scores, sources and counts.
+  * Clip text is never logged; logs hold scores, sources and counts.
   * The settings (the clip_filter's score, how many content words are needed, breaker numbers) are passed in by the
     entry point from Config; this module never reads Config.
 """
@@ -41,11 +41,9 @@ from typing import Callable, Iterable, Optional
 
 from pom.scoring.word_tagger import WordTagger
 from pom.listening.take_cutter import Clip, ClipLevel
-from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.report_recorder import ReportRecorder
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_CLIP_FILTER_SCORE = 1.0
 DEFAULT_MIN_CONTENT_WORDS = 1
@@ -88,14 +86,14 @@ class ClipScorer:
     """Scores clips with the scorer model, with a filter in front of it.
 
     Attributes:
-        report: Problems met (settings corrected, model unavailable, breaker opened).
+        logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
     """
 
     def __init__(self, scorer_model_client, word_tagger: WordTagger, clip_filter_score: float = DEFAULT_CLIP_FILTER_SCORE,
                  min_content_words: int = DEFAULT_MIN_CONTENT_WORDS,
                  failure_limit: int = DEFAULT_FAILURE_LIMIT,
                  retry_seconds: float = DEFAULT_RETRY_SECONDS,
-                 clock: Callable[[], float] = time.monotonic, strict: bool = False):
+                 clock: Callable[[], float] = time.monotonic, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer_model_client: A ScorerModelClient (anything with score(text), warm_up() and available).
             word_tagger: The WordTagger that tags each word of a clip.
@@ -105,8 +103,9 @@ class ClipScorer:
             retry_seconds: How long the breaker stays open before the model gets another try.
             clock: Returns seconds; injected so tests need not wait.
             strict: Raise ClipScorerError on any problem instead of recording it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(strict=strict, error=ClipScorerError, logger=_log)
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ClipScorerError, DEBUG, strict)
         self._scorer_model_client, self._word_tagger, self._clock = (
             scorer_model_client, word_tagger, clock)
         self._clip_filter_score = self._number(clip_filter_score, "clip_filter_score",
@@ -118,7 +117,7 @@ class ClipScorer:
         self._reopen_at: Optional[float] = None       # None while the breaker is closed
         self._counts = {scored_by: 0 for scored_by in ScoredBy}
         if not scorer_model_client.available:
-            self.report.warn("the scorer model is not available (see the client's report); every "
+            self.logger.warning("the scorer model is not available (the client logged why); every "
                              "clip that passes the filter will go unscored")
 
     # --- Settings -------------------------------------------------------------------
@@ -127,14 +126,14 @@ class ClipScorer:
         """A non-negative number, or the default with a warning."""
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= minimum:
             return float(value)
-        self.report.warn(f"{name} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
+        self.logger.warning(f"{name} must be a number of at least {minimum:g}, got {value!r}; using {default:g}")
         return default
 
     def _whole(self, value, name, default, minimum):
         """A whole number of at least `minimum`, or the default with a warning."""
         if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
             return value
-        self.report.warn(f"{name} must be a whole number of at least {minimum}, got {value!r}; using {default}")
+        self.logger.warning(f"{name} must be a whole number of at least {minimum}, got {value!r}; using {default}")
         return default
 
     # --- Scoring --------------------------------------------------------------------
@@ -190,7 +189,7 @@ class ClipScorer:
 
     def _result(self, clip, value, scored_by) -> ScoredClip:
         self._counts[scored_by] += 1
-        self.report.debug("scored a clip of %d words: %s (%s)", clip.words,
+        self.logger.debug("scored a clip of %d words: %s (%s)", clip.words,
                           "no score" if value is None else f"{value:.2f}", scored_by.value)
         return ScoredClip(clip, None if value is None else float(value), scored_by)
 
@@ -207,11 +206,11 @@ class ClipScorer:
         self._failures += 1
         if self._failures >= self._failure_limit:
             self._reopen_at = self._clock() + self._retry_seconds
-            self.report.warn(f"the scorer model failed {self._failures} times in a row; leaving "
+            self.logger.warning(f"the scorer model failed {self._failures} times in a row; leaving "
                              f"clips unscored and trying the model again in {self._retry_seconds:g} s")
 
     def _model_worked(self) -> None:
         """A success closes the breaker and clears the failure count."""
         if self._reopen_at is not None:
-            self.report.info("the scorer model is answering again")
+            self.logger.info("the scorer model is answering again")
         self._failures, self._reopen_at = 0, None

@@ -117,27 +117,27 @@ class TestAnalyze:
 
 
 class TestRecovery:
-    def test_non_text_gives_empty_and_a_warning(self):
+    def test_non_text_gives_empty_and_a_warning(self, logged):
         t = tools()
         assert t.tag(42) == []
-        assert len(t.report) == 1
+        assert len(logged.of(t).problems()) == 1
 
-    def test_none_is_quietly_empty(self):
+    def test_none_is_quietly_empty(self, logged):
         t = tools()
         assert t.tag(None) == []
-        assert len(t.report) == 0
+        assert len(logged.of(t).problems()) == 0
 
     def test_non_text_raises_in_strict_mode(self):
         with pytest.raises(WordTaggerError):
             tools(strict=True).tag(42)
 
-    def test_tagger_that_fails_leaves_words_untagged(self):
+    def test_tagger_that_fails_leaves_words_untagged(self, logged):
         def broken(tokens):
             raise RuntimeError("tagger exploded")
         t = tools(tagger=broken)
         words = t.tag("My dog")
         assert [w.tag for w in words] == ["", ""]
-        assert len(t.report) == 1
+        assert len(logged.of(t).problems()) == 1
 
     def test_lemmatizer_that_fails_falls_back_to_the_word(self):
         def broken(word, pos):
@@ -169,10 +169,18 @@ class TestRecovery:
         assert not found["I"].is_name
         assert all(w.tag == "" for w in found.values())
 
-    def test_missing_nltk_data_is_reported_not_raised(self, tmp_path):
+    def test_missing_nltk_data_is_reported_not_raised(self, tmp_path, logged):
         t = WordTagger(nltk_data=str(tmp_path))
         assert t.tag("Karen kept dogs")             # still works on plain rules
-        assert len(t.report) >= 1
+        assert len(logged.of(t).problems()) >= 1
+
+    def test_nltk_not_installed_is_one_warning_and_the_plain_rules_still_tag(self, tmp_path, logged, monkeypatch):
+        import sys
+        monkeypatch.setitem(sys.modules, "nltk", None)          # what a machine without nltk sees: the import fails
+        t = WordTagger(nltk_data=str(tmp_path))
+        assert t.tag("Karen kept dogs")
+        warnings = logged.of(t).warnings()
+        assert len(warnings) == 1 and "nltk is not installed" in warnings[0]
 
     def test_missing_nltk_data_raises_in_strict_mode(self, tmp_path):
         with pytest.raises(WordTaggerError):
@@ -184,13 +192,13 @@ def test_default_fillers_are_lowercase_and_unique():
     assert len(set(DEFAULT_FILLERS)) == len(DEFAULT_FILLERS)
 
 
-def test_real_nltk_data_if_present():
+def test_real_nltk_data_if_present(logged):
     from pathlib import Path
     data = Path(__file__).resolve().parents[2] / "data" / "nltk"
     if not data.exists():
         pytest.skip("NLTK data not set up (scripts/setup/setup-nltk-data.sh)")
     t = WordTagger(nltk_data=str(data))
-    assert t.tagging and len(t.report) == 0
+    assert t.tagging and len(logged.of(t).problems()) == 0
     found = by_text(t.tag("Karen kept complaining about the parking"))
     assert found["Karen"].is_name
     assert found["complaining"].lemma == "complain"

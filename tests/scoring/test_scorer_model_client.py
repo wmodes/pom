@@ -122,19 +122,19 @@ class TestScore:
 
 
 class TestRecovery:
-    def test_a_server_error_gives_none_and_a_warning(self):
+    def test_a_server_error_gives_none_and_a_warning(self, logged):
         c = client(FakePost(ConnectionRefusedError("refused")))
         assert c.score("hello there") is None
-        assert len(c.report.warnings) == 1 and c.last_seconds is not None
+        assert len(logged.of(c).warnings()) == 1 and c.last_seconds is not None
 
     def test_any_exception_is_caught(self):
         for error in (TimeoutError(), OSError("x"), ValueError("x"), RuntimeError("x")):
             assert client(FakePost(error)).score("hello") is None
 
-    def test_a_reply_without_a_digit_gives_none_and_a_warning(self):
+    def test_a_reply_without_a_digit_gives_none_and_a_warning(self, logged):
         c = client(FakePost(reply(("Sorry", 1.0))))
         assert c.score("hello") is None
-        assert len(c.report.warnings) == 1
+        assert len(logged.of(c).warnings()) == 1
 
     def test_the_client_keeps_working_after_a_failure(self):
         post = FakePost(OSError("down"))
@@ -149,45 +149,45 @@ class TestRecovery:
         with pytest.raises(ScorerModelClientError):
             client(FakePost(reply(("Sorry", 1.0))), strict=True).score("hello")
 
-    def test_nothing_said_in_the_room_reaches_a_report_or_log(self, caplog):
+    def test_nothing_said_in_the_room_reaches_a_report_or_log(self, caplog, logged):
         secret = "my secret clip about the funeral"
         c = client(FakePost(OSError(f"failed on {secret}")))
         with caplog.at_level(logging.DEBUG):
             c.score(secret)
             client(FakePost()).score(secret)
-        assert all(secret not in message for message in c.report.warnings)
+        assert all(secret not in message for message in logged.of(c).warnings())
         assert secret not in caplog.text and "funeral" not in caplog.text
 
 
 class TestSetup:
     @pytest.mark.parametrize("url", ["", "ftp://x", "file:///etc/passwd", "127.0.0.1:8098", None, 8098])
-    def test_only_http_addresses_are_accepted(self, url):
+    def test_only_http_addresses_are_accepted(self, url, logged):
         post = FakePost()
         c = ScorerModelClient(url, PROMPT, post=post)
-        assert not c.available and len(c.report.warnings) == 1
+        assert not c.available and len(logged.of(c).warnings()) == 1
         assert c.score("hello") is None and post.calls == []
 
     def test_https_is_accepted(self):
         assert ScorerModelClient("https://example.test/v1/chat/completions", PROMPT, post=FakePost()).available
 
     @pytest.mark.parametrize("prompt", ["", "   \n", None])
-    def test_no_prompt_means_the_model_is_never_asked(self, prompt):
+    def test_no_prompt_means_the_model_is_never_asked(self, prompt, logged):
         post = FakePost()
         c = ScorerModelClient(URL, prompt, post=post)
-        assert not c.available and len(c.report.warnings) == 1
+        assert not c.available and len(logged.of(c).warnings()) == 1
         assert c.score("hello") is None and post.calls == []
 
-    def test_a_good_setup_is_available_and_quiet(self):
+    def test_a_good_setup_is_available_and_quiet(self, logged):
         c = client()
-        assert c.available and c.report.ok
+        assert c.available and logged.of(c).ok()
 
     @pytest.mark.parametrize("timeout", [0, -1, "slow", None, True])
-    def test_a_bad_timeout_falls_back_to_the_default(self, timeout):
+    def test_a_bad_timeout_falls_back_to_the_default(self, timeout, logged):
         post = FakePost()
         c = ScorerModelClient(URL, PROMPT, timeout=timeout, post=post)
         c.score("hello")
         assert post.calls[0][2] == DEFAULT_TIMEOUT
-        assert len(c.report.warnings) == 1
+        assert len(logged.of(c).warnings()) == 1
 
     def test_strict_mode_raises_on_a_bad_setup(self):
         with pytest.raises(ScorerModelClientError):
@@ -288,9 +288,9 @@ class TestExplain:
         c, post = explainer()
         assert c.explain(text) is None and post.calls == []
 
-    def test_a_failure_gives_none_and_a_warning(self):
+    def test_a_failure_gives_none_and_a_warning(self, logged):
         c = ScorerModelClient(URL, PROMPT, post=FakePost(TimeoutError()), explain_prompt=EXPLAIN_PROMPT)
-        assert c.explain("hello there") is None and len(c.report.warnings) == 1
+        assert c.explain("hello there") is None and len(logged.of(c).warnings()) == 1
         assert c.last_seconds is not None
 
     @pytest.mark.parametrize("bad", [None, {}, {"choices": []}, {"choices": [{}]}, {"choices": [{"message": {}}]},
@@ -305,19 +305,19 @@ class TestExplain:
         with pytest.raises(ScorerModelClientError):
             c.explain("hello there")
 
-    def test_a_bad_explain_timeout_falls_back_with_a_warning(self):
-        for bad in (0, -5, "slow", None, True):
+    def test_a_bad_explain_timeout_falls_back_with_a_warning(self, logged):
+        for count, bad in enumerate((0, -5, "slow", None, True), start=1):
             c, post = explainer(explain_timeout=bad)
             c.explain("hello there")
-            assert post.calls[0][2] == DEFAULT_EXPLAIN_TIMEOUT and len(c.report.warnings) == 1
+            assert post.calls[0][2] == DEFAULT_EXPLAIN_TIMEOUT and len(logged.of(c).warnings()) == count     # one more warning for each bad value
 
-    def test_what_was_said_never_reaches_a_report_or_a_log(self, caplog):
+    def test_what_was_said_never_reaches_a_report_or_a_log(self, caplog, logged):
         secret = "my secret clip about the funeral"
         c = ScorerModelClient(URL, PROMPT, post=FakePost(OSError(f"failed on {secret}")), explain_prompt=EXPLAIN_PROMPT)
         with caplog.at_level(logging.DEBUG):
             c.explain(secret)
             explainer("7.0, a funeral")[0].explain(secret)
-        assert all("funeral" not in w for w in c.report.warnings)
+        assert all("funeral" not in w for w in logged.of(c).warnings())
         assert "funeral" not in caplog.text
 
 

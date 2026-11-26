@@ -36,13 +36,11 @@ Design decisions, and why:
   * It never raises. Words it is given are only read.
   * Clip text is never logged; the debug line holds a number of words and a score.
 """
-from typing import Sequence
+from typing import Sequence, Optional
 
-from pom.bookkeeper.report_recorder import ReportRecorder
-from pom.bookkeeper.log_setup import get_logger
+from pom.bookkeeper.bookkeeper import Bookkeeper
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
-_log = get_logger(__name__, DEBUG)
 
 DEFAULT_BASE = 1.0
 
@@ -60,11 +58,12 @@ CEILING = 5.0
 class FallbackScorer:
     """Guesses a score from a clip's words alone. Not in use; see the module docstring."""
 
-    def __init__(self, base: float = DEFAULT_BASE):
+    def __init__(self, base: float = DEFAULT_BASE, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             base: The score a clip gets before anything is added to it.
+            bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
-        self.report = ReportRecorder(logger=_log)      # everything this class says goes through it
+        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
         self._base = base
 
     def score(self, text: str, words: Sequence) -> float:
@@ -78,5 +77,5 @@ class FallbackScorer:
                  + PER_NUMBER * min(numbers, NUMBERS_COUNTED)
                  + (QUESTION_BONUS if "?" in text else 0.0))
         value = min(value, CEILING)
-        self.report.debug("guessed a score for a clip of %d words: %.2f", len(words), value)
+        self.logger.debug("guessed a score for a clip of %d words: %.2f", len(words), value)
         return value

@@ -428,7 +428,7 @@ def test_the_committed_sample_config_has_the_scorer_prompt_and_defaults(tmp_path
         assert '"' not in text.strip()[-1:], "a stray quote ended a prompt"
 
 
-def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path):
+def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_path, logged):
     from pom.scoring.scorer_model_client import ScorerModelClient
     from pom.scoring.clip_scorer import ScoredBy, ClipScorer
     from pom.scoring.word_tagger import WordTagger
@@ -441,7 +441,7 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
                                       stopwords={"the"}),
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
-    assert client.available and scorer.report.ok
+    assert client.available and logged.of(scorer).ok()
     assert scorer.score_text("The lamp hums.").score == 6.0
     assert scorer.score_text("The").scored_by is ScoredBy.CLIP_FILTER and scorer.score_text("The").score == 2.0
 

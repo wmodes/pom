@@ -1,4 +1,4 @@
-"""Every log line in the project goes through the one path: a module's `report` (a LogRecorder), so every line is subject to the log's muting.
+"""Every log line in the project goes through the one path: a module's `report` (a ReportRecorder), so every line is subject to the log's muting.
 
 A module that calls its logger directly (`_log.info(...)`) or reaches for a raw logger would be a second way to log, outside that path. This test
 fails if one appears. The exceptions are listed here, each with its reason, and only these:

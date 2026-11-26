@@ -28,7 +28,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A missing prompt, an empty hinge, or a selector with
     nothing to draw is recorded in `report` and `build` carries on if it can (no exemplars) or returns None if
     it cannot. `strict=True` raises PromptBuilderError instead, for tests and dev tools.
-  * The hinge is never logged or put in a LogRecorder message: nothing that was said in the room is kept.
+  * The hinge is never logged or put in a ReportRecorder message: nothing that was said in the room is kept.
     Logs and reports hold counts only.
   * The two places are filled in one pass over the prompt, not one after the other, so a library passage that
     happens to contain the text "{hinge}", or a hinge that contains "{exemplars}", is left as it is. Other
@@ -49,7 +49,7 @@ from typing import Optional
 
 from pom.library.catalog import Passage
 from pom.library.bibliomancer import Bibliomancer
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -97,7 +97,7 @@ class PromptBuilder:
             selector: Where the exemplars are drawn from.
             strict: Raise PromptBuilderError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=PromptBuilderError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=PromptBuilderError, logger=_log)
         self._selector = selector
         self._prompt = prompt.strip() if isinstance(prompt, str) else ""
         self._wants_exemplars = False

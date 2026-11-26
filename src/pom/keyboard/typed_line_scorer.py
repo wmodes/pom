@@ -26,7 +26,7 @@ Design decisions, and why:
 import math
 from typing import Callable
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 from pom.scoring.clip_scorer import ScoredBy
@@ -57,7 +57,7 @@ class TypedLineScorer:
                 Any number (not limited to 0 to 1).
             strict: Raise TypedLineScorerError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=TypedLineScorerError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=TypedLineScorerError, logger=_log)
         self._scorer = scorer
         self._bar_keeper = bar_keeper
         self._clock = clock

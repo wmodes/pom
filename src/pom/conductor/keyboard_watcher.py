@@ -24,7 +24,7 @@ import threading
 import time
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 
@@ -62,7 +62,7 @@ class KeyboardWatcher:
             sleep: A function that waits that many seconds. Default: time.sleep.
             strict: Raise KeyboardWatcherError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=KeyboardWatcherError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=KeyboardWatcherError, logger=_log)
         self._terminal, self._typed_scorer = terminal, typed_scorer
         self._poll = self._valid(poll_seconds, "poll_seconds", DEFAULT_POLL_SECONDS, lambda v: v > 0, "above 0")
         self._error_pause = self._valid(error_pause_seconds, "error_pause_seconds", DEFAULT_ERROR_PAUSE_SECONDS, lambda v: v >= 0,

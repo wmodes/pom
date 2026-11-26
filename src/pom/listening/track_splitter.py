@@ -20,7 +20,7 @@ heard (it is where whisper makes up words for noise), so only lyrics count as wo
 Design decisions, and why:
   * Pure text in, text out. No clock, no audio, no model, so it runs anywhere and tests with nothing but strings.
   * Nothing here may stop the oracle (see pom/__init__.py). Anything that is not a string is treated as an empty
-    reply. There are no settings, so there is nothing to record in a LogRecorder.
+    reply. There are no settings, so there is nothing to record in a ReportRecorder.
   * The result is immutable, so a caller cannot change what another caller was given.
   * What was said is never logged here.
 """

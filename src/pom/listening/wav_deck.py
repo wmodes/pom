@@ -22,7 +22,7 @@ import wave
 from pathlib import Path
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_BYTES, SAMPLE_RATE
 from pom.bookkeeper.log_setup import get_logger
 
@@ -59,7 +59,7 @@ class WavDeck:
             sleep: A function that waits that many seconds. Default: time.sleep.
             strict: Raise WavDeckError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=WavDeckError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=WavDeckError, logger=_log)
         self.seconds = 0.0
         self._speed = self._valid(speed, "speed", DEFAULT_SPEED)
         self._end_frames = round(self._valid(end_pause_seconds, "end_pause_seconds", DEFAULT_END_PAUSE_SECONDS) / FRAME_SECONDS)

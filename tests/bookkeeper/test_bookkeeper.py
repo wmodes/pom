@@ -1,0 +1,119 @@
+"""Tests for pom.bookkeeper.bookkeeper: the one instance that sets up the log and hands each class its logger."""
+import io
+import logging
+import threading
+
+import pytest
+
+from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.bookkeeper.log_muter import LogMuter
+from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.log_setup import LOGGER_NAME
+
+
+class TrialError(Exception):
+    """A class's own strict exception."""
+
+
+@pytest.fixture(autouse=True)
+def clean_logger():
+    """Leaves the pom logger as it was found, so set_up in one test does not leak into the next."""
+    logger = logging.getLogger(LOGGER_NAME)
+    saved = (list(logger.handlers), logger.level, logger.propagate)
+    yield
+    for handler in list(logger.handlers):
+        if handler not in saved[0]:
+            handler.close()
+    logger.handlers[:] = saved[0]
+    logger.setLevel(saved[1])
+    logger.propagate = saved[2]
+
+
+def test_logger_for_hands_back_a_log_recorder_under_the_name_it_was_asked_for(caplog):
+    logger = Bookkeeper().logger_for("pom.conductor.turn_taker", TrialError)
+    assert isinstance(logger, LogRecorder)
+    with caplog.at_level(logging.INFO, logger="pom.conductor.turn_taker"):
+        logger.info("a turn began")
+    assert [(r.name, r.getMessage()) for r in caplog.records] == [("pom.conductor.turn_taker", "a turn began")]
+
+
+def test_logger_for_passes_the_strict_exception_and_strict_mode_on():
+    with pytest.raises(TrialError):
+        Bookkeeper().logger_for("pom.test.a", TrialError, strict=True).warning("x")
+    Bookkeeper().logger_for("pom.test.b", TrialError).warning("x")                    # not strict: no raise
+
+
+def test_a_module_s_debug_line_set_to_true_shows_its_debug_lines_whatever_the_project_level():
+    stream = io.StringIO()
+    keeper = Bookkeeper()
+    keeper.set_up("INFO", stream)
+    keeper.logger_for("pom.test.loud", TrialError, debug=True).debug("shown")
+    keeper.logger_for("pom.test.default", TrialError).debug("hidden")
+    assert "shown" in stream.getvalue() and "hidden" not in stream.getvalue()
+
+
+def test_a_module_s_debug_line_set_to_false_hides_its_debug_lines_even_when_the_project_shows_debug():
+    stream = io.StringIO()
+    keeper = Bookkeeper()
+    keeper.set_up("DEBUG", stream, debug=True)
+    keeper.logger_for("pom.test.hushed", TrialError, debug=False).debug("hidden")
+    keeper.logger_for("pom.test.normal", TrialError).debug("shown")
+    assert "shown" in stream.getvalue() and "hidden" not in stream.getvalue()
+
+
+def test_set_up_writes_the_lines_of_every_class_to_the_stream_in_the_project_format():
+    stream = io.StringIO()
+    keeper = Bookkeeper()
+    keeper.set_up("INFO", stream)
+    keeper.logger_for("pom.listening.mic_deck", TrialError).critical("the microphone stopped sending sound")
+    keeper.logger_for("pom.conductor.conductor", TrialError).info("the floor is free")
+    assert stream.getvalue() == ("CRITICAL pom.listening.mic_deck: the microphone stopped sending sound\n"
+                                 "INFO pom.conductor.conductor: the floor is free\n")
+
+
+def test_set_up_puts_the_muter_on_the_log_so_every_class_s_repeats_are_muted_in_one_place():
+    stream = io.StringIO()
+    keeper = Bookkeeper(LogMuter(2, 100, 300.0))
+    keeper.set_up("INFO", stream)
+    first, second = keeper.logger_for("pom.a", TrialError), keeper.logger_for("pom.b", TrialError)
+    for _ in range(5):
+        first.warning("not found after %ds", 3)
+        second.warning("not found after %ds", 4)
+    text = stream.getvalue()
+    assert text.count("WARNING pom.a: not found after") == 2 and text.count("WARNING pom.b: not found after") == 2
+    assert text.count("LOGMUTE: Last message repeating and muted") == 2
+
+
+def test_without_a_muter_nothing_is_muted():
+    stream = io.StringIO()
+    keeper = Bookkeeper()
+    keeper.set_up("INFO", stream)
+    for _ in range(5):
+        keeper.logger_for("pom.a", TrialError).warning("same")
+    assert stream.getvalue().count("same") == 5
+
+
+def test_one_bookkeeper_serves_many_threads_and_the_muter_lets_through_exactly_the_limit():
+    stream = io.StringIO()
+    keeper = Bookkeeper(LogMuter(10, 100000, 300.0))
+    keeper.set_up("INFO", stream)
+    loggers = [keeper.logger_for("pom.threads", TrialError) for _ in range(8)]
+
+    def worker(logger):
+        for _ in range(100):
+            logger.warning("the same line from every thread")
+
+    threads = [threading.Thread(target=worker, args=(logger,)) for logger in loggers]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert stream.getvalue().count("WARNING pom.threads: the same line from every thread") == 10
+
+
+def test_the_project_debug_setting_shows_every_module_s_debug_lines_even_with_the_log_level_at_info():
+    stream = io.StringIO()
+    keeper = Bookkeeper()
+    keeper.set_up("INFO", stream, debug=True)
+    keeper.logger_for("pom.test.any", TrialError).debug("shown by the project setting")
+    assert "shown by the project setting" in stream.getvalue()

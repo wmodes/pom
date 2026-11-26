@@ -19,7 +19,7 @@ import threading
 import time
 from typing import Callable, Dict, Optional, Tuple
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.light import Light
 
@@ -43,7 +43,7 @@ class StatusBoard:
             clock: Returns seconds, steadily increasing (monotonic).
             strict: Raise StatusBoardError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=StatusBoardError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=StatusBoardError, logger=_log)
         self._clock = clock
         self._lock = threading.Lock()
         self._down_after: Dict[str, float] = {}                       # name -> how long a post stays good, in registration order

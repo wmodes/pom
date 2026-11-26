@@ -33,7 +33,7 @@ from collections import deque
 from dataclasses import dataclass, replace
 from typing import Callable, Deque, List, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.writing.portent_writer import Portent
 
@@ -98,7 +98,7 @@ class TurnHistory:
                 time: the chart notebook's oldest attempt, so a turn stays while its dot is on the chart. Without one, or if it fails or gives
                 something that is not a number, the age limit alone decides.
         """
-        self.report = LogRecorder(strict=strict, error=TurnHistoryError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=TurnHistoryError, logger=_log)
         if not (_is_number(max_age_seconds) and max_age_seconds > 0):
             self.report.warn(f"max_age_seconds must be a number above 0, got {max_age_seconds!r}; "
                              f"using {DEFAULT_MAX_AGE_SECONDS:g}")

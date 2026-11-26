@@ -386,6 +386,8 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **bookkeeper**: The module (`src/pom/bookkeeper/`) that keeps the Printer's books: what a module recovered from (`LogRecorder`, in
   `log_recorder.py`) and where everything it logs goes (`log_setup.py`). Example: `pom.bookkeeper.LogRecorder` (was: `pom.log_recorder`,
   `pom.log_setup`, loose at the top of `pom/`)
+- **Bookkeeper**: The one instance the entry point builds: it sets up the log once and hands each class its logger with `logger_for(__name__, ItsError)`, like Python's `logging.getLogger(__name__)`. It holds nothing that changes, so any number of threads can use it. Example: `Bookkeeper` (was: none; each class built its own recorder)
+- **ReportRecorder**: (going away) the old per-class recorder with its own book, renamed from `LogRecorder` while the classes move to `logger_for`.
 - **log muter**: The one filter, on every log handler, that lets a message that keeps repeating through a few times and then mutes it, for every
   module at once, so no module counts its own repeats. Example: `LogMuter` (settings `logmute_after_repeats`, `logmute_remind_every_repeats`,
   `logmute_quiet_seconds`)

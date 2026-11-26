@@ -1,7 +1,7 @@
 """The LogBook: holds the faults a module recorded, so they can be read later (the startup summary, a test, `has_critical`).
 
 It has one job: keep the first `limit` faults (and every critical one, which must never be hidden behind a flood of warnings), count the rest, and
-answer the readers. It does not log, raise or mute: saying a fault, and raising it in strict mode, belong to the LogRecorder; muting a repeat
+answer the readers. It does not log, raise or mute: saying a fault, and raising it in strict mode, belong to the ReportRecorder; muting a repeat
 belongs to the log (pom.bookkeeper.log_muter).
 
 It owns its state, so it owns the lock: every method takes it, and what comes back is a copy, never the live list.

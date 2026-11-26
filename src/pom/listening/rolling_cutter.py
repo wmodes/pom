@@ -35,7 +35,7 @@ import threading
 import time
 from typing import Callable, List, Optional, Protocol
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.listening.audio_format import BYTES_PER_SECOND, SAMPLE_BYTES
 from pom.listening.whisper_model_client import Segment
 from pom.bookkeeper.log_setup import get_logger
@@ -103,7 +103,7 @@ class RollingCutter:
             clock: A function giving seconds, used only to time whisper. Default: time.perf_counter.
             strict: Raise RollingCutterError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=RollingCutterError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=RollingCutterError, logger=_log)
         self._client = client
         self._cut_every_seconds = self._setting(cut_every_seconds, "cut_every_seconds", DEFAULT_CUT_EVERY_SECONDS, lambda v: v > 0, "above 0")
         self._hold_back_seconds = self._setting(hold_back_seconds, "hold_back_seconds", DEFAULT_HOLD_BACK_SECONDS, lambda v: v >= 0, "at least 0")

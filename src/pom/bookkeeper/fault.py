@@ -1,7 +1,7 @@
 """The small shared types of the bookkeeper: how bad a fault is, and one recorded fault.
 
-They live apart so the LogRecorder (which says things) and the LogBook (which holds the faults) can both use them without importing each other.
-`pom.bookkeeper.log_recorder` re-exports both under their old home.
+They live apart so the ReportRecorder (which says things) and the LogBook (which holds the faults) can both use them without importing each other.
+`pom.bookkeeper.report_recorder` re-exports both under their old home.
 """
 import logging
 from dataclasses import dataclass

@@ -12,7 +12,7 @@ The file is a tree that mirrors the folders in passages/:
 Design decisions, and why:
   * Nothing here may stop the oracle. The file is edited by hand, so typos will happen; per the
     project principle (see pom/__init__.py) every problem is recovered from and recorded in a
-    LogRecorder, never raised. A bad number counts 1.0, a bad or unknown entry is skipped, a missing
+    ReportRecorder, never raised. A bad number counts 1.0, a bad or unknown entry is skipped, a missing
     or unreadable file means all defaults. `strict=True` raises instead, for tests and dev tools.
   * Anything not listed counts 1.0. The file is hand-edited and the library grows, so it will
     drift out of sync; an unlisted shelf or holding must still work.
@@ -22,7 +22,7 @@ Design decisions, and why:
     can be written however is convenient (0.8, 1, 1) and a shelf with no passages cannot steal
     probability from the others. If every share is zero the shelves count 1.0 each, since
     drawing nothing is worse than drawing evenly.
-  * The module never prints. Each problem is recorded in a LogRecorder and also logged through the
+  * The module never prints. Each problem is recorded in a ReportRecorder and also logged through the
     standard `logging` module (logger `pom.library.circulation`), which reaches journald once the
     entry point has configured logging.
 """
@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 
 DEFAULT_WEIGHT = 1.0
 _SHELF_KEYS = {"share", "holdings"}
@@ -53,7 +53,7 @@ class Circulation:
     """
 
     def __init__(self, shares: Mapping[str, float], holding_weights: Mapping[str, float],
-                 listed_under: Mapping[str, str], report: Optional[LogRecorder] = None,
+                 listed_under: Mapping[str, str], report: Optional[ReportRecorder] = None,
                  strict: bool = False):
         """Use the `from_*` constructors; this takes already-validated values.
 
@@ -100,7 +100,7 @@ class Circulation:
         return cls._parse(document, _new_report(strict), strict)
 
     @classmethod
-    def _parse(cls, document, report: LogRecorder, strict: bool) -> "Circulation":
+    def _parse(cls, document, report: ReportRecorder, strict: bool) -> "Circulation":
         """Walks the document, keeping what is valid and reporting what is not."""
         shares, weights, listed_under = {}, {}, {}
         if not isinstance(document, dict):
@@ -174,14 +174,14 @@ class Circulation:
 
     # --- Validation -----------------------------------------------------------------
 
-    def check(self, layout: Mapping[str, Iterable[str]]) -> LogRecorder:
+    def check(self, layout: Mapping[str, Iterable[str]]) -> ReportRecorder:
         """Compares the circulation with the library layout.
 
         Args:
             layout: Shelf name -> the holding ids that have passages in it.
 
         Returns:
-            A new LogRecorder of everything that has drifted: entries listed for a shelf or
+            A new ReportRecorder of everything that has drifted: entries listed for a shelf or
             holding with no passages (harmless, but probably a typo), shelves and holdings the
             file does not mention (counted 1.0), and holdings listed under a different shelf
             than the one their passages live in. Strict mode raises on the first of these.
@@ -211,12 +211,12 @@ class Circulation:
         return report
 
 
-def _new_report(strict: bool) -> LogRecorder:
-    """A LogRecorder that raises CirculationError in strict mode; otherwise it collects and logs."""
-    return LogRecorder(strict=strict, error=CirculationError, logger=_log)
+def _new_report(strict: bool) -> ReportRecorder:
+    """A ReportRecorder that raises CirculationError in strict mode; otherwise it collects and logs."""
+    return ReportRecorder(strict=strict, error=CirculationError, logger=_log)
 
 
-def _number(value, label: str, report: LogRecorder) -> float:
+def _number(value, label: str, report: ReportRecorder) -> float:
     """A finite, non-negative number; otherwise a warning and the default (1.0).
 
     Booleans and strings are rejected: `true` is almost certainly a typo, not a weight of 1.

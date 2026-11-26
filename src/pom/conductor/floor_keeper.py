@@ -68,7 +68,7 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import Callable, Iterator, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -151,7 +151,7 @@ class FloorKeeper:
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
             strict: Raise FloorKeeperError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=FloorKeeperError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=FloorKeeperError, logger=_log)
         self._writing_seconds = self._valid(writing_seconds, "writing_seconds", DEFAULT_WRITING_SECONDS, lambda v: v > 0, "above 0")
         self._printing_seconds = self._valid(printing_seconds, "printing_seconds", DEFAULT_PRINTING_SECONDS, lambda v: v > 0, "above 0")
         self._recovering_seconds = self._valid(recovering_seconds, "recovering_seconds", DEFAULT_RECOVERING_SECONDS, lambda v: v >= 0,

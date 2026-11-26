@@ -37,7 +37,7 @@ from enum import Enum
 from typing import Optional
 
 from pom.bookkeeper.log_setup import get_logger
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 _log = get_logger(__name__, DEBUG)
@@ -101,7 +101,7 @@ class TakeCutter:
                 this size. A whole number of at least 1.
             strict: Raise TakeCutterError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=TakeCutterError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=TakeCutterError, logger=_log)
         if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
             self._max_words = max_words
         else:

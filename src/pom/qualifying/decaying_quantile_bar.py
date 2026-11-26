@@ -43,7 +43,7 @@ import math
 from collections import deque
 from typing import Deque, Optional, Tuple
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.bar import Bar
 
@@ -92,7 +92,7 @@ class DecayingQuantileBar(Bar):
                 from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
             strict: Raise DecayingQuantileBarError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=DecayingQuantileBarError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=DecayingQuantileBarError, logger=_log)
         self._bar_percentile = self._valid(bar_percentile, "bar_percentile", DEFAULT_BAR_PERCENTILE, lambda v: _is_number(v) and 0 < v <= 100,
                                        "a number above 0 and at most 100")
         self._half_life = self._valid(half_life_seconds, "half_life_seconds", DEFAULT_HALF_LIFE_SECONDS,

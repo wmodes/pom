@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.keyboard import TypedLineScorer, TypedLineScorerError
 from pom.qualifying import Attempt, BarKeeper, PercentileBar, Ruling
 from pom.scoring import ScoredBy, ScoredClip
@@ -18,7 +18,7 @@ class FakeScorer:
     """Scores a text with the number it was told (3.0 if it was not told) and keeps a record of what it was asked."""
 
     def __init__(self, scores=None, scored_by=ScoredBy.MODEL):
-        self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], LogRecorder()
+        self.scores, self.scored_by, self.asked, self.report = dict(scores or {}), scored_by, [], ReportRecorder()
 
     def score_text(self, text, heard_at=0.0):
         from pom.listening.take_cutter import Clip, ClipLevel

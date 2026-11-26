@@ -26,7 +26,7 @@ Design decisions, and why:
 from typing import Iterator, Optional
 
 from pom.listening.take_cutter import ClipLevel
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 from pom.qualifying.bar_keeper import Ruling
@@ -49,7 +49,7 @@ class HingeFinder:
             bar_keeper: A BarKeeper that says whether a score is a qualifier.
             score_room_tone: True lets room tone be scored and become hinges; False leaves it unscored.
         """
-        self.report = LogRecorder(logger=_log)      # everything this class says goes through it
+        self.report = ReportRecorder(logger=_log)      # everything this class says goes through it
         self._eavesdropper = eavesdropper
         self._take_cutter = take_cutter
         self._scorer = scorer

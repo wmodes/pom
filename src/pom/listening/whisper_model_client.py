@@ -18,7 +18,7 @@ Design decisions, and why:
     (or is None), so a caller can tell "heard nothing" from "could not ask". `strict=True` raises
     WhisperModelClientError instead, for tests and dev tools.
   * The audio goes to the server from memory, as a WAV made in memory, so no audio file is ever written to disk.
-  * Neither the audio nor the text is logged or put in a LogRecorder message: nothing that was said in the room is
+  * Neither the audio nor the text is logged or put in a ReportRecorder message: nothing that was said in the room is
     kept. Reports hold the kind of failure only.
   * Timestamps are asked for as SRT subtitles. KNOWN BUG in the whisper.cpp 1.9.5 server: a request for
     `verbose_json` with voice detection on CRASHES the server when the audio holds no speech (found with a noise-only
@@ -35,7 +35,7 @@ import uuid
 import wave
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.listening.audio_format import SAMPLE_BYTES, SAMPLE_RATE
 from pom.bookkeeper.log_setup import get_logger
 
@@ -127,7 +127,7 @@ class WhisperModelClient:
             post: A function (url, fields, wav bytes, timeout) -> the reply text. Default: real HTTP.
             strict: Raise WhisperModelClientError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=WhisperModelClientError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=WhisperModelClientError, logger=_log)
         self.error: Optional[str] = None
         self._usable = isinstance(url, str) and url.startswith(("http://", "https://"))
         self._url = url.rstrip("/") if self._usable else DEFAULT_URL

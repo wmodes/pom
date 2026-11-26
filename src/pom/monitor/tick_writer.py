@@ -16,7 +16,7 @@ handed a function.
 """
 from typing import Callable, List, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.monitor.notebook_entry import TICK, NotebookEntry, is_number
 from pom.monitor.silence_compressor import SilenceShape
 
@@ -31,7 +31,7 @@ class TickWriter:
         began_at: The stream time at which listening began, or None; the stretch before the first attempt runs from here.
     """
 
-    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], report: LogRecorder):
+    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], report: ReportRecorder):
         """Args:
             ticks_source: See the attribute. Without one, every method answers an empty list.
             shape: How a silence is drawn. An `edge_seconds` of 0 means a silence has no ticks at all.

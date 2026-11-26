@@ -9,7 +9,7 @@ import pytest
 
 from pom.conductor import KeyboardWatcher
 from pom.conductor.keyboard_watcher import KeyboardWatcherError
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.qualifying import Attempt, Ruling
 from pom.scoring import ScoredBy
 
@@ -41,7 +41,7 @@ class FakeTypedScorer:
     """Makes an Attempt of kind typed for each line, or raises if told to."""
 
     def __init__(self, fail_on=()):
-        self.lines, self.fail_on, self.report = [], set(fail_on), LogRecorder()
+        self.lines, self.fail_on, self.report = [], set(fail_on), ReportRecorder()
 
     def score(self, line):
         self.lines.append(line)

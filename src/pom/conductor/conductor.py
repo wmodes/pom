@@ -41,7 +41,7 @@ import threading
 from typing import Callable, Optional
 
 from pom.conductor.floor_keeper import FloorKeeper, FloorState
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 
@@ -92,7 +92,7 @@ class Conductor:
             check_seconds: How often the watching thread looks at the floor and the threads, above 0.
             strict: Raise ConductorError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=ConductorError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=ConductorError, logger=_log)
         self._floor, self._turn_taker, self._room_factory, self._keyboard = floor, turn_taker, room_factory, keyboard
         self._on_attempt, self._on_turn = on_attempt, on_turn
         self._restart_room = bool(restart_room)

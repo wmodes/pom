@@ -1,7 +1,7 @@
 """Tests for the TickWriter: which ticks the chart draws for a stretch, as entries, with problems reported and never raised."""
 import pytest
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.monitor.notebook_entry import NotebookEntry
 from pom.monitor.silence_compressor import SilenceShape
@@ -20,7 +20,7 @@ def grid(interval=60.0, anchor=5.85, bar=lambda at: 6.0, asked=None):
 
 def writer(source="grid", longest=300.0, head=150.0, began_at=0.0):
     """A TickWriter over the grid (or `source`), and the recorder it reports to. `head` is how much of each end of a silence is drawn at true scale."""
-    report = LogRecorder(strict=False, error=ValueError, logger=get_logger("test_tick_writer", False))
+    report = ReportRecorder(strict=False, error=ValueError, logger=get_logger("test_tick_writer", False))
     return TickWriter(grid() if source == "grid" else source, SilenceShape(longest, longest - 2.0 * head), began_at, report), report
 
 

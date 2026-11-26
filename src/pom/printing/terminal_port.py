@@ -67,7 +67,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -163,7 +163,7 @@ class TerminalPort:
             sleep: Waits for that many seconds.
             strict: Raise TerminalPortError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=TerminalPortError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=TerminalPortError, logger=_log)
         self._port_name = port
         self._baud = self._valid(baud, "baud", DEFAULT_BAUD, lambda v: v in BAUD_RATES, "one of the standard baud rates")
         self._flow_control = self._valid(flow_control, "flow_control", DEFAULT_FLOW_CONTROL,

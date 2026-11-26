@@ -13,7 +13,7 @@ Design decisions, and why:
   * Nothing here may stop the oracle (see pom/__init__.py). A server that is down, slow, or answering oddly gives
     None and a warning in `report`, never an exception. `strict=True` raises OracleModelClientError instead, for
     tests and dev tools.
-  * Neither the prompt (it holds the hinge) nor the portent is logged or put in a LogRecorder message: nothing
+  * Neither the prompt (it holds the hinge) nor the portent is logged or put in a ReportRecorder message: nothing
     that was said in the room is kept. Logs and reports hold counts and timings.
   * The settings are passed in (the entry point takes them from Config); this module never reads Config.
   * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.
@@ -28,7 +28,7 @@ import time
 import urllib.request
 from typing import Callable, Optional
 
-from pom.bookkeeper.log_recorder import LogRecorder
+from pom.bookkeeper.report_recorder import ReportRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -75,7 +75,7 @@ class OracleModelClient:
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
             strict: Raise OracleModelClientError on any problem instead of recording it.
         """
-        self.report = LogRecorder(strict=strict, error=OracleModelClientError, logger=_log)
+        self.report = ReportRecorder(strict=strict, error=OracleModelClientError, logger=_log)
         self._url = url
         self._timeout = self._valid(timeout, "timeout", DEFAULT_TIMEOUT, lambda v: _is_number(v) and v > 0,
                                     "a positive number of seconds")

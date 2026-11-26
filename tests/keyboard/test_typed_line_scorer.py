@@ -6,10 +6,11 @@ how the typed line meets the room's bar is the point.
 
 import pytest
 
+from pom.defaults import QualifyingSettings
 from pom.keyboard import TypedLineScorer, TypedLineScorerError
 from pom.qualifying import Attempt, BarKeeper, PercentileBar, Ruling
 from pom.scoring import ScoredBy, ScoredClip
-from pom.keyboard.typed_line_scorer import DEFAULT_SCORE_MULTIPLIER, TYPED
+from pom.keyboard.typed_line_scorer import TYPED
 
 
 class FakeScorer:
@@ -39,12 +40,14 @@ def bar_keeper(bar_level=6.0, cooldown=60.0):
 
 def typed(scores=None, bar_level=6.0, cooldown=60.0, now=100.0, **options):
     scorer, made_bar_keeper, clock = FakeScorer(scores), bar_keeper(bar_level, cooldown), Clock(now)
-    return TypedLineScorer(scorer, made_bar_keeper, clock, **options), scorer, made_bar_keeper, clock
+    qualifying = QualifyingSettings(typed_lines_score_multiplier=options.pop("score_multiplier", QualifyingSettings().typed_lines_score_multiplier),
+                                    typed_lines_bar_influence=options.pop("bar_influence", QualifyingSettings().typed_lines_bar_influence))
+    return TypedLineScorer(scorer, made_bar_keeper, clock, qualifying, **options), scorer, made_bar_keeper, clock
 
 
 class TestTheDefaults:
     def test_the_score_multiplier_starts_at_one_and_a_half(self):
-        assert DEFAULT_SCORE_MULTIPLIER == 1.5
+        assert QualifyingSettings().typed_lines_score_multiplier == 1.5
 
     def test_the_kind_is_typed(self):
         assert TYPED == "typed"
@@ -157,12 +160,12 @@ class TestWhatTheBarIsHanded:
 
     def test_the_influence_is_what_the_bar_keeper_is_given(self):
         keeper = self.recording_keeper()
-        TypedLineScorer(FakeScorer({"x": 4.0}), keeper, Clock(), score_multiplier=2, bar_influence=0.25).score("x")
+        TypedLineScorer(FakeScorer({"x": 4.0}), keeper, Clock(), QualifyingSettings(typed_lines_score_multiplier=2, typed_lines_bar_influence=0.25)).score("x")
         assert keeper.calls == [(8.0, 0.25)]
 
     def test_with_no_influence_given_a_line_goes_in_as_the_bar_itself(self):
         keeper = self.recording_keeper()
-        TypedLineScorer(FakeScorer({"x": 4.0}), keeper, Clock()).score("x")
+        TypedLineScorer(FakeScorer({"x": 4.0}), keeper, Clock(), QualifyingSettings()).score("x")
         assert keeper.calls == [(6.0, 0.0)]
 
     @staticmethod
@@ -185,11 +188,6 @@ class TestTheBarInfluence:
         made, _, _, _ = typed({"x": 2.0}, bar_influence=influence)
         assert logged.of(made).ok() and made.score("x").score == 3.0
 
-    @pytest.mark.parametrize("bad", ["1", None, True, [1], float("nan"), float("inf")])
-    def test_an_influence_that_is_not_a_number_is_nothing_with_a_warning(self, bad, logged):
-        made, _, shared, _ = typed({"x": 2.0}, bar_influence=bad)
-        made.score("x")
-        assert len(logged.of(made).warnings()) == 1 and made._bar_influence == 0.0
 
 
 class TestWhenThereIsNoScore:
@@ -208,7 +206,7 @@ class TestWhenThereIsNoScore:
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
                 return ScoredClip(result.clip, None, ScoredBy.UNSCORED)
-        made = TypedLineScorer(Unable(), bar_keeper(), Clock())
+        made = TypedLineScorer(Unable(), bar_keeper(), Clock(), QualifyingSettings())
         sentence = made.score("hello")
         assert (sentence.score, sentence.ruling, sentence.is_hinge) == (None, Ruling.NO_MARK, False)
 
@@ -217,22 +215,8 @@ class TestWhenThereIsNoScore:
             def score_text(self, text, heard_at=0.0):
                 result = super().score_text(text, heard_at)
                 return ScoredClip(result.clip, 1.0, ScoredBy.CLIP_FILTER)
-        sentence = TypedLineScorer(Filtered(), bar_keeper(), Clock()).score("hello")
+        sentence = TypedLineScorer(Filtered(), bar_keeper(), Clock(), QualifyingSettings()).score("hello")
         assert (sentence.score, sentence.scored_by, sentence.is_hinge) == (1.5, ScoredBy.CLIP_FILTER, False)
-
-
-class TestTheScoreMultiplierIsChecked:
-    @pytest.mark.parametrize("bad", [-1, -0.1, "1.5", None, True, [1.5], float("nan"), float("inf")])
-    def test_a_bad_score_multiplier_is_the_default_with_a_warning(self, bad, logged):
-        made, _, _, _ = typed({"x": 4.0}, score_multiplier=bad)
-        assert made.score("x").score == 6.0 and len(logged.of(made).warnings()) == 1
-
-    def test_strict_raises_instead(self):
-        with pytest.raises(TypedLineScorerError):
-            typed(score_multiplier=-1, strict=True)
-
-    def test_a_good_score_multiplier_gives_no_warning(self, logged):
-        assert logged.of(typed(score_multiplier=2)[0]).ok()
 
 
 class TestWhatIsKept:
@@ -242,6 +226,6 @@ class TestWhatIsKept:
         assert "secret" not in logged.text()
 
     def test_the_typed_text_is_never_in_the_report(self, logged):
-        made, _, _, _ = typed(score_multiplier=-1)
+        made, _, _, _ = typed()
         made.score("the secret words")
         assert "secret" not in " ".join(logged.of(made).lines())

@@ -336,9 +336,9 @@ class TestWhatItPrintsOn:
         assert build(tmp_path, keyboard=False).parts["keyboard"] is None
 
     def test_the_typed_line_scorer_gets_the_score_multiplier_and_the_bar_influence_from_the_config(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nmode = "serial"\n[qualifying]\ntyped_lines_score_multiplier = 2.5\ntyped_lines_bar_influence = 0.4\n')
-        typed = p.parts["keyboard"]._typed_scorer
-        assert (typed._score_multiplier, typed._bar_influence) == (2.5, 0.4)
+        config = config_from(tmp_path, '[terminal]\nmode = "serial"\n[qualifying]\ntyped_lines_score_multiplier = 2.5\ntyped_lines_bar_influence = 0.4\n')
+        typed = build_printer(config, Options()).parts["keyboard"]._typed_scorer
+        assert typed.qualifying is config.qualifying
 
     def test_the_bar_keeper_gets_the_qualifier_bar_influence_from_the_config(self, tmp_path):
         p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nqualifier_bar_influence = 0.3\n')

@@ -100,7 +100,7 @@ class PortentWriter:
         text = self._client.consult(prompt.text)
         if text is None:
             return None
-        _log.debug("wrote a portent of %d words from %d exemplar(s)", len(text.split()), len(prompt.exemplars))
+        self.report.debug("wrote a portent of %d words from %d exemplar(s)", len(text.split()), len(prompt.exemplars))
         return Portent(text, prompt.exemplars, self._client.last_seconds, self._client.last_cut_off)
 
     def report_lines(self) -> list[str]:

@@ -92,5 +92,5 @@ class TypedLineScorer:
         result = self._scorer.score_text(text, now)
         multiplied = None if result.score is None else result.score * self._score_multiplier
         ruling = self._bar_keeper.rule_typed(multiplied, now, bar_influence=self._bar_influence)
-        _log.debug("scored a typed line of %d words: %s", len(text.split()), ruling.value)
+        self.report.debug("scored a typed line of %d words: %s", len(text.split()), ruling.value)
         return Attempt(text, TYPED, multiplied, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)

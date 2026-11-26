@@ -208,8 +208,8 @@ class ScorerModelClient:
         if value is None:
             self.report.warn("the scorer model's reply held no score; the clip will go unscored")
             return None
-        _log.debug("scored a clip of %d characters: %.2f in %.0f ms",
-                   len(clip_text), value, self.last_seconds * 1000)
+        self.report.debug("scored a clip of %d characters: %.2f in %.0f ms",
+                          len(clip_text), value, self.last_seconds * 1000)
         return value
 
     def warm_up(self) -> bool:
@@ -244,5 +244,5 @@ class ScorerModelClient:
             self.report.warn(f"the model did not give an explanation ({type(error).__name__})")
             return None
         self.last_seconds = time.perf_counter() - started
-        _log.debug("explained a clip of %d characters in %.0f ms", len(clip_text), self.last_seconds * 1000)
+        self.report.debug("explained a clip of %d characters in %.0f ms", len(clip_text), self.last_seconds * 1000)
         return Explanation(text, score_from_scorecard(reply)) if text else None

@@ -190,8 +190,8 @@ class ClipScorer:
 
     def _result(self, clip, value, scored_by) -> ScoredClip:
         self._counts[scored_by] += 1
-        _log.debug("scored a clip of %d words: %s (%s)", clip.words,
-                   "no score" if value is None else f"{value:.2f}", scored_by.value)
+        self.report.debug("scored a clip of %d words: %s (%s)", clip.words,
+                          "no score" if value is None else f"{value:.2f}", scored_by.value)
         return ScoredClip(clip, None if value is None else float(value), scored_by)
 
     # --- The circuit breaker --------------------------------------------------------
@@ -213,5 +213,5 @@ class ClipScorer:
     def _model_worked(self) -> None:
         """A success closes the breaker and clears the failure count."""
         if self._reopen_at is not None:
-            _log.info("the scorer model is answering again")
+            self.report.info("the scorer model is answering again")
         self._failures, self._reopen_at = 0, None

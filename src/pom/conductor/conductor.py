@@ -119,19 +119,19 @@ class Conductor:
 
     def run(self) -> None:
         """Runs the Printer until `stop()` is called (or, without `restart_room`, until the room ends). Blocks."""
-        _log.info("conductor: starting")
+        self.report.info("conductor: starting")
         self._stop.clear()
         self._start_threads()
         try:
             while not self._stop.wait(self._check):
                 self._watch()
                 if not self._restart_room and not self._running("room") and self._floor.state is FloorState.LISTENING:
-                    _log.info("conductor: the room ended and is not to be started again, so the run is over")
+                    self.report.info("conductor: the room ended and is not to be started again, so the run is over")
                     break
         finally:
             self.stop()
             self._join_threads()
-            _log.info("conductor: stopped (%d turns, %d hinges dropped)", self.turns_taken, self.hinges_dropped)
+            self.report.info("conductor: stopped (%d turns, %d hinges dropped)", self.turns_taken, self.hinges_dropped)
 
     def stop(self) -> None:
         """Stops the Printer: the ears shut for good, the keyboard closed, a turn in progress allowed to finish. Safe from any thread, safe to repeat."""
@@ -172,10 +172,10 @@ class Conductor:
             else:
                 action = None
         if action == "open":
-            _log.info("conductor: the floor is free, so the ears open")
+            self.report.info("conductor: the floor is free, so the ears open")
             self._open_ears()
         elif action == "shut":
-            _log.info("conductor: the floor is %s, so the ears shut", state.value)
+            self.report.info("conductor: the floor is %s, so the ears shut", state.value)
             self._shut_ears()
         if self._stop.is_set():
             return
@@ -268,14 +268,14 @@ class Conductor:
         turn = self._floor.take_floor(who)
         if turn is None:
             self.hinges_dropped += 1
-            _log.info("conductor: a hinge from the %s was dropped; the floor is %s (%d dropped so far)", who, self._floor.state.value,
-                      self.hinges_dropped)
+            self.report.info("conductor: a hinge from the %s was dropped; the floor is %s (%d dropped so far)", who, self._floor.state.value,
+                             self.hinges_dropped)
             return
         with self._lock:
             self._shut = True
         self._shut_ears()
         self.turns_taken += 1
-        _log.info("conductor: the %s's hinge takes the floor (turn %d)", who, self.turns_taken)
+        self.report.info("conductor: the %s's hinge takes the floor (turn %d)", who, self.turns_taken)
         self._turns.put((turn, attempt))
 
     # --- The turn thread ------------------------------------------------------------

@@ -132,8 +132,8 @@ class TakeCutter:
         sentences = self._sentences(" ".join(text.split()))
         for index, sentence in enumerate(sentences):
             clips.extend(self._levels(sentence, index, heard_at))
-        _log.debug("split %d character(s) into %d sentence(s) and %d clip(s)",
-                   len(text), len(sentences), len(clips))
+        self.report.debug("split %d character(s) into %d sentence(s) and %d clip(s)",
+                          len(text), len(sentences), len(clips))
         return clips
 
     # --- Sentences ------------------------------------------------------------------

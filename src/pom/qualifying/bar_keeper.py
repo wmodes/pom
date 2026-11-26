@@ -197,7 +197,7 @@ class BarKeeper:
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.HELD if cooling else Ruling.DID_NOT_QUALIFY
-            _log.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
+            self.report.debug("score %s: bar %s, %d counted", ruling.value, "none" if level is None else f"{level:.3f}", self.counted)
             return ruling
 
     def rule_typed(self, score: Optional[float], now: float, bar_influence: float = 0.0) -> Ruling:
@@ -221,5 +221,5 @@ class BarKeeper:
             self._last_time = now
             self.counted += 1
             ruling = Ruling.QUALIFIED if qualified else Ruling.DID_NOT_QUALIFY
-            _log.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
+            self.report.debug("direct score %s: bar %s", ruling.value, "none" if level is None else f"{level:.3f}")
             return ruling

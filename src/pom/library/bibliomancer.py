@@ -182,10 +182,10 @@ class Bibliomancer:
         if not self._passages:
             self.report.critical("nothing to draw from: no passage has a positive chance")
             return
-        _log.info("selector ready: %d drawable passage(s) in %d shelf(s); %d end unfinished and are %s", len(self._passages),
-                  len(drawable), len(self._unfinished), "drawn again" if self._redraw_limit else "left in (redraw is off)")
-        _log.debug("shelf shares: %s",
-                   ", ".join(f"{r}={s:.3f}" for r, s in sorted(self._shares.items())))
+        self.report.info("selector ready: %d drawable passage(s) in %d shelf(s); %d end unfinished and are %s", len(self._passages),
+                         len(drawable), len(self._unfinished), "drawn again" if self._redraw_limit else "left in (redraw is off)")
+        self.report.debug("shelf shares: %s",
+                          ", ".join(f"{r}={s:.3f}" for r, s in sorted(self._shares.items())))
 
     # --- Questions ------------------------------------------------------------------
 
@@ -259,8 +259,8 @@ class Bibliomancer:
         passages = [self._passages[i] for i in picked]
         for passage in passages:
             self._counts[passage.shelf] = self._counts.get(passage.shelf, 0) + 1
-        _log.debug("drew %d passage(s): %s (%d pick(s) redone for an unfinished ending)", len(passages),
-                   ", ".join(c.id for c in passages), redraws)
+        self.report.debug("drew %d passage(s): %s (%d pick(s) redone for an unfinished ending)", len(passages),
+                          ", ".join(c.id for c in passages), redraws)
         return passages
 
     def _pick_finished(self) -> tuple[int, int]:

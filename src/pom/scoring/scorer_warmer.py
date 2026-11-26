@@ -21,6 +21,7 @@ import threading
 import time
 from typing import Callable
 
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -46,6 +47,7 @@ class ScorerWarmer:
             attempts: How many warm-up requests may fail, with the server up, before it gives up.
             clock: Returns seconds; injected so tests need no waiting.
         """
+        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
         self._scorer, self._server_answers = scorer, server_answers
         self._poll_seconds, self._attempts, self._clock = poll_seconds, attempts, clock
         self._stopped = threading.Event()
@@ -72,11 +74,11 @@ class ScorerWarmer:
                 started = self._clock()
                 if self._scorer.warm_up():
                     self.warmed = True
-                    _log.info("the scorer model is warmed up (its scoring prompt is cached): %.1f s", self._clock() - started)
+                    self.report.info("the scorer model is warmed up (its scoring prompt is cached): %.1f s", self._clock() - started)
                     return True
                 failures += 1
                 if failures >= self._attempts:
-                    _log.warning("the scorer model did not answer %d warm-up requests; the first clip will pay for the first request", failures)
+                    self.report.warn("the scorer model did not answer %d warm-up requests; the first clip will pay for the first request", failures)
                     return False
             self._stopped.wait(self._poll_seconds)
         return False
@@ -86,4 +88,4 @@ class ScorerWarmer:
         try:
             self.run()
         except Exception as error:                    # nothing here may stop the oracle
-            _log.warning("the scorer warm-up stopped on an error (%s); the first clip will pay for the first request", type(error).__name__)
+            self.report.warn("the scorer warm-up stopped on an error (%s); the first clip will pay for the first request", type(error).__name__)

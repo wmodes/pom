@@ -35,6 +35,7 @@ import threading
 import time
 from typing import Callable, Optional
 
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -71,6 +72,7 @@ class BootSlipper:
             ears_shut_seconds: Seconds to wait after taking the floor, so the ears are shut before the first character. 0 or more.
             clock: Returns seconds; injected so tests need no waiting.
         """
+        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
         self._floor, self._terminal, self._formatter, self._template = floor, terminal, formatter, template
         self._find_addresses, self._hostname = find_addresses, hostname
         self._grace, self._retry, self._ears_shut, self._clock = grace_seconds, retry_seconds, ears_shut_seconds, clock
@@ -109,12 +111,12 @@ class BootSlipper:
                 result = self._terminal.transmit(text, still_alive=turn.still_printing)
             if result.completed:
                 self.typed, self.text = True, text
-                _log.info("the boot slip is typed (%d characters; address %s)", result.characters, ", ".join(addresses) or NO_NETWORK_ADDRESS)
+                self.report.info("the boot slip is typed (%d characters; address %s)", result.characters, ", ".join(addresses) or NO_NETWORK_ADDRESS)
                 return True
             if result.characters > 0:
-                _log.warning("the boot slip stopped after %d characters; it is not typed again", result.characters)
+                self.report.warn("the boot slip stopped after %d characters; it is not typed again", result.characters)
                 return False
-            _log.info("the typewriter went away before the boot slip began; waiting for it again")
+            self.report.info("the typewriter went away before the boot slip began; waiting for it again")
         return False
 
     def _wait_for_an_address(self) -> list:
@@ -148,4 +150,4 @@ class BootSlipper:
         try:
             self.run()
         except Exception as error:                    # nothing here may stop the oracle
-            _log.warning("the boot slip stopped on an error (%s)", type(error).__name__)
+            self.report.warn("the boot slip stopped on an error (%s)", type(error).__name__)

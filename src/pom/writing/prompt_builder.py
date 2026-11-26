@@ -132,5 +132,5 @@ class PromptBuilder:
                                                        for number, passage in enumerate(exemplars, start=1)),
                   "hinge": _fenced(HINGE_LABEL, hinge.strip())}
         text = PLACES.sub(lambda place: values[place.group(1)], self._prompt)
-        _log.debug("built a prompt of %d characters with %d exemplar(s)", len(text), len(exemplars))
+        self.report.debug("built a prompt of %d characters with %d exemplar(s)", len(text), len(exemplars))
         return OraclePrompt(text, exemplars)

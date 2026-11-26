@@ -261,4 +261,4 @@ class Eavesdropper:
             self.report.warn(f"whisper is not answering ({error}); the audio is kept and tried again")
         elif not error and self._whisper_down:
             self._whisper_down = False
-            _log.info("whisper is answering again")
+            self.report.info("whisper is answering again")

@@ -113,11 +113,11 @@ class Catalog:
                                  if p.is_dir() and not p.name.startswith(".")):
                 for path in sorted(folder.glob("*.jsonl")):
                     read = _read_file(path, folder.name, path.stem, report)
-                    _log.debug("read %s/%s: %d passage(s)", folder.name, path.name, len(read))
+                    report.debug("read %s/%s: %d passage(s)", folder.name, path.name, len(read))
                     passages.extend(read)
         store = cls(passages, report, strict)
-        _log.info("loaded %d passages from %d holding(s) in %d shelf(s)", len(store),
-                  sum(len(store.holdings(r)) for r in store.shelves()), len(store.shelves()))
+        report.info("loaded %d passages from %d holding(s) in %d shelf(s)", len(store),
+                    sum(len(store.holdings(r)) for r in store.shelves()), len(store.shelves()))
         return store
 
     # --- Questions ------------------------------------------------------------------

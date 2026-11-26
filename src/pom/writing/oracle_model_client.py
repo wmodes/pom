@@ -131,6 +131,6 @@ class OracleModelClient:
         if not text:
             self.report.warn("the oracle model's reply was empty; no portent this time")
             return None
-        _log.debug("portent of %d characters in %.1f s%s", len(text), self.last_seconds,
-                   " (cut off at max_tokens)" if self.last_cut_off else "")
+        self.report.debug("portent of %d characters in %.1f s%s", len(text), self.last_seconds,
+                          " (cut off at max_tokens)" if self.last_cut_off else "")
         return text

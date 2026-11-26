@@ -132,4 +132,4 @@ class MovingAverageBar(Bar):
             return
         self._average += self._weight * (score - self._average)
         self.counted += 1
-        _log.debug("average now %.3f after %d counted", self._average, self.counted)
+        self.report.debug("average now %.3f after %d counted", self._average, self.counted)

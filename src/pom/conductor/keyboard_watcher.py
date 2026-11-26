@@ -111,7 +111,7 @@ class KeyboardWatcher:
                 continue
             if self._paused.is_set():
                 self.dropped_lines += 1
-                _log.info("keyboard: a line typed during a turn was not answered (%d so far)", self.dropped_lines)
+                self.report.info("keyboard: a line typed during a turn was not answered (%d so far)", self.dropped_lines)
                 continue
             if not line.strip():
                 continue                             # C Rtn alone

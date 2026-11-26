@@ -177,17 +177,17 @@ class TurnTaker:
         trail = {"record_id": None}                  # what the turn has got as far as, for the error case below
         with turn:                                   # whatever happens below, the floor is yielded at the end
             try:
-                _log.info("turn: the %s's hinge scored %s against a bar of %s", turn.holder,
-                          f"{attempt.score:.1f}" if _is_number(getattr(attempt, "score", None)) else "none",
-                          f"{attempt.bar:.1f}" if _is_number(getattr(attempt, "bar", None)) else "none")
+                self.report.info("turn: the %s's hinge scored %s against a bar of %s", turn.holder,
+                                 f"{attempt.score:.1f}" if _is_number(getattr(attempt, "score", None)) else "none",
+                                 f"{attempt.bar:.1f}" if _is_number(getattr(attempt, "bar", None)) else "none")
                 result = self._take(turn, attempt, began, trail)
             except Exception as problem:             # nothing may stop the oracle
                 self.report.warn(f"a turn failed unexpectedly ({type(problem).__name__}); the floor was yielded")
                 result = TurnResult(TurnOutcome.ERROR, record_id=trail["record_id"])
                 self._set_outcome(trail["record_id"], TurnOutcome.ERROR)
         self.outcomes[result.outcome] += 1
-        _log.info("turn: %s (writing %.1f s, printing %.1f s, %d words, %d characters)", result.outcome.value,
-                  result.writing_seconds, result.printing_seconds, result.words, result.characters)
+        self.report.info("turn: %s (writing %.1f s, printing %.1f s, %d words, %d characters)", result.outcome.value,
+                         result.writing_seconds, result.printing_seconds, result.words, result.characters)
         return result
 
     def _take(self, turn: Turn, attempt: Attempt, began: float, trail: dict) -> TurnResult:
@@ -199,8 +199,8 @@ class TurnTaker:
         if portent is None:
             return self._done(TurnOutcome.NO_PORTENT, record_id, writing_seconds=writing_seconds, write_attempts=write_attempts)
         self._failed_writes_in_a_row = 0
-        _log.info("turn: a portent of %d words was written in %.1f s (%d attempt%s)", portent.words, writing_seconds, write_attempts,
-                  "" if write_attempts == 1 else "s")
+        self.report.info("turn: a portent of %d words was written in %.1f s (%d attempt%s)", portent.words, writing_seconds, write_attempts,
+                         "" if write_attempts == 1 else "s")
         if self._terminal is None:
             return self._done(TurnOutcome.NOT_PRINTED, record_id, words=portent.words, writing_seconds=writing_seconds,
                               write_attempts=write_attempts)
@@ -225,10 +225,10 @@ class TurnTaker:
             if attempts >= self._write_attempts:
                 break
             if self._clock() - began + self._write_pause + self._write_attempt > self._write_budget:
-                _log.info("turn: the oracle gave nothing and another attempt would not fit in the time allowed")
+                self.report.info("turn: the oracle gave nothing and another attempt would not fit in the time allowed")
                 break
-            _log.info("turn: the oracle gave nothing (attempt %d of %d); trying again in %.0f s", attempts, self._write_attempts,
-                      self._write_pause)
+            self.report.info("turn: the oracle gave nothing (attempt %d of %d); trying again in %.0f s", attempts, self._write_attempts,
+                             self._write_pause)
             self._sleep(self._write_pause)
         self._failed_writes_in_a_row += 1
         if self._failed_writes_in_a_row % WRITE_FAILURES_THAT_ALARM == 0:
@@ -268,8 +268,8 @@ class TurnTaker:
             if tries == 1:
                 self._set_outcome(record_id, "waiting for the printer")
             if tries % PRINT_TRIES_BETWEEN_LOG_LINES == 1:
-                _log.info("turn: the terminal cannot print yet (try %d); waiting for it, for up to %.0f s more", tries,
-                          max(0.0, deadline - self._clock()))
+                self.report.info("turn: the terminal cannot print yet (try %d); waiting for it, for up to %.0f s more", tries,
+                                 max(0.0, deadline - self._clock()))
             if self._clock() + self._print_pause >= deadline:
                 break
             self._wait(turn, self._print_pause)

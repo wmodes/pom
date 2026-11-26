@@ -25,7 +25,6 @@ Design decisions, and why:
   * The microphone can be unplugged: the room is built again by the Conductor each time it ends. A recording ends the run instead.
 """
 import argparse
-import logging
 import random
 import signal
 import sys
@@ -42,6 +41,7 @@ from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
 from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.bookkeeper.log_muter import LogMuter
 from pom.bookkeeper.log_setup import configure_logging, get_logger
 from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
@@ -123,18 +123,19 @@ class Printer:
                  services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None, poller: Optional[ServicePoller] = None):
         self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
         self._services, self._warmer, self._slipper, self._poller = services, warmer, slipper, poller
+        self.report = FaultRecorder(logger=_log)      # everything the Printer itself says goes through it
 
     def run(self) -> None:
         """Starts the monitoring site (if any), the status poller, the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
         if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
-            _log.warning("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
+            self.report.warn("the monitoring site did not start (%s); going on without it", "; ".join(self.site.report.lines()))
             self.site = None
         elif self.site is not None:
-            _log.info("monitoring site listening on port %s", self.site.port)
+            self.report.info("monitoring site listening on port %s", self.site.port)
         if self._poller is not None:
             self._poller.poll_once()                     # one round now, so the line below says how things are; then it goes on in its own thread
             self._poller.start()
-        _log.info("services: %s", ", ".join(f"{name} {light}" for name, light in self._services().items()))
+        self.report.info("services: %s", ", ".join(f"{name} {light}" for name, light in self._services().items()))
         if self._warmer is not None:
             self._warmer.start()                         # in the background: the Printer listens at once, whatever state the servers are in
         if self._slipper is not None:
@@ -166,6 +167,7 @@ class Printer:
 def build_printer(config: Config, options: Optional[Options] = None, root: Path = ROOT) -> Printer:
     """Builds every part from `config` and `options` and joins them in a Conductor. Contacts no server and opens no port or microphone."""
     options = options or Options()
+    report = FaultRecorder(logger=_log)             # what the building and the callbacks below say goes through it
     listening, qualifying, scoring, oracle = config.listening, config.qualifying, config.scorer, config.oracle
     terminal_settings, conductor_settings, monitor = config.terminal, config.conductor, config.monitor
     mode = options.terminal or terminal_settings.mode
@@ -285,7 +287,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     site = None
     if monitor.enabled:
         if not monitor.password:
-            _log.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
+            report.warn("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
             site = MonitorSite(history, monitor.password, monitor.show_hinges, clock=time.time, notebook=notebook, chart=config.chart,
                                poll_seconds=monitor.poll_seconds, hinge_snippet_chars=monitor.hinge_snippet_chars, stream_now=stream_now,
@@ -293,7 +295,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                                status_source=status_now)
 
     def turned(attempt, result) -> None:
-        _log.info("turn over: %s", result.outcome.value)
+        report.info("turn over: %s", result.outcome.value)
 
     conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
                           restart_pause_seconds=conductor_settings.restart_pause_seconds, check_seconds=conductor_settings.check_seconds)
@@ -341,19 +343,20 @@ def main(argv=None) -> int:
     config = Config.load(options.config_path)
     muter = LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds)
     configure_logging(config.log_level, debug=config.debug, local_logs=config.local_logs, muter=muter)
+    report = FaultRecorder(logger=_log)
     for line in config.report.lines():
-        logging.getLogger("pom").warning("config: %s", line)
+        report.warn("config: %s", line)
     printer = build_printer(config, options)
 
     def stop_cleanly(signum, frame) -> None:
-        _log.info("signal %s: stopping", signum)
+        report.info("signal %s: stopping", signum)
         printer.stop()
     signal.signal(signal.SIGTERM, stop_cleanly)
     signal.signal(signal.SIGINT, stop_cleanly)
-    _log.info("the Printer starts (terminal: %s)", printer.parts["mode"])
+    report.info("the Printer starts (terminal: %s)", printer.parts["mode"])
     printer.run()
     for line in printer.report_lines():
-        _log.warning("report: %s", line)
+        report.warn("report: %s", line)
     return 0
 
 

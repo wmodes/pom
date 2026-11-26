@@ -94,7 +94,7 @@ class DeviceFinder:
             pool = devices
             self._warn(f"no {self.KIND} matches {setting!r}; using what is there instead. available: {available}; chosen: {pool[0].address}")
         chosen = pool[0].address
-        _log.info("%s: setting %r; available: %s; chosen: %s", self.KIND, setting, available, chosen)
+        self.report.info("%s: setting %r; available: %s; chosen: %s", self.KIND, setting, available, chosen)
         if len(pool) > 1:
             which = "auto" if auto else f"{setting!r}"
             self._warn(f"several {self.KIND}s to choose from ({which}), so the first is used. chosen: {chosen}; available: {available}. "

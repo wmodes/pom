@@ -139,7 +139,7 @@ class TurnHistory:
             self.total_added += 1
             self._records.append(record)
             self._forget_old(keep_from)
-        _log.debug("recorded turn %d (%d kept)", record.id, len(self._records))
+        self.report.debug("recorded turn %d (%d kept)", record.id, len(self._records))
         return record
 
     def set_outcome(self, record_id: int, outcome: str) -> bool:

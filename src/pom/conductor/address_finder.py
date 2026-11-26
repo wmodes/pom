@@ -20,6 +20,7 @@ from typing import Callable, Optional
 
 import psutil
 
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.bookkeeper.log_setup import get_logger
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -36,6 +37,7 @@ class AddressFinder:
             interfaces: Returns {interface name: [address records]} as `psutil.net_if_addrs` does (each record has `family` and `address`).
                 Defaults to the operating system's own list.
         """
+        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
         self._interfaces = interfaces if interfaces is not None else psutil.net_if_addrs
 
     def find(self) -> list:
@@ -48,7 +50,7 @@ class AddressFinder:
                         found.append(record.address)
             return found
         except Exception as problem:                   # a failed lookup is the same as no network
-            _log.warning("could not list the network addresses (%s)", type(problem).__name__)
+            self.report.warn("could not list the network addresses (%s)", type(problem).__name__)
             return []
 
     @staticmethod

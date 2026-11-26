@@ -212,8 +212,8 @@ class FloorKeeper:
                 return None
             self._settle()
             if self._state is not FloorState.LISTENING:
-                _log.info("floor: the %s asked for the floor but it is %s (%s)", who, self._state.value,
-                          f"held by the {self._who}" if self._current is not None else "nobody's, recovering")
+                self.report.info("floor: the %s asked for the floor but it is %s (%s)", who, self._state.value,
+                                 f"held by the {self._who}" if self._current is not None else "nobody's, recovering")
                 return None
             turn = Turn(self, who)
             self._current = turn
@@ -264,16 +264,16 @@ class FloorKeeper:
     def _enter(self, state: FloorState) -> None:
         """Moves to `state`, from now, and logs it. Only called with the lock held."""
         now = self._clock()
-        _log.info("floor: %s -> %s (%s) after %.1f s", self._state.value, state.value, self._who or "-", max(0.0, now - self._since))
+        self.report.info("floor: %s -> %s (%s) after %.1f s", self._state.value, state.value, self._who or "-", max(0.0, now - self._since))
         if state is FloorState.RECOVERING:
-            _log.info("floor: the %s's turn is over after %.1f s in all", self._who or "-", max(0.0, now - self._turn_began))
+            self.report.info("floor: the %s's turn is over after %.1f s in all", self._who or "-", max(0.0, now - self._turn_began))
         self._state = state
         self._since = now
 
     def _note_late(self, turn: Turn, call: str) -> None:
         """Logs a call from a turn that lost the floor to the watchdog and has woken up. A turn that finished normally is not news."""
         if turn._ended == "lost":
-            _log.info("floor: the %s's turn called %s after it lost the floor; ignored", turn.holder, call)
+            self.report.info("floor: the %s's turn called %s after it lost the floor; ignored", turn.holder, call)
 
     def _settle(self) -> None:
         """Clears whatever has run out: a turn over its limit loses the floor, and a recovery that is done ends. Lock held."""

@@ -890,7 +890,9 @@ class TestAMachineThatHoldsTheEndOfThePortent:
         with caplog.at_level(logging.INFO, logger="pom.printing.terminal_port"):
             report = port.transmit("abcdef")
         assert report.completed is True and report.characters == 6 and serial_port.closed is False
-        assert len(port.report.warnings) == 1 and "stopped taking characters" in port.report.warnings[0] and not port.report.criticals
+        assert len(port.report.warnings) == 2 and not port.report.criticals
+        assert "stopped taking characters" in port.report.warnings[0]
+        assert "still not typing" in port.report.warnings[1]               # the reminder is a warning like any other, through the recorder
         assert any("typing again after" in r.getMessage() for r in caplog.records)
 
     def test_the_heartbeat_is_called_while_the_end_waits(self):

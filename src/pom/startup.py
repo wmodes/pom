@@ -158,14 +158,14 @@ class Startup:
             results.append(result)
             self._record(result, report)
         final = StartupResult(tuple(results), report)
-        _log.info(final.summary())
+        report.info(final.summary())
         return final
 
     @staticmethod
     def _record(result: StepResult, report: FaultRecorder) -> None:
         """Logs a step's result, and files a failure in the report at the right severity."""
-        _log.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
-                  f" ({result.note})" if result.note else "")
+        report.info("step %s: %s in %.1f s%s", result.name, result.status.value, result.seconds,
+                    f" ({result.note})" if result.note else "")
         if result.status is StepStatus.FAILED:
             message = f"startup step '{result.name}' failed" + (f": {result.note}" if result.note else "")
             (report.critical if result.critical else report.warn)(message)

@@ -26,6 +26,7 @@ Design decisions, and why:
 from typing import Iterator, Optional
 
 from pom.listening.take_cutter import ClipLevel
+from pom.bookkeeper.fault_recorder import FaultRecorder
 from pom.bookkeeper.log_setup import get_logger
 from pom.qualifying.attempt import Attempt
 from pom.qualifying.bar_keeper import Ruling
@@ -48,6 +49,7 @@ class HingeFinder:
             bar_keeper: A BarKeeper that says whether a score is a qualifier.
             score_room_tone: True lets room tone be scored and become hinges; False leaves it unscored.
         """
+        self.report = FaultRecorder(logger=_log)      # everything this class says goes through it
         self._eavesdropper = eavesdropper
         self._take_cutter = take_cutter
         self._scorer = scorer
@@ -79,7 +81,7 @@ class HingeFinder:
             return Attempt(text, kind, None, ScoredBy.UNSCORED, None, now, bar, held, self._bar_keeper.counted)
         result = self._scorer.score(clip) if clip is not None else self._scorer.score_text(text, now)
         ruling = self._bar_keeper.rule(result.score, now)
-        _log.debug("scored a %s of %d words: %s", kind, len(text.split()), ruling.value)
+        self.report.debug("scored a %s of %d words: %s", kind, len(text.split()), ruling.value)
         return Attempt(text, kind, result.score, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)
 
     def close(self) -> None:

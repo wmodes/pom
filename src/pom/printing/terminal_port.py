@@ -271,7 +271,7 @@ class TerminalPort:
                     continue
                 sent += 1
                 if trouble.since is not None:
-                    trouble.over(self._clock())
+                    self.report.info("the terminal is typing again after %.0f s", trouble.over(self._clock()))
             try:
                 left = self._wait_until_taken(sent, len(data), trouble, still_alive)
             except Exception as error:               # a dead port must never stop the oracle
@@ -285,7 +285,7 @@ class TerminalPort:
                 self._sleep(self._finish_wait)
             self._discard_input()
             seconds = self._clock() - started
-            _log.debug("typed %d characters in %.1f s", sent, seconds)
+            self.report.debug("typed %d characters in %.1f s", sent, seconds)
             return PrintResult(sent, seconds, True)
 
     def _queued(self) -> int:
@@ -305,7 +305,7 @@ class TerminalPort:
             queued = self._queued()
             stalled = previous is not None and queued >= previous
             if not stalled and trouble.since is not None:
-                trouble.over(self._clock())          # it is taking them again, or has taken them all
+                self.report.info("the terminal is typing again after %.0f s", trouble.over(self._clock()))     # it is taking them again, or has taken them all
             if queued == 0:
                 return 0
             if stalled:
@@ -349,7 +349,7 @@ class TerminalPort:
                     pass
             if now - trouble.reminded >= self._wait_reminder:
                 trouble.reminded = now
-                _log.warning("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
+                self.report.warn("the terminal is still not typing (%.0f s so far, %d of %d characters sent)", now - trouble.since, sent, total)
             if stalled:
                 self._sleep(self._refused_retry)
                 return True                          # the port is open: send the same character again
@@ -468,7 +468,7 @@ class TerminalPort:
             self._connect_failing = self._connect_failing or not quiet
             return False
         if self._connect_failing:
-            _log.info("the terminal port %s is open again", name)
+            self.report.info("the terminal port %s is open again", name)
         self._connect_failing = False
         return True
 
@@ -493,9 +493,11 @@ class _Trouble:
     def begin(self, now: float) -> None:
         self.since, self.reminded = now, now
 
-    def over(self, now: float) -> None:
-        _log.info("the terminal is typing again after %.0f s", now - self.since)
+    def over(self, now: float) -> float:
+        """Ends the stretch; returns how many seconds it lasted."""
+        lasted = now - self.since
         self.since = None
+        return lasted
 
 
 class _StreamSink:

@@ -113,7 +113,7 @@ class Circulation:
         for name, entry in shelves.items():
             if name.startswith("_"):
                 continue
-            _log.debug("shelf %r: %r", name, entry)
+            report.debug("shelf %r: %r", name, entry)
             if not isinstance(entry, dict):
                 report.warn(f"shelf '{name}' must be an object with 'share' and 'holdings'; "
                             f"ignoring it")
@@ -135,7 +135,7 @@ class Circulation:
                     continue
                 weights[holding] = _number(weight, f"holding '{holding}' weight", report)
                 listed_under[holding] = name
-        _log.debug("parsed %d shelf share(s) and %d holding weight(s)", len(shares), len(weights))
+        report.debug("parsed %d shelf share(s) and %d holding weight(s)", len(shares), len(weights))
         return cls(shares, weights, listed_under, report, strict)
 
     # --- Lookups --------------------------------------------------------------------
@@ -168,8 +168,8 @@ class Circulation:
                              "counting every shelf 1.0")
             return {name: 1.0 / len(names) for name in names}
         result = {name: self.share(name) / total for name in names}
-        _log.debug("normalized shares over %d shelf(s): %s", len(names),
-                   ", ".join(f"{n}={v:.3f}" for n, v in sorted(result.items())))
+        self.report.debug("normalized shares over %d shelf(s): %s", len(names),
+                          ", ".join(f"{n}={v:.3f}" for n, v in sorted(result.items())))
         return result
 
     # --- Validation -----------------------------------------------------------------

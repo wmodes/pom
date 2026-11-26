@@ -344,7 +344,7 @@ class MonitorSite:
             return False
         self._thread = threading.Thread(target=self._server.serve_forever, name="monitor-site", daemon=True)
         self._thread.start()
-        _log.info("monitoring site listening on port %d", self._server.server_port)
+        self.report.info("monitoring site listening on port %d", self._server.server_port)
         return True
 
     @property

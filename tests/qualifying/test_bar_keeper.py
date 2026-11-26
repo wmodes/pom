@@ -404,15 +404,15 @@ class TestOverATickingBar:
 
 class TestOverARealMovingAverageBar:
     def test_a_score_under_the_floor_is_ignored(self):
-        t = BarKeeper(MovingAverageBar(), QualifyingSettings(cooldown_seconds=0))
+        t = BarKeeper(MovingAverageBar(QualifyingSettings()), QualifyingSettings(cooldown_seconds=0))
         assert t.rule(0.2, 1.0) is Ruling.NO_MARK and t.counted == 0
 
     def test_a_score_far_above_the_average_qualifies(self):
-        t = BarKeeper(MovingAverageBar(fraction=0.25, starting_bar=4.0), QualifyingSettings(cooldown_seconds=0))
+        t = BarKeeper(MovingAverageBar(QualifyingSettings(average_fraction=0.25, starting_bar=4.0)), QualifyingSettings(cooldown_seconds=0))
         assert t.rule(6.0, 1.0) is Ruling.QUALIFIED
 
     def test_time_does_not_change_the_bar(self):
-        t = BarKeeper(MovingAverageBar(), QualifyingSettings(cooldown_seconds=0))
+        t = BarKeeper(MovingAverageBar(QualifyingSettings()), QualifyingSettings(cooldown_seconds=0))
         t.rule(3.0, 1.0)
         assert t.bar_at(2.0) == t.bar_at(50_000.0)
 

@@ -43,9 +43,9 @@ class TestBuildingABar:
         assert (bar._bar_percentile, bar._half_life, bar._starting_bar) == (99.0, 90.0, 5.5)
 
     def test_the_moving_average_bar_gets_its_settings(self):
-        bar = bar_from_settings(settings(algorithm="moving_average"), started_at=0.0)
-        assert bar._fraction == 0.3 and bar._floor == pytest.approx(0.9) and bar._half_life == 6.0
-        assert bar.level_at(0.0) == pytest.approx(5.5)
+        given = settings(algorithm="moving_average")
+        bar = bar_from_settings(given, started_at=0.0)
+        assert bar.qualifying is given and bar.level_at(0.0) == pytest.approx(5.5)
 
     def test_a_bad_value_is_the_bars_to_report(self, logged):
         bar = bar_from_settings(settings(algorithm="decaying_quantile", bar_percentile=500), started_at=0.0)

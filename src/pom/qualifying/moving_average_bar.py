@@ -14,25 +14,23 @@ This is the way the Printer first decided, restored beside the newer bars so it 
     nothing could qualify until ten had counted.)
 
 Design decisions, and why:
-  * Nothing here may stop the oracle (see pom/__init__.py). A bad setting is replaced by its default and logged; bad
-    input to `add` is ignored. `strict=True` raises MovingAverageBarError instead, for tests and dev tools.
+  * Nothing here may stop the oracle (see pom/__init__.py). The settings come checked from the config (`[qualifying]`); a bad score
+    range is replaced by the default and logged (`strict=True` raises MovingAverageBarError instead, for tests and dev tools); bad input
+    to `add` is ignored.
   * Decay is by score, as it always was, not by time, so silence leaves the average where it was.
   * A qualifying score joins the average like any other (the original did, and there is no opt-out).
   * The score range (0 to 9, the digits the scorer is asked for) is a parameter with that default, not a setting.
-  * Only numbers are kept: no words from the room. This module never reads Config; `from_settings` reads an object's attributes.
+  * Only numbers are kept: no words from the room. This module never reads Config; it is handed the `[qualifying]` settings.
 """
 import math
 from typing import Optional, Sequence
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_FRACTION = 0.25
-DEFAULT_HALF_LIFE_SCORES = 10.0
-DEFAULT_FLOOR_FRACTION = 0.05
-DEFAULT_STARTING_BAR = 6.8
 DEFAULT_SCORE_RANGE = (0.0, 9.0)       # the digits 0 to 9 the scorer model is asked to answer with
 
 
@@ -50,49 +48,32 @@ class MovingAverageBar(Bar):
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         counted: How many scores have counted (reached the floor) so far.
+        qualifying: The `[qualifying]` settings it reads: `average_fraction` (how far above the average the bar sits: 0.25 is 25% above),
+            `average_half_life_scores` (how many more scores it takes for a score's influence on the average to halve),
+            `average_floor_fraction` (how far up the score range the floor sits) and `starting_bar` (the bar before any score has counted).
     """
 
-    def __init__(self, fraction: float = DEFAULT_FRACTION, half_life_scores: float = DEFAULT_HALF_LIFE_SCORES,
-                 floor_fraction: float = DEFAULT_FLOOR_FRACTION, starting_bar: float = DEFAULT_STARTING_BAR,
-                 score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, qualifying: QualifyingSettings, score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: bool = False,
+                 bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            fraction: How far above the average the bar sits, 0 or more (0.25 is 25% above).
-            half_life_scores: How many more scores it takes for a score's influence on the average to halve, above 0.
-            floor_fraction: How far up the score range the floor sits, from 0 up to but not including 1.
-            starting_bar: The bar before any score has counted.
+            qualifying: The `[qualifying]` settings.
             score_range: (lowest, highest) possible score; the lowest must be below the highest.
             strict: Raise MovingAverageBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MovingAverageBarError, DEBUG, strict)
-        self._fraction = self._valid(fraction, "average_fraction", DEFAULT_FRACTION, lambda v: _is_number(v) and v >= 0,
-                                     "a number of at least 0")
-        half_life = self._valid(half_life_scores, "average_half_life_scores", DEFAULT_HALF_LIFE_SCORES,
-                                lambda v: _is_number(v) and v > 0, "a number above 0")
-        floor = self._valid(floor_fraction, "average_floor_fraction", DEFAULT_FLOOR_FRACTION,
-                            lambda v: _is_number(v) and 0 <= v < 1, "a number from 0 up to but not including 1")
-        starting = self._valid(starting_bar, "starting_bar", DEFAULT_STARTING_BAR, _is_number, "a number")
+        self.qualifying = qualifying
         low, high = self._valid_range(score_range)
-        self._floor = low + floor * (high - low)
-        self._half_life, self._starting_bar = half_life, starting
-        self._weight = 1.0 - 0.5 ** (1.0 / half_life)            # how far each score moves the average toward itself
-        self._average = starting / (1.0 + self._fraction)         # so the bar (average x (1 + fraction)) starts at the starting line
+        self._floor = low + qualifying.average_floor_fraction * (high - low)
+        self._weight = 1.0 - 0.5 ** (1.0 / qualifying.average_half_life_scores)            # how far each score moves the average toward itself
+        self._average = qualifying.starting_bar / (1.0 + qualifying.average_fraction)       # so the bar (average x (1 + fraction)) starts at the starting line
         self.counted = 0
 
     @classmethod
     def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "MovingAverageBar":
-        """Builds the bar from an object with `average_fraction`, `average_half_life_scores`, `average_floor_fraction`
-        and `starting_bar`.
-        `started_at` is the stream time the bar begins; this bar has no clock to start, and takes it so the factory can build any bar the same way."""
-        return cls(settings.average_fraction, settings.average_half_life_scores, settings.average_floor_fraction,
-                   settings.starting_bar, strict=strict, bookkeeper=bookkeeper)
-
-    def _valid(self, value, name: str, default, is_good, wanted: str) -> float:
-        """The value if it passes `is_good`, otherwise the default with a warning."""
-        if is_good(value):
-            return float(value)
-        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
-        return default
+        """Builds the bar from the `[qualifying]` settings. `started_at` is the stream time the bar begins; this bar has no clock to start, and
+        takes it so the factory can build any bar the same way."""
+        return cls(settings, strict=strict, bookkeeper=bookkeeper)
 
     def _valid_range(self, value) -> tuple:
         """A (lowest, highest) pair with the lowest below the highest, or the default with a warning."""
@@ -109,7 +90,7 @@ class MovingAverageBar(Bar):
 
     def level_at(self, now: float) -> Optional[float]:
         """The average times (1 + fraction). `now` is not used: this bar decays by score, not by time."""
-        return self._average * (1.0 + self._fraction)
+        return self._average * (1.0 + self.qualifying.average_fraction)
 
     def window_size_at(self, now: float) -> int:
         """How many scores have been averaged so far (there is no window; this is for display)."""
@@ -117,8 +98,8 @@ class MovingAverageBar(Bar):
 
     def describe(self) -> str:
         """For example: 25% above a decaying average of scores (half-life 10 scores, ignoring scores under 0.45), starting at 6.8."""
-        return (f"{self._fraction * 100:g}% above a decaying average of scores (half-life {self._half_life:g} scores, ignoring scores "
-                f"under {self._floor:.2f}), starting at {self._starting_bar:g}")
+        return (f"{self.qualifying.average_fraction * 100:g}% above a decaying average of scores (half-life {self.qualifying.average_half_life_scores:g} scores, ignoring scores "
+                f"under {self._floor:.2f}), starting at {self.qualifying.starting_bar:g}")
 
     def ignores(self, score: float) -> bool:
         """True for a score below the floor, and for anything that is not a number."""

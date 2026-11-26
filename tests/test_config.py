@@ -516,14 +516,11 @@ def test_the_qualifying_defaults_when_nothing_is_set():
 
 
 def test_the_qualifying_defaults_match_the_bars_defaults():
-    from pom.qualifying import decaying_quantile_bar, moving_average_bar
+    from pom.qualifying import decaying_quantile_bar
     s = QualifyingSettings()
     assert (s.bar_percentile, s.half_life_seconds, s.starting_bar) == (
         pom.qualifying.decaying_quantile_bar.DEFAULT_BAR_PERCENTILE, pom.qualifying.decaying_quantile_bar.DEFAULT_HALF_LIFE_SECONDS,
         pom.qualifying.decaying_quantile_bar.DEFAULT_STARTING_BAR)
-    assert (s.average_fraction, s.average_half_life_scores, s.average_floor_fraction, s.starting_bar) == (
-        pom.qualifying.moving_average_bar.DEFAULT_FRACTION, pom.qualifying.moving_average_bar.DEFAULT_HALF_LIFE_SCORES, pom.qualifying.moving_average_bar.DEFAULT_FLOOR_FRACTION,
-        pom.qualifying.moving_average_bar.DEFAULT_STARTING_BAR)
 
 
 def test_the_starting_qualifying_values():

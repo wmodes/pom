@@ -12,7 +12,7 @@ Design decisions, and why:
   * Time is the Eavesdropper's: counted in audio received, so a recording replayed at any speed qualifies exactly as a live run.
   * Only whole sentences are scored; clauses and phrases are not (the same rule the hearing-debug experiment used).
   * ROOM TONE. Room tone like "(dog barks)" is yielded either way, so a testbench can show it. With
-    `score_room_tone` off (the default) it is not scored and the BarKeeper never sees it: `score` is None and
+    `[listening] score_room_tone` off (the default) it is not scored and the BarKeeper never sees it: `score` is None and
     `ruling` is None. With it on, the room tone is scored like a sentence and counted by the BarKeeper, so a sound can be the
     hinge. How room tone scores is untried; whisper sometimes invents it.
   * Nothing here may stop the oracle (see pom/__init__.py). A Scorer that cannot score gives an unscored sentence, which the
@@ -27,6 +27,7 @@ from typing import Iterator, Optional
 
 from pom.listening.take_cutter import ClipLevel
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 from pom.qualifying.attempt import Attempt
 from pom.qualifying.bar_keeper import Ruling
 from pom.scoring.clip_scorer import ScoredBy
@@ -37,15 +38,19 @@ ROOM_TONE = "room_tone"
 
 
 class HingeFinder:
-    """Finds the sentences worth answering in what the room says."""
+    """Finds the sentences worth answering in what the room says.
 
-    def __init__(self, eavesdropper, take_cutter, scorer, bar_keeper, score_room_tone: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    Attributes:
+        listening: The `[listening]` settings it was handed (it reads `score_room_tone`).
+    """
+
+    def __init__(self, eavesdropper, take_cutter, scorer, bar_keeper, listening: ListeningSettings, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             eavesdropper: An Eavesdropper (anything with hear(), paused and close()).
             take cutter: A TakeCutter that cuts words into sentences.
             scorer: A Scorer that scores a clip, or plain text with score_text().
             bar_keeper: A BarKeeper that says whether a score is a qualifier.
-            score_room_tone: True lets room tone be scored and become hinges; False leaves it unscored.
+            listening: The `[listening]` section: `score_room_tone`, True lets room tone be scored and become hinges, False leaves it unscored.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
@@ -53,7 +58,7 @@ class HingeFinder:
         self._take_cutter = take_cutter
         self._scorer = scorer
         self._bar_keeper = bar_keeper
-        self._score_room_tone = score_room_tone
+        self.listening = listening
 
     def find(self) -> Iterator[Attempt]:
         """Yields an Attempt for each thing heard, as it is scored. Blocks while waiting for sound.
@@ -64,7 +69,7 @@ class HingeFinder:
             for tone in heard.room_tone:
                 if self._eavesdropper.paused:
                     break
-                yield self._sentence(tone, ROOM_TONE, heard.ends_at, score_it=self._score_room_tone)
+                yield self._sentence(tone, ROOM_TONE, heard.ends_at, score_it=self.listening.score_room_tone)
             if not heard.words:
                 continue
             for clip in self._take_cutter.split(heard.words, heard_at=heard.ends_at):

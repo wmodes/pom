@@ -213,7 +213,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         ears = Eavesdropper(make_deck(), whisper, listening, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at,
                             wall=time.monotonic, bookkeeper=bookkeeper)
         last_room["ears"] = ears
-        return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening.score_room_tone, bookkeeper=bookkeeper), ears
+        return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening, bookkeeper=bookkeeper), ears
 
     # writing and printing
     passages = root / "library" / "passages"

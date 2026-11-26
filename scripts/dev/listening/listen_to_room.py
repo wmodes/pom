@@ -71,7 +71,7 @@ def main():
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)
     bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the stream begins at 0
-    finder = HingeFinder(eavesdropper, TakeCutter(listening), scorer, bar_keeper, listening.score_room_tone)
+    finder = HingeFinder(eavesdropper, TakeCutter(listening), scorer, bar_keeper, listening)
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {listening.whisper_url}; scorer at {settings.url}")

@@ -73,7 +73,8 @@ def bar_keeper(min_scores=3, cooldown=60.0):
 
 def finder(segments, scores=None, score_room_tone=False, take_cutter=None, scored_by=ScoredBy.MODEL, **tracking):
     eavesdropper, scorer = FakeEavesdropper(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(ListeningSettings()), scorer, bar_keeper(**tracking), score_room_tone)
+    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(ListeningSettings()), scorer, bar_keeper(**tracking),
+                       ListeningSettings(score_room_tone=score_room_tone))
     return made, eavesdropper, scorer
 
 
@@ -329,7 +330,7 @@ class TestARoomThatStartsAgain:
         """A room of `seconds` of sound that begins its clock at `start_seconds`; returns its Eavesdropper and the attempts it gave."""
         from tests.listening.test_eavesdropper import ScriptedDeck
         ears = Eavesdropper(ScriptedDeck(seconds), TestARoomThatStartsAgain.StrongSentences(), ListeningSettings(), start_seconds=start_seconds, wall=lambda: now)
-        finder = HingeFinder(ears, TakeCutter(ListeningSettings()), TestARoomThatStartsAgain.EverythingIsStrong(), keeper)
+        finder = HingeFinder(ears, TakeCutter(ListeningSettings()), TestARoomThatStartsAgain.EverythingIsStrong(), keeper, ListeningSettings())
         return ears, list(finder.find())
 
     @staticmethod

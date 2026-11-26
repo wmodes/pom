@@ -148,7 +148,7 @@ def main() -> None:
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)
     bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the stream begins at 0
-    finder = HingeFinder(eavesdropper, TakeCutter(listening), scorer, bar_keeper, listening.score_room_tone)
+    finder = HingeFinder(eavesdropper, TakeCutter(listening), scorer, bar_keeper, listening)
 
     rng = random.Random()
     selector = Bibliomancer(Catalog.load(PASSAGES), Circulation.from_file(PASSAGES / "circulation.json"), rng,

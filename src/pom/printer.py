@@ -179,7 +179,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), scoring, bookkeeper=bookkeeper)     # sends the scorer one throwaway request once its server is up
     stream_started_at = 0.0           # the stream time at which listening starts: the first room's clock begins here, and the bar begins here too
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at, bookkeeper=bookkeeper)
-    take_cutter = TakeCutter(max_words=listening.max_clip_words, bookkeeper=bookkeeper)
+    take_cutter = TakeCutter(listening, bookkeeper=bookkeeper)
 
     # the status board: every light on the monitoring page, kept in one place. The microphone posts to it for itself as sound arrives; a poller asks the
     # servers and the printer. NO NEWS IS DOWN: a light whose last post is too old shows down (see pom/monitor/status_board.py). A recording has no microphone.

@@ -298,7 +298,8 @@ class TestTheMovedSettingsReachTheirParts:
         assert p.parts["bar_keeper"]._bar._starting_bar_weight == 9.0
 
     def test_the_longest_clip(self, tmp_path):
-        assert build(tmp_path, "[listening]\nmax_clip_words = 12\n").parts["take_cutter"].max_words == 12
+        config = config_from(tmp_path, "[listening]\nmax_clip_words = 12\n")
+        assert build_printer(config, Options()).parts["take_cutter"].listening is config.listening
 
     def test_the_scorer_warm_up(self, tmp_path):
         config = config_from(tmp_path, "[scorer]\nwarmup_poll_seconds = 2.5\nwarmup_attempts = 7\n")

@@ -6,6 +6,7 @@ BarKeeper are the real ones, because how the finder joins them is the point.
 
 import pytest
 
+from pom.defaults import ListeningSettings
 from pom.listening.eavesdropper import Eavesdropper
 from pom.listening.whisper_model_client import Segment
 from pom.listening import ClipLevel, Take, TakeCutter
@@ -72,7 +73,7 @@ def bar_keeper(min_scores=3, cooldown=60.0):
 
 def finder(segments, scores=None, score_room_tone=False, take_cutter=None, scored_by=ScoredBy.MODEL, **tracking):
     eavesdropper, scorer = FakeEavesdropper(segments), FakeScorer(scores, scored_by)
-    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(), scorer, bar_keeper(**tracking), score_room_tone)
+    made = HingeFinder(eavesdropper, take_cutter or TakeCutter(ListeningSettings()), scorer, bar_keeper(**tracking), score_room_tone)
     return made, eavesdropper, scorer
 
 
@@ -328,7 +329,7 @@ class TestARoomThatStartsAgain:
         """A room of `seconds` of sound that begins its clock at `start_seconds`; returns its Eavesdropper and the attempts it gave."""
         from tests.listening.test_eavesdropper import ScriptedDeck
         ears = Eavesdropper(ScriptedDeck(seconds), TestARoomThatStartsAgain.StrongSentences(), start_seconds=start_seconds, wall=lambda: now)
-        finder = HingeFinder(ears, TakeCutter(), TestARoomThatStartsAgain.EverythingIsStrong(), keeper)
+        finder = HingeFinder(ears, TakeCutter(ListeningSettings()), TestARoomThatStartsAgain.EverythingIsStrong(), keeper)
         return ears, list(finder.find())
 
     @staticmethod

@@ -16,6 +16,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
+from pom.defaults import ListeningSettings  # noqa: E402
 from pom.listening import TakeCutter  # noqa: E402
 from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 
@@ -28,7 +29,7 @@ def main():
 
     configure_logging("WARNING")
     text = " ".join(args.text) if args.text else sys.stdin.read()
-    clips = TakeCutter(max_words=args.max_words).split(text)
+    clips = TakeCutter(ListeningSettings(max_clip_words=args.max_words)).split(text)
     if not clips:
         print("(nothing to cut: no words found)")
     for clip in clips:

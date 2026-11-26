@@ -64,7 +64,7 @@ def main():
     configure_logging("WARNING")
     config = Config.load(args.config)
     scorer, bar_keeper, client = build(config, args.min_scores)
-    take_cutter = TakeCutter()
+    take_cutter = TakeCutter(config.listening)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")

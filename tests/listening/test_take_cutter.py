@@ -9,16 +9,19 @@ import string
 
 import pytest
 
+from pom.defaults import ListeningSettings
 from pom.listening import Clip, TakeCutter, TakeCutterError, ClipLevel
+
+LISTENING = ListeningSettings()
 
 
 def cut(text, **kwargs):
     """The (level, text) pairs for a piece of text, in order."""
-    return [(f.level.value, f.text) for f in TakeCutter(**kwargs).split(text)]
+    return [(f.level.value, f.text) for f in TakeCutter(ListeningSettings(**kwargs)).split(text)]
 
 
 def texts(text, level=None):
-    return [f.text for f in TakeCutter().split(text) if level is None or f.level.value == level]
+    return [f.text for f in TakeCutter(LISTENING).split(text) if level is None or f.level.value == level]
 
 
 # --- Sentences -------------------------------------------------------------------------
@@ -101,7 +104,7 @@ def test_times_and_hyphenated_words_are_not_clause_breaks(text):
 
 
 def test_a_sentence_with_no_clause_break_has_no_clause_clips():
-    clips = TakeCutter().split("My dog ate the couch.")
+    clips = TakeCutter(LISTENING).split("My dog ate the couch.")
     assert [f for f in clips if f.level is ClipLevel.CLAUSE] == []
 
 
@@ -116,7 +119,7 @@ def test_thousands_separators_are_not_phrase_breaks():
 
 
 def test_leading_and_trailing_separators_are_trimmed():
-    assert all(not f.text[0] in ",;:-" and not f.text[-1] in ",;:-" for f in TakeCutter().split(
+    assert all(not f.text[0] in ",;:-" and not f.text[-1] in ",;:-" for f in TakeCutter(LISTENING).split(
         "Well, ; so, - okay: fine, ; then."))
 
 
@@ -152,7 +155,7 @@ def test_all_three_levels_come_depth_first_in_speech_order():
 
 
 def test_a_piece_that_repeats_a_higher_level_is_not_repeated():
-    clips = TakeCutter().split("We left early; it rained.")
+    clips = TakeCutter(LISTENING).split("We left early; it rained.")
     assert [f.text for f in clips] == ["We left early; it rained.", "We left early", "it rained."]
 
 
@@ -163,7 +166,7 @@ def test_a_repeated_word_is_offered_once_whatever_its_case():
 
 
 def test_a_clause_with_no_comma_has_no_phrases_of_its_own():
-    levels = [f.level for f in TakeCutter().split("We left; it rained.")]
+    levels = [f.level for f in TakeCutter(LISTENING).split("We left; it rained.")]
     assert ClipLevel.PHRASE not in levels
 
 
@@ -173,14 +176,14 @@ def test_a_single_word_is_a_valid_clip():
 
 
 def test_each_clip_knows_its_sentence_index():
-    clips = TakeCutter().split("First one, ok. Second one. Third; done.")
+    clips = TakeCutter(LISTENING).split("First one, ok. Second one. Third; done.")
     assert [(f.sentence, f.text) for f in clips if f.level is ClipLevel.SENTENCE] == [
         (0, "First one, ok."), (1, "Second one."), (2, "Third; done.")]
     assert {f.sentence for f in clips if f.text == "ok."} == {0}
 
 
 def test_a_realistic_transcript():
-    clips = TakeCutter().split(
+    clips = TakeCutter(LISTENING).split(
         "Uh, so, like, I don't know... maybe? Yeah. Dr. Smith said we leave at 10:30; bring snacks - lots of them, okay?")
     sentences = [f.text for f in clips if f.level is ClipLevel.SENTENCE]
     assert sentences == ["Uh, so, like, I don't know... maybe?", "Yeah.",
@@ -198,12 +201,12 @@ def test_curly_quotes_and_apostrophes_survive():
 # --- Timestamps and size ---------------------------------------------------------------
 
 def test_the_timestamp_is_stamped_on_every_clip():
-    clips = TakeCutter().split("One, two. Three.", heard_at=42.5)
+    clips = TakeCutter(LISTENING).split("One, two. Three.", heard_at=42.5)
     assert clips and {f.heard_at for f in clips} == {42.5}
 
 
 def test_the_timestamp_defaults_to_zero():
-    assert {f.heard_at for f in TakeCutter().split("Hello there.")} == {0.0}
+    assert {f.heard_at for f in TakeCutter(LISTENING).split("Hello there.")} == {0.0}
 
 
 def test_clips_report_their_word_count():
@@ -213,12 +216,12 @@ def test_clips_report_their_word_count():
 def test_clips_are_immutable():
     import dataclasses
     with pytest.raises(dataclasses.FrozenInstanceError):
-        TakeCutter().split("Hi there.")[0].text = "changed"
+        TakeCutter(LISTENING).split("Hi there.")[0].text = "changed"
 
 
 def test_text_without_punctuation_is_cut_into_windows_of_max_words():
     words = [f"w{i}" for i in range(25)]
-    clips = TakeCutter(max_words=10).split(" ".join(words))
+    clips = TakeCutter(ListeningSettings(max_clip_words=10)).split(" ".join(words))
     assert [f.words for f in clips] == [10, 10, 5]
     assert " ".join(f.text for f in clips) == " ".join(words)
     assert {f.level for f in clips} == {ClipLevel.SENTENCE}
@@ -226,28 +229,28 @@ def test_text_without_punctuation_is_cut_into_windows_of_max_words():
 
 def test_no_clip_is_longer_than_max_words():
     long = ", ".join(" ".join(f"w{i}x{j}" for j in range(30)) for i in range(5)) + "."
-    assert all(f.words <= 12 for f in TakeCutter(max_words=12).split(long))
+    assert all(f.words <= 12 for f in TakeCutter(ListeningSettings(max_clip_words=12)).split(long))
 
 
 def test_the_default_limit_keeps_a_normal_sentence_whole():
     sentence = " ".join(f"word{i}" for i in range(39)) + "."
-    assert [f.text for f in TakeCutter().split(sentence)] == [sentence]
+    assert [f.text for f in TakeCutter(LISTENING).split(sentence)] == [sentence]
 
 
 # --- Odd input never raises ------------------------------------------------------------
 
 @pytest.mark.parametrize("text", ["", "   ", "\n\t", "...", "-- ; , :", "!!!", "——"])
 def test_empty_or_punctuation_only_text_gives_nothing(text):
-    assert TakeCutter().split(text) == []
+    assert TakeCutter(LISTENING).split(text) == []
 
 
 @pytest.mark.parametrize("bad", [None, 5, 3.5, b"bytes", ["a list"], {"a": 1}])
 def test_text_that_is_not_a_string_gives_nothing(bad):
-    assert TakeCutter().split(bad) == []
+    assert TakeCutter(LISTENING).split(bad) == []
 
 
 def test_non_text_other_than_none_is_reported(logged):
-    take_cutter = TakeCutter()
+    take_cutter = TakeCutter(LISTENING)
     take_cutter.split(None)
     assert logged.of(take_cutter).ok()                       # None is just "nothing heard"
     take_cutter.split(5)
@@ -261,7 +264,7 @@ def test_a_number_alone_is_a_clip():
 def test_random_junk_never_raises_and_respects_the_limits():
     rng = random.Random(7)
     alphabet = string.ascii_letters + " " * 8 + ".,;:!?-—…\"'()0123456789\n"
-    take_cutter = TakeCutter(max_words=8)
+    take_cutter = TakeCutter(ListeningSettings(max_clip_words=8))
     for _ in range(3000):
         junk = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 120)))
         for clip in take_cutter.split(junk):
@@ -272,53 +275,27 @@ def test_random_junk_never_raises_and_respects_the_limits():
 
 def test_splitting_is_repeatable():
     text = "Well, I think so; maybe not... Dr. Who? Yes!"
-    assert TakeCutter().split(text, heard_at=1.0) == TakeCutter().split(text, heard_at=1.0)
+    assert TakeCutter(LISTENING).split(text, heard_at=1.0) == TakeCutter(LISTENING).split(text, heard_at=1.0)
 
 
 # --- Settings: lenient by default, strict for development -----------------------------
 
-def test_the_default_limit_is_forty_words():
-    assert TakeCutter().max_words == 40
-
-
-@pytest.mark.parametrize("bad", [0, -1, "10", None, True, 2.5])
-def test_a_bad_limit_falls_back_to_the_default_with_a_warning(bad, logged):
-    take_cutter = TakeCutter(max_words=bad)
-    assert take_cutter.max_words == 40
-    assert any("max_words must be" in w for w in logged.of(take_cutter).warnings())
-
-
-@pytest.mark.parametrize("bad", [0, -1, "10", None, True, 2.5])
-def test_strict_raises_for_a_bad_limit(bad):
-    with pytest.raises(TakeCutterError, match="max_words must be"):
-        TakeCutter(max_words=bad, strict=True)
-
-
 def test_strict_raises_for_text_that_is_not_a_string():
     with pytest.raises(TakeCutterError, match="expects text"):
-        TakeCutter(strict=True).split(5)
+        TakeCutter(LISTENING, strict=True).split(5)
 
 
 def test_strict_accepts_normal_use():
-    assert TakeCutter(strict=True).split("Fine, thanks.")
-
-
-def test_a_custom_limit_is_used():
-    assert TakeCutter(max_words=7).max_words == 7
+    assert TakeCutter(LISTENING, strict=True).split("Fine, thanks.")
 
 
 # --- Logging ---------------------------------------------------------------------------
-
-def test_problems_are_logged_so_they_reach_journald(logged):
-    TakeCutter(max_words=0)
-    assert any("max_words must be" in line for line in logged.warnings())
-
 
 def test_a_split_is_logged_at_debug_when_the_module_flag_is_on(logged):
     from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.listening.take_cutter", True)
     try:
-        take_cutter = TakeCutter()
+        take_cutter = TakeCutter(LISTENING)
         take_cutter.split("One, two. Three.")
     finally:
         get_logger("pom.listening.take_cutter", None)
@@ -329,7 +306,7 @@ def test_a_split_is_not_logged_when_the_module_flag_is_off(logged):
     from pom.bookkeeper.log_setup import get_logger
     get_logger("pom.listening.take_cutter", False)
     try:
-        take_cutter = TakeCutter()
+        take_cutter = TakeCutter(LISTENING)
         take_cutter.split("One, two. Three.")
     finally:
         get_logger("pom.listening.take_cutter", None)
@@ -339,5 +316,5 @@ def test_a_split_is_not_logged_when_the_module_flag_is_off(logged):
 def test_a_window_made_only_of_punctuation_is_not_emitted():
     """Long text can leave a window with no letters or digits; that is no hinge."""
     text = " ".join(["word"] * 3 + ["--"] * 9 + ["end"])
-    for clip in TakeCutter(max_words=3).split(text):
+    for clip in TakeCutter(ListeningSettings(max_clip_words=3)).split(text):
         assert any(c.isalnum() for c in clip.text)

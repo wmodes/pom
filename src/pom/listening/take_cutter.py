@@ -26,9 +26,8 @@ Design decisions, and why:
     Abbreviations that never end a sentence (Mr., Dr., e.g.) and initials are protected;
     decimals, times and thousands separators are safe because a break needs whitespace after it.
   * Nothing here may stop the oracle (see pom/__init__.py). Text that is not a string, or has no
-    letters or digits, gives an empty list; a bad `max_words` falls back to the default with a
-    warning. `strict=True` raises TakeCutterError instead, for tests and dev tools.
-  * A clip longer than `max_words` (Whisper missed the punctuation) is cut into consecutive
+    letters or digits, gives an empty list with a warning. `strict=True` raises TakeCutterError instead, for tests and dev tools.
+  * A clip longer than `max_clip_words` (Whisper missed the punctuation) is cut into consecutive
     windows of that many words, so a hinge is always a bounded size.
 """
 import re
@@ -37,10 +36,10 @@ from enum import Enum
 from typing import Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-DEFAULT_MAX_WORDS = 40
 
 # A sentence ends at . ! ? (with optional closing quotes or brackets) followed by whitespace or the end.
 _SENTENCE_END = re.compile(r"([.!?]+)([\"')\]”’]*)(?:\s+|$)")
@@ -91,26 +90,18 @@ class TakeCutter:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        listening: The `[listening]` settings it was handed (it reads `max_clip_words`).
     """
 
-    def __init__(self, max_words: int = DEFAULT_MAX_WORDS, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, listening: ListeningSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            max_words: The most words a clip may have; longer ones are cut into windows of
-                this size. A whole number of at least 1.
+            listening: The `[listening]` section: `max_clip_words`, the most words a clip may have (longer ones are cut into windows of
+                this size).
             strict: Raise TakeCutterError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TakeCutterError, DEBUG, strict)
-        if isinstance(max_words, int) and not isinstance(max_words, bool) and max_words >= 1:
-            self._max_words = max_words
-        else:
-            self.logger.warning("max_words must be a whole number of at least 1, got %r; using %s", max_words, DEFAULT_MAX_WORDS)
-            self._max_words = DEFAULT_MAX_WORDS
-
-    @property
-    def max_words(self) -> int:
-        """The word limit in use after validation."""
-        return self._max_words
+        self.listening = listening
 
     def split(self, text, heard_at: float = 0.0) -> list:
         """Cuts text into clips at every level.
@@ -195,8 +186,8 @@ class TakeCutter:
         return piece
 
     def _windows(self, text: str) -> list:
-        """The text whole, or cut into consecutive windows of at most `max_words` words."""
+        """The text whole, or cut into consecutive windows of at most `max_clip_words` words."""
         words = text.split()
-        if len(words) <= self._max_words:
+        if len(words) <= self.listening.max_clip_words:
             return [text]
-        return [" ".join(words[i:i + self._max_words]) for i in range(0, len(words), self._max_words)]
+        return [" ".join(words[i:i + self.listening.max_clip_words]) for i in range(0, len(words), self.listening.max_clip_words)]

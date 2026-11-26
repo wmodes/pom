@@ -244,6 +244,18 @@ class TestWhereSoundComesFrom:
         _, ears = build(tmp_path, mac_mic="default").conductor._room_factory()
         assert type(ears._deck).__name__ == "MacMicDeck"
 
+    def test_the_scorer_model_client_is_handed_the_scorer_settings(self, tmp_path, monkeypatch):
+        handed = []
+        real = printer_module.ScorerModelClient
+
+        def recording(scorer_settings, **options):
+            handed.append(scorer_settings)
+            return real(scorer_settings, **options)
+        monkeypatch.setattr(printer_module, "ScorerModelClient", recording)
+        config = config_from(tmp_path, '[scorer]\nurl = "http://pi.test:9000/v1/chat/completions"\n[terminal]\nmode = "none"\n')
+        build_printer(config, Options())
+        assert handed == [config.scorer]
+
     def test_each_room_s_eavesdropper_is_handed_the_listening_settings(self, tmp_path):
         config = config_from(tmp_path, '[listening]\nroom_tone_memory = 2\n[terminal]\nmode = "none"\n')
         finder, ears = build_printer(config, Options()).conductor._room_factory()

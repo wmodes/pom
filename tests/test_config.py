@@ -394,8 +394,7 @@ def test_scorer_defaults_when_nothing_is_set():
 
 
 def test_the_scorer_defaults_match_the_scorers_own():
-    from pom.scoring import clip_scorer, scorer_model_client
-    assert ScorerSettings().timeout == scorer_model_client.DEFAULT_TIMEOUT
+    from pom.scoring import clip_scorer
     assert ScorerSettings().clip_filter_score == clip_scorer.DEFAULT_CLIP_FILTER_SCORE
     assert ScorerSettings().min_content_words == clip_scorer.DEFAULT_MIN_CONTENT_WORDS
     assert ScorerSettings().failure_limit == clip_scorer.DEFAULT_FAILURE_LIMIT
@@ -487,7 +486,7 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
     from pom.scoring.word_tagger import WordTagger
     config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nclip_filter_score = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
-    client = ScorerModelClient(settings.url, settings.prompt, settings.timeout,
+    client = ScorerModelClient(settings,
                             post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
                                 {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
     scorer = ClipScorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,

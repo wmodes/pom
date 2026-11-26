@@ -3,12 +3,14 @@ import math
 
 import pytest
 
-from pom.scoring.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, DEFAULT_TIMEOUT, EXPLAIN_MAX_TOKENS,
+from pom.defaults import ScorerSettings
+from pom.scoring.scorer_model_client import (DEFAULT_EXPLAIN_TIMEOUT, EXPLAIN_MAX_TOKENS,
                                        USER_TEMPLATE, WARM_UP_CLIP, ScorerModelClient, ScorerModelClientError,
                                        Explanation, score_from_scorecard, parse_written_score)
 
 URL = "http://127.0.0.1:8098/v1/chat/completions"
 PROMPT = "You score how interesting a clip is."
+SCORER = ScorerSettings(url=URL, prompt_scoring=PROMPT)
 
 
 def reply(*candidates):
@@ -31,9 +33,10 @@ class FakePost:
         return self.result
 
 
-def client(post=None, **options):
+def client(post=None, timeout=None, **options):
     options.setdefault("strict", False)
-    return ScorerModelClient(URL, PROMPT, post=post or FakePost(), **options)
+    settings = SCORER if timeout is None else ScorerSettings(url=URL, prompt_scoring=PROMPT, timeout=timeout)
+    return ScorerModelClient(settings, post=post or FakePost(), **options)
 
 
 class TestExpectedDigit:
@@ -116,7 +119,7 @@ class TestScore:
 
     def test_prompt_is_stripped_but_otherwise_sent_whole(self):
         post = FakePost()
-        ScorerModelClient(URL, "\n  Line one.\nLine two.\n\n", post=post).score("x")
+        ScorerModelClient(ScorerSettings(url=URL, prompt_scoring="\n  Line one.\nLine two.\n\n"), post=post).score("x")
         assert post.calls[0][1]["messages"][0]["content"] == "Line one.\nLine two."
 
 
@@ -158,20 +161,18 @@ class TestRecovery:
 
 
 class TestSetup:
-    @pytest.mark.parametrize("url", ["", "ftp://x", "file:///etc/passwd", "127.0.0.1:8098", None, 8098])
-    def test_only_http_addresses_are_accepted(self, url, logged):
+    def test_a_request_goes_to_the_configured_address(self):
         post = FakePost()
-        c = ScorerModelClient(url, PROMPT, post=post)
-        assert not c.available and len(logged.of(c).warnings()) == 1
-        assert c.score("hello") is None and post.calls == []
+        ScorerModelClient(ScorerSettings(url="http://pi.test:9000/v1/chat/completions", prompt_scoring=PROMPT), post=post).score("hello")
+        assert post.calls[0][0] == "http://pi.test:9000/v1/chat/completions"
 
     def test_https_is_accepted(self):
-        assert ScorerModelClient("https://example.test/v1/chat/completions", PROMPT, post=FakePost()).available
+        assert ScorerModelClient(ScorerSettings(url="https://example.test/v1/chat/completions", prompt_scoring=PROMPT), post=FakePost()).available
 
-    @pytest.mark.parametrize("prompt", ["", "   \n", None])
+    @pytest.mark.parametrize("prompt", ["", "   \n"])
     def test_no_prompt_means_the_model_is_never_asked(self, prompt, logged):
         post = FakePost()
-        c = ScorerModelClient(URL, prompt, post=post)
+        c = ScorerModelClient(ScorerSettings(url=URL, prompt_scoring=prompt), post=post)
         assert not c.available and len(logged.of(c).warnings()) == 1
         assert c.score("hello") is None and post.calls == []
 
@@ -179,19 +180,9 @@ class TestSetup:
         c = client()
         assert c.available and logged.of(c).ok()
 
-    @pytest.mark.parametrize("timeout", [0, -1, "slow", None, True])
-    def test_a_bad_timeout_falls_back_to_the_default(self, timeout, logged):
-        post = FakePost()
-        c = ScorerModelClient(URL, PROMPT, timeout=timeout, post=post)
-        c.score("hello")
-        assert post.calls[0][2] == DEFAULT_TIMEOUT
-        assert len(logged.of(c).warnings()) == 1
-
     def test_strict_mode_raises_on_a_bad_setup(self):
         with pytest.raises(ScorerModelClientError):
-            ScorerModelClient("nonsense", PROMPT, post=FakePost(), strict=True)
-        with pytest.raises(ScorerModelClientError):
-            ScorerModelClient(URL, "", post=FakePost(), strict=True)
+            ScorerModelClient(ScorerSettings(url=URL, prompt_scoring=""), post=FakePost(), strict=True)
 
 
 class TestWarmUp:
@@ -221,7 +212,7 @@ def written(text, first_token=None):
 
 def explainer(text="7.89, a vivid image, a death", **options):
     post = FakePost(written(text))
-    return ScorerModelClient(URL, PROMPT, post=post, explain_prompt=EXPLAIN_PROMPT, **options), post
+    return ScorerModelClient(SCORER, post=post, explain_prompt=EXPLAIN_PROMPT, **options), post
 
 
 class TestExplain:
@@ -258,7 +249,7 @@ class TestExplain:
 
     def test_the_explain_prompt_is_stripped_but_otherwise_sent_whole(self):
         post = FakePost(written("7.0"))
-        ScorerModelClient(URL, PROMPT, post=post, explain_prompt="\n  Line one.\nLine two.\n\n").explain("hello there")
+        ScorerModelClient(SCORER, post=post, explain_prompt="\n  Line one.\nLine two.\n\n").explain("hello there")
         assert post.calls[0][1]["messages"][0]["content"] == "Line one.\nLine two."
 
     def test_the_scoring_prompt_is_not_sent(self):
@@ -267,19 +258,18 @@ class TestExplain:
         assert PROMPT not in post.calls[0][1]["messages"][0]["content"]
 
     def test_the_wait_is_longer_than_for_a_score(self):
-        assert DEFAULT_EXPLAIN_TIMEOUT > DEFAULT_TIMEOUT
+        assert DEFAULT_EXPLAIN_TIMEOUT > SCORER.timeout
         c, post = explainer()
         c.explain("hello there")
         assert post.calls[0][2] == DEFAULT_EXPLAIN_TIMEOUT
 
     def test_without_a_explain_prompt_it_does_nothing(self):
         post = FakePost(written("7.0"))
-        c = ScorerModelClient(URL, PROMPT, post=post)
+        c = ScorerModelClient(SCORER, post=post)
         assert not c.can_explain and c.explain("hello there") is None and post.calls == []
 
-    def test_can_explain_needs_a_usable_client_and_a_explain_prompt(self):
+    def test_can_explain_with_a_usable_client_and_a_explain_prompt(self):
         assert explainer()[0].can_explain
-        assert not ScorerModelClient("nonsense", PROMPT, post=FakePost(), explain_prompt=EXPLAIN_PROMPT).can_explain
 
     @pytest.mark.parametrize("text", ["", "   ", None, 7])
     def test_empty_or_non_text_is_not_sent(self, text):
@@ -287,7 +277,7 @@ class TestExplain:
         assert c.explain(text) is None and post.calls == []
 
     def test_a_failure_gives_none_and_a_warning(self, logged):
-        c = ScorerModelClient(URL, PROMPT, post=FakePost(TimeoutError()), explain_prompt=EXPLAIN_PROMPT)
+        c = ScorerModelClient(SCORER, post=FakePost(TimeoutError()), explain_prompt=EXPLAIN_PROMPT)
         assert c.explain("hello there") is None and len(logged.of(c).warnings()) == 1
         assert c.last_seconds is not None
 
@@ -299,7 +289,7 @@ class TestExplain:
         assert c.explain("hello there") is None
 
     def test_strict_mode_raises_on_a_failure(self):
-        c = ScorerModelClient(URL, PROMPT, post=FakePost(OSError("down")), explain_prompt=EXPLAIN_PROMPT, strict=True)
+        c = ScorerModelClient(SCORER, post=FakePost(OSError("down")), explain_prompt=EXPLAIN_PROMPT, strict=True)
         with pytest.raises(ScorerModelClientError):
             c.explain("hello there")
 
@@ -311,7 +301,7 @@ class TestExplain:
 
     def test_what_was_said_never_reaches_a_report_or_a_log(self, logged):
         secret = "my secret clip about the funeral"
-        c = ScorerModelClient(URL, PROMPT, post=FakePost(OSError(f"failed on {secret}")), explain_prompt=EXPLAIN_PROMPT)
+        c = ScorerModelClient(SCORER, post=FakePost(OSError(f"failed on {secret}")), explain_prompt=EXPLAIN_PROMPT)
         c.explain(secret)
         explainer("7.0, a funeral")[0].explain(secret)
         assert all("funeral" not in w for w in logged.of(c).warnings())

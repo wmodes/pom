@@ -143,7 +143,7 @@ def main() -> None:
     eavesdropper = Eavesdropper(deck, client, listening)
 
     nltk_dir = ROOT / "data" / "nltk"
-    scorer_client = ScorerModelClient(scoring.url, scoring.prompt, scoring.timeout, explain_prompt=scoring.prompt_debug)
+    scorer_client = ScorerModelClient(scoring, explain_prompt=scoring.prompt_debug)
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=scoring.clip_filter_score, min_content_words=scoring.min_content_words,
                     failure_limit=scoring.failure_limit, retry_seconds=scoring.retry_seconds)

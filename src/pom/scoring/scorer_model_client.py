@@ -26,10 +26,10 @@ Design decisions, and why:
     ScorerModelClientError instead, for tests and dev tools.
   * Clip text is never logged: nothing that was said in the
     room is kept. Logs and reports hold counts, scores and timings.
-  * The prompt is passed in (the entry point takes it from Config); this module never reads Config
+  * The `[scorer]` settings object is passed in (the entry point takes it from Config); this module never reads Config
     and has no built-in prompt, so the words that define "interesting" live in one place, the
     config file. With no prompt the client reports it and is `available` = False.
-  * Only http and https addresses are accepted, so a mistyped setting cannot make it open a file.
+  * The address is checked by the config (http or https only, so a mistyped setting cannot make it open a file).
   * The transport is injected (`post`), so tests run with a fake and need no server. The default
     uses the standard library, so there is nothing to install.
   * `explain` is the debug view's request: the same clip and the same system message plus the
@@ -54,13 +54,13 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ScorerSettings
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
 # The user message, word for word as in the experiment, so scores match its saved results.
 USER_TEMPLATE = "Rate this line: {clip_text}"
 WARM_UP_CLIP = "Hello there."
-DEFAULT_TIMEOUT = 30.0
 DEFAULT_EXPLAIN_TIMEOUT = 90.0
 EXPLAIN_MAX_TOKENS = 80
 
@@ -128,16 +128,15 @@ class ScorerModelClient:
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        scorer_settings: The `[scorer]` settings it was handed (it reads `url`, `prompt` and `timeout`).
         last_seconds: How long the most recent request took, or None before the first.
     """
 
-    def __init__(self, url: str, prompt: str, timeout: float = DEFAULT_TIMEOUT,
-                 post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
+    def __init__(self, scorer_settings: ScorerSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
                  explain_prompt: str = "", explain_timeout: float = DEFAULT_EXPLAIN_TIMEOUT, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            url: The server's chat-completions address, e.g. http://127.0.0.1:8098/v1/chat/completions.
-            prompt: The system message that tells the model how to score (from Config).
-            timeout: Seconds to wait for one reply.
+            scorer_settings: The `[scorer]` section: `url` (the server's chat-completions address), `prompt` (the system message that tells
+                the model how to score) and `timeout` (seconds to wait for one reply).
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
             strict: Raise ScorerModelClientError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
@@ -146,11 +145,8 @@ class ScorerModelClient:
             explain_timeout: Seconds to wait for a written reply, which takes much longer than a score.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ScorerModelClientError, DEBUG, strict)
-        self._url, self._prompt = url, (prompt or "").strip()
-        self._timeout = (timeout if isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
-                         and timeout > 0 else DEFAULT_TIMEOUT)
-        if self._timeout != timeout:
-            self.logger.warning("the scorer timeout must be a positive number of seconds, got %r; using %g", timeout, DEFAULT_TIMEOUT)
+        self.scorer_settings = scorer_settings
+        self._url, self._prompt = scorer_settings.url, scorer_settings.prompt.strip()
         self._explain_prompt = (explain_prompt or "").strip()
         self._explain_timeout = (explain_timeout if isinstance(explain_timeout, (int, float))
                                  and not isinstance(explain_timeout, bool) and explain_timeout > 0
@@ -161,9 +157,6 @@ class ScorerModelClient:
         self._post = post if post is not None else _http_post
         self.last_seconds: Optional[float] = None
         self._usable = True
-        if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
-            self.logger.warning("the scorer address must start with http:// or https://, got %r; the model will not be asked", url)
-            self._usable = False
         if not self._prompt:
             self.logger.warning("the scorer has no prompt; the model will not be asked")
             self._usable = False
@@ -194,7 +187,7 @@ class ScorerModelClient:
         }
         started = time.perf_counter()
         try:
-            reply = self._post(self._url, body, self._timeout)
+            reply = self._post(self._url, body, self.scorer_settings.timeout)
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
             self.logger.warning("the scorer model did not answer (%s); the clip will go unscored", type(error).__name__)

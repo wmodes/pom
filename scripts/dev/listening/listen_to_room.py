@@ -66,7 +66,7 @@ def main():
 
     nltk_dir = ROOT / "data" / "nltk"
     settings = config.scorer
-    scorer_client = ScorerModelClient(settings.url, settings.prompt, settings.timeout, explain_prompt=settings.prompt_debug)
+    scorer_client = ScorerModelClient(settings, explain_prompt=settings.prompt_debug)
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None),
                     clip_filter_score=settings.clip_filter_score, min_content_words=settings.min_content_words,
                     failure_limit=settings.failure_limit, retry_seconds=settings.retry_seconds)

@@ -5,9 +5,12 @@ Mac version changes: the command it runs, its default device, and the wording of
 """
 import pytest
 
+from pom.defaults import ListeningSettings
 from pom.listening import MacMicDeck, MicDeck, MicDeckError
 from pom.listening.mac_mic_deck import DEFAULT_MAC_DEVICE
 from tests.listening.test_mic_deck import collect, fake_arecord, value_of, wait_for_the_reader
+
+LISTENING = ListeningSettings()
 
 
 def fake_ffmpeg(tmp_path, body):
@@ -18,7 +21,7 @@ def recorded_arguments(tmp_path, **settings):
     """The arguments a MacMicDeck gave the stand-in ffmpeg."""
     record = tmp_path / "argv.txt"
     program = fake_ffmpeg(tmp_path, f"open({str(record)!r}, 'w').write('|'.join(sys.argv[1:]))\nemit(1)")
-    deck = MacMicDeck(ffmpeg=program, **settings)
+    deck = MacMicDeck(listening=LISTENING, ffmpeg=program, **settings)
     wait_for_the_reader(deck)
     deck.close()
     return record.read_text().split("|")
@@ -38,7 +41,7 @@ class TestWhatItRuns:
 
     def test_it_tells_that_sound_arrived_like_any_mic_deck(self, tmp_path):
         beats = []
-        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(1, 2)"), heard=lambda: beats.append(1))
+        deck = MacMicDeck(listening=LISTENING, ffmpeg=fake_ffmpeg(tmp_path, "emit(1, 2)"), heard=lambda: beats.append(1))
         wait_for_the_reader(deck)
         deck.close()
         assert len(beats) == 2
@@ -49,7 +52,7 @@ class TestWhatItRuns:
     def test_the_arecord_deck_is_unchanged(self, tmp_path):
         record = tmp_path / "argv.txt"
         program = fake_arecord(tmp_path, f"open({str(record)!r}, 'w').write(' '.join(sys.argv[1:]))\nemit(1)")
-        deck = MicDeck(arecord=program)
+        deck = MicDeck(listening=LISTENING, arecord=program)
         wait_for_the_reader(deck)
         deck.close()
         assert record.read_text().startswith("-q -D ")
@@ -57,7 +60,7 @@ class TestWhatItRuns:
 
 class TestHearing:
     def test_frames_come_out_in_order(self, tmp_path):
-        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(1, 2, 3)"))
+        deck = MacMicDeck(listening=LISTENING, ffmpeg=fake_ffmpeg(tmp_path, "emit(1, 2, 3)"))
         wait_for_the_reader(deck)
         assert [value_of(frame) for frame in collect(deck)] == [1, 2, 3]
         deck.close()
@@ -65,7 +68,7 @@ class TestHearing:
 
 class TestFaults:
     def test_a_missing_ffmpeg_is_critical_and_says_how_to_get_it(self, logged):
-        deck = MacMicDeck(ffmpeg="no-such-program-anywhere")
+        deck = MacMicDeck(listening=LISTENING, ffmpeg="no-such-program-anywhere")
         assert collect(deck) == []
         text = " ".join(logged.of(deck).lines())
         assert "ffmpeg was not found" in text and "brew install ffmpeg" in text
@@ -73,10 +76,10 @@ class TestFaults:
 
     def test_a_missing_ffmpeg_raises_in_strict_mode(self):
         with pytest.raises(MicDeckError):
-            MacMicDeck(ffmpeg="no-such-program-anywhere", strict=True)
+            MacMicDeck(listening=LISTENING, ffmpeg="no-such-program-anywhere", strict=True)
 
     def test_an_ffmpeg_that_stops_is_reported_by_name(self, tmp_path, logged):
-        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(1)"))
+        deck = MacMicDeck(listening=LISTENING, ffmpeg=fake_ffmpeg(tmp_path, "emit(1)"))
         wait_for_the_reader(deck)
         collect(deck)
         assert any("ffmpeg ended" in line for line in logged.of(deck).lines())
@@ -85,7 +88,7 @@ class TestFaults:
     def test_a_bad_device_falls_back_to_the_default_and_names_it(self, tmp_path, logged):
         record = tmp_path / "argv.txt"
         program = fake_ffmpeg(tmp_path, f"open({str(record)!r}, 'w').write('|'.join(sys.argv[1:]))\nemit(1)")
-        deck = MacMicDeck(device="  ", ffmpeg=program)
+        deck = MacMicDeck(listening=LISTENING, device="  ", ffmpeg=program)
         wait_for_the_reader(deck)
         deck.close()
         assert ":default" in record.read_text().split("|")
@@ -96,20 +99,20 @@ class TestFaults:
         program = tmp_path / "ffmpeg"
         program.write_text("#!/no/such/interpreter\n")
         program.chmod(0o755)
-        deck = MacMicDeck(ffmpeg=str(program))
+        deck = MacMicDeck(listening=LISTENING, ffmpeg=str(program))
         assert collect(deck) == []
         assert any("ffmpeg could not be started" in line for line in logged.of(deck).lines())
 
 
 class TestTheBuffer:
     def test_the_buffer_seconds_setting_is_used(self, tmp_path):
-        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(*range(40))"), buffer_seconds=0.09)
+        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(*range(40))"), listening=ListeningSettings(buffer_seconds=0.09))
         wait_for_the_reader(deck)
         assert deck.dropped_frames > 0
         deck.close()
 
     def test_a_roomy_buffer_drops_nothing(self, tmp_path):
-        deck = MacMicDeck(ffmpeg=fake_ffmpeg(tmp_path, "emit(*range(40))"))
+        deck = MacMicDeck(listening=LISTENING, ffmpeg=fake_ffmpeg(tmp_path, "emit(*range(40))"))
         wait_for_the_reader(deck)
         assert deck.dropped_frames == 0
         deck.close()

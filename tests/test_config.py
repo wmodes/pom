@@ -849,11 +849,11 @@ def test_the_starting_listening_values_are_the_known_good_ones():
 
 def test_the_listening_defaults_match_the_modules_defaults():
     """Until each part takes the [listening] settings object, its own copy of a default must agree with defaults.py (Design Audit D5)."""
-    from pom.listening import capture_card_finder, eavesdropper, mic_deck, rolling_cutter
+    from pom.listening import capture_card_finder, eavesdropper, rolling_cutter
     s = ListeningSettings()
-    assert (s.device, s.buffer_seconds, s.cut_every_seconds, s.hold_back_seconds, s.rewind_seconds, s.max_cut_seconds, s.room_tone_pass_every,
+    assert (s.device, s.cut_every_seconds, s.hold_back_seconds, s.rewind_seconds, s.max_cut_seconds, s.room_tone_pass_every,
             s.room_tone_pass_seconds, s.room_tone_memory) == (
-        capture_card_finder.AUTO, mic_deck.DEFAULT_BUFFER_SECONDS, rolling_cutter.DEFAULT_CUT_EVERY_SECONDS, rolling_cutter.DEFAULT_HOLD_BACK_SECONDS,
+        capture_card_finder.AUTO, rolling_cutter.DEFAULT_CUT_EVERY_SECONDS, rolling_cutter.DEFAULT_HOLD_BACK_SECONDS,
         rolling_cutter.DEFAULT_REWIND_SECONDS, rolling_cutter.DEFAULT_MAX_CUT_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_PASS_EVERY,
         eavesdropper.DEFAULT_ROOM_TONE_PASS_SECONDS, eavesdropper.DEFAULT_ROOM_TONE_MEMORY)
 

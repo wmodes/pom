@@ -198,11 +198,11 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         if options.wav:
             return WavDeck(options.wav, speed=options.speed, bookkeeper=bookkeeper)
         if options.mac_mic is not None:
-            return MacMicDeck(options.mac_mic, buffer_seconds=listening.buffer_seconds, heard=sound_arrived, bookkeeper=bookkeeper)
+            return MacMicDeck(options.mac_mic, listening=listening, heard=sound_arrived, bookkeeper=bookkeeper)
         device = card_finder.resolve(listening.device)
         if not card_finder.found:
             raise NoSoundSource("no sound card was found")       # the finder has logged it; arecord is not started for a card that is not there
-        return MicDeck(device, buffer_seconds=listening.buffer_seconds, heard=sound_arrived, bookkeeper=bookkeeper)
+        return MicDeck(device, listening=listening, heard=sound_arrived, bookkeeper=bookkeeper)
 
     last_room = {"ears": None}     # the Eavesdropper of the room that ran last, so the next one's clock can carry on from it
 

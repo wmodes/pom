@@ -7,10 +7,13 @@ import time
 
 import pytest
 
+from pom.defaults import ListeningSettings
 from pom.listening.audio_format import FRAME_BYTES
 from pom.listening.mic_deck import DEFAULT_DEVICE, MicDeck, MicDeckError
 
 SAMPLES_PER_FRAME = FRAME_BYTES // 2
+
+LISTENING = ListeningSettings()
 
 
 def frame_of(value: int) -> bytes:
@@ -51,21 +54,21 @@ class TestTellingThatSoundArrived:
 
     def test_it_is_called_once_for_each_frame_without_anyone_using_the_sound(self, tmp_path):
         beats = []
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, 3, 4, 5)"), heard=lambda: beats.append(1))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1, 2, 3, 4, 5)"), heard=lambda: beats.append(1))
         wait_for_the_reader(deck)
         deck.close()
         assert len(beats) == 5
 
     def test_it_is_not_called_when_no_sound_comes(self, tmp_path):
         beats = []
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "sys.exit(1)"), heard=lambda: beats.append(1))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "sys.exit(1)"), heard=lambda: beats.append(1))
         wait_for_the_reader(deck)
         deck.close()
         assert beats == []
 
     def test_it_is_not_called_for_a_part_of_a_frame(self, tmp_path):
         beats = []
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, extra=b'xx')"), heard=lambda: beats.append(1))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1, extra=b'xx')"), heard=lambda: beats.append(1))
         wait_for_the_reader(deck)
         deck.close()
         assert len(beats) == 1
@@ -73,18 +76,18 @@ class TestTellingThatSoundArrived:
     def test_a_callback_that_raises_does_not_stop_the_sound(self, tmp_path):
         def broken():
             raise RuntimeError("the board broke")
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, 3)"), heard=broken)
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1, 2, 3)"), heard=broken)
         assert [value_of(f) for f in collect(deck)] == [1, 2, 3]
 
     def test_a_callback_that_raises_is_logged_as_a_warning_naming_only_the_kind_of_error(self, tmp_path, logged):
         def broken():
             raise RuntimeError("the board broke")
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)"), heard=broken)
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)"), heard=broken)
         collect(deck)
         assert logged.of(deck).warnings() == ["telling that sound arrived failed (RuntimeError); the sound goes on"]
 
     def test_without_a_callback_nothing_changes(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(7)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(7)"))
         assert [value_of(f) for f in collect(deck)] == [7]
 
 
@@ -92,7 +95,7 @@ class TestWhatItRuns:
     def test_arecord_is_started_for_16khz_mono_16bit_raw(self, tmp_path):
         record = tmp_path / "argv.txt"
         program = fake_arecord(tmp_path, f"open({str(record)!r}, 'w').write(' '.join(sys.argv[1:]))\nemit(1)")
-        deck = MicDeck(arecord=program)
+        deck = MicDeck(listening=LISTENING, arecord=program)
         wait_for_the_reader(deck)
         deck.close()
         assert record.read_text() == f"-q -D {DEFAULT_DEVICE} -f S16_LE -r 16000 -c 1 -t raw"
@@ -100,7 +103,7 @@ class TestWhatItRuns:
     def test_the_device_is_a_setting(self, tmp_path):
         record = tmp_path / "argv.txt"
         program = fake_arecord(tmp_path, f"open({str(record)!r}, 'w').write(' '.join(sys.argv[1:]))\nemit(1)")
-        deck = MicDeck("hw:2,0", arecord=program)
+        deck = MicDeck("hw:2,0", listening=LISTENING, arecord=program)
         wait_for_the_reader(deck)
         deck.close()
         assert "-D hw:2,0 " in record.read_text()
@@ -109,7 +112,7 @@ class TestWhatItRuns:
     def test_a_bad_device_means_the_default_with_a_warning(self, tmp_path, bad, logged):
         record = tmp_path / "argv.txt"
         program = fake_arecord(tmp_path, f"open({str(record)!r}, 'w').write(' '.join(sys.argv[1:]))\nemit(1)")
-        deck = MicDeck(bad, arecord=program)
+        deck = MicDeck(bad, listening=LISTENING, arecord=program)
         wait_for_the_reader(deck)
         deck.close()
         assert f"-D {DEFAULT_DEVICE} " in record.read_text()
@@ -118,22 +121,22 @@ class TestWhatItRuns:
 
 class TestTheFrames:
     def test_frames_arrive_whole_and_in_order(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, 3, 4, 5, 6)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1, 2, 3, 4, 5, 6)"))
         frames = collect(deck)
         assert [value_of(f) for f in frames] == [1, 2, 3, 4, 5, 6] and all(len(f) == FRAME_BYTES for f in frames)
 
     def test_a_last_piece_shorter_than_a_frame_is_dropped(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2, extra=frame(9)[:500])"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1, 2, extra=frame(9)[:500])"))
         assert [value_of(f) for f in collect(deck)] == [1, 2]
 
     def test_sound_that_arrives_in_odd_sized_pieces_is_cut_into_whole_frames(self, tmp_path):
         body = ("data = frame(1) + frame(2) + frame(3)\n"
                 "for i in range(0, len(data), 700):\n    sys.stdout.buffer.write(data[i:i + 700]); sys.stdout.buffer.flush(); time.sleep(0.01)")
-        deck = MicDeck(arecord=fake_arecord(tmp_path, body))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, body))
         assert [value_of(f) for f in collect(deck)] == [1, 2, 3]
 
     def test_frames_can_be_taken_slowly_without_losing_any(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(*range(1, 51))"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(*range(1, 51))"))
         got = []
         for frame in deck.frames():
             got.append(value_of(frame))
@@ -141,35 +144,35 @@ class TestTheFrames:
         assert got == list(range(1, 51)) and deck.dropped_frames == 0
 
     def test_after_the_sound_ends_frames_ends_at_once(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)"))
         collect(deck)
         assert collect(deck) == []
 
     def test_the_microphone_stopping_by_itself_is_a_critical_fault(self, tmp_path, logged):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1, 2)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1, 2)"))
         collect(deck)
         assert bool(logged.of(deck).criticals()) and "stopped" in logged.of(deck).criticals()[0]
 
     def test_arecord_dying_at_once_gives_no_frames_and_a_critical_fault(self, tmp_path, logged):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "sys.exit(1)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "sys.exit(1)"))
         assert collect(deck) == [] and bool(logged.of(deck).criticals())
 
 
 class TestWhenTheEavesdropperFallsBehind:
     def test_the_oldest_frames_are_dropped_and_the_newest_kept_in_order(self, tmp_path):
-        deck = MicDeck(buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))      # room for 10 frames
+        deck = MicDeck(listening=ListeningSettings(buffer_seconds=0.3), arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))      # room for 10 frames
         wait_for_the_reader(deck)
         got = [value_of(f) for f in collect(deck)]
         assert got == list(range(192, 201))                              # ten places: nine frames and the end marker
         assert deck.dropped_frames == 191
 
     def test_dropping_is_warned_about_once_for_one_stretch(self, tmp_path, logged):
-        deck = MicDeck(buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
+        deck = MicDeck(listening=ListeningSettings(buffer_seconds=0.3), arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
         assert len([w for w in logged.of(deck).warnings() if "dropping" in w]) == 1
 
     def test_a_second_stretch_of_dropping_is_warned_about_again(self, logged):
-        deck = MicDeck(buffer_seconds=0.06, arecord="no-such-program-anywhere")            # no microphone: two places
+        deck = MicDeck(listening=ListeningSettings(buffer_seconds=0.06), arecord="no-such-program-anywhere")            # no microphone: two places
         for n in range(4):
             deck._put(frame_of(n))                                      # the first stretch: two frames are dropped
         assert len([w for w in logged.of(deck).warnings() if "dropping" in w]) == 1
@@ -180,23 +183,15 @@ class TestWhenTheEavesdropperFallsBehind:
         assert len([w for w in logged.of(deck).warnings() if "dropping" in w]) == 2
 
     def test_no_dropping_when_the_buffer_is_big_enough(self, tmp_path, logged):
-        deck = MicDeck(buffer_seconds=10, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
+        deck = MicDeck(listening=ListeningSettings(buffer_seconds=10), arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
         assert len(collect(deck)) == 200 and deck.dropped_frames == 0
         assert not any("dropping" in w for w in logged.of(deck).warnings())
 
-    @pytest.mark.parametrize("bad", [0, -1, "10", None, True, float("nan"), float("inf")])
-    def test_a_bad_buffer_means_the_default_with_a_warning(self, tmp_path, bad, logged):
-        deck = MicDeck(buffer_seconds=bad, arecord=fake_arecord(tmp_path, "emit(*range(1, 401))"))
-        wait_for_the_reader(deck)
-        got = collect(deck)
-        assert len(got) == 332 and value_of(got[-1]) == 400 and deck.dropped_frames == 68   # ten seconds is 333 places
-        assert any("buffer_seconds" in w for w in logged.of(deck).warnings())
-
 
 class TestClosing:
     def test_closing_ends_a_wait_for_sound(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         got = []
         eavesdropper = threading.Thread(target=lambda: got.extend(collect(deck)))
         eavesdropper.start()
@@ -206,7 +201,7 @@ class TestClosing:
         assert not eavesdropper.is_alive() and [value_of(f) for f in got] == [1]
 
     def test_closing_on_purpose_is_not_a_fault(self, tmp_path, logged):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         eavesdropper = threading.Thread(target=lambda: collect(deck))
         eavesdropper.start()
         time.sleep(0.3)
@@ -215,17 +210,17 @@ class TestClosing:
         assert logged.of(deck).ok()
 
     def test_closing_twice_is_fine(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         deck.close()
         deck.close()
 
     def test_a_closed_deck_gives_no_frames(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         deck.close()
         assert collect(deck) == []
 
     def test_close_stops_arecord(self, tmp_path):
-        deck = MicDeck(arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
+        deck = MicDeck(listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)\ntime.sleep(60)"))
         process = deck._process
         deck.close()
         assert process.poll() is not None
@@ -233,49 +228,47 @@ class TestClosing:
 
 class TestNoMicrophone:
     def test_no_arecord_is_critical_and_gives_no_frames(self, logged):
-        deck = MicDeck(arecord="no-such-program-anywhere")
+        deck = MicDeck(listening=LISTENING, arecord="no-such-program-anywhere")
         assert collect(deck) == [] and bool(logged.of(deck).criticals()) and "arecord" in logged.of(deck).criticals()[0]
 
     def test_a_program_that_cannot_run_is_critical(self, tmp_path, logged):
         not_runnable = tmp_path / "arecord"
         not_runnable.write_text("not a program")
         not_runnable.chmod(0o755)
-        deck = MicDeck(arecord=str(not_runnable))
+        deck = MicDeck(listening=LISTENING, arecord=str(not_runnable))
         assert collect(deck) == [] and bool(logged.of(deck).criticals())
 
     @pytest.mark.parametrize("bad", [None, 5, ["arecord"]])
     def test_a_program_name_that_is_not_text_is_critical(self, bad, logged):
-        deck = MicDeck(arecord=bad)
+        deck = MicDeck(listening=LISTENING, arecord=bad)
         assert collect(deck) == [] and bool(logged.of(deck).criticals())
 
     def test_closing_a_deck_that_never_started_is_fine(self):
-        MicDeck(arecord="no-such-program-anywhere").close()
+        MicDeck(listening=LISTENING, arecord="no-such-program-anywhere").close()
 
 
 class TestStrictMode:
     def test_a_missing_arecord_raises(self):
         with pytest.raises(MicDeckError, match="arecord"):
-            MicDeck(arecord="no-such-program-anywhere", strict=True)
+            MicDeck(listening=LISTENING, arecord="no-such-program-anywhere", strict=True)
 
     def test_a_bad_setting_raises(self, tmp_path):
         with pytest.raises(MicDeckError, match="device"):
-            MicDeck("", arecord=fake_arecord(tmp_path, "emit(1)"), strict=True)
-        with pytest.raises(MicDeckError, match="buffer_seconds"):
-            MicDeck(buffer_seconds=0, arecord=fake_arecord(tmp_path, "emit(1)"), strict=True)
+            MicDeck("", listening=LISTENING, arecord=fake_arecord(tmp_path, "emit(1)"), strict=True)
 
     def test_a_fault_found_in_the_reader_thread_is_raised_when_the_sound_ends(self, tmp_path):
-        deck = MicDeck(strict=True, arecord=fake_arecord(tmp_path, "emit(1, 2)"))
+        deck = MicDeck(listening=LISTENING, strict=True, arecord=fake_arecord(tmp_path, "emit(1, 2)"))
         with pytest.raises(MicDeckError, match="stopped sending"):
             collect(deck)
 
     def test_in_strict_mode_dropping_does_not_hang_the_eavesdropper(self, tmp_path):
-        deck = MicDeck(strict=True, buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
+        deck = MicDeck(strict=True, listening=ListeningSettings(buffer_seconds=0.3), arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
         with pytest.raises(MicDeckError):
             collect(deck)
 
     def test_what_the_report_says_never_includes_sound(self, tmp_path, logged):
-        deck = MicDeck(buffer_seconds=0.3, arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
+        deck = MicDeck(listening=ListeningSettings(buffer_seconds=0.3), arecord=fake_arecord(tmp_path, "emit(*range(1, 201))"))
         wait_for_the_reader(deck)
         collect(deck)
         assert all(len(line) < 200 for line in logged.of(deck).lines())

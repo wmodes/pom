@@ -136,10 +136,10 @@ def main() -> None:
     if args.wav:
         deck, where = WavDeck(args.wav, speed=args.speed), f"the recording {args.wav}"
     elif args.mac_mic is not None:
-        deck, where = MacMicDeck(args.mac_mic, buffer_seconds=listening.buffer_seconds), f"this Mac's microphone ({args.mac_mic})"
+        deck, where = MacMicDeck(args.mac_mic, listening=listening), f"this Mac's microphone ({args.mac_mic})"
     else:
         device = CaptureCardFinder(listening).resolve(listening.device)     # "auto" becomes the microphone's card
-        deck, where = MicDeck(device, buffer_seconds=listening.buffer_seconds), f"the microphone {device}"
+        deck, where = MicDeck(device, listening=listening), f"the microphone {device}"
     eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
                         listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
                         listening.room_tone_memory)

@@ -6,7 +6,7 @@ listen, so this is where its hearing starts.
 Design decisions, and why:
   * `arecord` is read by a thread of its own into a buffer, and `frames()` takes from the buffer. Whisper takes a
     second or more to answer, and the loop that waits for it must not make the microphone's pipe fill up and lose
-    sound. The buffer holds `buffer_seconds` of audio (10 by default). If the eavesdropper falls so far behind that the
+    sound. The buffer holds `buffer_seconds` of audio (a `[listening]` setting). If the eavesdropper falls so far behind that the
     buffer fills, the OLDEST frames are dropped (the room has moved on), counted in `dropped_frames`, and a warning is
     recorded once for each stretch of dropping.
   * Nothing here may stop the oracle (see pom/__init__.py). No `arecord`, a microphone that cannot be opened, or a
@@ -26,12 +26,12 @@ import threading
 from typing import Callable, Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
+from pom.defaults import ListeningSettings
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_RATE
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
 DEFAULT_DEVICE = "plughw:0,0"
-DEFAULT_BUFFER_SECONDS = 10.0
 _STOP_WAIT = 2.0                      # seconds to wait for arecord and its reader to finish when closing
 
 
@@ -39,15 +39,13 @@ class MicDeckError(ValueError):
     """Raised for any microphone problem, but only in strict mode (development and tests)."""
 
 
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-
 
 class MicDeck:
     """Frames from the microphone.
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
+        listening: The `[listening]` settings it was handed (it reads `buffer_seconds`).
         dropped_frames: How many frames were thrown away because the eavesdropper fell behind.
     """
 
@@ -57,28 +55,26 @@ class MicDeck:
     _FALLBACK_DEVICE = DEFAULT_DEVICE
     _MISSING_HINT = "this is meant to run on the Pi"
 
-    def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord",
-                 buffer_seconds: float = DEFAULT_BUFFER_SECONDS, strict: bool = False, heard: Optional[Callable[[], None]] = None, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord", *, listening: ListeningSettings, strict: bool = False,
+                 heard: Optional[Callable[[], None]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             device: The ALSA capture device, e.g. plughw:0,0 (`arecord -l` lists them).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
-            buffer_seconds: How much sound to hold before the oldest is dropped, above 0.
+            listening: The `[listening]` section: `buffer_seconds`, how much sound to hold before the oldest is dropped.
             strict: Raise MicDeckError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             heard: Called, with no arguments, as each frame comes from the microphone (by the thread that reads it), so the status board can
                 tell that sound is arriving. A callback that raises is ignored: it must never stop the sound.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MicDeckError, DEBUG, strict)
+        self.listening = listening
         self.dropped_frames = 0
         self._heard = heard
         if not (isinstance(device, str) and device.strip()):
             self.logger.warning("the capture device must be a name such as %s, got %r; using %s",
                                 self._FALLBACK_DEVICE, device, self._FALLBACK_DEVICE)
             device = self._FALLBACK_DEVICE
-        if not (_is_number(buffer_seconds) and buffer_seconds > 0):
-            self.logger.warning("buffer_seconds must be a number above 0, got %r; using %g", buffer_seconds, DEFAULT_BUFFER_SECONDS)
-            buffer_seconds = DEFAULT_BUFFER_SECONDS
-        self._queue: "queue.Queue[Optional[bytes]]" = queue.Queue(maxsize=max(1, round(buffer_seconds / FRAME_SECONDS)))
+        self._queue: "queue.Queue[Optional[bytes]]" = queue.Queue(maxsize=max(1, round(listening.buffer_seconds / FRAME_SECONDS)))
         self._closing = threading.Event()
         self._finished = False
         self._dropping = False

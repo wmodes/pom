@@ -109,8 +109,8 @@ class TestTheWiring:
                 return f"found-{len(asked)}"
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
-                opened.append((device, buffer_seconds))
+            def __init__(self, device, listening, heard=None, bookkeeper=None):
+                opened.append((device, listening.buffer_seconds))
 
         monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
         monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
@@ -125,7 +125,7 @@ class TestTheWiring:
         decks = []
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
+            def __init__(self, device, listening, heard=None, bookkeeper=None):
                 self.heard = heard
                 decks.append(self)
 
@@ -140,7 +140,7 @@ class TestTheWiring:
         decks, now = [], [1000.0]
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
+            def __init__(self, device, listening, heard=None, bookkeeper=None):
                 self.heard = heard
                 decks.append(self)
 
@@ -188,7 +188,7 @@ class TestTheWiring:
                 return device
 
         class StandInDeck:
-            def __init__(self, device, buffer_seconds, heard=None, bookkeeper=None):
+            def __init__(self, device, listening, heard=None, bookkeeper=None):
                 opened.append(device)
 
         monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
@@ -243,6 +243,24 @@ class TestWhereSoundComesFrom:
     def test_the_mac_microphone_is_used_when_asked(self, tmp_path):
         _, ears = build(tmp_path, mac_mic="default").conductor._room_factory()
         assert type(ears._deck).__name__ == "MacMicDeck"
+
+    def test_the_mac_microphone_is_handed_the_listening_settings(self, tmp_path, monkeypatch):
+        handed = []
+
+        class StandInMacDeck:
+            def __init__(self, device, listening, heard=None, bookkeeper=None):
+                handed.append(listening)
+
+            def frames(self):
+                return iter(())
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr(printer_module, "MacMicDeck", StandInMacDeck)
+        config = config_from(tmp_path, "[listening]\nbuffer_seconds = 3\n")
+        build_printer(config, Options(mac_mic="default")).conductor._room_factory()
+        assert handed == [config.listening]
 
 
 class TestWhatItPrintsOn:

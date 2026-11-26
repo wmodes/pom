@@ -61,7 +61,7 @@ def main():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
     device = CaptureCardFinder(listening).resolve(listening.device)     # "auto" becomes the microphone's card
     deck = (WavDeck(args.wav, speed=args.speed) if args.wav
-              else MicDeck(device, buffer_seconds=listening.buffer_seconds))
+              else MicDeck(device, listening=listening))
     eavesdropper = Eavesdropper(deck, client, listening.cut_every_seconds, listening.hold_back_seconds, listening.rewind_seconds,
                         listening.max_cut_seconds, listening.room_tone_pass_every, listening.room_tone_pass_seconds,
                         listening.room_tone_memory)

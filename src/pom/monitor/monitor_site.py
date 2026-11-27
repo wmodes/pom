@@ -140,7 +140,7 @@ a { color: var(--accent); }
 .tiles { display:grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap:.6rem; }
 .tile { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.6rem .8rem; }
 .tile b { display:block; font-size:1.35rem; } .tile span { color:var(--muted); font-size:.85rem; }
-.services span { margin-right:1rem; white-space:nowrap; } .up { color:var(--good); } .waiting { color:var(--warn); } .down { color:var(--bad); } .none { color:var(--muted); }
+.services { text-wrap:balance; } .services span { margin-right:1rem; white-space:nowrap; } .up { color:var(--good); } .waiting { color:var(--warn); } .down { color:var(--bad); } .none { color:var(--muted); }
 table { width:100%; border-collapse: collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; }
 th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--line); vertical-align: top; }
 th { color:var(--muted); font-weight:600; font-size:.85rem; } td.num { text-align:right; font-variant-numeric: tabular-nums; }
@@ -219,7 +219,7 @@ _INDEX = """<!doctype html>
   <div class="tile"><b data-stat="since_start">{{ s.turns_since_start }}</b><span>turns since start</span></div>
   <div class="tile"><b data-stat="uptime">{{ s.uptime }}</b><span>up</span></div>
 </div>
-{% if services %}<p class="services">{% for name, light in services %}<span>{{ name }}: {% if light == 'none' %}<b class="muted">none</b>{% else %}<b class="{{ light }}">{{ 'DOWN' if light == 'down' else light }}</b>{% endif %}</span>{% endfor %}</p>{% endif %}
+{% if services %}<p class="services">{% for name, light in services %}<span>{{ name }}: {% if light == 'none' %}<b class="muted">none</b>{% else %}<b class="{{ light }}">{{ 'DOWN' if light == 'down' else light }}</b>{% endif %}</span> {% endfor %}</p>{% endif %}
 {% if s.algorithm or s.bar_description %}<p class="rule"><span class="muted">Bar type:</span> <b>{{ s.algorithm }}</b>{% if s.bar_description %} <span class="muted">&mdash; a score above {{ s.bar_description }}</span>{% endif %}</p>{% endif %}
 {% if chart %}<div id="chart" class="chartbox">{{ chart|safe }}</div>
 <p class="muted small">Black dots: attempts. Red line: the bar each one had to beat. Orange: qualifiers (click one). The last {{ chart_minutes }} minutes.</p>{% endif %}

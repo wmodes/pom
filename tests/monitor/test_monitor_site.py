@@ -1126,6 +1126,12 @@ class TestTheServiceLights:
         page, _ = self.lights(mic=True, whisper=True, scorer=True, oracle=False, printer=None)
         assert page.index("mic:") < page.index("whisper:") < page.index("scorer:") < page.index("oracle:") < page.index("printer:")
 
+    def test_the_line_wraps_between_lights_in_balanced_rows_on_a_narrow_screen(self):
+        """A phone can break the line only where there is a space: between the lights, never inside one; balance evens the rows (no orphan)."""
+        page, _ = self.lights(mic=True, whisper=True, scorer=True)
+        assert '</span> <span>whisper:' in page and '</span> <span>scorer:' in page
+        assert ".services { text-wrap:balance; }" in page and ".services span { margin-right:1rem; white-space:nowrap; }" in page
+
     def test_no_lights_no_line(self):
         _, _, client, _ = make(status=lambda: MonitorStatus())
         assert 'class="services"' not in get(client, "/").get_data(as_text=True)

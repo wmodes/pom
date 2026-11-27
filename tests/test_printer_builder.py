@@ -2,13 +2,18 @@
 
 Nothing here contacts a server or opens a microphone or a port: building is plain construction. (The wiring of the whole Printer is in test_printer.py.)
 """
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from pom.config import Config
 from pom.conductor import TurnOutcome
+from pom.library import Circulation
 from pom.printer_builder import Options, PrinterBuilder
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def config_from(tmp_path, text=""):
@@ -44,6 +49,20 @@ class TestEachPartIsBuiltOnceAndOnlyWhenAsked:
         builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "console"\n'))
         builder.scorer
         assert set(vars(builder)) & {"terminal", "selector", "writer", "conductor", "printer"} == set()
+
+    def test_a_part_set_before_it_is_asked_for_is_the_one_every_later_part_uses(self, tmp_path):
+        """A testbench hands in its own circulation file by setting the part; the Bibliomancer built after it draws by it."""
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'), root=ROOT)
+        mostly_aphorisms = tmp_path / "circulation.json"
+        mostly_aphorisms.write_text(json.dumps({"shelves": {"aphorism": {"share": 100.0, "holdings": {}}}}), encoding="utf-8")
+        builder.circulation = Circulation.from_file(mostly_aphorisms)
+        shares = builder.selector.shelf_shares()
+        assert shares["aphorism"] > 0.8 and max(shares, key=shares.get) == "aphorism"       # every other shelf counts 1
+
+    def test_the_bibliomancer_draws_from_the_librarys_own_circulation_by_default(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'), root=ROOT)
+        assert len(builder.selector.shelf_shares()) > 1 and builder.catalog.layout()
+        assert builder.selector.oracle is builder.config.oracle
 
     def test_the_whole_printer_is_built_once(self, tmp_path):
         builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))

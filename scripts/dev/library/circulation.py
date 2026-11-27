@@ -3,8 +3,8 @@
 
 The oracle draws a few exemplar passages at random. The library is lopsided, so the Bibliomancer weights
 every passage to give each shelf its target share over many draws (see
-src/pom/library/bibliomancer.py for the math). This script builds the real Bibliomancer from
-library/passages/ and library/passages/circulation.json and reports, per shelf, its target share, its passage count, how
+src/pom/library/bibliomancer.py for the math). This script builds the real Bibliomancer the way the
+Printer does (the PrinterBuilder), from library/passages/ and library/passages/circulation.json (or the file given), and reports, per shelf, its target share, its passage count, how
 much likelier an average passage of that shelf is than in a flat draw, and the chance that one
 pull of five comes entirely from that shelf.
 
@@ -22,8 +22,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "src"))   # scripts may import pom
 
-from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper import Bookkeeper  # noqa: E402
+from pom.config import Config  # noqa: E402
+from pom.library import Circulation  # noqa: E402
+from pom.printer_builder import ROOT, Options, PrinterBuilder  # noqa: E402
 
 LIBRARY = os.path.join(HERE, "..", "..", "..", "library")
 PULL = 5      # the pull size used for the "all alike" column
@@ -31,12 +33,14 @@ PULL = 5      # the pull size used for the "all alike" column
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"))
+    parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"), help="the circulation file to check")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
-    store = Catalog.load(os.path.join(LIBRARY, "passages"))
-    selector = Bibliomancer(store, Circulation.from_file(args.circulation))
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
+    builder = PrinterBuilder(Config.load(Options().config_path), root=ROOT, bookkeeper=bookkeeper)     # the Printer's own Bibliomancer, built the same way
+    builder.circulation = Circulation.from_file(args.circulation, bookkeeper=bookkeeper)    # the circulation file to check (the library's own by default)
+    store, selector = builder.catalog, builder.selector
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     shares = selector.shelf_shares()

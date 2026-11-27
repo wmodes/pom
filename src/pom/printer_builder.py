@@ -7,7 +7,8 @@
 Each part is a property that is built the first time it is asked for and then kept (`functools.cached_property`), so asking for one part
 builds that part and the parts it needs and nothing else, and every part that needs, say, the BarKeeper gets the same one. A testbench that
 wants only the scorer asks for `builder.scorer` instead of copying how it is made, so when a part's wiring changes there is one place to change
-it and every script follows.
+it and every script follows. A part can be replaced by setting it before it is first asked for (`builder.circulation = Circulation.from_file(...)`),
+which is how a cached_property is meant to be overridden; every part built after that uses the replacement.
 
 Design decisions, and why:
   * IT CONTACTS NOTHING. Building is plain construction: no server is asked, no port or microphone is opened, so the whole wiring can be built
@@ -271,11 +272,19 @@ class PrinterBuilder:
         return random.Random()
 
     @cached_property
+    def catalog(self) -> Catalog:
+        """The library's passages."""
+        return Catalog.load(self.root / "library" / "passages", bookkeeper=self.bookkeeper)
+
+    @cached_property
+    def circulation(self) -> Circulation:
+        """The shelves' shares of the draw (`library/passages/circulation.json`)."""
+        return Circulation.from_file(self.root / "library" / "passages" / "circulation.json", bookkeeper=self.bookkeeper)
+
+    @cached_property
     def selector(self) -> Bibliomancer:
         """The Bibliomancer, on the library's passages and their circulation."""
-        passages = self.root / "library" / "passages"
-        return Bibliomancer(Catalog.load(passages, bookkeeper=self.bookkeeper), Circulation.from_file(passages / "circulation.json", bookkeeper=self.bookkeeper),
-                            self.rng, oracle=self.config.oracle, bookkeeper=self.bookkeeper)
+        return Bibliomancer(self.catalog, self.circulation, self.rng, oracle=self.config.oracle, bookkeeper=self.bookkeeper)
 
     @cached_property
     def writer(self) -> PortentWriter:

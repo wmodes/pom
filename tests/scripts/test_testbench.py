@@ -13,7 +13,7 @@ TESTBENCHES = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/l
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_turns.py",
                "scripts/dev/printing/format_text_for_typewriter.py",
                "scripts/dev/printing/type_text_on_typewriter.py", "scripts/dev/qualifying/replay_scores_through_bar.py",
-               "scripts/dev/qualifying/report_score_percentiles.py"]
+               "scripts/dev/qualifying/report_score_percentiles.py", "scripts/dev/library/circulation.py"]
 
 
 def run(script, *args, env=None):
@@ -41,6 +41,19 @@ def test_the_sort_testbench_reads_standard_input_too():
     result = subprocess.run([sys.executable, str(ROOT / "scripts/dev/listening/split_whisper_tracks.py")], input="[Music] and then we left",
                             capture_output=True, text=True, timeout=60)
     assert "words:     and then we left" in result.stdout and "[Music]" in result.stdout
+
+
+def test_the_circulation_testbench_reports_the_printers_own_draw_odds():
+    result = run("scripts/dev/library/circulation.py")
+    assert result.returncode == 0 and "holdings" in result.stdout and "odds vs flat" in result.stdout, result.stderr
+
+
+def test_the_circulation_testbench_checks_the_circulation_file_it_is_given(tmp_path):
+    mostly_aphorisms = tmp_path / "circulation.json"
+    mostly_aphorisms.write_text('{"shelves": {"aphorism": {"share": 100.0, "holdings": {}}}}', encoding="utf-8")
+    result = run("scripts/dev/library/circulation.py", "--circulation", str(mostly_aphorisms))
+    table = result.stdout.split("odds vs flat", 1)[1].splitlines()[1].split()       # the first shelf in the table, the largest share
+    assert result.returncode == 0 and table[0] == "aphorism" and float(table[1].rstrip("%")) > 80, result.stdout
 
 
 def test_the_score_testbench_says_so_when_the_scorer_model_is_not_answering():

@@ -72,7 +72,7 @@ the bottom with the next number; nothing is renumbered.
     the value object, and any public method can be reused by a caller that hands it a raw float or a NaN. A method's own check is its
     boundary, never dead code.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
-  - **The same score and time are re-checked by:**
+  - **The same score and time are checked by these, each with its own fallback:**
     - the BarKeeper (`bar_keeper.py:164, 191`);
     - each bar under it (`percentile_bar.py:87`, `decaying_quantile_bar.py:146`);
     - TurnHistory (`turn_history.py:118-124`);
@@ -81,7 +81,8 @@ the bottom with the next number; nothing is renumbered.
     degrades a different way at each step, and many replacements are silent (`turn_history.py:123` turns a bad `heard_at` into 0.0).
   - **The number check:** `_is_number` is copied into 12 modules, written inline in 2 more, and `setting_rules.py` has one with the
     same name that means something else (it does not check for infinity or NaN).
-  - **Handed-in parts:** about 15 constructors check again that a clock or a sleep can be called.
+  - **Handed-in parts:** about 15 constructors each write their own check that a clock or a sleep can be called; it should be one shared
+    check.
 
 - [ ] **4. Failures hide bugs** (checked). *Principle:* "A failure inside [a helper] is recorded as a warning … a `strict` flag raises
   instead, for tests and dev tools."

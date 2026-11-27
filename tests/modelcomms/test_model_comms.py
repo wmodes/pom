@@ -22,6 +22,7 @@ class FakeModelServer:
         self.health_status = 200
         self.health_delay_seconds = 0.0
         self.reply_status = 200
+        self.reply_delay_seconds = 0.0
         self.reply_body = None                     # bytes to send back instead of the echo
         self.received = []                         # (path, content type, body bytes) of each POST
         server = self
@@ -43,6 +44,7 @@ class FakeModelServer:
             def do_POST(self):
                 body = self.rfile.read(int(self.headers["Content-Length"]))
                 server.received.append((self.path, self.headers["Content-Type"], body))
+                time.sleep(server.reply_delay_seconds)
                 self.send_response(server.reply_status)
                 self.end_headers()
                 self.wfile.write(server.reply_body if server.reply_body is not None else json.dumps({"echo": body.decode("utf-8", "replace")}).encode())
@@ -133,6 +135,11 @@ class TestPostJson:
         server.close()
         with pytest.raises(requests.RequestException):
             ModelComms(address, 3.0).post_json({}, 3.0)
+
+    def test_a_reply_slower_than_the_asking_clients_timeout_raises(self, server):
+        server.reply_delay_seconds = 1.0
+        with pytest.raises(requests.Timeout):
+            ModelComms(server.root, 3.0).post_json({}, 0.2)
 
 
 class TestPostForm:

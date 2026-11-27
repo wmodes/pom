@@ -126,7 +126,7 @@ the bottom with the next number; nothing is renumbered.
     any part. 46 constructors each take their own `strict=`, and some parts (HingeFinder, ScorerWarmer, BootSlipper, AddressFinder,
     Printer) take none. The Bookkeeper already hands out every logger, which makes it the natural single place for strict.
 
-- [ ] **5. The three model servers are talked to in about eight ways** (checked). *Principles:* "Prefer well-maintained,
+- [x] **5. The three model servers are talked to in about eight ways** — **done 2026-11-27**: one `ModelComms` per model (`src/pom/modelcomms/`), built by the PrinterBuilder and handed to its client and its health checks, on `requests`; one "is it up?" for all three (each server's `/health`), with `[modelcomms] health_timeout_seconds`; the status light type is `MonitorLight`, in the new `src/pom/vocabulary/`; 35 mutants, 0 survivors; old and new code gave the same 100 Sample Hinges scores and the same transcript of a recording (see CHANGELOG). Left: each server's own failure policy (the scorer's breaker, the oracle's retries, nothing for whisper) is unchanged, by decision. Original finding (checked). *Principles:* "Prefer well-maintained,
   purpose-built tools over hand-rolled workarounds"; the config hard rule.
   - **Sending:** three hand-written `_http_post` functions. The oracle's and the scorer's are identical; whisper's adds a hand-rolled
     multipart body.
@@ -227,6 +227,12 @@ the bottom with the next number; nothing is renumbered.
     interleave differently from run to run, so the run would check what qualified and in what order, not the exact second. Untried;
     medium confidence.
   - **Where to start:** one package, to see whether the review is worth its cost before doing the rest.
+  - **A known order bug, found 2026-11-27 in item 5:** three WordTagger tests in `tests/scoring/test_word_tagger.py`
+    (`test_no_tagger_guesses_names_from_capitals_but_not_the_first_word`, `test_missing_nltk_data_is_reported_not_raised`,
+    `test_missing_nltk_data_raises_in_strict_mode`) fail whenever `tests/test_printer_builder.py` runs before them, and pass in the
+    suite's usual order, which hides it. Some test leaves state behind (most likely NLTK data loaded or its path set) that makes "no NLTK
+    data" impossible to simulate. Not caused by item 5: it fails with item 5's new tests left out. Fix the leak; then run the suite in a
+    shuffled order (for example `pytest -p random_order`, if added) to find any others.
 
 - [ ] **12. The earlier audits' corrections were never all finished, and their boxes no longer say what is done** (raised by Wes,
   2026-11-27). *Principle:* "One source of truth": an audit is the list of what is left, and a list that is out of date misleads.
@@ -243,7 +249,17 @@ the bottom with the next number; nothing is renumbered.
     2. **part of item N here:** ticked over to that item, which gains anything it was missing;
     3. **still open:** stays, with its line numbers checked against today's code;
     4. **drop:** Wes's call only, with the reason written beside it.
+  - **Already known for the reconciliation** (noted as items here closed them):
+    - Item 5 (2026-11-27): D9.2 and D9.3 are done (one ModelComms per model; one "is it up?"). In 02, H27's `PING_TIMEOUT=5` is gone,
+      and H26 (the HTTP calls honour proxy settings) is still true but now in one place, ModelComms, whose `requests` reads them too.
   - **Afterwards** this audit is the one list of what is left, and 01 to 03 are records.
+
+## Small, real bugs (not design problems)
+
+Found along the way; each is a real bug too small to be a design item above.
+
+- [ ] The monitor's turns table runs off the side of a narrow phone screen (seen at 340 px wide, 2026-11-27, while fixing the service
+  lights' wrapping): the page scrolls sideways. The service-lights line wraps now; the table does not.
 
 ## What the reviewers found sound
 

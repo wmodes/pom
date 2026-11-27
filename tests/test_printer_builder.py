@@ -31,6 +31,13 @@ def no_network(monkeypatch):
     monkeypatch.setattr("requests.sessions.Session.request", refuse)      # every ModelComms request goes through requests
 
 
+def test_the_no_network_guard_refuses_a_request_to_a_model():
+    """The guard above is what lets these tests say "building contacts nothing"; every ModelComms request goes through requests."""
+    import requests
+    with pytest.raises(AssertionError, match="touched the network"):
+        requests.get("http://127.0.0.1:8098/health", timeout=1)
+
+
 def an_attempt(score=5.0):
     return SimpleNamespace(score=score, bar=4.0, heard_at=12.0, is_hinge=False)
 

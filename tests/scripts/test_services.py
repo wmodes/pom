@@ -143,7 +143,12 @@ class TestTheBenchScriptAsksTheModelsThePrintersWay:
         servers = {server.name: server for server in self.bench().build_servers(config)}
         assert servers["whisper"].comms.address == config.listening.whisper_url.rstrip("/")
         assert servers["scorer"].comms.address == config.scorer.url and servers["oracle"].comms.address == config.oracle.url
-        assert {server.comms.health_timeout_seconds for server in servers.values()} == {config.modelcomms.health_timeout_seconds}
+
+    def test_each_server_waits_as_long_as_the_health_timeout_setting_says(self, tmp_path):
+        path = tmp_path / "pom.toml"
+        path.write_text("[modelcomms]\nhealth_timeout_seconds = 7.5\n", encoding="utf-8")
+        servers = self.bench().build_servers(Config.load(path, environ={}))
+        assert {server.comms.health_timeout_seconds for server in servers} == {7.5}
 
     @pytest.mark.parametrize("light, state", [("up", "ready"), ("waiting", "loading"), ("down", "down")])
     def test_a_servers_state_is_its_models_health(self, light, state):

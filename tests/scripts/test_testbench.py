@@ -351,3 +351,20 @@ def test_the_debug_setting_shows_a_testbenchs_debug_lines():
     assert shown.returncode == 0 and hidden.returncode == 0, shown.stderr + hidden.stderr
     debug_lines = lambda result: [line for line in (result.stdout + result.stderr).splitlines() if line.startswith("DEBUG ")]
     assert debug_lines(shown) and not debug_lines(hidden)
+
+
+def test_the_oracle_testbench_waits_on_the_oracles_own_model_comms(monkeypatch):
+    """write_portent_from_hinge.py --model starts a llama-server and waits on it the Printer's way: through the builder's oracle_comms."""
+    import importlib.util
+    from types import SimpleNamespace
+    from pom.config import Config
+    spec = importlib.util.spec_from_file_location("write_portent_from_hinge", ROOT / "scripts" / "dev" / "writing" / "write_portent_from_hinge.py")
+    bench = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bench)
+    waited_on = []
+    monkeypatch.setattr(bench, "start_server", lambda model, comms: waited_on.append(comms) or SimpleNamespace(terminate=lambda: None, wait=lambda timeout=None: None))
+    monkeypatch.setattr("builtins.input", lambda prompt="": (_ for _ in ()).throw(EOFError()))
+    monkeypatch.setattr(sys, "argv", ["write_portent_from_hinge.py", "--model", "some.gguf"])
+    monkeypatch.setattr(bench.Bookkeeper, "set_up", lambda self, *a, **k: None)      # leave the test's log alone
+    bench.main()
+    assert len(waited_on) == 1 and waited_on[0].address == Config.load(bench.CONFIG_PATH).oracle.url

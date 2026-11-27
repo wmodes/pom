@@ -63,8 +63,14 @@ the bottom with the next number; nothing is renumbered.
     of the breakage is caught.
   - **Consequence:** the testbench Wes judges the system by is not the system.
 
-- [ ] **3. Nothing checks the values passed between stages, so every stage checks them again** (checked). *Principle:* "Make bad
-  states unrepresentable. Clamp and validate in the value object; guards elsewhere then become dead code."
+- [ ] **3. The checks on the values passed between stages disagree, and are copied** (checked). *Principle (agreed with Wes,
+  2026-11-27):* "Every public method checks what it receives against its own spec. A bad value gets the one fallback agreed for that kind
+  of value (a score, a stream time, a count) and a warning, so the log shows which caller to correct; `strict` raises instead. The check
+  is one shared function, not a copy per module."
+  - **Why not the global rule as written.** The global CLAUDE.md says "Make bad states unrepresentable. Clamp and validate in the value
+    object; guards elsewhere then become dead code." The first half stands. The second does not: Python cannot make every caller go through
+    the value object, and any public method can be reused by a caller that hands it a raw float or a NaN. A method's own check is its
+    boundary, never dead code.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
   - **The same score and time are re-checked by:**
     - the BarKeeper (`bar_keeper.py:164, 191`);

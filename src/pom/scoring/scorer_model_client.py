@@ -30,8 +30,8 @@ Design decisions, and why:
     and has no built-in prompt, so the words that define "interesting" live in one place, the
     config file. With no prompt the client reports it and is `available` = False.
   * The address is checked by the config (http or https only, so a mistyped setting cannot make it open a file).
-  * The transport is injected (`post`), so tests run with a fake and need no server. The default
-    uses the standard library, so there is nothing to install.
+  * The talking to the server is ModelComms's (`comms`, handed in by the entry point, which builds one per model), so tests
+    hand in a fake and need no server.
   * `explain` is the debug view's request: the same clip and the same system message plus the
     debug output instructions, but this time the model writes a reply (its score and the content that
     earned it). It is ONE run: the score is read from the probabilities of the reply's first token, exactly
@@ -45,16 +45,17 @@ Design decisions, and why:
     the prompt and costs about 1 s. So `warm_up` should be called once the server is up (the Printer's
     ScorerWarmer does it).
 """
-import json
 import math
 import re
 import time
-import urllib.request
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ScorerSettings
+
+if TYPE_CHECKING:                                    # named for the type checker only: the entry point hands one in
+    from pom.modelcomms import ModelComms
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -67,14 +68,6 @@ EXPLAIN_MAX_TOKENS = 80
 
 class ScorerModelClientError(ValueError):
     """Raised for any client problem, but only in strict mode (development and tests)."""
-
-
-def _http_post(url: str, body: dict, timeout: float) -> dict:
-    """POSTs JSON and returns the parsed JSON reply. Raises on any network or format problem."""
-    request = urllib.request.Request(url, json.dumps(body).encode("utf-8"),
-                                     {"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:      # nosec: scheme checked
-        return json.load(response)
 
 
 def score_from_scorecard(reply) -> Optional[float]:
@@ -129,15 +122,16 @@ class ScorerModelClient:
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         scorer_settings: The `[scorer]` settings it was handed (it reads `url`, `prompt` and `timeout`).
+        comms: The scorer model's ModelComms: every request goes through it.
         last_seconds: How long the most recent request took, or None before the first.
     """
 
-    def __init__(self, scorer_settings: ScorerSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: Optional[bool] = None,
+    def __init__(self, scorer_settings: ScorerSettings, comms: "ModelComms", strict: Optional[bool] = None,
                  explain_prompt: str = "", explain_timeout: float = DEFAULT_EXPLAIN_TIMEOUT, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer_settings: The `[scorer]` section: `url` (the server's chat-completions address), `prompt` (the system message that tells
                 the model how to score) and `timeout` (seconds to wait for one reply).
-            post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
+            comms: The scorer model's ModelComms (the entry point builds one per model, from `url`; a test hands in a fake).
             strict: Raise ScorerModelClientError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             explain_prompt: The system message for `explain` (from Config); without one `explain`
@@ -146,7 +140,7 @@ class ScorerModelClient:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ScorerModelClientError, DEBUG, strict)
         self.scorer_settings = scorer_settings
-        self._url, self._prompt = scorer_settings.url, scorer_settings.prompt.strip()
+        self._prompt = scorer_settings.prompt.strip()
         self._explain_prompt = (explain_prompt or "").strip()
         self._explain_timeout = (explain_timeout if isinstance(explain_timeout, (int, float))
                                  and not isinstance(explain_timeout, bool) and explain_timeout > 0
@@ -154,7 +148,7 @@ class ScorerModelClient:
         if self._explain_timeout != explain_timeout:
             self.logger.warning("the explain timeout must be a positive number of seconds, got %r; using %g",
                                 explain_timeout, DEFAULT_EXPLAIN_TIMEOUT)
-        self._post = post if post is not None else _http_post
+        self.comms = comms
         self.last_seconds: Optional[float] = None
         self._usable = True
         if not self._prompt:
@@ -187,7 +181,7 @@ class ScorerModelClient:
         }
         started = time.perf_counter()
         try:
-            reply = self._post(self._url, body, self.scorer_settings.timeout)
+            reply = self.comms.post_json(body, self.scorer_settings.timeout)
         except Exception as error:               # a dead or slow server must never stop the oracle
             self.last_seconds = time.perf_counter() - started
             self.logger.warning("the scorer model did not answer (%s); the clip will go unscored", type(error).__name__)
@@ -226,7 +220,7 @@ class ScorerModelClient:
         }
         started = time.perf_counter()
         try:
-            reply = self._post(self._url, body, self._explain_timeout)
+            reply = self.comms.post_json(body, self._explain_timeout)
             text = reply["choices"][0]["message"]["content"].strip()
         except Exception as error:               # a dead server or an odd reply must not stop the debug view
             self.last_seconds = time.perf_counter() - started

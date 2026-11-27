@@ -36,8 +36,10 @@ from pom.conductor import AddressFinder, BootSlipper, Conductor, FloorKeeper, Hi
 from pom.config import Config
 from pom.keyboard import TypedLineScorer
 from pom.library import Bibliomancer, Catalog, Circulation
+from pom.modelcomms import ModelComms
 from pom.listening import CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient
-from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
+from pom.monitor import ChartNotebook, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
+from pom.vocabulary import MonitorLight
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
@@ -71,22 +73,22 @@ class Options:
     keyboard: bool = True
 
 
-def health(url: str) -> Light:
+def health(url: str) -> MonitorLight:
     """How the llama-server behind this chat address is: UP if its health address says ok, WAITING if it says 503 (it answers but is still loading its
     model), DOWN if it does not answer or says anything else."""
     parts = urllib.parse.urlparse(url)
     try:
         with urllib.request.urlopen(f"{parts.scheme}://{parts.netloc}/health", timeout=3):
-            return Light.UP
+            return MonitorLight.UP
     except urllib.error.HTTPError as error:              # (an HTTPError is a URLError, so it is caught first)
-        return Light.WAITING if error.code == 503 else Light.DOWN
+        return MonitorLight.WAITING if error.code == 503 else MonitorLight.DOWN
     except (urllib.error.URLError, OSError, ValueError):
-        return Light.DOWN
+        return MonitorLight.DOWN
 
 
 def answers(url: str) -> bool:
     """True if the llama-server behind this chat address says it is healthy and ready."""
-    return health(url) is Light.UP
+    return health(url) is MonitorLight.UP
 
 
 def reachable(url: str) -> bool:
@@ -197,10 +199,20 @@ class PrinterBuilder:
         return WhisperModelClient(self.config.listening, bookkeeper=self.bookkeeper)
 
     @cached_property
+    def scorer_comms(self) -> ModelComms:
+        """How the scorer model's server is talked to: its client's requests, and whether it is up."""
+        return ModelComms(self.config.scorer.url, self.config.modelcomms.health_timeout_seconds)
+
+    @cached_property
+    def oracle_comms(self) -> ModelComms:
+        """How the oracle model's server is talked to: its client's requests, and whether it is up."""
+        return ModelComms(self.config.oracle.url, self.config.modelcomms.health_timeout_seconds)
+
+    @cached_property
     def scorer_client(self) -> ScorerModelClient:
         """The scorer model's client (the one the ClipScorer asks)."""
         scoring = self.config.scorer
-        return ScorerModelClient(scoring, explain_prompt=scoring.prompt_debug, bookkeeper=self.bookkeeper)
+        return ScorerModelClient(scoring, comms=self.scorer_comms, explain_prompt=scoring.prompt_debug, bookkeeper=self.bookkeeper)
 
     @cached_property
     def word_tagger(self) -> WordTagger:
@@ -246,7 +258,7 @@ class PrinterBuilder:
 
     def sound_arrived(self) -> None:
         """What the microphone calls as sound arrives: its light on the board is up."""
-        self.board.post("mic", Light.UP)
+        self.board.post("mic", MonitorLight.UP)
 
     def make_deck(self):
         """A fresh deck for a room: the recording, this Mac's microphone, or the microphone found now."""
@@ -299,7 +311,7 @@ class PrinterBuilder:
     @cached_property
     def writer(self) -> PortentWriter:
         oracle = self.config.oracle
-        return PortentWriter(PromptBuilder(oracle, self.selector, bookkeeper=self.bookkeeper), OracleModelClient(oracle, bookkeeper=self.bookkeeper), self.rng,
+        return PortentWriter(PromptBuilder(oracle, self.selector, bookkeeper=self.bookkeeper), OracleModelClient(oracle, comms=self.oracle_comms, bookkeeper=self.bookkeeper), self.rng,
                              bookkeeper=self.bookkeeper)
 
     @cached_property

@@ -87,6 +87,21 @@ class TestEachPartIsBuiltOnceAndOnlyWhenAsked:
         builder.address_finder = SimpleNamespace(find=lambda: ["10.41.0.1"])
         assert builder.boot_slipper.run() and "10.41.0.1" in builder.boot_slipper.text
 
+    def test_each_model_has_one_model_comms_built_from_its_address_and_the_health_timeout(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n[modelcomms]\nhealth_timeout_seconds = 4.5\n'))
+        assert builder.scorer_comms.address == builder.config.scorer.url and builder.oracle_comms.address == builder.config.oracle.url
+        assert builder.scorer_comms.health_timeout_seconds == 4.5 and builder.oracle_comms.health_timeout_seconds == 4.5
+        assert builder.scorer_client.comms is builder.scorer_comms
+
+    def test_the_oracle_is_asked_through_the_builders_oracle_comms(self, tmp_path):
+        """A testbench can hand in its own ModelComms by setting the part; the oracle client built after it talks through it."""
+        asked = []
+        builder = PrinterBuilder(Config.load(ROOT / "config" / "pom.toml", environ={}), Options(terminal="none"), root=ROOT)   # the shipped oracle prompt
+        builder.oracle_comms = SimpleNamespace(post_json=lambda body, timeout_seconds, path="": asked.append(body) or
+                                               {"choices": [{"message": {"content": "The lamp keeps the hour."}, "finish_reason": "stop"}]})
+        portent = builder.writer.write("the lamp hums")
+        assert len(asked) == 1 and portent is not None and portent.text == "The lamp keeps the hour."
+
     def test_the_whole_printer_is_built_once(self, tmp_path):
         builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
         assert builder.printer is builder.printer

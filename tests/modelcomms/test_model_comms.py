@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 import requests
 
-from pom.monitor.light import Light
+from pom.vocabulary import MonitorLight
 from pom.modelcomms import ModelComms
 
 
@@ -78,32 +78,32 @@ class TestTheAddresses:
 class TestHealth:
     def test_a_server_that_says_ok_is_up(self, server):
         comms = ModelComms(server.root + "/v1/chat/completions", 3.0)
-        assert comms.health() is Light.UP and comms.is_up() is True
+        assert comms.health() is MonitorLight.UP and comms.is_up() is True
 
     def test_a_server_still_loading_its_model_is_waiting(self, server):
         server.health_status = 503
         comms = ModelComms(server.root, 3.0)
-        assert comms.health() is Light.WAITING and comms.is_up() is False
+        assert comms.health() is MonitorLight.WAITING and comms.is_up() is False
 
     def test_any_other_status_is_down(self, server):
         server.health_status = 500
-        assert ModelComms(server.root, 3.0).health() is Light.DOWN
+        assert ModelComms(server.root, 3.0).health() is MonitorLight.DOWN
 
     def test_no_server_is_down(self, server):
         address = server.root
         server.close()
-        assert ModelComms(address, 3.0).health() is Light.DOWN
+        assert ModelComms(address, 3.0).health() is MonitorLight.DOWN
 
     def test_a_server_slower_than_the_health_timeout_is_down(self, server):
         server.health_delay_seconds = 1.0
-        assert ModelComms(server.root, 0.2).health() is Light.DOWN
+        assert ModelComms(server.root, 0.2).health() is MonitorLight.DOWN
 
     def test_a_server_within_the_health_timeout_is_up(self, server):
         server.health_delay_seconds = 0.2
-        assert ModelComms(server.root, 3.0).health() is Light.UP
+        assert ModelComms(server.root, 3.0).health() is MonitorLight.UP
 
     def test_an_address_that_is_not_an_address_is_down_and_never_raises(self):
-        assert ModelComms("not an address", 3.0).health() is Light.DOWN
+        assert ModelComms("not an address", 3.0).health() is MonitorLight.DOWN
 
 
 class TestPostJson:

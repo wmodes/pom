@@ -157,10 +157,14 @@ class TestStreamTimer:
         assert timer.last.timings == {"prompt_n": 7, "predicted_n": 2}
         assert timer.last.first_token_seconds is not None and timer.last.first_token_seconds >= 0
 
-    def test_works_as_the_posting_function_of_the_real_client(self, server_url):
+    def test_its_reply_is_read_by_the_real_client(self, server_url):
+        """The real client talks through a ModelComms now; the timer stands in for that ModelComms's `post_json`."""
+        from types import SimpleNamespace
         from pom.defaults import OracleSettings
         from pom.writing import OracleModelClient
-        client = OracleModelClient(OracleSettings(url=server_url, timeout=5, max_tokens=300, temperature=0.3), post=StreamTimer())
+        timer = StreamTimer()
+        comms = SimpleNamespace(post_json=lambda body, timeout_seconds, path="": timer(server_url, body, timeout_seconds))
+        client = OracleModelClient(OracleSettings(url=server_url, timeout=5, max_tokens=300, temperature=0.3), comms=comms)
         assert client.consult("a prompt") == "Hello world"
         assert client.last_cut_off is False
 

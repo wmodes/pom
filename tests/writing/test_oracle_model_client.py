@@ -14,15 +14,16 @@ def reply(text="The ghosts keep the hours.", finish="stop"):
     return {"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": finish}]}
 
 
-class FakePost:
-    """Records every request and returns a canned reply (or raises)."""
+class FakeComms:
+    """A ModelComms that records every request and returns a canned reply (or raises)."""
 
     def __init__(self, result=None):
         self.result = result if result is not None else reply()
+        self.address = URL
         self.calls = []
 
-    def __call__(self, url, body, timeout):
-        self.calls.append((url, body, timeout))
+    def post_json(self, body, timeout_seconds, path=""):
+        self.calls.append((self.address, body, timeout_seconds))
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
@@ -31,11 +32,11 @@ class FakePost:
 ORACLE = OracleSettings(url=URL)
 
 
-def client(post=None, timeout=None, max_tokens=None, temperature=None, **options):
+def client(comms=None, timeout=None, max_tokens=None, temperature=None, **options):
     """A client of the oracle at URL; a setting given here changes only that one."""
     options.setdefault("strict", False)
     changed = {name: value for name, value in (("timeout", timeout), ("max_tokens", max_tokens), ("temperature", temperature)) if value is not None}
-    return OracleModelClient(OracleSettings(url=URL, **changed), post=post or FakePost(), **options)
+    return OracleModelClient(OracleSettings(url=URL, **changed), comms=comms or FakeComms(), **options)
 
 
 class TestAskingForAPortent:
@@ -43,42 +44,42 @@ class TestAskingForAPortent:
         assert client().consult(PROMPT) == "The ghosts keep the hours."
 
     def test_whitespace_around_the_portent_is_trimmed_and_the_rest_left_alone(self):
-        post = FakePost(reply("\n  Line one.\n\nLine  two.  \n"))
-        assert client(post).consult(PROMPT) == "Line one.\n\nLine  two."
+        comms = FakeComms(reply("\n  Line one.\n\nLine  two.  \n"))
+        assert client(comms).consult(PROMPT) == "Line one.\n\nLine  two."
 
     def test_the_prompt_goes_as_one_user_message_word_for_word(self):
-        post = FakePost()
-        client(post).consult(PROMPT)
-        url, body, _ = post.calls[0]
+        comms = FakeComms()
+        client(comms).consult(PROMPT)
+        url, body, _ = comms.calls[0]
         assert url == URL and body["messages"] == [{"role": "user", "content": PROMPT}]
 
     def test_the_request_carries_the_settings(self):
-        post = FakePost()
-        client(post, timeout=30, max_tokens=200, temperature=1.1).consult(PROMPT)
-        _, body, timeout = post.calls[0]
+        comms = FakeComms()
+        client(comms, timeout=30, max_tokens=200, temperature=1.1).consult(PROMPT)
+        _, body, timeout = comms.calls[0]
         assert (body["max_tokens"], body["temperature"], timeout) == (200, 1.1, 30)
 
     def test_the_defaults_are_used_when_nothing_is_given(self):
-        post = FakePost()
-        client(post).consult(PROMPT)
-        _, body, timeout = post.calls[0]
+        comms = FakeComms()
+        client(comms).consult(PROMPT)
+        _, body, timeout = comms.calls[0]
         assert (body["max_tokens"], body["temperature"], timeout) == (ORACLE.max_tokens, ORACLE.temperature, ORACLE.timeout)
         assert (ORACLE.max_tokens, ORACLE.temperature, ORACLE.timeout) == (300, 0.8, 240.0)
 
     def test_thinking_is_turned_off_for_models_that_would_think(self):
-        post = FakePost()
-        client(post).consult(PROMPT)
-        assert post.calls[0][1]["chat_template_kwargs"] == {"enable_thinking": False}
+        comms = FakeComms()
+        client(comms).consult(PROMPT)
+        assert comms.calls[0][1]["chat_template_kwargs"] == {"enable_thinking": False}
 
     def test_the_prompt_is_not_trimmed_or_changed(self):
-        post = FakePost()
-        client(post).consult("  x  \n")
-        assert post.calls[0][1]["messages"][0]["content"] == "  x  \n"
+        comms = FakeComms()
+        client(comms).consult("  x  \n")
+        assert comms.calls[0][1]["messages"][0]["content"] == "  x  \n"
 
     def test_a_temperature_of_zero_is_sent_as_zero(self):
-        post = FakePost()
-        client(post, temperature=0).consult(PROMPT)
-        assert post.calls[0][1]["temperature"] == 0
+        comms = FakeComms()
+        client(comms, temperature=0).consult(PROMPT)
+        assert comms.calls[0][1]["temperature"] == 0
 
     def test_a_good_client_is_quiet(self, logged):
         c = client()
@@ -95,9 +96,9 @@ class TestAskingForAPortent:
 class TestWhenThereIsNothingToAsk:
     @pytest.mark.parametrize("prompt", ["", "   \n", None, 5])
     def test_an_empty_or_odd_prompt_is_not_sent(self, prompt):
-        post = FakePost()
-        assert client(post).consult(prompt) is None
-        assert post.calls == []
+        comms = FakeComms()
+        assert client(comms).consult(prompt) is None
+        assert comms.calls == []
 
 
 class TestWhenTheModelFails:
@@ -106,33 +107,33 @@ class TestWhenTheModelFails:
         {}, {"choices": []}, {"choices": [{}]}, {"choices": [{"message": {}}]},
         {"choices": [{"message": {"content": None}}]}, "not a dict"])
     def test_a_dead_or_odd_server_gives_none_and_a_warning(self, result, logged):
-        c = client(FakePost(result))
+        c = client(FakeComms(result))
         assert c.consult(PROMPT) is None
         assert len(logged.of(c).warnings()) == 1 and c.last_seconds is not None
 
     @pytest.mark.parametrize("text", ["", "   \n"])
     def test_an_empty_reply_gives_none_and_a_warning(self, text, logged):
-        c = client(FakePost(reply(text)))
+        c = client(FakeComms(reply(text)))
         assert c.consult(PROMPT) is None
         assert len(logged.of(c).warnings()) == 1 and "empty" in logged.of(c).warnings()[0]
 
     def test_it_works_again_after_a_failure(self):
-        post = FakePost(OSError("down"))
-        c = client(post)
+        comms = FakeComms(OSError("down"))
+        c = client(comms)
         assert c.consult(PROMPT) is None
-        post.result = reply("Back again.")
+        comms.result = reply("Back again.")
         assert c.consult(PROMPT) == "Back again."
 
     def test_strict_mode_raises_instead(self):
         with pytest.raises(OracleModelClientError):
-            client(FakePost(OSError("down")), strict=True).consult(PROMPT)
+            client(FakeComms(OSError("down")), strict=True).consult(PROMPT)
         with pytest.raises(OracleModelClientError):
-            client(FakePost(reply("")), strict=True).consult(PROMPT)
+            client(FakeComms(reply("")), strict=True).consult(PROMPT)
 
 
 class TestCutOff:
     def test_a_portent_that_hit_the_limit_is_returned_and_flagged(self):
-        c = client(FakePost(reply("It was a dark and", finish="length")))
+        c = client(FakeComms(reply("It was a dark and", finish="length")))
         assert c.consult(PROMPT) == "It was a dark and" and c.last_cut_off is True
 
     def test_a_finished_portent_is_not_flagged(self):
@@ -141,34 +142,40 @@ class TestCutOff:
         assert c.last_cut_off is False
 
     def test_the_flag_is_reset_by_the_next_portent(self):
-        post = FakePost(reply("Cut", finish="length"))
-        c = client(post)
+        comms = FakeComms(reply("Cut", finish="length"))
+        c = client(comms)
         c.consult(PROMPT)
-        post.result = reply("Whole.")
+        comms.result = reply("Whole.")
         c.consult(PROMPT)
         assert c.last_cut_off is False
 
 
 class TestSettings:
     def test_the_smallest_allowed_settings_are_accepted(self, logged):
-        post = FakePost()
-        c = client(post, timeout=0.1, max_tokens=1, temperature=0)
+        comms = FakeComms()
+        c = client(comms, timeout=0.1, max_tokens=1, temperature=0)
         c.consult(PROMPT)
-        _, body, timeout = post.calls[0]
+        _, body, timeout = comms.calls[0]
         assert (body["max_tokens"], body["temperature"], timeout) == (1, 0, 0.1) and logged.of(c).ok()
 
-    def test_a_request_goes_to_the_configured_address(self):
-        post = FakePost()
-        OracleModelClient(OracleSettings(url="http://pi.test:9100/v1/chat/completions"), post=post).consult(PROMPT)
-        assert post.calls[0][0] == "http://pi.test:9100/v1/chat/completions"
+    def test_a_client_must_be_handed_its_comms(self):
+        """The entry point builds one ModelComms per model and hands it in; a client never builds its own."""
+        with pytest.raises(TypeError):
+            OracleModelClient(ORACLE)
+
+    def test_every_request_goes_through_the_comms_it_was_handed(self):
+        comms = FakeComms()
+        c = client(comms)
+        c.consult(PROMPT)
+        assert c.comms is comms and len(comms.calls) == 1
 
 
 class TestPrivacy:
     def test_neither_the_prompt_nor_the_portent_reaches_the_report_or_the_log(self, logged):
         c = client()
         c.consult("They said: a secret about the neighbor.")
-        client(FakePost(OSError("a secret about the neighbor"))).consult("They said: a secret about the neighbor.")
-        failed = client(FakePost(OSError("down")))
+        client(FakeComms(OSError("a secret about the neighbor"))).consult("They said: a secret about the neighbor.")
+        failed = client(FakeComms(OSError("down")))
         failed.consult("They said: a secret about the neighbor.")
         assert "secret" not in logged.text() and "neighbor" not in logged.text() and "ghosts" not in logged.text()
         assert all("secret" not in line and "ghosts" not in line for line in logged.of(failed).lines())

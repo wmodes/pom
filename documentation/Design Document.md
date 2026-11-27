@@ -513,6 +513,7 @@ What the burn test could not show: the real CadetWriter's flow-control behavior 
 src/pom/
   bookkeeper/                                    bookkeeper.py (the one Bookkeeper), log_recorder.py (a class's logger), log_setup.py (where the logs go), log_muter.py (mutes a message that keeps repeating)
   modelcomms/                                    model_comms.py (ModelComms: every request to a model's server, and whether it is up)
+  vocabulary/                                    the small shared words the parts use to talk to each other: monitor_light.py (MonitorLight)
   defaults.py                                    every setting once: its default and its rule (the shadow of config/pom.toml)
   value_rules.py                                 the rules a value must follow, for the settings and for the values parts hand each other (setting_rules.py re-exports it under the old name)
   value_checker.py                               the ValueChecker: how a public method checks what it was handed, and warns in its own name

@@ -12,7 +12,8 @@ import pytest
 
 from pom.defaults import ChartSettings, MonitorSettings
 from pom.library import Passage
-from pom.monitor import Light, MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, SilenceShape, TurnHistory
+from pom.monitor import MonitorSite, MonitorSiteError, MonitorStatus, ChartNotebook, SilenceShape, TurnHistory
+from pom.vocabulary import MonitorLight
 from pom.writing import Portent
 
 PASSWORD = "open sesame"
@@ -1080,7 +1081,7 @@ class TestTheQuietStart:
 
 
 class TestTheServiceLights:
-    """Each light says up (green), waiting (amber), DOWN (red) or none (grey): a Light, or the old True, False, None."""
+    """Each light says up (green), waiting (amber), DOWN (red) or none (grey): a MonitorLight, or the old True, False, None."""
 
     @staticmethod
     def lights(**services):
@@ -1101,15 +1102,15 @@ class TestTheServiceLights:
         assert 'terminal: <b class="muted">none</b>' in page and 'terminal: <b class="down"' not in page
 
     def test_waiting_is_waiting_in_amber(self):
-        page, _ = self.lights(scorer=Light.WAITING)
+        page, _ = self.lights(scorer=MonitorLight.WAITING)
         assert 'scorer: <b class="waiting">waiting</b>' in page
 
     def test_the_lights_made_of_the_light_type_say_the_same_as_the_old_ones(self):
-        page, _ = self.lights(a=Light.UP, b=Light.DOWN, c=Light.NONE)
+        page, _ = self.lights(a=MonitorLight.UP, b=MonitorLight.DOWN, c=MonitorLight.NONE)
         assert 'a: <b class="up">up</b>' in page and 'b: <b class="down">DOWN</b>' in page and 'c: <b class="muted">none</b>' in page
 
     def test_the_feed_keeps_the_four_apart_as_words(self):
-        _, feed = self.lights(a=True, b=False, c=None, d=Light.WAITING)
+        _, feed = self.lights(a=True, b=False, c=None, d=MonitorLight.WAITING)
         assert feed == {"a": "up", "b": "down", "c": "none", "d": "waiting"}
 
     @pytest.mark.parametrize("value, word", [(1, "up"), (0, "down"), ("yes", "up"), ("", "down")])
@@ -1118,7 +1119,7 @@ class TestTheServiceLights:
         assert feed == {"x": word}
 
     def test_the_page_has_a_colour_for_waiting_in_both_themes(self):
-        _, _, client, _ = make(status=lambda: MonitorStatus(services={"a": Light.WAITING}))
+        _, _, client, _ = make(status=lambda: MonitorStatus(services={"a": MonitorLight.WAITING}))
         page = get(client, "/").get_data(as_text=True)
         assert ".waiting { color:var(--warn); }" in page and ".up { color:var(--good); }" in page and ".down { color:var(--bad); }" in page and page.count("--warn:") == 3        # the light palette, and the dark one in its two places
 

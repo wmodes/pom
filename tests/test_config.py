@@ -469,9 +469,9 @@ def test_config_scorer_settings_plug_straight_into_the_client_and_scorer(tmp_pat
     from pom.scoring.word_tagger import WordTagger
     config = Config.load(write(tmp_path, '[scorer]\nprompt_scoring = "Score it."\nprompt_output = "Reply."\nclip_filter_score = 2\nfailure_limit = 2\n'), environ={})
     settings = config.scorer
-    client = ScorerModelClient(settings,
-                            post=lambda url, body, timeout: {"choices": [{"logprobs": {"content": [
-                                {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]})
+    from types import SimpleNamespace
+    client = ScorerModelClient(settings, comms=SimpleNamespace(post_json=lambda body, timeout_seconds, path="": {"choices": [{"logprobs": {"content": [
+                                {"top_logprobs": [{"token": "6", "logprob": 0.0}]}]}}]}))
     scorer = ClipScorer(client, WordTagger(tagger=lambda t: [(w, "NN") for w in t], lemmatizer=lambda w, p: w,
                                       stopwords={"the"}), settings)
     assert client.available and logged.of(scorer).ok()

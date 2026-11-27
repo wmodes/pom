@@ -19,11 +19,10 @@ Design decisions, and why:
   * It logs nothing: what it carries is what the room said, and the client that asked logs the kind of failure.
 """
 import urllib.parse
-from typing import Optional
 
 import requests
 
-from pom.monitor.light import Light
+from pom.vocabulary import MonitorLight
 
 HEALTH_PATH = "/health"        # where whisper-server and llama-server both say whether they are up (their API, not a setting)
 WAITING_STATUS = 503           # what both say while they are still loading their model (their API, not a setting)
@@ -80,16 +79,16 @@ class ModelComms:
         response.raise_for_status()
         return response.content.decode("utf-8", "replace")
 
-    def health(self) -> Light:
+    def health(self) -> MonitorLight:
         """Whether the server is up: UP, WAITING (it answers but is still loading its model) or DOWN. Never raises."""
         try:
             response = requests.get(self.health_address, timeout=self.health_timeout_seconds)
         except (requests.RequestException, ValueError):
-            return Light.DOWN
+            return MonitorLight.DOWN
         if response.ok:
-            return Light.UP
-        return Light.WAITING if response.status_code == WAITING_STATUS else Light.DOWN
+            return MonitorLight.UP
+        return MonitorLight.WAITING if response.status_code == WAITING_STATUS else MonitorLight.DOWN
 
     def is_up(self) -> bool:
         """True if the server says it is up and ready (`health` is UP)."""
-        return self.health() is Light.UP
+        return self.health() is MonitorLight.UP

@@ -17,19 +17,20 @@ Design decisions, and why:
     that was said in the room is kept. Logs and reports hold counts and timings.
   * The `[oracle]` settings object is passed in (the entry point takes it from Config); this module never reads Config.
   * The address is checked by the config (http or https only, so a mistyped setting cannot make it open a file).
-  * The transport is injected (`post`), so tests run with a fake and need no server. The default uses the standard
-    library, so there is nothing to install.
+  * The talking to the server is ModelComms's (`comms`, handed in by the entry point, which builds one per model), so tests
+    hand in a fake and need no server.
   * `chat_template_kwargs {"enable_thinking": False}` is sent because Qwen3 models think out loud first
     otherwise; other models ignore it.
   * A reply cut off at `max_tokens` is returned as it is; only a debug line notes it.
 """
-import json
 import time
-import urllib.request
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import OracleSettings
+
+if TYPE_CHECKING:                                    # named for the type checker only: the entry point hands one in
+    from pom.modelcomms import ModelComms
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -39,36 +40,29 @@ class OracleModelClientError(ValueError):
     """Raised for any client problem, but only in strict mode (development and tests)."""
 
 
-def _http_post(url: str, body: dict, timeout: float) -> dict:
-    """POSTs JSON and returns the parsed JSON reply. Raises on any network or format problem."""
-    request = urllib.request.Request(url, json.dumps(body).encode("utf-8"),
-                                     {"Content-Type": "application/json"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:      # nosec: scheme checked
-        return json.load(response)
-
-
 class OracleModelClient:
     """Asks a language model served by llama-server for a consult.
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
         oracle: The `[oracle]` settings it was handed (it reads `url`, `timeout`, `max_tokens` and `temperature`).
+        comms: The oracle model's ModelComms: every request goes through it.
         last_seconds: How long the most recent request took, or None before the first.
         last_cut_off: True if the most recent consult stopped because it reached `max_tokens`.
     """
 
-    def __init__(self, oracle: OracleSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: Optional[bool] = None,
+    def __init__(self, oracle: OracleSettings, comms: "ModelComms", strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             oracle: The `[oracle]` section: `url` (the server's chat-completions address), `timeout` (seconds to wait for one portent),
                 `max_tokens` (the most the model may write) and `temperature` (how adventurous the word choice is).
-            post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
+            comms: The oracle model's ModelComms (the entry point builds one per model, from `url`; a test hands in a fake).
             strict: Raise OracleModelClientError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, OracleModelClientError, DEBUG, strict)
         self.oracle = oracle
-        self._post = post if post is not None else _http_post
+        self.comms = comms
         self.last_seconds: Optional[float] = None
         self.last_cut_off = False
 
@@ -86,7 +80,7 @@ class OracleModelClient:
         }
         started = time.perf_counter()
         try:
-            reply = self._post(self.oracle.url, body, self.oracle.timeout)
+            reply = self.comms.post_json(body, self.oracle.timeout)
             choice = reply["choices"][0]
             text = choice["message"]["content"].strip()
         except Exception as error:               # a dead or slow server must never stop the oracle

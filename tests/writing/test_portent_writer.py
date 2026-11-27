@@ -22,15 +22,16 @@ def reply(text="The ghosts keep the hours.", finish="stop"):
     return {"choices": [{"message": {"role": "assistant", "content": text}, "finish_reason": finish}]}
 
 
-class FakePost:
-    """Records every request and returns a canned reply (or raises)."""
+class FakeComms:
+    """A ModelComms that records every request and returns a canned reply (or raises)."""
 
     def __init__(self, result=None):
         self.result = result if result is not None else reply()
+        self.address = URL
         self.calls = []
 
-    def __call__(self, url, body, timeout):
-        self.calls.append((url, body, timeout))
+    def post_json(self, body, timeout_seconds, path=""):
+        self.calls.append((self.address, body, timeout_seconds))
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
@@ -51,11 +52,11 @@ def passage(index):
     return Passage(f"book#{index}", "book", "verse", f"passage {index}", 2)
 
 
-def writer(post=None, prompt=PROMPT, passages=(passage(1), passage(2)), rng=None, strict=False, selector=None):
+def writer(comms=None, prompt=PROMPT, passages=(passage(1), passage(2)), rng=None, strict=False, selector=None):
     """A writer over the real builder and client, with a fake server. Returns the writer, the server and the selector."""
-    post = post if post is not None else FakePost()
+    comms = comms if comms is not None else FakeComms()
     selector = selector if selector is not None else FakeSelector(passages)
-    return PortentWriter(PromptBuilder(OracleSettings(prompt=prompt), selector), OracleModelClient(OracleSettings(url=URL), post=post), rng, strict), post, selector
+    return PortentWriter(PromptBuilder(OracleSettings(prompt=prompt), selector), OracleModelClient(OracleSettings(url=URL), comms=comms), rng, strict), comms, selector
 
 
 def real_selector(seed=None):
@@ -72,9 +73,9 @@ class TestWriting:
         assert portent.text == "The ghosts keep the hours."
 
     def test_the_model_is_shown_the_hinge_and_the_exemplars(self):
-        written, post, _ = writer()
+        written, comms, _ = writer()
         written.write("The dog barks at ghosts.")
-        prompt = post.calls[0][1]["messages"][0]["content"]
+        prompt = comms.calls[0][1]["messages"][0]["content"]
         assert "The dog barks at ghosts." in prompt
         assert "passage 1" in prompt and "passage 2" in prompt
 
@@ -82,10 +83,10 @@ class TestWriting:
         assert writer()[0].write("A hinge.").exemplars == (passage(1), passage(2))
 
     def test_the_model_is_asked_once_for_each_write(self):
-        written, post, _ = writer()
+        written, comms, _ = writer()
         written.write("one")
         written.write("two")
-        assert len(post.calls) == 2
+        assert len(comms.calls) == 2
 
     def test_the_portent_says_how_long_the_model_took(self):
         portent = writer()[0].write("A hinge.")
@@ -100,16 +101,16 @@ class TestWriting:
         assert writer()[0].write("A hinge.").cut_off is False
 
     def test_a_portent_that_hit_the_limit_is_cut_off(self):
-        assert writer(FakePost(reply(finish="length")))[0].write("A hinge.").cut_off is True
+        assert writer(FakeComms(reply(finish="length")))[0].write("A hinge.").cut_off is True
 
     def test_being_cut_off_once_does_not_stick_to_the_next_portent(self):
-        written, post, _ = writer(FakePost(reply(finish="length")))
+        written, comms, _ = writer(FakeComms(reply(finish="length")))
         assert written.write("one").cut_off is True
-        post.result = reply(finish="stop")
+        comms.result = reply(finish="stop")
         assert written.write("two").cut_off is False
 
     def test_the_words_are_counted(self):
-        assert writer(FakePost(reply("one two  three\nfour")))[0].write("h").words == 4
+        assert writer(FakeComms(reply("one two  three\nfour")))[0].write("h").words == 4
 
     def test_a_portent_cannot_be_changed(self):
         portent = writer()[0].write("A hinge.")
@@ -119,23 +120,23 @@ class TestWriting:
 
 class TestWhenThereIsNoPortent:
     def test_an_empty_hinge_gives_none_and_the_model_is_not_asked(self):
-        written, post, selector = writer()
+        written, comms, selector = writer()
         assert written.write("   ") is None
-        assert post.calls == [] and selector.draws == 0
+        assert comms.calls == [] and selector.draws == 0
 
     def test_a_missing_prompt_gives_none_and_the_model_is_not_asked(self):
-        written, post, _ = writer(prompt="")
+        written, comms, _ = writer(prompt="")
         assert written.write("A hinge.") is None
-        assert post.calls == []
+        assert comms.calls == []
 
     def test_a_model_that_is_down_gives_none(self):
-        assert writer(FakePost(ConnectionError("down")))[0].write("A hinge.") is None
+        assert writer(FakeComms(ConnectionError("down")))[0].write("A hinge.") is None
 
     def test_a_model_that_writes_nothing_gives_none(self):
-        assert writer(FakePost(reply("   ")))[0].write("A hinge.") is None
+        assert writer(FakeComms(reply("   ")))[0].write("A hinge.") is None
 
     def test_the_part_that_met_the_problem_says_so_in_the_log(self, logged):
-        written, _, _ = writer(FakePost(ConnectionError("down")))
+        written, _, _ = writer(FakeComms(ConnectionError("down")))
         written.write("A hinge.")
         assert any("did not answer" in line for line in logged.messages())
 
@@ -145,9 +146,9 @@ class TestWhenThereIsNoPortent:
         assert any("hinge is empty" in line for line in logged.messages())
 
     def test_a_good_write_after_a_bad_one_still_works(self):
-        written, post, _ = writer(FakePost(ConnectionError("down")))
+        written, comms, _ = writer(FakeComms(ConnectionError("down")))
         assert written.write("one") is None
-        post.result = reply()
+        comms.result = reply()
         assert written.write("two").text == "The ghosts keep the hours."
 
     def test_there_is_nothing_to_report_when_all_went_well(self, logged):
@@ -217,7 +218,7 @@ class TestASeedThatCannotBeUsed:
 
 class TestNothingSaidInTheRoomIsKept:
     def test_neither_the_hinge_nor_the_portent_reaches_the_report_or_the_log(self, logged):
-        written, _, _ = writer(FakePost(reply("the neighbor keeps secret hours")))
+        written, _, _ = writer(FakeComms(reply("the neighbor keeps secret hours")))
         written.write("my secret about the ghosts", seed=1)
         written.write("   ")
         text = logged.text()

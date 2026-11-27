@@ -1,11 +1,11 @@
 """The ServicePoller: asks the parts that have an address how they are, on a timer, and posts the answers to the StatusBoard.
 
 The three model servers and the printer's port cannot post for themselves, and a part that has hung cannot say so, so something has to ask. That
-is this: one thread that runs each check every `every_seconds` and posts its Light. The first round runs at once when it starts. The board's rule
+is this: one thread that runs each check every `every_seconds` and posts its MonitorLight. The first round runs at once when it starts. The board's rule
 does the rest: if this thread stops, every light it feeds goes DOWN when its last post gets old.
 
 Design decisions, and why:
-  * THE CHECKS ARE PASSED IN (name -> a function that returns a Light), so this class knows nothing about whisper, llama-server or a serial
+  * THE CHECKS ARE PASSED IN (name -> a function that returns a MonitorLight), so this class knows nothing about whisper, llama-server or a serial
     port, and a test gives it any checks it likes. The entry point builds them.
   * A CHECK THAT RAISES IS A PART THAT DOES NOT ANSWER: it posts DOWN. One bad check never stops the others or the thread.
   * It runs on its own thread, always, so the lights are fresh whether or not anyone has the monitoring page open.
@@ -16,7 +16,7 @@ import threading
 from typing import Callable, Mapping
 
 from pom.defaults import MonitorSettings
-from pom.monitor.light import Light
+from pom.vocabulary import MonitorLight
 from pom.monitor.status_board import StatusBoard
 
 
@@ -30,10 +30,10 @@ class ServicePoller:
         monitor: The `[monitor]` settings it was handed (it reads `service_check_seconds`).
     """
 
-    def __init__(self, board: StatusBoard, checks: Mapping[str, Callable[[], Light]], monitor: MonitorSettings):
+    def __init__(self, board: StatusBoard, checks: Mapping[str, Callable[[], MonitorLight]], monitor: MonitorSettings):
         """Args:
             board: Where the answers are posted.
-            checks: name -> a function returning the Light for that part. The names are the board's.
+            checks: name -> a function returning the MonitorLight for that part. The names are the board's.
             monitor: The `[monitor]` section: `service_check_seconds`, how often to ask.
         """
         self._board = board
@@ -46,9 +46,9 @@ class ServicePoller:
         """Runs every check now and posts the answers. A check that raises posts DOWN."""
         for name, check in self._checks.items():
             try:
-                light = Light.of(check())
+                light = MonitorLight.of(check())
             except Exception:                    # a check that fails is a part that does not answer
-                light = Light.DOWN
+                light = MonitorLight.DOWN
             self._board.post(name, light)
 
     def start(self) -> None:

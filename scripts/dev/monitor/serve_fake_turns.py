@@ -35,10 +35,10 @@ from typing import Optional
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 from pom.config import Config                                                     # noqa: E402
-from pom.monitor import Light                                                     # noqa: E402
 from pom.library import Passage                                                  # noqa: E402
 from pom.monitor import MonitorSite, MonitorStatus, ChartNotebook, TurnHistory, silence_shape  # noqa: E402
 from pom.qualifying import Ruling, bar_keeper_from_settings               # noqa: E402
+from pom.vocabulary import MonitorLight                                           # noqa: E402
 from pom.writing import Portent                                                 # noqa: E402
 
 HINGES = [
@@ -127,7 +127,7 @@ def main() -> None:
     parser.add_argument("--password", default="demo", help="the password for the page")
     parser.add_argument("--hide-hinges", action="store_true", help="hide the hinge text, as show_hinges = false does")
     parser.add_argument("--live", type=float, default=0.0, metavar="SECONDS", help="add a new invented turn this often")
-    parser.add_argument("--printer", choices=[light.value for light in Light], default="none", help="what the printer's light says on the page")
+    parser.add_argument("--printer", choices=[light.value for light in MonitorLight], default="none", help="what the printer's light says on the page")
     parser.add_argument("--light", action="append", default=[], metavar="NAME=STATE", help="set another light, for example scorer=waiting (repeatable); states: up, waiting, down, none")
     parser.add_argument("--chart", action="store_true", help="draw the chart from the real BarKeeper over invented attempts")
     parser.add_argument("--quiet-start", type=float, default=0.0, metavar="MINUTES", help="with --chart, nothing is heard for this many stream minutes")
@@ -139,12 +139,12 @@ def main() -> None:
 
     rng = random.Random(7)
     started = time.time()
-    services = {"mic": Light.UP, "whisper": Light.UP, "scorer": Light.UP, "oracle": Light.UP, "printer": Light(args.printer)}
+    services = {"mic": MonitorLight.UP, "whisper": MonitorLight.UP, "scorer": MonitorLight.UP, "oracle": MonitorLight.UP, "printer": MonitorLight(args.printer)}
     for setting in args.light:
         name, _, state = setting.partition("=")
-        if name not in services or state not in {light.value for light in Light}:
-            parser.error(f"--light {setting!r}: say NAME=STATE with a name from {', '.join(services)} and a state from {', '.join(light.value for light in Light)}")
-        services[name] = Light(state)
+        if name not in services or state not in {light.value for light in MonitorLight}:
+            parser.error(f"--light {setting!r}: say NAME=STATE with a name from {', '.join(services)} and a state from {', '.join(light.value for light in MonitorLight)}")
+        services[name] = MonitorLight(state)
     config = Config.load(ROOT / "config" / "pom.toml")
     # the password and the hidden hinges are this script's own (its flags), whatever the config says
     monitor = dataclasses.replace(config.monitor, password=args.password, show_hinges=not args.hide_hinges)

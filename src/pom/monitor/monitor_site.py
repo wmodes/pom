@@ -40,7 +40,7 @@ from werkzeug.serving import WSGIRequestHandler, make_server
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.bookkeeper.log_setup import get_logger
-from pom.monitor.light import Light
+from pom.vocabulary import MonitorLight
 from pom.defaults import ChartSettings, MonitorSettings
 from pom.monitor.score_chart import render_score_chart
 from pom.monitor.chart_notebook import ChartNotebook
@@ -85,8 +85,8 @@ class MonitorStatus:
         window_size: How many scores the window holds now.
         attempts_heard: How many attempts have been heard since the Printer started.
         attempts_scored: How many of them were scored.
-        services: The light for each thing the Printer depends on, by name, in the order they are shown, for example {"mic": Light.UP}: up, waiting, down or
-            none (see Light). The old True (up), False (down) and None (none) are taken too.
+        services: The light for each thing the Printer depends on, by name, in the order they are shown, for example {"mic": MonitorLight.UP}: up, waiting, down or
+            none (see MonitorLight). The old True (up), False (down) and None (none) are taken too.
         algorithm: The name of the bar type in use, for example "decaying_quantile" ("" if not known).
         bar_description: One line saying how the BarKeeper works and how it is set (numbers only), shown beside the algorithm.
     """
@@ -94,7 +94,7 @@ class MonitorStatus:
     window_size: int = 0
     attempts_heard: int = 0
     attempts_scored: int = 0
-    services: Mapping[str, Light] = field(default_factory=dict)
+    services: Mapping[str, MonitorLight] = field(default_factory=dict)
     algorithm: str = ""
     bar_description: str = ""
 
@@ -378,7 +378,7 @@ class MonitorSite:
             "attempts_heard": status.attempts_heard,
             "attempts_scored": status.attempts_scored,
             "uptime": "just started" if uptime == "just now" else uptime,
-            "services": {str(name): str(Light.of(light)) for name, light in dict(status.services).items()},
+            "services": {str(name): str(MonitorLight.of(light)) for name, light in dict(status.services).items()},
             "algorithm": str(status.algorithm or ""),
             "bar_description": str(status.bar_description or ""),
         }

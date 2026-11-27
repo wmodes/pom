@@ -28,8 +28,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.error
-import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -37,6 +35,8 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from pom.config import Config                                              # noqa: E402  (after the path is set)
+from pom.modelcomms import ModelComms                                      # noqa: E402
+from pom.vocabulary import MonitorLight                                    # noqa: E402
 
 WHISPER_MODEL = ROOT / "data" / "whisper" / "ggml-base.en.bin"
 WHISPER_VAD_MODEL = ROOT / "data" / "whisper" / "ggml-silero-v6.2.0.bin"
@@ -48,25 +48,21 @@ STOP_SECONDS = 10                 # how long a server gets to shut down before i
 CHECK_SECONDS = 1.0
 
 
-class Server:
-    """One server program: how to start it, where it answers, and the process once started."""
+STATES = {MonitorLight.UP: "ready", MonitorLight.WAITING: "loading", MonitorLight.DOWN: "down"}
 
-    def __init__(self, name: str, port: int, command: list, health_path: str, needs_ok: bool):
+
+class Server:
+    """One server program: how to start it, how its model is talked to, and the process once started."""
+
+    def __init__(self, name: str, port: int, command: list, comms: ModelComms):
         self.name, self.port, self.command = name, port, command
-        self.url = f"http://127.0.0.1:{port}{health_path}"
-        self.needs_ok = needs_ok               # llama-server answers 503 while loading and 200 when ready; whisper answers 200 or 404
+        self.comms = comms                     # the model's ModelComms, as the Printer builds it: "is it up?" is asked the Printer's way
         self.process = None
         self.log_path = None
 
     def state(self) -> str:
-        """'ready', 'loading' (something answers but is not ready) or 'down'."""
-        try:
-            with urllib.request.urlopen(self.url, timeout=2) as response:
-                return "ready" if response.status == 200 or not self.needs_ok else "loading"
-        except urllib.error.HTTPError as error:       # it answered, with an error status
-            return "ready" if not self.needs_ok else ("loading" if error.code == 503 else "down")
-        except (urllib.error.URLError, OSError):
-            return "down"
+        """'ready', 'loading' (it answers but is still loading its model) or 'down'."""
+        return STATES[self.comms.health()]
 
 
 def build_servers(config: Config) -> list:
@@ -74,16 +70,19 @@ def build_servers(config: Config) -> list:
     def port_of(url: str) -> int:
         return urlparse(url).port
 
+    def comms(url: str) -> ModelComms:
+        return ModelComms(url, config.modelcomms.health_timeout_seconds)
+
     return [
         Server("whisper", port_of(config.listening.whisper_url),
                ["whisper-server", "-m", str(WHISPER_MODEL), "--vad", "-vm", str(WHISPER_VAD_MODEL), "-vt", "0.5",
-                "--host", "127.0.0.1", "--port", str(port_of(config.listening.whisper_url)), "-t", "4"], "/", needs_ok=False),
+                "--host", "127.0.0.1", "--port", str(port_of(config.listening.whisper_url)), "-t", "4"], comms(config.listening.whisper_url)),
         Server("scorer", port_of(config.scorer.url),
                ["llama-server", "-hf", SCORER_MODEL, "--host", "127.0.0.1", "--port", str(port_of(config.scorer.url)),
-                "--ctx-size", "4096", "-np", "2", "--jinja"], "/health", needs_ok=True),
+                "--ctx-size", "4096", "-np", "2", "--jinja"], comms(config.scorer.url)),
         Server("oracle", port_of(config.oracle.url),
                ["llama-server", "-hf", ORACLE_MODEL, "--host", "127.0.0.1", "--port", str(port_of(config.oracle.url)),
-                "--ctx-size", "4096", "-np", "1", "-ngl", "99", "--jinja"], "/health", needs_ok=True),
+                "--ctx-size", "4096", "-np", "1", "-ngl", "99", "--jinja"], comms(config.oracle.url)),
     ]
 
 

@@ -129,6 +129,31 @@ class TestTheServers:
             assert {"--host", "--port"} <= set(mine) & set(theirs)
 
 
+class TestTheBenchScriptAsksTheModelsThePrintersWay:
+    """run_printer_with_servers.py waits on each server through that model's ModelComms, as the Printer asks (Design Audit 04 item 5)."""
+
+    @staticmethod
+    def bench():
+        spec = importlib.util.spec_from_file_location("bench", ROOT / "scripts" / "dev" / "pipeline" / "run_printer_with_servers.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_each_server_has_its_models_address_and_the_health_timeout(self, config):
+        servers = {server.name: server for server in self.bench().build_servers(config)}
+        assert servers["whisper"].comms.address == config.listening.whisper_url.rstrip("/")
+        assert servers["scorer"].comms.address == config.scorer.url and servers["oracle"].comms.address == config.oracle.url
+        assert {server.comms.health_timeout_seconds for server in servers.values()} == {config.modelcomms.health_timeout_seconds}
+
+    @pytest.mark.parametrize("light, state", [("up", "ready"), ("waiting", "loading"), ("down", "down")])
+    def test_a_servers_state_is_its_models_health(self, light, state):
+        from types import SimpleNamespace
+        from pom.vocabulary import MonitorLight
+        bench = self.bench()
+        server = bench.Server("scorer", 1, [], SimpleNamespace(health=lambda: MonitorLight(light)))
+        assert server.state() == state
+
+
 class TestThePrinterUnit:
     def test_it_comes_after_and_wants_all_three_servers(self):
         unit = read_unit("pom")["Unit"]

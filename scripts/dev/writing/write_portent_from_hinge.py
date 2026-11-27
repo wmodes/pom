@@ -30,9 +30,7 @@ import subprocess
 import sys
 import textwrap
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from itertools import zip_longest
 from pathlib import Path
 
@@ -70,27 +68,24 @@ def exemplar_columns(passages, width: int) -> list:
     return rows
 
 
-def start_server(model: str, url: str) -> subprocess.Popen:
-    """Starts a llama-server for the model on the port in the oracle url and waits until it answers."""
+def start_server(model: str, comms) -> subprocess.Popen:
+    """Starts a llama-server for the model on the port in the oracle's address and waits until its ModelComms says it is up."""
     binary = os.environ.get("LLAMA_SERVER") or shutil.which("llama-server")
     if not binary:
         sys.exit("llama-server not found (brew install llama.cpp, or set LLAMA_SERVER)")
-    port = urllib.parse.urlparse(url).port
+    port = urllib.parse.urlparse(comms.address).port
     source = ["-m", model] if Path(model).expanduser().exists() else ["-hf", model]    # a file, else a Hugging Face name
     if source[0] == "-m":
         source[1] = str(Path(model).expanduser())
     process = subprocess.Popen([binary, *source, "--port", str(port), "--ctx-size", str(CONTEXT_SIZE), "-ngl", "99", "--jinja"],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    health = f"http://127.0.0.1:{port}/health"
     print(f"starting llama-server for {model} on port {port} (a first download can take a while) ...", flush=True)
     while True:
         if process.poll() is not None:
             sys.exit("the llama-server exited at startup (is the port already in use?)")
-        try:
-            with urllib.request.urlopen(health, timeout=2):
-                return process
-        except (urllib.error.URLError, OSError):
-            time.sleep(1)
+        if comms.is_up():
+            return process
+        time.sleep(1)
 
 
 def main() -> None:
@@ -110,7 +105,7 @@ def main() -> None:
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")
 
-    server = None if args.server else start_server(args.model, config.oracle.url)
+    server = None if args.server else start_server(args.model, library.oracle_comms)
     try:
         while True:
             try:

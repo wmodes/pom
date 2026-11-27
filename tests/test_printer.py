@@ -4,7 +4,6 @@ Nothing here contacts a server or opens a microphone or a port: `build_printer` 
 """
 import logging
 import signal
-import urllib.error
 from pathlib import Path
 
 import pytest
@@ -17,10 +16,11 @@ from pom.config import Config
 from pom.conductor import BootSlipper, Conductor, FloorKeeper, KeyboardWatcher, TurnTaker
 from pom.listening import MicDeck
 from pom.monitor import MonitorSite
-from pom.printer import Options, Printer, answers, build_printer, health, parse_options, reachable
-from pom.printer_builder import PrinterBuilder
+from pom.printer import build_printer, parse_options
+from pom.printer_builder import Options, Printer, PrinterBuilder
 from pom.printing import ConsoleTerminal, TerminalPort
 from pom.scoring import ScorerWarmer
+from pom.modelcomms import ModelComms
 from pom.vocabulary import MonitorLight
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +47,7 @@ def no_network(monkeypatch):
     def refuse(*args, **kwargs):
         raise AssertionError("building the Printer touched the network")
     monkeypatch.setattr("urllib.request.urlopen", refuse)
+    monkeypatch.setattr("requests.sessions.Session.request", refuse)      # every ModelComms request goes through requests
 
 
 @pytest.fixture(autouse=True)
@@ -81,7 +82,7 @@ class TestTheWiring:
 
     def test_the_scorers_warm_up_is_built_on_the_printers_own_scorer_and_asks_the_scorers_address(self, tmp_path, monkeypatch):
         asked = []
-        monkeypatch.setattr(builder_module, "answers", lambda url: asked.append(url) or True)
+        monkeypatch.setattr(ModelComms, "health", lambda comms: asked.append(comms.address) or MonitorLight.UP)
         p = build(tmp_path, '[scorer]\nurl = "http://127.0.0.1:9123/v1/chat/completions"\n')
         warmer = p.parts["warmer"]
         assert isinstance(warmer, ScorerWarmer) and warmer._scorer is p.parts["scorer"] and p._warmer is warmer
@@ -178,15 +179,14 @@ class TestTheWiring:
         p = build(tmp_path, '[monitor]\nservice_down_after_seconds = 77\n[terminal]\nmode = "console"\n')
         assert p.parts["board"]._down_after["printer"] == 77.0 and p.parts["board"]._down_after["whisper"] == 77.0
 
-    def test_a_model_that_is_still_loading_shows_waiting_for_the_scorer_and_the_oracle_and_whisper_is_asked_by_its_own_address(self, tmp_path, monkeypatch):
+    def test_a_model_that_is_still_loading_shows_waiting_and_each_model_is_asked_through_its_own_model_comms(self, tmp_path, monkeypatch):
         asked = []
-        monkeypatch.setattr(builder_module, "health", lambda url: asked.append(url) or MonitorLight.WAITING)
-        monkeypatch.setattr(builder_module, "reachable", lambda url: asked.append(url) or True)
+        monkeypatch.setattr(ModelComms, "health", lambda comms: asked.append(comms.address) or MonitorLight.WAITING)
         p = build(tmp_path, '[scorer]\nurl = "http://127.0.0.1:1/score"\n[oracle]\nurl = "http://127.0.0.1:2/write"\n[listening]\nwhisper_url = "http://127.0.0.1:3"\n'
                             '[terminal]\nmode = "none"\n')
         p.parts["poller"].poll_once()
         lights = p.parts["board"].lights()
-        assert (lights["scorer"], lights["oracle"], lights["whisper"], lights["printer"]) == (MonitorLight.WAITING, MonitorLight.WAITING, MonitorLight.UP, MonitorLight.NONE)
+        assert (lights["scorer"], lights["oracle"], lights["whisper"], lights["printer"]) == (MonitorLight.WAITING, MonitorLight.WAITING, MonitorLight.WAITING, MonitorLight.NONE)
         assert sorted(asked) == ["http://127.0.0.1:1/score", "http://127.0.0.1:2/write", "http://127.0.0.1:3"]
 
     def test_a_recording_has_no_mic_light(self, tmp_path):
@@ -1043,57 +1043,3 @@ class TestMain:
         path.write_text("[conductor]\nwriting_seconds = -1\n", encoding="utf-8")
         printer_module.main(["--config", str(path)])
         assert any("config:" in line and "conductor.writing_seconds" in line for line in logged.messages())
-
-
-class TestTheServiceChecks:
-    def test_answers_and_reachable_say_yes_when_the_server_answers(self, monkeypatch):
-        class Open:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: Open())
-        assert answers("http://127.0.0.1:8099/v1/chat/completions") and reachable("http://127.0.0.1:8110")
-
-    @pytest.mark.parametrize("error", [urllib.error.URLError("down"), OSError("down"), ValueError("bad url")])
-    def test_and_no_when_it_does_not_or_the_address_is_bad(self, monkeypatch, error):
-        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(error))
-        assert not answers("http://127.0.0.1:8099/x") and not reachable("http://127.0.0.1:8110")
-
-    @staticmethod
-    def http_error(code):
-        return urllib.error.HTTPError("http://x/health", code, "x", {}, None)
-
-    def test_a_server_that_answers_ok_is_up(self, monkeypatch):
-        class Open:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: Open())
-        assert health("http://127.0.0.1:8099/v1/chat/completions") is MonitorLight.UP
-
-    def test_a_server_that_says_503_is_loading_its_model_so_it_is_waiting(self, monkeypatch):
-        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(self.http_error(503)))
-        assert health("http://127.0.0.1:8099/x") is MonitorLight.WAITING
-        assert not answers("http://127.0.0.1:8099/x")                 # waiting is not answering, for the scorer's warm-up
-
-    @pytest.mark.parametrize("error", [http_error.__func__(500), http_error.__func__(404), urllib.error.URLError("down"), OSError("down"), ValueError("bad url")])
-    def test_any_other_trouble_is_down(self, monkeypatch, error):
-        monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: (_ for _ in ()).throw(error))
-        assert health("http://127.0.0.1:8099/x") is MonitorLight.DOWN
-
-    def test_answers_asks_the_servers_health_address(self, monkeypatch):
-        seen = []
-
-        class Open:
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *a):
-                return False
-        monkeypatch.setattr("urllib.request.urlopen", lambda url, timeout=None: seen.append(url) or Open())
-        answers("http://127.0.0.1:8099/v1/chat/completions")
-        assert seen == ["http://127.0.0.1:8099/health"]

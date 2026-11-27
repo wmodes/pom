@@ -85,8 +85,9 @@ class TestHealth:
         comms = ModelComms(server.root, 3.0)
         assert comms.health() is MonitorLight.WAITING and comms.is_up() is False
 
-    def test_any_other_status_is_down(self, server):
-        server.health_status = 500
+    @pytest.mark.parametrize("status", [500, 404, 401])
+    def test_any_other_status_is_down(self, server, status):
+        server.health_status = status
         assert ModelComms(server.root, 3.0).health() is MonitorLight.DOWN
 
     def test_no_server_is_down(self, server):

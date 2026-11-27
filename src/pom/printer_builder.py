@@ -23,9 +23,6 @@ Design decisions, and why:
 """
 import random
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -71,33 +68,6 @@ class Options:
     mac_mic: Optional[str] = None
     terminal: Optional[str] = None
     keyboard: bool = True
-
-
-def health(url: str) -> MonitorLight:
-    """How the llama-server behind this chat address is: UP if its health address says ok, WAITING if it says 503 (it answers but is still loading its
-    model), DOWN if it does not answer or says anything else."""
-    parts = urllib.parse.urlparse(url)
-    try:
-        with urllib.request.urlopen(f"{parts.scheme}://{parts.netloc}/health", timeout=3):
-            return MonitorLight.UP
-    except urllib.error.HTTPError as error:              # (an HTTPError is a URLError, so it is caught first)
-        return MonitorLight.WAITING if error.code == 503 else MonitorLight.DOWN
-    except (urllib.error.URLError, OSError, ValueError):
-        return MonitorLight.DOWN
-
-
-def answers(url: str) -> bool:
-    """True if the llama-server behind this chat address says it is healthy and ready."""
-    return health(url) is MonitorLight.UP
-
-
-def reachable(url: str) -> bool:
-    """True if something answers an HTTP request at this address (the whisper-server's front page, for instance)."""
-    try:
-        with urllib.request.urlopen(url, timeout=3):
-            return True
-    except (urllib.error.URLError, OSError, ValueError):
-        return False
 
 
 class Printer:
@@ -234,7 +204,7 @@ class PrinterBuilder:
     def warmer(self) -> ScorerWarmer:
         """Sends the scorer one throwaway request once its server is up."""
         scoring = self.config.scorer
-        return ScorerWarmer(self.scorer, lambda: answers(scoring.url), scoring, bookkeeper=self.bookkeeper)
+        return ScorerWarmer(self.scorer, self.scorer_comms.is_up, scoring, bookkeeper=self.bookkeeper)
 
     @cached_property
     def bar_keeper(self):
@@ -405,10 +375,8 @@ class PrinterBuilder:
 
     @cached_property
     def poller(self) -> ServicePoller:
-        listening, scoring, oracle = self.config.listening, self.config.scorer, self.config.oracle
         terminal = self.terminal
-        return ServicePoller(self.board, {"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: health(scoring.url),
-                                          "oracle": lambda: health(oracle.url),
+        return ServicePoller(self.board, {"whisper": self.whisper_comms.health, "scorer": self.scorer_comms.health, "oracle": self.oracle_comms.health,
                                           "printer": lambda: None if terminal is None else terminal.online(wait=False)}, self.config.monitor)
 
     @cached_property

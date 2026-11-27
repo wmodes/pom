@@ -28,6 +28,7 @@ def no_network(monkeypatch):
     def refuse(*args, **kwargs):
         raise AssertionError("building touched the network")
     monkeypatch.setattr("urllib.request.urlopen", refuse)
+    monkeypatch.setattr("requests.sessions.Session.request", refuse)      # every ModelComms request goes through requests
 
 
 def an_attempt(score=5.0):

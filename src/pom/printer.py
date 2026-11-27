@@ -33,8 +33,7 @@ from typing import Optional
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.bookkeeper.log_muter import LogMuter
 from pom.config import Config
-# the builder's names, kept here under their old names so callers of pom.printer do not break
-from pom.printer_builder import DEFAULT_CONFIG, ROOT, Options, Printer, PrinterBuilder, answers, health, reachable  # noqa: F401
+from pom.printer_builder import DEFAULT_CONFIG, ROOT, Options, Printer, PrinterBuilder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 

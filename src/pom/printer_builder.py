@@ -270,7 +270,8 @@ class PrinterBuilder:
         listening = self.config.listening
         ears = Eavesdropper(self.make_deck(), self.whisper, listening, start_seconds=self.timekeeper.now(), wall=time.monotonic, bookkeeper=self.bookkeeper)
         self.timekeeper.follow(ears)
-        return HingeFinder(ears, self.take_cutter, self.scorer, self.bar_keeper, listening, bookkeeper=self.bookkeeper), ears
+        return HingeFinder(ears, self.take_cutter, self.scorer, self.bar_keeper, listening, bookkeeper=self.bookkeeper,
+                           stream_now=self.timekeeper.now), ears
 
     # --- writing and printing ----------------------------------------------------------------------------------------------------------
 

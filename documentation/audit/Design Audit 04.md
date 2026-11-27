@@ -75,7 +75,7 @@ the bottom with the next number; nothing is renumbered.
     for a number past its range; no receiver uses them yet. Step 2 done 2026-11-27: the 11 copies of `_is_number` are one `is_number`
     in `value_rules.py`, guarded by a test. Step 3 done 2026-11-27: the handed-in clocks and sleeps are checked by the ValueChecker
     against `function()` (4 checks in 3 classes, not about 15). Step 4: the fallback values below are agreed, and the BarKeeper
-    checks with them (2026-11-27). Step 5 so far: the TurnHistory and the ChartNotebook check by the table too.
+    checks with them (2026-11-27). Step 5 so far: the TurnHistory, the ChartNotebook, the HingeFinder and the TypedLineScorer check by the table too.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
   - **The same score and time are checked by these, each with its own fallback value:**
     - the BarKeeper (`bar_keeper.py:164, 191`);

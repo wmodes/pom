@@ -230,3 +230,17 @@ class TestWhatIsKept:
         made, _, _, _ = typed()
         made.score("the secret words")
         assert "secret" not in " ".join(logged.of(made).lines())
+
+
+class TestTheScoreIsChecked:
+    """The Scorer's score is checked before it is multiplied (Design Audit 04 item 3)."""
+
+    def test_a_score_that_is_not_a_number_is_unscored(self, logged):
+        made, _, _, _ = typed(scores={"hello": float("nan")})
+        sentence = made.score("hello")
+        assert (sentence.score, sentence.ruling) == (None, Ruling.NO_MARK)
+        assert logged.of(made).warnings()[0].startswith("TypedLineScorer.score was given a score of NaN")
+
+    def test_a_score_below_zero_is_zero_before_it_is_multiplied(self):
+        made, _, _, _ = typed(scores={"hello": -2.0})
+        assert made.score("hello").score == 0.0

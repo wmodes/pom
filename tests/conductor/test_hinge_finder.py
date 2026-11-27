@@ -367,3 +367,23 @@ class TestARoomThatStartsAgain:
         self.hear_for(200, keeper, start_seconds=7000.0)
         _, after = self.hear_for(200, keeper)                                                           # begins again at 0
         assert len([a for a in after if a.ruling is Ruling.QUALIFIED]) <= 1
+
+
+class TestAnAttemptCarriesCheckedValues:
+    """The take's time and the score are checked before they go to the BarKeeper or into the Attempt (Design Audit 04 item 3)."""
+
+    def test_a_take_time_that_is_not_a_number_is_the_stream_time_now(self, logged):
+        eavesdropper = FakeEavesdropper([segment("The dog barks.", ends_at=float("nan"))])
+        made = HingeFinder(eavesdropper, TakeCutter(ListeningSettings()), FakeScorer(), bar_keeper(), ListeningSettings(), stream_now=lambda: 77.0)
+        assert [s.heard_at for s in found(made)] == [77.0]
+        assert logged.of(made).warnings()[0].startswith("HingeFinder.find was given a heard_at of NaN")
+
+    def test_a_score_that_is_not_a_number_is_unscored(self, logged):
+        made, _, _ = finder([segment("The dog barks.")], scores={"The dog barks.": float("nan")})
+        sentence = found(made)[0]
+        assert (sentence.score, sentence.ruling) == (None, Ruling.NO_MARK)
+        assert logged.of(made).warnings()[0].startswith("HingeFinder.find was given a score of NaN")
+
+    def test_a_score_below_zero_is_zero(self):
+        made, _, _ = finder([segment("The dog barks.")], scores={"The dog barks.": -1.0})
+        assert found(made)[0].score == 0.0

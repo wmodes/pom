@@ -29,6 +29,8 @@ from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.attempt import Attempt
 from pom.scoring.clip_scorer import ScoredBy
+from pom.value_checker import ValueChecker
+from pom.value_rules import not_negative
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -64,6 +66,7 @@ class TypedLineScorer:
         self._bar_keeper = bar_keeper
         self._clock = clock
         self.qualifying = qualifying
+        self.check = ValueChecker(self.logger, "TypedLineScorer")
 
     def score(self, line: str) -> Attempt:
         """Scores one typed line and judges it against the bar. Blocks while the Scorer works.
@@ -77,7 +80,8 @@ class TypedLineScorer:
         if not text:
             return Attempt(text, TYPED, None, ScoredBy.UNSCORED, None, now, bar, held, self._bar_keeper.counted)
         result = self._scorer.score_text(text, now)
-        multiplied = None if result.score is None else result.score * self.qualifying.typed_lines_score_multiplier
+        score = None if result.score is None else self.check(result.score, not_negative(), fallback_value=None, method="score", argument="score")
+        multiplied = None if score is None else score * self.qualifying.typed_lines_score_multiplier
         ruling = self._bar_keeper.rule_typed(multiplied, now, bar_influence=self.qualifying.typed_lines_bar_influence)
         self.logger.debug("scored a typed line of %d words: %s", len(text.split()), ruling.value)
         return Attempt(text, TYPED, multiplied, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)

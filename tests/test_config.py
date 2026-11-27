@@ -805,7 +805,7 @@ def test_the_starting_listening_values_are_the_known_good_ones():
 
 
 def test_the_listening_defaults_match_the_modules_defaults():
-    """Until each part takes the [listening] settings object, its own copy of a default must agree with defaults.py (Design Audit D5)."""
+    """Until each part takes the [listening] settings object, its own copy of a default must agree with defaults.py (Design Audit 03 D5)."""
     from pom.listening import capture_card_finder
     assert ListeningSettings().device == capture_card_finder.AUTO
 
@@ -1513,7 +1513,7 @@ def test_a_chart_with_no_room_for_the_plot_puts_back_every_default_size_and_marg
     assert [getattr(config.chart, s) for s in sizes] == [getattr(drawing, s) for s in sizes] and config.chart.window_minutes == 7.0
 
 
-# --- A setting the file does not set (Design Audit D5.8) ---------------------------------------------------------------------------------
+# --- A setting the file does not set (Design Audit 03 D5.8) ---------------------------------------------------------------------------------
 
 def test_a_setting_the_file_does_not_set_takes_its_default_and_says_so(tmp_path):
     config = Config.load(write_exactly(tmp_path, "[conductor]\nwrite_attempts = 2\n"), environ={})

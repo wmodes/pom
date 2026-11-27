@@ -328,7 +328,7 @@ Seven 8 to 9B models, one frozen prompt, 16 hinges x 10 seeded draws = 160 porte
 | Stheno v3.4 | 4.73 |
 | Qwen3-8B | 4.45 |
 
-Qwen3.5-9B and Gemma 2 both beat Llama 3.1 clearly; Qwen3.5 against Gemma is not settled. No model was particularly creative (the best managed it in half of its portents). Decided 2026-10-27: the Printer uses Qwen3.5-9B, with Gemma 2 9B as the named alternate (one config change away), unless a problem shows. Gemma was more faithful to the hinge (it repeated the hinge 2 times in 160 against 10, and muddled fewer details) but less creative (68 portents against 81), weaker on style, and should be 20 to 30% slower on the Pi (an estimate, not measured). Caveats: one rater (an LLM judge); a human spot-check of about 20 ratings is pending. Write-up: [Model Bakeoff](Model%20Bakeoff.md); rubric: [Bakeoff Rubric](Bakeoff%20Rubric.md).
+Qwen3.5-9B and Gemma 2 both beat Llama 3.1 clearly; Qwen3.5 against Gemma is not settled. No model was particularly creative (the best managed it in half of its portents). Decided 2026-10-27: the Printer uses Qwen3.5-9B, with Gemma 2 9B as the named alternate (one config change away), unless a problem shows. Gemma was more faithful to the hinge (it repeated the hinge 2 times in 160 against 10, and muddled fewer details) but less creative (68 portents against 81), weaker on style, and should be 20 to 30% slower on the Pi (an estimate, not measured). Caveats: one rater (an LLM judge); a human spot-check of about 20 ratings is pending. Write-up: [Model Bakeoff](testing/Model%20Bakeoff.md); rubric: [Bakeoff Rubric](Bakeoff%20Rubric.md).
 
 #### Speed on the Pi
 
@@ -580,8 +580,9 @@ This document says what was designed and why. These say the rest.
 | [documentation/Lexicon.md](Lexicon.md) | The project's vocabulary: every name used in the code, config, prompts and docs, and what it replaced. Read it first if a word here is unfamiliar |
 | [documentation/Project State.md](Project%20State.md) | The handoff: the working rules, the decision log, what comes next, gotchas |
 | [documentation/Pi Setup Notes.md](Pi%20Setup%20Notes.md) | Setting up and running the Pi: OS, Wi-Fi and the Comitup fallback, the whisper.cpp and llama.cpp builds, the services, the microphone, and what to do when `pom1.local` will not resolve |
-| [documentation/Model Bakeoff.md](Model%20Bakeoff.md), [documentation/Bakeoff Rubric.md](Bakeoff%20Rubric.md) | The oracle bake-off: method, results and the rating rubric |
+| [documentation/testing/Model Bakeoff.md](testing/Model%20Bakeoff.md), [documentation/testing/Bakeoff Rubric.md](testing/Bakeoff%20Rubric.md) | The oracle bake-off: method, results and the rating rubric |
 | [documentation/Adding Material.md](Adding%20Material.md), [documentation/Library Notes.md](Library%20Notes.md), [library/README.md](../library/README.md) | Adding to the library; how the standardizer works and what went wrong; the library's rules and columns |
+| [documentation/audit/](audit/) | The audits, numbered `Design Audit nn.md`: 01 the live unplug-and-kill tests (Robust Testing), 02 the Hardening TODO, 03 the first design audit, 04 the big design problems (the current checklist) |
 | [documentation/AI Ledger.md](AI%20Ledger.md) | The record of remote AI (Claude) use; local models are never counted |
 | [scripts/dev/README.md](../scripts/dev/README.md) | The testbenches and playgrounds: small tools that use the real modules. Use them before diagnosing anything |
 | [scripts/setup/README.md](../scripts/setup/README.md) | The provisioning scripts and the service files |

@@ -1,4 +1,4 @@
-# Robust Testing
+# Design Audit 01: Robust Testing
 
 *Started 2026-11-24.* **Robust** is one of the design principles, and it has a concrete meaning here: **anyone can unplug, kill, switch off or lose anything, at any moment during a run, and the Printer carries on or comes back by itself.** It may go quiet while a part is missing, and it says so in its log, but it never stops, never needs a restart, and never loses its place. This page is the list of those tests: what was tried, where, what happened, and what has not been tried yet.
 
@@ -39,7 +39,7 @@ Status: **passed** (tried for real, recovered by itself), **found a bug** (fixed
 
 ## Next
 
-- The weaknesses found by the 2026-11-24 audit, and the fix for each, are in [Hardening TODO.md](Hardening TODO.md); when one is fixed, its row here is updated and, where a real part can be had, tested on pom1.
+- The weaknesses found by the 2026-11-24 audit, and the fix for each, are in [Design Audit 02.md](Design%20Audit%2002.md) (the Hardening TODO); when one is fixed, its row here is updated and, where a real part can be had, tested on pom1.
 - Microphone unplug and replug, live, with the journal open (the first row above). Then the serial adapter, mid-portent, with the real printer.
 - The paper-out and printer-off test, which is what shows whether the handshake works.
 - Then the rest, in the order that a person is most likely to do it by accident: power, then the network, then the monitor.

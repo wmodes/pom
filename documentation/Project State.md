@@ -5,7 +5,7 @@ Written 2026-10-21, rewritten 2026-10-27, brought up to date 2026-11-04. It says
 For detail it points at the other docs instead of repeating them: **the design is in `Design Document.md`**, the words
 are in `Lexicon.md`, the Pi is in `Pi Setup Notes.md`. If this file and the code disagree, trust the code and fix this file.
 
-**Current work (2026-11-24): `Hardening TODO.md`** is the numbered list (H1 to H29, tick-boxes) of robustness weaknesses found by auditing the whole source, worked one at a time with Wes's go on each; `Robust Testing.md` is the matching list of live unplug/kill tests. Read both before starting anything.
+**Current work (2026-11-26): `audit/Design Audit 04.md`** is the checklist of the big design problems (patterns across the whole source, not one-off slips), worked one at a time with Wes's go on each. The earlier audits are in the same folder: `Design Audit 01.md` (Robust Testing, the live unplug/kill tests), `Design Audit 02.md` (the Hardening TODO, H1 to H29, with open robustness bugs still on it) and `Design Audit 03.md` (D1 to D12). Read 04 before starting anything.
 
 ## What this is
 
@@ -278,7 +278,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   the last five minutes (about 9.8 qualifiers an hour on five recorded meetings; kept as `algorithm = "percentile"`).
   *Current* (2026-10-30): a decaying quantile (EWMQ), so a zinger fades by degrees instead of holding the bar until it falls off the edge of a window; a cooldown, no floor;
   qualifiers and held scores kept out of the bar (see the design doc, "Qualifying: when does the Printer speak?", and `[qualifying]` in `config/pom.toml`).
-- **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `Model Bakeoff.md`; the Pi run
+- **Oracle model** (2026-10-27): Qwen3.5-9B, Gemma 2 9B the alternate. The bake-off is in `testing/Model Bakeoff.md`; the Pi run
   is in `experiments/pi-oracle-benchmark/`. Writing is memory-speed-bound on the Pi (about 2 tokens a second) and the first
   word waits on the prompt (about 0.095 s a token). llama.cpp reuses none of a changed prompt for Qwen3.5 (a hybrid model);
   left alone.
@@ -286,7 +286,7 @@ Dated, kept short. Anything marked *superseded* is here for the reasoning, not a
   acting on. Today a whisper is treated like any quiet sound.
 - **A turn stays while its dot is on the chart** (2026-11-15): after a long silence the chart reaches back hours, so qualifier dots outlived their turns and linked to nothing. `TurnHistory` keeps a turn past `history_seconds` while `ChartNotebook.earliest_at` says its dot is still drawn (handed in as a function; the history never imports the notebook); the tiles count only the last `history_seconds`. The turn page says "Heard 2 h 05 min ago" (it said the audio position, "12266 min 11 s into the listening") and its Older link is on the left, Newer on the right. The dev sim has `--history-minutes` to show it.
 - **Dark mode on the monitor** (2026-11-15): an icon in the top right of every page flips light and dark, remembered in the browser only (`localStorage` key `pom-theme`); with no choice the page follows the device. The dark colours are one value (`_DARK_COLOURS`) used twice. The tests run the page's scripts under node (skipped without it).
-- **Hardening TODO** (2026-11-24): after the microphone-by-number bug Wes asked for a whole-source audit for the same kind of assumption; the result is `documentation/Hardening TODO.md` (29 items in five groups), tackled one at a time. The monitor is now on by default in `pom.toml` (it still waits for a password in the per-machine `config/pom.local.toml`); the template is `config/pom.local.example.toml`.
+- **Hardening TODO** (2026-11-24): after the microphone-by-number bug Wes asked for a whole-source audit for the same kind of assumption; the result is `documentation/audit/Design Audit 02.md` (was `Hardening TODO.md`) (29 items in five groups), tackled one at a time. The monitor is now on by default in `pom.toml` (it still waits for a password in the per-machine `config/pom.local.toml`); the template is `config/pom.local.example.toml`.
 - **The microphone and the terminal are found by themselves** (2026-11-24): `[listening] device = "auto"` asks `arecord -l` for the card that can record and names it (`plughw:CARD=<id>,DEV=<n>`); `[terminal] port = "/dev/serial/by-id/usb-*"`. Device numbers (`plughw:0,0`, `/dev/ttyUSB0`) change from one boot to the next, and a reboot left the Printer deaf. Wes: a clone with another microphone or serial adapter, or anyone replicating the project, must work with no device name hidden in the config; a card name stays possible, as a comment.
 - **Earlier word-list plan, now a fallback only:** snag on the corpus (`wordfreq`), concreteness (WordNet), feeling
   (NRC-VAD, free for non-commercial research, **not redistributable**, so each machine downloads its own into the

@@ -1,6 +1,6 @@
-# Design Audit
+# Design Audit 03
 
-*2026-11-26, a read-only audit of the whole source, tests and dev scripts against the design principles in `~/.claude/CLAUDE.md` and this project's CLAUDE.md.* Five reviewers read one area each (wiring and config; listening and printing; conductor, bar and keyboard; scoring, writing and library; monitor, tests and dev scripts). Claude then checked the findings marked **verified** in the code by hand; **reported** means only a reviewer read it. Nothing already on [Hardening TODO.md](Hardening TODO.md) is repeated here except as a cross-reference (H-numbers). Nothing was changed.
+*2026-11-26, a read-only audit of the whole source, tests and dev scripts against the design principles in `~/.claude/CLAUDE.md` and this project's CLAUDE.md.* Five reviewers read one area each (wiring and config; listening and printing; conductor, bar and keyboard; scoring, writing and library; monitor, tests and dev scripts). Claude then checked the findings marked **verified** in the code by hand; **reported** means only a reviewer read it. Nothing already on [Design Audit 02.md](Design%20Audit%2002.md) (the Hardening TODO) is repeated here except as a cross-reference (H-numbers). Nothing was changed.
 
 The findings fall into a few patterns that recur in every part of the system, so they are grouped by pattern, not by module. Each pattern names its instances.
 

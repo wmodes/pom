@@ -41,12 +41,12 @@ Design decisions, and why:
 """
 import math
 from collections import deque
-from typing import Deque, Optional, Tuple
+from typing import Callable, Deque, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
-from pom.value_rules import is_number
+from pom.value_checker import ValueChecker
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -71,57 +71,52 @@ class DecayingQuantileBar(Bar):
     """
 
     def __init__(self, qualifying: QualifyingSettings, started_at: float = DEFAULT_STARTED_AT, strict: bool = False,
-                 bookkeeper: Optional[Bookkeeper] = None):
+                 bookkeeper: Optional[Bookkeeper] = None, stream_now: Optional[Callable[[], float]] = None):
         """Args:
             qualifying: The `[qualifying]` settings.
             started_at: The stream time at which the bar begins, in the same seconds as the times it is given: the tick grid and the starting bar's fade both run
                 from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
             strict: Raise DecayingQuantileBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
+            stream_now: The stream time now (the Printer's Timekeeper's `now`): the fallback value for a time that is not a number. None (a
+                test or a tool) gives the bar's ValueChecker a clock of its own.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, DecayingQuantileBarError, DEBUG, strict)
+        self.check = ValueChecker(self.logger, "DecayingQuantileBar", stream_now)
         self.qualifying = qualifying
         self._anchor_interval = 60.0 * qualifying.anchor_interval_minutes                       # in seconds, as every time here is
         self._discard_seconds = 60.0 * qualifying.discard_scores_older_than_minutes
         self._memory: Deque[Tuple[float, float]] = deque()          # (time heard, score), oldest first; the real scores only, never the ticks
-        self._started_at = self._valid(started_at, "started_at", DEFAULT_STARTED_AT, is_number, "a number")
+        self._started_at = self.check.stream_time(started_at, method="__init__", argument="started_at")
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "DecayingQuantileBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+                      stream_now: Optional[Callable[[], float]] = None) -> "DecayingQuantileBar":
         """Builds the bar from the `[qualifying]` settings, to begin at stream time `started_at`."""
-        return cls(settings, started_at, strict=strict, bookkeeper=bookkeeper)
-
-    def _valid(self, value, name: str, default, is_good, wanted: str):
-        """The value if it passes `is_good`, otherwise the default with a warning."""
-        if is_good(value):
-            return float(value)
-        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
-        return default
+        return cls(settings, started_at, strict=strict, bookkeeper=bookkeeper, stream_now=stream_now)
 
     # --- The Bar questions ---------------------------------------------------
 
     def level_at(self, now: float) -> Optional[float]:
         """The weighted, interpolated percentile of the real scores and the ticks, blended with the fading starting line, at `now`."""
-        return self._level(now, future=True)
+        return self._level(self.check.stream_time(now, method="level_at", argument="now"), future=True)
 
     def level_as_of(self, then: float) -> Optional[float]:
         """The bar as it stood at `then`, a time already past: the same as `level_at`, but a score heard after `then` has no say."""
-        return self._level(then, future=False)
+        return self._level(self.check.stream_time(then, method="level_as_of", argument="then"), future=False)
 
     def ticks_between(self, start: float, end: float) -> list:
         """Each tick from `start` to `end`, as (time, anchor score, the bar as it stood at that tick), oldest first. It is how a chart shows the
         bar sliding down through a silence: the ticks fall on the grid whether or not anyone spoke."""
-        if not (is_number(start) and is_number(end)):
-            return []
+        start = self.check.stream_time(start, method="ticks_between", argument="start")
+        end = self.check.stream_time(end, method="ticks_between", argument="end")
         first = max(1, math.ceil((start - self._started_at) / self._anchor_interval))
         last = math.floor((end - self._started_at) / self._anchor_interval)
         times = [self._started_at + k * self._anchor_interval for k in range(first, last + 1)]
         return [(at, self.qualifying.anchor_score, self.level_as_of(at)) for at in times]
 
     def _level(self, now: float, future: bool) -> Optional[float]:
-        """The bar at `now`; `future` says whether a score heard after `now` still counts (as a stepped-back clock would have it) or not."""
-        if not is_number(now):
-            return None
+        """The bar at `now` (already checked); `future` says whether a score heard after `now` still counts (as a stepped-back clock would have it)."""
         entries = self._weighted_scores(now, future)
         if not entries:
             return self.qualifying.starting_bar
@@ -133,16 +128,17 @@ class DecayingQuantileBar(Bar):
         """How many scores' worth of weight the real scores carry at `now`, to the nearest whole score (the starting line is not
         counted, and neither are the ticks). A score counts for 1 when it is heard and for half that a half-life later, so this is the size of the window the
         bar is really built from (about 100 in a busy room at a 5 minute half-life), not all the scores kept in memory (`discard_scores_older_than_minutes`)."""
-        if not is_number(now):
-            return 0
+        now = self.check.stream_time(now, method="window_size_at", argument="now")
         self._forget_old(now)
         return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
 
     def add(self, score: float, now: float) -> None:
-        """Takes in a judged score."""
-        if not (is_number(score) and is_number(now)):
+        """Takes in a judged score. A score that is not a number is left out (with a warning); a time that is not a number is now."""
+        score = self.check.score(score, method="add", may_be_unscored=False)
+        now = self.check.stream_time(now, method="add", argument="now")
+        if score is None:
             return
-        self._memory.append((now, float(score)))
+        self._memory.append((now, score))
         self._forget_old(now)
 
     def describe(self) -> str:

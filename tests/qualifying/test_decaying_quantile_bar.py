@@ -140,14 +140,17 @@ class TestTheStartingLine:
         b = TickingDecayingQuantileBar(tickless_settings(starting_bar=9.0, bar_percentile=50, half_life_seconds=100, starting_bar_weight=20))
         assert b._started_at == 0.0 and logged.of(b).ok()
 
-    @pytest.mark.parametrize("good", [0, 0.0, 12.5, -3, 1e6])
-    def test_a_start_can_be_any_number(self, good, logged):
+    @pytest.mark.parametrize("good", [0, 0.0, 12.5, 1e6])
+    def test_a_start_can_be_any_stream_time(self, good, logged):
         assert logged.of(TickingDecayingQuantileBar(tickless_settings(), started_at=good)).ok() and TickingDecayingQuantileBar(tickless_settings(), started_at=good)._started_at == float(good)
 
     @pytest.mark.parametrize("bad", ["0", None, True, [0], float("nan"), float("inf")])
-    def test_a_bad_start_is_zero_with_a_warning(self, bad, logged):
-        b = TickingDecayingQuantileBar(tickless_settings(), started_at=bad)
-        assert b._started_at == 0.0 and len(logged.of(b).warnings()) == 1 and "started_at" in logged.of(b).warnings()[0]
+    def test_a_bad_start_is_the_stream_time_now_with_a_warning(self, bad, logged):
+        b = TickingDecayingQuantileBar(tickless_settings(), started_at=bad, stream_now=lambda: 3.0)
+        assert b._started_at == 3.0 and len(logged.of(b).warnings()) == 1 and "started_at" in logged.of(b).warnings()[0]
+
+    def test_a_start_below_zero_is_zero(self):
+        assert TickingDecayingQuantileBar(tickless_settings(), started_at=-10.0)._started_at == 0.0
 
     def test_strict_raises_on_a_bad_start(self):
         with pytest.raises(DecayingQuantileBarError):
@@ -444,16 +447,17 @@ class TestWhatIsIgnored:
         assert b.window_size_at(0.0) == 0
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
-    def test_a_time_that_is_not_a_number_changes_nothing(self, junk):
-        b = TickingDecayingQuantileBar(tickless_settings())
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now(self, junk, logged):
+        b = bar(stream_now=lambda: 2.0)
         b.add(5.0, junk)
-        assert b.window_size_at(0.0) == 0 and b.level_at(junk) is None
+        assert b.window_size_at(2.0) == 1 and b.level_at(junk) == b.level_at(2.0)
+        assert logged.of(b).warnings()[0].startswith("DecayingQuantileBar.add was given a now of")
 
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
-    def test_a_window_size_asked_with_a_time_that_is_not_a_number_is_zero(self, junk):
-        b = TickingDecayingQuantileBar(tickless_settings())
+    def test_a_window_size_asked_with_a_time_that_is_not_a_number_is_asked_at_the_stream_time_now(self, junk):
+        b = bar(stream_now=lambda: 2.0)
         feed(b, [1, 2, 3])
-        assert b.window_size_at(junk) == 0
+        assert b.window_size_at(junk) == b.window_size_at(2.0) == 3
 
     def test_a_zero_is_a_real_score(self):
         b = TickingDecayingQuantileBar(tickless_settings())
@@ -523,8 +527,9 @@ class TestTheBarAsItStood:
         assert b.level_as_of(0.0) == 9.0                                     # before the first tick: only the starting line
         assert b.level_as_of(600.0) < b.level_as_of(60.0)                    # the ticks have pulled it down since
 
-    def test_a_time_that_is_not_a_number_is_none(self):
-        assert ticking().level_as_of("soon") is None and ticking().level_as_of(None) is None
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now(self):
+        b = ticking(stream_now=lambda: 120.0)
+        assert b.level_as_of("soon") == b.level_as_of(None) == b.level_as_of(120.0)
 
     def test_reading_the_past_does_not_change_the_present(self):
         b = ticking(bar_percentile=90)

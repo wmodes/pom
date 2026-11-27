@@ -30,14 +30,16 @@ ALGORITHMS: Dict[str, Type[Bar]] = {
 }
 
 
-def bar_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> Bar:
-    """The bar the `[qualifying]` settings name (`settings.algorithm`), built from them, to begin at stream time `started_at`."""
-    return ALGORITHMS[settings.algorithm].from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper)
+def bar_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+                      stream_now: Optional[Callable[[], float]] = None) -> Bar:
+    """The bar the `[qualifying]` settings name (`settings.algorithm`), built from them, to begin at stream time `started_at`, on the stream
+    clock `stream_now` (None gives the bar one of its own)."""
+    return ALGORITHMS[settings.algorithm].from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper, stream_now=stream_now)
 
 
 def bar_keeper_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
                              stream_now: Optional[Callable[[], float]] = None) -> BarKeeper:
     """A BarKeeper over the bar the `[qualifying]` settings name (beginning at stream time `started_at`), handed the same settings and the
     stream clock (`stream_now`, the Printer's Timekeeper's `now`; None gives the BarKeeper one of its own)."""
-    return BarKeeper(bar_from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper), settings, strict=strict, bookkeeper=bookkeeper,
-                     stream_now=stream_now)
+    return BarKeeper(bar_from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper, stream_now=stream_now), settings, strict=strict,
+                     bookkeeper=bookkeeper, stream_now=stream_now)

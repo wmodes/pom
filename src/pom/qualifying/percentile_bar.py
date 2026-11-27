@@ -21,12 +21,12 @@ Design decisions, and why:
 """
 import math
 from collections import deque
-from typing import Deque, List, Optional, Tuple
+from typing import Callable, Deque, List, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
-from pom.value_rules import is_number
+from pom.value_checker import ValueChecker
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -45,28 +45,32 @@ class PercentileBar(Bar):
             this many have been heard the bar is `starting_bar`) and `starting_bar`.
     """
 
-    def __init__(self, qualifying: QualifyingSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, qualifying: QualifyingSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+                 stream_now: Optional[Callable[[], float]] = None):
         """Args:
             qualifying: The `[qualifying]` settings.
             strict: Raise PercentileBarError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
+            stream_now: The stream time now (the Printer's Timekeeper's `now`): the fallback value for a time that is not a number. None (a
+                test or a tool) gives the bar's ValueChecker a clock of its own.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PercentileBarError, DEBUG, strict)
+        self.check = ValueChecker(self.logger, "PercentileBar", stream_now)
         self.qualifying = qualifying
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "PercentileBar":
+    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+                      stream_now: Optional[Callable[[], float]] = None) -> "PercentileBar":
         """Builds the bar from the `[qualifying]` settings. `started_at` is the stream time the bar begins; this bar has no clock to start, and
         takes it so the factory can build any bar the same way."""
-        return cls(settings, strict=strict, bookkeeper=bookkeeper)
+        return cls(settings, strict=strict, bookkeeper=bookkeeper, stream_now=stream_now)
 
     # --- The Bar questions ---------------------------------------------------
 
     def level_at(self, now: float) -> Optional[float]:
         """The percentile of the window at `now`, or the starting line while fewer than `min_scores` scores have been heard."""
-        if not is_number(now):
-            return None
+        now = self.check.stream_time(now, method="level_at", argument="now")
         window = self._window(now)
         if window is None:
             return self.qualifying.starting_bar
@@ -76,14 +80,16 @@ class PercentileBar(Bar):
 
     def window_size_at(self, now: float) -> int:
         """How many scores the window holds at `now`; while fewer than `min_scores` are held at all, that is all of them."""
-        window = self._window(now) if is_number(now) else None
+        window = self._window(self.check.stream_time(now, method="window_size_at", argument="now"))
         return len(window) if window is not None else len(self._recent)
 
     def add(self, score: float, now: float) -> None:
-        """Takes in a judged score."""
-        if not (is_number(score) and is_number(now)):
+        """Takes in a judged score. A score that is not a number is left out (with a warning); a time that is not a number is now."""
+        score = self.check.score(score, method="add", may_be_unscored=False)
+        now = self.check.stream_time(now, method="add", argument="now")
+        if score is None:
             return
-        self._recent.append((now, float(score)))
+        self._recent.append((now, score))
         self._forget_old(now)
 
     def describe(self) -> str:

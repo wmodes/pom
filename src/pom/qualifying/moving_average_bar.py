@@ -22,11 +22,12 @@ Design decisions, and why:
   * The score range (0 to 9, the digits the scorer is asked for) is a parameter with that default, not a setting.
   * Only numbers are kept: no words from the room. This module never reads Config; it is handed the `[qualifying]` settings.
 """
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
+from pom.value_checker import ValueChecker
 from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -58,6 +59,7 @@ class MovingAverageBar(Bar):
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MovingAverageBarError, DEBUG, strict)
+        self.check = ValueChecker(self.logger, "MovingAverageBar")
         self.qualifying = qualifying
         low, high = self._valid_range(score_range)
         self._floor = low + qualifying.average_floor_fraction * (high - low)
@@ -66,9 +68,10 @@ class MovingAverageBar(Bar):
         self.counted = 0
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "MovingAverageBar":
-        """Builds the bar from the `[qualifying]` settings. `started_at` is the stream time the bar begins; this bar has no clock to start, and
-        takes it so the factory can build any bar the same way."""
+    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+                      stream_now: Optional[Callable[[], float]] = None) -> "MovingAverageBar":
+        """Builds the bar from the `[qualifying]` settings. `started_at` and `stream_now` are the stream clock; this bar uses no time, and
+        takes them so the factory can build any bar the same way."""
         return cls(settings, strict=strict, bookkeeper=bookkeeper)
 
     def _valid_range(self, value) -> tuple:
@@ -98,8 +101,9 @@ class MovingAverageBar(Bar):
                 f"under {self._floor:.2f}), starting at {self.qualifying.starting_bar:g}")
 
     def ignores(self, score: float) -> bool:
-        """True for a score below the floor, and for anything that is not a number."""
-        return not (is_number(score) and score >= self._floor)
+        """True for a score below the floor, and for anything that is not a number (with a warning: the BarKeeper never hands one)."""
+        score = self.check.score(score, method="ignores", may_be_unscored=False)
+        return score is None or score < self._floor
 
     def add(self, score: float, now: float) -> None:
         """Moves the average toward a score at or above the floor. Scores below it, and junk, are left out."""

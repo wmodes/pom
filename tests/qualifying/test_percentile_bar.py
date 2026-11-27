@@ -253,3 +253,23 @@ class TestLogging:
         feed(b, [1.0, 2.0, 9.0])
         b.level_at(3.0)
         assert logged.text() == ""
+
+
+class TestTheValuesItIsHandedAreChecked:
+    """Every public method checks what it is handed (Design Audit 04 item 3); the BarKeeper checks first, so these come from other callers."""
+
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now(self, logged):
+        b = PercentileBar(QualifyingSettings(min_scores=1, window_seconds=60, bar_percentile=100.0), stream_now=lambda: 30.0)
+        b.add(7.0, float("nan"))
+        assert b.window_size_at(30.0) == 1 and b.level_at(None) == 7.0
+        assert logged.of(b).warnings()[0].startswith("PercentileBar.add was given a now of NaN")
+
+    def test_a_score_that_is_not_a_number_is_left_out_with_a_warning(self, logged):
+        b = bar()
+        b.add("high", 1.0)
+        assert b.window_size_at(1.0) == 0 and len(logged.of(b).warnings()) == 1
+
+    def test_a_score_below_zero_is_zero(self):
+        b = PercentileBar(QualifyingSettings(min_scores=1, window_seconds=60, bar_percentile=100.0))
+        b.add(-4.0, 1.0)
+        assert b.level_at(1.0) == 0.0

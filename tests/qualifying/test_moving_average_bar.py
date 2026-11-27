@@ -173,3 +173,9 @@ class TestLogging:
         b = MovingAverageBar(QualifyingSettings())
         feed(b, [3.0, 4.0])
         assert "secret" not in logged.text()
+
+
+def test_a_score_that_is_not_a_number_is_ignored_with_a_warning(logged):
+    b = bar()
+    assert b.ignores("high") and len(logged.of(b).warnings()) == 1
+    assert b.ignores(None) and len(logged.of(b).warnings()) == 2           # the BarKeeper never hands None: here it is a bad value

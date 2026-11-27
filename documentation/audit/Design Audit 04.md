@@ -161,6 +161,51 @@ the bottom with the next number; nothing is renumbered.
     - The keyboard is spread over three packages: line editing in `printing/terminal_port.py`, polling in `conductor/`, scoring in
       `keyboard/`.
 
+- [ ] **11. Nothing shows that the test suite tests the right things** (raised by Wes, 2026-11-27, after item 2). *Principles:* "tests go
+  through the public interface"; "If a test fails, the code changed behavior: fix the code, never weaken the test."
+  - **The question:** with this much refactoring, how do we know the tests guard what the Printer should do, and not just what the code
+    happens to do? Nothing we have answers it:
+    - **Mutation checks test the tests, not whether they are good tests.** A killed mutant shows a test notices that line changing; it
+      does not show the test checks the right thing. And Claude picks the lines.
+    - **The old tests can be wrong too.** A test written by reading the code checks that the code does what it does. In item 2, 62 tests
+      in `tests/test_printer.py` were rewritten in the same steps as the code they check.
+    - **Real runs test the ordinary cases**, not the edges (the boundaries, the failures, the timing).
+    - **A recording run would compare before and after**, but the Printer is not deterministic (see the last point).
+  - **The review, one package at a time:**
+    1. **Each test names the rule it guards**, from the Design Document, a config comment, the Lexicon, or a bug that was seen. A test that
+       cannot name one checks the code's insides, not what it should do: rewrite it against a rule, or delete it.
+    2. **Wes reviews the rules, not the code.** The test names and docstrings of a package, read as a list, should read as its spec. A rule
+       Wes cares about that is missing from the list is untested. Claude cannot do this step alone: it would be checking its own reading
+       of the code against its own reading of the code.
+    3. **The edges come from each rule**, written down beside it: the boundaries (a score exactly at the bar, the first attempt, an empty
+       room), the failures (a server down, a port gone, the cases in `Design Audit 01.md`), and the timing (a turn ending during a check).
+       Then each edge gets a test.
+    4. **The private reaches go** (47 in `tests/test_printer.py`, and the 18 of 66 test files that reach any): each is a sign the part's
+       public interface is missing something.
+  - **Then, maybe, a recording run as a regression test.** Its randomness comes from four places, and three can be pinned: whisper's
+    text and the scorer's scores saved once from a real recording and replayed (no server), and the library draw on a seeded generator
+    (the portent's text is not checked, only that a turn happened). The fourth, the threads (the Conductor's checks and the turns), can
+    interleave differently from run to run, so the run would check what qualified and in what order, not the exact second. Untried;
+    medium confidence.
+  - **Where to start:** one package, to see whether the review is worth its cost before doing the rest.
+
+- [ ] **12. The earlier audits' corrections were never all finished, and their boxes no longer say what is done** (raised by Wes,
+  2026-11-27). *Principle:* "One source of truth": an audit is the list of what is left, and a list that is out of date misleads.
+  - **What is open** (counted 2026-11-27):
+    - `Design Audit 01.md` (Robust Testing) has no boxes; its table marks 10 rows "not tried".
+    - `Design Audit 02.md` (Hardening TODO): 31 open boxes, 6 ticked (H2 to H29, and the smaller items at the end).
+    - `Design Audit 03.md` (D1 to D12): 48 open boxes, 15 ticked.
+  - **Some are done and not ticked.** For example, D1.1 (`listening_to_portent.py --monitor` shows a blank page), D9.1 (the wiring rebuilt by
+    hand in the dev scripts) and part of D2.5 (the dead constants `PASSAGES` and `NLTK_DATA`) were all fixed by item 2 of this audit.
+  - **Some are the same problem as an item here.** For example, D9.2 and D9.3 (each model client has its own HTTP code; two ways to ask
+    whether a server is up) are item 5, and D12.2 (shared small types in the wrong module) is item 8.
+  - **The reconciliation:** each open box in 01 to 03 gets one of four marks, with Claude checking the code for each:
+    1. **done:** ticked, with the date and the commit that did it;
+    2. **part of item N here:** ticked over to that item, which gains anything it was missing;
+    3. **still open:** stays, with its line numbers checked against today's code;
+    4. **drop:** Wes's call only, with the reason written beside it.
+  - **Afterwards** this audit is the one list of what is left, and 01 to 03 are records.
+
 ## What the reviewers found sound
 
 - **Injection and imports:** parts are handed in, not reached for; no module outside `config.py` reads the config; the imports run one

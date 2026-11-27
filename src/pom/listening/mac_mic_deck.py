@@ -41,13 +41,13 @@ class MacMicDeck(MicDeck):
     _FALLBACK_DEVICE = DEFAULT_MAC_DEVICE
     _MISSING_HINT = "install it with `brew install ffmpeg`"
 
-    def __init__(self, device: str = DEFAULT_MAC_DEVICE, ffmpeg: str = "ffmpeg", *, listening: ListeningSettings, strict: bool = False,
+    def __init__(self, device: str = DEFAULT_MAC_DEVICE, ffmpeg: str = "ffmpeg", *, listening: ListeningSettings, strict: Optional[bool] = None,
                  heard: Optional[Callable[[], None]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             device: The AVFoundation audio input: `default` for the system's default input, or a device name.
             ffmpeg: The program to run (a path or a name on the PATH). Tests give a stand-in.
             listening: The `[listening]` section (see MicDeck).
-            strict: Raise MicDeckError on any problem instead of logging it.
+            strict: Raise MicDeckError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             heard: Called as each frame comes from the microphone (see MicDeck).
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """

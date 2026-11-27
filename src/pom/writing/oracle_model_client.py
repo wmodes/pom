@@ -57,13 +57,13 @@ class OracleModelClient:
         last_cut_off: True if the most recent consult stopped because it reached `max_tokens`.
     """
 
-    def __init__(self, oracle: OracleSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
+    def __init__(self, oracle: OracleSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             oracle: The `[oracle]` section: `url` (the server's chat-completions address), `timeout` (seconds to wait for one portent),
                 `max_tokens` (the most the model may write) and `temperature` (how adventurous the word choice is).
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
-            strict: Raise OracleModelClientError on any problem instead of logging it.
+            strict: Raise OracleModelClientError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, OracleModelClientError, DEBUG, strict)

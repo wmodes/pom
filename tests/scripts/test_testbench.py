@@ -332,3 +332,22 @@ def test_the_replay_testbench_begins_its_stream_at_zero(tmp_path):
     row = result.stdout.strip().splitlines()[-1].split()
     first, last = float(row[5]), float(row[7])                                       # the "bar first" and "bar last" columns
     assert first == pytest.approx(6.8, abs=0.05) and last < 5.4
+
+
+def test_every_script_that_builds_a_bookkeeper_follows_the_projects_strict_and_debug_settings():
+    """POM_STRICT and POM_DEBUG reach the testbenches as they reach the Printer: through the config, into the one Bookkeeper (Design Audit 04 item 4)."""
+    import re
+    for path in sorted((ROOT / "scripts" / "dev").rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for call in re.findall(r"Bookkeeper\([^)]*\)", text):
+            assert "strict=config.strict" in call, f"{path.relative_to(ROOT)}: {call}"
+        for call in re.findall(r"\.set_up\([^\n]*", text):
+            assert "debug=config.debug" in call, f"{path.relative_to(ROOT)}: {call}"
+
+
+def test_the_debug_setting_shows_a_testbenchs_debug_lines():
+    shown = run("scripts/dev/library/circulation.py", env={"POM_DEBUG": "1"})
+    hidden = run("scripts/dev/library/circulation.py", env={"POM_DEBUG": "0"})
+    assert shown.returncode == 0 and hidden.returncode == 0, shown.stderr + hidden.stderr
+    debug_lines = lambda result: [line for line in (result.stdout + result.stderr).splitlines() if line.startswith("DEBUG ")]
+    assert debug_lines(shown) and not debug_lines(hidden)

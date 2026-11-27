@@ -57,9 +57,9 @@ def main():
     parser.add_argument("--speed", type=float, default=1.0, help="recording speed: 1 is real time, 0 is as fast as possible")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     listening, qualifying, settings = config.listening, config.qualifying, config.scorer
     builder = make_builder(args, config, bookkeeper)
     if not builder.whisper.ping():

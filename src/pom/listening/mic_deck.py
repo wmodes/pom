@@ -54,13 +54,13 @@ class MicDeck:
     _FALLBACK_DEVICE = DEFAULT_DEVICE
     _MISSING_HINT = "this is meant to run on the Pi"
 
-    def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord", *, listening: ListeningSettings, strict: bool = False,
+    def __init__(self, device: str = DEFAULT_DEVICE, arecord: str = "arecord", *, listening: ListeningSettings, strict: Optional[bool] = None,
                  heard: Optional[Callable[[], None]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             device: The ALSA capture device, e.g. plughw:0,0 (`arecord -l` lists them).
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             listening: The `[listening]` section: `buffer_seconds`, how much sound to hold before the oldest is dropped.
-            strict: Raise MicDeckError on any problem instead of logging it.
+            strict: Raise MicDeckError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             heard: Called, with no arguments, as each frame comes from the microphone (by the thread that reads it), so the status board can
                 tell that sound is arriving. A callback that raises is ignored: it must never stop the sound.

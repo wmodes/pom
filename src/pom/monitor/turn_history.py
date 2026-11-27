@@ -82,14 +82,14 @@ class TurnHistory:
         total_added: How many records have been accepted since the history was made, expired ones included.
     """
 
-    def __init__(self, monitor: MonitorSettings, clock: Callable[[], float] = time.time, strict: bool = False,
+    def __init__(self, monitor: MonitorSettings, clock: Callable[[], float] = time.time, strict: Optional[bool] = None,
                  keep_heard_since: Optional[Callable[[], Optional[float]]] = None, bookkeeper: Optional[Bookkeeper] = None,
                  stream_now: Optional[Callable[[], float]] = None):
         """Args:
             monitor: The `[monitor]` section: `history_seconds` (how long a record is kept, unless `keep_heard_since` keeps it longer) and
                 `history_max_turns` (the most records kept; the oldest go first).
             clock: Returns seconds since the epoch; injected so tests need not wait.
-            strict: Raise TurnHistoryError on any problem instead of logging it.
+            strict: Raise TurnHistoryError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             keep_heard_since: A function returning the audio time (as `heard_at`) from which turns are kept whatever their age, or None for no such
                 time: the chart notebook's oldest attempt, so a turn stays while its dot is on the chart. Without one, or if it fails or gives

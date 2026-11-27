@@ -111,7 +111,12 @@ the bottom with the next number; nothing is renumbered.
     `DEFAULT_END_PAUSE_SECONDS`, ...); those constants are on Design Audit 03's D6.1 list of hidden values, so they are settled with
     item 12 first, and then checked here.
 
-- [ ] **4. Failures hide bugs** (checked). *Principle:* "A failure inside [a helper] is recorded as a warning … a `strict` flag raises
+- [x] **4. Failures hide bugs** — **done 2026-11-27**. *Tracebacks:* closed with no change (Wes): the error and critical lines would
+  trace only 3 places, each an expected failure already named in its line; the other 14 are conditions with no exception behind them.
+  *Strict:* now set once for the project, like debug: the entry point builds the Bookkeeper with the `strict` setting, and a class's own
+  `strict=` (None by default, in all 45 constructors and classmethods) follows it or overrides it; the PrinterBuilder's own Bookkeeper
+  follows its config; all 13 dev scripts that build a Bookkeeper read the config first and follow its `strict` and `debug` (see
+  CHANGELOG). Left (Wes, for later): give every testbench script `--strict` and `--debug` options. Original finding (checked). *Principle:* "A failure inside [a helper] is recorded as a warning … a `strict` flag raises
   instead, for tests and dev tools."
   - **No tracebacks:** no log line in the code ever includes one (0 uses of `exc_info` or `logger.exception`). 43 lines log only the
     error's type name, for example "the room failed (TypeError)" (`conductor.py:223`). A real bug on a Printer running for days shows up

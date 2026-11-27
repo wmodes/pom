@@ -6,7 +6,8 @@ A class gets one from the Bookkeeper (`self.logger = bookkeeper.logger_for(__nam
 is in the log, and a message that keeps repeating is muted there, in one place (pom.bookkeeper.log_muter).
 
 STRICT MODE exists for development and tests: with strict on, `warning`, `error`, `critical` and `exception` raise the class's own strict
-exception instead of logging, so a problem is loud while you work. `debug` and `info` are never raised. The running Printer is never strict.
+exception instead of logging, so a problem is loud while you work. `debug` and `info` are never raised. It is on for every class when
+the `strict` setting is on (POM_STRICT=1; the Bookkeeper is built with it), or for one class that asks for it; the gallery leaves it off.
 """
 import logging
 

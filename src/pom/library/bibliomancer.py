@@ -85,7 +85,7 @@ class Bibliomancer:
         oracle: The `[oracle]` settings it was handed (it reads `exemplars_min`, `exemplars_max` and `exemplar_redraws`).
     """
 
-    def __init__(self, store: Catalog, circulation: Circulation, rng: Optional[random.Random] = None, strict: bool = False, *,
+    def __init__(self, store: Catalog, circulation: Circulation, rng: Optional[random.Random] = None, strict: Optional[bool] = None, *,
                  oracle: OracleSettings, bookkeeper: Optional[Bookkeeper] = None):
         """Builds the draw odds from the store and the weights.
 
@@ -94,7 +94,7 @@ class Bibliomancer:
             circulation: The draw weights (shelf shares and holding weights).
             rng: The random generator; a fresh `random.Random()` if not given. Pass a seeded one
                 for repeatable draws.
-            strict: Raise BibliomancerError on any problem instead of logging it.
+            strict: Raise BibliomancerError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             oracle: The `[oracle]` section: `exemplars_min` and `exemplars_max` (the fewest and most passages `draw()` returns when not
                 told how many) and `exemplar_redraws` (how many times one pick that lands on an unfinished passage is drawn again before

@@ -45,11 +45,11 @@ class PercentileBar(Bar):
             this many have been heard the bar is `starting_bar`) and `starting_bar`.
     """
 
-    def __init__(self, qualifying: QualifyingSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+    def __init__(self, qualifying: QualifyingSettings, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None,
                  stream_now: Optional[Callable[[], float]] = None):
         """Args:
             qualifying: The `[qualifying]` settings.
-            strict: Raise PercentileBarError on any problem instead of logging it.
+            strict: Raise PercentileBarError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             stream_now: The stream time now (the Printer's Timekeeper's `now`): the fallback value for a time that is not a number. None (a
                 test or a tool) gives the bar's ValueChecker a clock of its own.
@@ -60,7 +60,7 @@ class PercentileBar(Bar):
         self._recent: Deque[Tuple[float, float]] = deque()        # (time heard, score), oldest first
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+    def from_settings(cls, settings, started_at: float, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None,
                       stream_now: Optional[Callable[[], float]] = None) -> "PercentileBar":
         """Builds the bar from the `[qualifying]` settings. `started_at` is the stream time the bar begins; this bar has no clock to start, and
         takes it so the factory can build any bar the same way."""

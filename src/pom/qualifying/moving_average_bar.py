@@ -50,12 +50,12 @@ class MovingAverageBar(Bar):
             `average_floor_fraction` (how far up the score range the floor sits) and `starting_bar` (the bar before any score has counted).
     """
 
-    def __init__(self, qualifying: QualifyingSettings, score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: bool = False,
+    def __init__(self, qualifying: QualifyingSettings, score_range: Sequence[float] = DEFAULT_SCORE_RANGE, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             qualifying: The `[qualifying]` settings.
             score_range: (lowest, highest) possible score; the lowest must be below the highest.
-            strict: Raise MovingAverageBarError on any problem instead of logging it.
+            strict: Raise MovingAverageBarError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, MovingAverageBarError, DEBUG, strict)
@@ -68,7 +68,7 @@ class MovingAverageBar(Bar):
         self.counted = 0
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+    def from_settings(cls, settings, started_at: float, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None,
                       stream_now: Optional[Callable[[], float]] = None) -> "MovingAverageBar":
         """Builds the bar from the `[qualifying]` settings. `started_at` and `stream_now` are the stream clock; this bar uses no time, and
         takes them so the factory can build any bar the same way."""

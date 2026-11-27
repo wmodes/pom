@@ -48,14 +48,14 @@ class KeyboardWatcher:
 
     def __init__(self, terminal, typed_scorer, poll_seconds: float = DEFAULT_POLL_SECONDS,
                  error_pause_seconds: float = DEFAULT_ERROR_PAUSE_SECONDS, sleep: Optional[Callable[[float], None]] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             terminal: Anything with read_line(timeout) returning a finished line or None (a TerminalPort).
             typed_scorer: A TypedLineScorer (anything with score(line) returning an Attempt).
             poll_seconds: How long one look at the keyboard waits for a line, above 0.
             error_pause_seconds: How long to pause after an error, 0 or more.
             sleep: A function that waits that many seconds. Default: time.sleep.
-            strict: Raise KeyboardWatcherError on any problem instead of logging it.
+            strict: Raise KeyboardWatcherError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, KeyboardWatcherError, DEBUG, strict)

@@ -992,9 +992,9 @@ class TestMain:
         made, handed = [], []
 
         class RecordingBookkeeper(printer_module.Bookkeeper):
-            def __init__(self, muter=None):
+            def __init__(self, muter=None, strict=False):
                 made.append(muter)
-                super().__init__(muter)
+                super().__init__(muter, strict)
 
             def set_up(self, *a, **k):
                 pass
@@ -1013,6 +1013,26 @@ class TestMain:
             record = logging.LogRecord("pom.x", logging.WARNING, "f.py", 1, "same", (), None)
             lines.append(muter.filter(record) and record.getMessage())
         assert lines[6].endswith("Last message repeating and muted") and lines[7] is False
+
+    @pytest.mark.parametrize("environ, strict", [({"POM_STRICT": "1"}, True), ({}, False)])
+    def test_the_bookkeeper_is_strict_when_the_strict_setting_is_on(self, monkeypatch, tmp_path, environ, strict):
+        """POM_STRICT reaches every part through the one Bookkeeper (Design Audit 04 item 4)."""
+        handed = []
+        monkeypatch.delenv("POM_STRICT", raising=False)
+        for name, value in environ.items():
+            monkeypatch.setenv(name, value)
+        monkeypatch.setattr(printer_module, "build_printer", lambda config, options, **kept: handed.append(kept) or assembled(None, None, FakeConductor()))
+        monkeypatch.setattr(printer_module.Bookkeeper, "set_up", lambda self, *a, **k: None)      # leave the test's log alone
+        monkeypatch.setattr(signal, "signal", lambda *a: None)
+        path = tmp_path / "pom.toml"                         # the shipped config: an empty one is a warning per setting, and strict raises on the first
+        path.write_text((Path(__file__).resolve().parents[1] / "config" / "pom.toml").read_text(encoding="utf-8"), encoding="utf-8")
+        printer_module.main(["--config", str(path)])
+        part_logger = handed[0]["bookkeeper"].logger_for("pom.test.part", KeyError)
+        if strict:
+            with pytest.raises(KeyError):
+                part_logger.warning("x")
+        else:
+            part_logger.warning("x")                         # not strict: logged, no raise
 
     def test_config_problems_are_in_the_log(self, monkeypatch, tmp_path, logged):
         fake = assembled(None, None, FakeConductor())

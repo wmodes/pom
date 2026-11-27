@@ -89,7 +89,7 @@ class ClipScorer:
     """
 
     def __init__(self, scorer_model_client, word_tagger: WordTagger, scorer_settings: ScorerSettings,
-                 clock: Callable[[], float] = time.monotonic, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 clock: Callable[[], float] = time.monotonic, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer_model_client: A ScorerModelClient (anything with score(text), warm_up() and available).
             word_tagger: The WordTagger that tags each word of a clip.
@@ -97,7 +97,7 @@ class ClipScorer:
                 `min_content_words` (clips with fewer content words skip the model; 0 never skips), `failure_limit` (model failures in a
                 row that open the circuit breaker) and `retry_seconds` (how long the breaker stays open before the model gets another try).
             clock: Returns seconds; injected so tests need not wait.
-            strict: Raise ClipScorerError on any problem instead of logging it.
+            strict: Raise ClipScorerError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ClipScorerError, DEBUG, strict)

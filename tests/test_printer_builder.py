@@ -100,6 +100,21 @@ class TestEachPartIsBuiltOnceAndOnlyWhenAsked:
         assert PrinterBuilder(config, Options(terminal="none")).mode == "none"
 
 
+class TestABuilderWithNoBookkeeperFollowsTheConfigsStrict:
+    """A test or a tool that hands no Bookkeeper gets one that is strict if the config's `strict` setting is (Design Audit 04 item 4)."""
+
+    def test_strict_on_means_every_part_raises_on_a_warning(self, tmp_path):
+        from pom.qualifying.bar_keeper import BarKeeperError
+        builder = PrinterBuilder(config_from(tmp_path, 'strict = true\n[terminal]\nmode = "none"\n'))
+        with pytest.raises(BarKeeperError):
+            builder.bar_keeper.rule(5.0, float("nan"))         # a stream time that is not a number is a warning
+
+    def test_strict_off_means_a_warning_is_only_logged(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
+        builder.bar_keeper.rule(5.0, float("nan"))
+        assert builder.bar_keeper.counted == 1
+
+
 class TestTheStreamClockStartsWithTheBuilder:
     def test_the_clock_starts_when_the_builder_is_made_not_when_first_asked(self, tmp_path, monkeypatch):
         now = [100.0]

@@ -50,14 +50,14 @@ class Circulation:
     circulation with the library layout and logs what has drifted.
     """
 
-    def __init__(self, document, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, document, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Reads an already-parsed circulation document, recovering from anything wrong in it. `from_file` reads the file first.
 
         Keys starting with an underscore (such as `_about`) are notes and are ignored.
 
         Args:
             document: The circulation, as parsed from its JSON (anything else gives all-default weights and a warning).
-            strict: Raise CirculationError on any problem instead of logging it.
+            strict: Raise CirculationError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, CirculationError, DEBUG, strict)
@@ -69,7 +69,7 @@ class Circulation:
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_file(cls, path, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Circulation":
+    def from_file(cls, path, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None) -> "Circulation":
         """Reads a circulation file.
 
         A missing, unreadable or invalid file gives all-default weights and a warning, so the
@@ -88,7 +88,7 @@ class Circulation:
         return cls(document, strict, bookkeeper)
 
     @classmethod
-    def from_dict(cls, document, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Circulation":
+    def from_dict(cls, document, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None) -> "Circulation":
         """Reads an already-parsed circulation document (the same as building one directly)."""
         return cls(document, strict, bookkeeper)
 

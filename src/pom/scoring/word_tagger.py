@@ -111,13 +111,13 @@ class WordTagger:
     """
 
     def __init__(self, nltk_data: Optional[str] = None, fillers: Iterable[str] = DEFAULT_FILLERS,
-                 strict: bool = False, tagger: Optional[Callable] = None,
+                 strict: Optional[bool] = None, tagger: Optional[Callable] = None,
                  lemmatizer: Optional[Callable] = None, stopwords: Optional[Iterable[str]] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             nltk_data: Folder holding the NLTK data (the project's data/nltk). None uses NLTK's
                 own search path.
             fillers: Words and short phrases that are spoken padding.
-            strict: Raise WordTaggerError on any problem instead of logging it.
+            strict: Raise WordTaggerError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             tagger: A function taking a list of words and returning (word, tag) pairs. Default:
                 NLTK's perceptron tagger.

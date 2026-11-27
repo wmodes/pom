@@ -15,9 +15,11 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
+ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
+sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from pom.bookkeeper import Bookkeeper  # noqa: E402
+from pom.config import Config  # noqa: E402
 from pom.listening import TrackSplitter  # noqa: E402
 
 
@@ -28,7 +30,8 @@ def main():
                         help="treat the text as coming from a pass without the voice detector, where only lyrics count")
     args = parser.parse_args()
 
-    Bookkeeper().set_up("WARNING")
+    config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
+    Bookkeeper(strict=config.strict).set_up("WARNING", debug=config.debug)
     raw = " ".join(args.text) if args.text else sys.stdin.read()
     heard = TrackSplitter().split(raw, plain_text=not args.lyrics_only)
     print(f"words:     {heard.words or '(none)'}")

@@ -132,13 +132,13 @@ class ScorerModelClient:
         last_seconds: How long the most recent request took, or None before the first.
     """
 
-    def __init__(self, scorer_settings: ScorerSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: bool = False,
+    def __init__(self, scorer_settings: ScorerSettings, post: Optional[Callable[[str, dict, float], dict]] = None, strict: Optional[bool] = None,
                  explain_prompt: str = "", explain_timeout: float = DEFAULT_EXPLAIN_TIMEOUT, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer_settings: The `[scorer]` section: `url` (the server's chat-completions address), `prompt` (the system message that tells
                 the model how to score) and `timeout` (seconds to wait for one reply).
             post: A function (url, body, timeout) -> parsed JSON reply. Default: real HTTP.
-            strict: Raise ScorerModelClientError on any problem instead of logging it.
+            strict: Raise ScorerModelClientError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             explain_prompt: The system message for `explain` (from Config); without one `explain`
                 does nothing.

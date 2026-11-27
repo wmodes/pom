@@ -67,13 +67,13 @@ class ChartNotebook:
         chart, monitor: The `[chart]` and `[monitor]` settings it was handed (it reads `window_minutes` and `chart_notebook_max_entries`).
     """
 
-    def __init__(self, chart: ChartSettings, monitor: MonitorSettings, strict: bool = False,
+    def __init__(self, chart: ChartSettings, monitor: MonitorSettings, strict: Optional[bool] = None,
                  ticks_source: Optional[Callable[[float, float], list]] = None, silence_shape: Optional[SilenceShape] = None,
                  began_at: Optional[float] = None, bookkeeper: Optional[Bookkeeper] = None, stream_now: Optional[Callable[[], float]] = None):
         """Args:
             chart: The `[chart]` section: `window_minutes`, how much drawn time is kept (the chart's own width, since nothing older is ever drawn).
             monitor: The `[monitor]` section: `chart_notebook_max_entries`, the most entries kept; the oldest go first.
-            strict: Raise ChartNotebookError on any problem instead of logging it.
+            strict: Raise ChartNotebookError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             ticks_source: A function from (start, end) to the ticks in that stretch, each as (time, anchor score, the bar at that tick), oldest
                 first (the bar's `ticks_between`). Without one, no ticks are written.

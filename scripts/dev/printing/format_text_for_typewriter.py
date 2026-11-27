@@ -43,9 +43,9 @@ def main():
     parser.add_argument("--ascii-wheel", action="store_true", help="the wheel has all of ASCII: nothing is swapped")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(CONFIG_PATH)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     printing = config.printing
     if args.cpi:
         printing = dataclasses.replace(printing, characters_per_inch=args.cpi)

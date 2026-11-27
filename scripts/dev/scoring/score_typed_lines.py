@@ -53,9 +53,9 @@ def main():
                         help="how far up from the bar to the score a typed line goes into the bar, 1 being the score itself (default: the config's typed_lines_bar_influence)")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     scorer, bar_keeper, typed, client, multiplier, bar_influence = build(config, args, bookkeeper)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"typed lines: score x {multiplier:g}, no cooldown, go into the bar {bar_influence:g} of the way up from the bar")

@@ -4,7 +4,8 @@ Helpers that run on the Mac while developing, grouped by task. Several are **tes
 into one built part of the Printer and see what it does, using the real modules (not their own versions of them). A testbench
 that needs a part of the Printer asks the PrinterBuilder for it (`PrinterBuilder(config, Options(...)).scorer`, `.make_room()`,
 `.printer`), so it is built exactly as the Printer builds it; to change one part, set it before it is first asked for
-(`builder.circulation = ...`). Every script sets up the log the way the Printer does, `Bookkeeper().set_up(...)`. Its smoke tests are in
+(`builder.circulation = ...`). Every script sets up the log the way the Printer does: it reads the config, then builds its Bookkeeper with the config's `strict` setting
+and sets up the log with its `debug` setting, so `POM_STRICT=1` and `POM_DEBUG=1` work on a testbench as they do on the Printer. Its smoke tests are in
 `tests/scripts/test_testbench.py`.
 
 - `library/`: fetches and cleans the public-domain library from `library/holdings.csv`. Rules and workflow are in the repo-root `library/README.md`.

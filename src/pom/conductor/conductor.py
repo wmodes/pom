@@ -70,7 +70,7 @@ class Conductor:
 
     def __init__(self, floor: FloorKeeper, turn_taker, room_factory: Callable[[], tuple], keyboard=None,
                  on_attempt: Optional[Callable[[Attempt], object]] = None, on_turn: Optional[Callable[..., object]] = None,
-                 restart_room: bool = True, *, conductor_settings: ConductorSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 restart_room: bool = True, *, conductor_settings: ConductorSettings, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             floor: The FloorKeeper.
             turn_taker: A TurnTaker (anything with take_turn(turn, attempt) returning a result).
@@ -82,7 +82,7 @@ class Conductor:
             restart_room: True to build the room again after it ends (a microphone); False when its ending is the end of the run (a recording).
             conductor_settings: The `[conductor]` section: `restart_pause_seconds` (the wait before a part is started again) and
                 `check_seconds` (how often the watching thread looks at the floor and the threads).
-            strict: Raise ConductorError on any problem instead of logging it.
+            strict: Raise ConductorError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ConductorError, DEBUG, strict)

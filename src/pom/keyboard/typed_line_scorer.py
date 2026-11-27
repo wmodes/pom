@@ -47,7 +47,7 @@ class TypedLineScorer:
         qualifying: The `[qualifying]` settings it was handed (it reads the two `typed_lines_` settings).
     """
 
-    def __init__(self, scorer, bar_keeper, clock: Callable[[], float], qualifying: QualifyingSettings, strict: bool = False,
+    def __init__(self, scorer, bar_keeper, clock: Callable[[], float], qualifying: QualifyingSettings, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             scorer: A Scorer (anything with score_text(text, heard_at) giving a score and scored_by).
@@ -57,7 +57,7 @@ class TypedLineScorer:
             qualifying: The `[qualifying]` section: `typed_lines_score_multiplier` (what a score is multiplied by before it meets the bar)
                 and `typed_lines_bar_influence` (how far up from the bar to the typed score it goes into the bar: 1 is the score itself, 0
                 is the bar itself; any number).
-            strict: Raise TypedLineScorerError on any problem instead of logging it.
+            strict: Raise TypedLineScorerError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TypedLineScorerError, DEBUG, strict)

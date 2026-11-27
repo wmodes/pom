@@ -409,7 +409,9 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **bookkeeper**: The module (`src/pom/bookkeeper/`) that holds everything about the log, in one place: the `Bookkeeper`, the `LogRecorder` it hands
   out, the `LogMuter`, and `log_setup`. No other module keeps what it said, mutes, or sets up the log.
 - **Bookkeeper**: The one instance the entry point builds: it sets up the log once (`set_up`, with the LogMuter on it) and hands each class its
-  logger, `self.logger = bookkeeper.logger_for(__name__, ItsError, DEBUG, strict)`, like Python's `logging.getLogger(__name__)`. Every class takes it
+  logger, `self.logger = bookkeeper.logger_for(__name__, ItsError, DEBUG, strict)`, like Python's `logging.getLogger(__name__)`. It is built
+  with the project's `strict` setting; a class's own `strict` (None by default) follows it, or overrides it with True or False, as `DEBUG` does
+  for debug. Every class takes it
   as an optional `bookkeeper` argument (a plain one when a test or tool gives none). It holds nothing that changes, so any number of threads can use
   it. Example: `Bookkeeper` (was: none; each class built its own recorder)
 - **stream time**: The Printer's one timeline: seconds of sound heard, going on through silence and through turns. The bar, the cooldown, the chart

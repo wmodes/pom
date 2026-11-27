@@ -27,7 +27,7 @@ Like the Hardening TODO: one item at a time, Wes's go on each, the plan says how
 A setting that changes nothing misleads whoever tunes it; kept state with no reader is code nobody can trust.
 
 - [ ] **D2.1 `[listening] room_tone_memory` does nothing** (verified). Its comment says it is "to tell the oracle model what the room sounds like"; `Eavesdropper.recent_room_tone` (`eavesdropper.py:135,157,245`) has no reader anywhere. Wire it into the oracle prompt, or remove the setting. *A decision for Wes (see D4).*
-- [ ] **D2.2 The `strict` setting has no reader** (verified). `config.py` reads it (and `POM_STRICT`); nothing passes it to any class; the docstring (`config.py:74`) says the entry point does.
+- [x] **D2.2 The `strict` setting has no reader** — **done 2026-11-27** in Design Audit 04 item 4: the entry point builds the Bookkeeper with it. (verified). `config.py` reads it (and `POM_STRICT`); nothing passes it to any class; the docstring (`config.py:74`) says the entry point does.
 - [ ] **D2.3 The scorer's `explain` machinery is never called** (verified). `explain()`, `Explanation`, `parse_written_score`, `can_explain`, `explain_timeout`, `EXPLAIN_MAX_TOKENS` (`scorer_model_client.py`) have no caller outside tests, yet `printer.py:175` and four dev scripts pass `prompt_debug` to it.
 - [ ] **D2.4 Write-only values** (verified unless marked):
   - `RollingCutter.took`, `.forced` (`rolling_cutter.py:119-120`); the injected `clock` exists only for `took`; `vad` is never passed (always True).

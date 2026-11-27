@@ -84,7 +84,7 @@ class RollingCutter:
     """
 
     def __init__(self, client: SegmentFinder, listening: ListeningSettings, vad: bool = True,
-                 clock: Optional[Callable[[], float]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 clock: Optional[Callable[[], float]] = None, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             client: Asks whisper for segments (a WhisperModelClient, or anything with its `segments` and `error`).
             listening: The `[listening]` section: `cut_every_seconds` (seconds of new audio between whisper runs), `hold_back_seconds` (a
@@ -93,7 +93,7 @@ class RollingCutter:
                 is forced out).
             vad: Whether whisper's voice detection is on for the rounds.
             clock: A function giving seconds, used only to time whisper. Default: time.perf_counter.
-            strict: Raise RollingCutterError on any problem instead of logging it.
+            strict: Raise RollingCutterError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, RollingCutterError, DEBUG, strict)

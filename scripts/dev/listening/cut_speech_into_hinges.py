@@ -30,9 +30,9 @@ def main():
     parser.add_argument("--max-words", type=int, default=None, help="longest clip, in words (default: the config's [listening] max_clip_words)")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     if args.max_words is not None:
         config.listening = dataclasses.replace(config.listening, max_clip_words=args.max_words)
     builder = PrinterBuilder(config, Options(config_path=args.config, terminal="none"), root=ROOT, bookkeeper=bookkeeper)

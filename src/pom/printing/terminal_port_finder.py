@@ -37,12 +37,12 @@ class TerminalPortFinder(DeviceFinder):
     KIND = "serial port"
 
     def __init__(self, terminal: TerminalSettings, lister: Callable[[str], list] = glob.glob,
-                 real_path: Callable[[str], str] = os.path.realpath, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 real_path: Callable[[str], str] = os.path.realpath, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             terminal: The `[terminal]` section: `port_search`, where the serial devices are looked for, a glob such as /dev/serial/by-id/*.
             lister: A function pattern -> list of matching paths. Default: glob.glob. Tests give a fake.
             real_path: A function path -> the real device it points to. Default: os.path.realpath. Tests give a fake.
-            strict: Raise TerminalPortFinderError on any problem instead of logging it.
+            strict: Raise TerminalPortFinderError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         super().__init__(strict=strict, error=TerminalPortFinderError, bookkeeper=bookkeeper)

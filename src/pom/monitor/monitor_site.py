@@ -276,7 +276,7 @@ class MonitorSite:
 
     def __init__(self, history: TurnHistory, monitor: MonitorSettings, chart: ChartSettings,
                  status_source: Optional[Callable[[], MonitorStatus]] = None,
-                 clock: Callable[[], float] = time.time, strict: bool = False, notebook: Optional[ChartNotebook] = None,
+                 clock: Callable[[], float] = time.time, strict: Optional[bool] = None, notebook: Optional[ChartNotebook] = None,
                  stream_now: Optional[Callable[[], float]] = None, stream_began_at: Optional[float] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
@@ -287,7 +287,7 @@ class MonitorSite:
             chart: The `[chart]` settings that shape the chart.
             status_source: A function returning the MonitorStatus now; optional.
             clock: Returns seconds since the epoch; injected so tests need not wait.
-            strict: Raise MonitorSiteError on any problem instead of logging it.
+            strict: Raise MonitorSiteError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             notebook: A ChartNotebook to draw the chart from; without one the page has no chart.
             stream_now: Returns the stream time now, the chart's right edge, so the chart moves through silence; without it the edge is the newest attempt.

@@ -63,12 +63,12 @@ class PortentWriter:
     """
 
     def __init__(self, builder: PromptBuilder, client: OracleModelClient, rng: Optional[random.Random] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             builder: Draws the exemplars and builds the prompt.
             client: Sends the prompt to the oracle model.
             rng: The random generator the builder's Bibliomancer was built with; needed only for seeded writes.
-            strict: Raise PortentWriterError on the writer's own problem instead of logging it.
+            strict: Raise PortentWriterError on the writer's own problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PortentWriterError, DEBUG, strict)

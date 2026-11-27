@@ -91,11 +91,11 @@ class PromptBuilder:
         available: True if there is a prompt to build from.
     """
 
-    def __init__(self, oracle: OracleSettings, selector: Bibliomancer, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, oracle: OracleSettings, selector: Bibliomancer, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             oracle: The `[oracle]` section: `prompt`, the oracle prompt, with `{exemplars}` and `{hinge}` marking where those go.
             selector: Where the exemplars are drawn from.
-            strict: Raise PromptBuilderError on any problem instead of logging it.
+            strict: Raise PromptBuilderError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, PromptBuilderError, DEBUG, strict)

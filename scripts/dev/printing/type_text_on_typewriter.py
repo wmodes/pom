@@ -38,9 +38,9 @@ def main():
     parser.add_argument("--reply", type=float, metavar="SECONDS", help="after typing, wait this long for a line typed back and show it")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(CONFIG_PATH)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     if args.fast:
         config.terminal = dataclasses.replace(config.terminal, characters_per_second=1e9, finish_wait_seconds=0.0)
     elif args.cps:

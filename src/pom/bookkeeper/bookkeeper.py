@@ -20,10 +20,13 @@ class Bookkeeper:
 
     Args:
         muter: The LogMuter to put on the log (built by the entry point from the `logmute_` settings), or None to mute nothing.
+        strict: The project-wide `strict` setting (development and tests only): every logger it hands out raises on a warning, unless
+            the class asked for its own. Like `debug`, it is set once, here, by the entry point.
     """
 
-    def __init__(self, muter: Optional[logging.Filter] = None):
+    def __init__(self, muter: Optional[logging.Filter] = None, strict: bool = False):
         self._muter = muter
+        self._strict = strict
 
     def set_up(self, level: str = "INFO", stream: Optional[TextIO] = None, debug: bool = False, local_logs: bool = False,
                log_dir: Union[str, Path] = LOG_DIR) -> logging.Logger:
@@ -41,7 +44,7 @@ class Bookkeeper:
         """
         return configure_logging(level, stream, debug=debug, local_logs=local_logs, log_dir=log_dir, muter=self._muter)
 
-    def logger_for(self, name: str, strict_exception: type = ValueError, debug: Optional[bool] = None, strict: bool = False) -> LogRecorder:
+    def logger_for(self, name: str, strict_exception: type = ValueError, debug: Optional[bool] = None, strict: Optional[bool] = None) -> LogRecorder:
         """A class's logger.
 
         Args:
@@ -49,7 +52,8 @@ class Bookkeeper:
             strict_exception: The class's own error type, raised in strict mode.
             debug: The module's `DEBUG` line: None follows the project setting (the logger's level is left as it is, so a class built later
                 never undoes a level set elsewhere), True shows its debug lines, False hides them.
-            strict: Strict mode for this class (development and tests only).
+            strict: Strict mode for this class (development and tests only): None (the default) follows the project's `strict` setting,
+                the one this Bookkeeper was built with; True or False overrides it for this class, as a module's `DEBUG` line does for debug.
         """
         logger = logging.getLogger(name) if debug is None else get_logger(name, debug)
-        return LogRecorder(logger, strict_exception, strict)
+        return LogRecorder(logger, strict_exception, self._strict if strict is None else strict)

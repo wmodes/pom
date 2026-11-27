@@ -83,12 +83,12 @@ class BarKeeper:
             goes into the bar: 1 is the score itself, 0 is the bar itself, and any number is allowed).
     """
 
-    def __init__(self, bar: Bar, qualifying: QualifyingSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+    def __init__(self, bar: Bar, qualifying: QualifyingSettings, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None,
                  stream_now: Optional[Callable[[], float]] = None):
         """Args:
             bar: The Bar that works out where the bar sits.
             qualifying: The `[qualifying]` settings.
-            strict: Raise BarKeeperError on any problem instead of logging it.
+            strict: Raise BarKeeperError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             stream_now: The stream time now (the Printer's Timekeeper's `now`): the fallback value for a time that is not a number.
                 None (a test or a tool) gives a Timekeeper of its own, which runs on real seconds from now.

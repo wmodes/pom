@@ -58,11 +58,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from pom.library import Circulation, ends_unfinished  # noqa: E402
 from pom.library.endings import ends_sentence  # noqa: E402  (scripts may import the package, never the reverse)
 from pom.bookkeeper import Bookkeeper  # noqa: E402
+from pom.config import Config  # noqa: E402
 
 DEFAULT_OVERSIZE = 1.0       # a piece with no sentence end to cut at may run to this times the limit before it is dropped (1.0: the ceiling holds)
 LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
 READY = os.path.join(LIBRARY, "ready")
 OUT = os.path.join(LIBRARY, "passages")
+CONFIG_PATH = os.path.join(LIBRARY, "..", "config", "pom.toml")     # read for the project's strict and debug settings
 
 # Where one sentence ends and the next begins: the white space between them (Wes's pattern; `regex`, not `re`, because it lets a lookbehind
 # have variable width, and nltk already brings it in).
@@ -234,9 +236,9 @@ def build(limit, minimum, oversize=DEFAULT_OVERSIZE):
     return records, stats
 
 
-def target_shares(records, circulation_path):
-    """Returns each shelf's normalized target share; drift in circulation.json is logged."""
-    circulation = Circulation.from_file(circulation_path)
+def target_shares(records, circulation_path, bookkeeper=None):
+    """Returns each shelf's normalized target share; drift in circulation.json is logged (through the script's Bookkeeper, if given)."""
+    circulation = Circulation.from_file(circulation_path, bookkeeper=bookkeeper)
     layout = {}
     for holding, rs in records.items():
         if rs:
@@ -295,9 +297,11 @@ def main():
     parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
-    Bookkeeper().set_up("WARNING")
+    config = Config.load(CONFIG_PATH)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     records, stats = build(args.max_words, args.min_words, args.oversize)
-    shares = target_shares(records, args.circulation)
+    shares = target_shares(records, args.circulation, bookkeeper)
     if not args.check:
         write(records)
     report(records, stats, shares, args.max_words, args.min_words, args.oversize)

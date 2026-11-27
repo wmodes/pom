@@ -63,9 +63,9 @@ def make_builder(args, config: Config, bookkeeper: Bookkeeper = None) -> Printer
 
 def main():
     args = make_parser().parse_args()
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("INFO")
     config = Config.load(args.config)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("INFO", debug=config.debug)
     builder = make_builder(args, config, bookkeeper)
     slipper = builder.boot_slipper
     if slipper is None:

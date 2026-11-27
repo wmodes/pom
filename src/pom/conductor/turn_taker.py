@@ -111,7 +111,7 @@ class TurnTaker:
     """
 
     def __init__(self, writer, formatter, terminal=None, history=None, *, conductor: ConductorSettings, oracle: OracleSettings,
-                 clock: Optional[Callable[[], float]] = None, sleep: Optional[Callable[[float], None]] = None, strict: bool = False,
+                 clock: Optional[Callable[[], float]] = None, sleep: Optional[Callable[[float], None]] = None, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             writer: A PortentWriter (anything with write(hinge) returning a Portent or None).
@@ -125,7 +125,7 @@ class TurnTaker:
             oracle: The `[oracle]` section: its `timeout` is the longest one attempt to write can take.
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
             sleep: A function that waits that many seconds. Default: time.sleep.
-            strict: Raise TurnTakerError on any problem instead of logging it.
+            strict: Raise TurnTakerError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnTakerError, DEBUG, strict)

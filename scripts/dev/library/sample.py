@@ -68,8 +68,8 @@ def main():
     args = parser.parse_args()
 
     config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up(config.log_level if args.verbose else "WARNING")
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up(config.log_level if args.verbose else "WARNING", debug=config.debug)
     builder = PrinterBuilder(config, root=Path(ROOT).resolve(), bookkeeper=bookkeeper)     # the Printer's own Bibliomancer, built the same way
     builder.rng = random.Random(args.seed)                                                 # handed in before the Bibliomancer is built
     builder.circulation = Circulation.from_file(args.circulation, bookkeeper=bookkeeper)

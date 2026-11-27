@@ -43,12 +43,12 @@ class CaptureCardFinder(DeviceFinder):
     KIND = "sound card"
 
     def __init__(self, listening: ListeningSettings, arecord: str = "arecord",
-                 lister: Optional[Callable[[], str]] = None, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 lister: Optional[Callable[[], str]] = None, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             listening: The `[listening]` section: `device_lookup_seconds`, how long to wait for `arecord -l` before giving up.
             arecord: The program to run (a path or a name on the PATH). Tests give a stand-in.
             lister: Returns the text `arecord -l` prints. Defaults to running the program.
-            strict: Raise CaptureCardFinderError on any problem instead of logging it.
+            strict: Raise CaptureCardFinderError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         super().__init__(strict=strict, error=CaptureCardFinderError, bookkeeper=bookkeeper)

@@ -93,7 +93,7 @@ class Eavesdropper:
 
     def __init__(self, deck: AudioDeck, client, listening: ListeningSettings, splitter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, start_seconds: float = 0.0, wall: Callable[[], float] = time.monotonic,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None, stream_now: Optional[Callable[[], float]] = None):
+                 strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None, stream_now: Optional[Callable[[], float]] = None):
         """Args:
             deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
@@ -106,7 +106,7 @@ class Eavesdropper:
                 old one's `stream_time_at` gave, so the clock carries on. Checked like every stream time (Design Audit 04 item 3): below 0 is 0,
                 and one that is not a number is the stream time now (`stream_now`), with a warning.
             wall: Returns seconds that steadily increase, for noting when sound last arrived (real time, not stream time). Injected so tests need not wait.
-            strict: Raise EavesdropperError on any problem instead of logging it.
+            strict: Raise EavesdropperError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             stream_now: The stream time now (the Printer's Timekeeper's `now`, which has not begun to follow this room yet): the fallback value
                 for a `start_seconds` that is not a number. None (a test or a tool) gives a clock of its own, which begins at 0.

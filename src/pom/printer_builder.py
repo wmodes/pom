@@ -171,14 +171,14 @@ class PrinterBuilder:
             config: The Config every setting comes from.
             options: What this run chooses; None for the defaults.
             root: The repository root.
-            bookkeeper: The one the entry point built; None for a plain one (a test or a tool).
+            bookkeeper: The one the entry point built; None for a plain one (a test or a tool), strict if the config's `strict` setting is.
             on_attempt: Called with each attempt after the Printer's own handling of it, or None (for a testbench that watches).
             on_turn: Called with each attempt and its turn's result after the Printer's own handling, or None.
         """
         self.config = config
         self.options = options or Options()
         self.root = root
-        self.bookkeeper = bookkeeper or Bookkeeper()
+        self.bookkeeper = bookkeeper or Bookkeeper(strict=config.strict)
         self.logger = self.bookkeeper.logger_for("pom.printer", debug=DEBUG)
         self._on_attempt, self._on_turn = on_attempt, on_turn
         self._tally = {"heard": 0, "scored": 0}            # what the monitoring site is told: numbers only, from every attempt

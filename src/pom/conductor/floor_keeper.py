@@ -135,14 +135,14 @@ class FloorKeeper:
         turns_taken: How many turns have been given out.
     """
 
-    def __init__(self, conductor: ConductorSettings, clock: Optional[Callable[[], float]] = None, strict: bool = False,
+    def __init__(self, conductor: ConductorSettings, clock: Optional[Callable[[], float]] = None, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             conductor: The `[conductor]` section: `writing_seconds` (the longest the oracle model may take to write one portent, see the
                 limits above), `printing_seconds` (the longest the formatting and typing of one portent may take) and `recovering_seconds`
                 (how long the ears stay shut after a turn; 0 means none).
             clock: A function returning seconds that never go backwards. Default: time.monotonic.
-            strict: Raise FloorKeeperError on any problem instead of logging it.
+            strict: Raise FloorKeeperError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, FloorKeeperError, DEBUG, strict)

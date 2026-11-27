@@ -66,7 +66,8 @@ def main(argv=None) -> int:
     """Reads the options and the config, builds the Printer and runs it until it is stopped. Returns the exit code."""
     options = parse_options(argv)
     config = Config.load(options.config_path)
-    bookkeeper = Bookkeeper(LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds))
+    bookkeeper = Bookkeeper(LogMuter(config.logmute_after_repeats, config.logmute_remind_every_repeats, config.logmute_quiet_seconds),
+                            strict=config.strict)
     bookkeeper.set_up(config.log_level, debug=config.debug, local_logs=config.local_logs)
     logger = bookkeeper.logger_for(__name__, debug=DEBUG)
     for line in config.problems.lines():               # the config was read before the log existed, so its problems are logged now

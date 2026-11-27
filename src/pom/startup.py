@@ -130,11 +130,11 @@ class Startup:
     """Runs the startup steps in order and collects what happened."""
 
     def __init__(self, steps: Iterable[Step], clock: Callable[[], float] = time.monotonic,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             steps: The duties, in the order to run them.
             clock: Returns seconds; injected so tests need no waiting.
-            strict: Raise StartupError at the first failed step instead of recording it.
+            strict: Raise StartupError at the first failed step instead of recording it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self._steps = list(steps)

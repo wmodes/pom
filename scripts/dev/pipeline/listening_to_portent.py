@@ -105,9 +105,9 @@ def main() -> None:
     if args.wav and args.mac_mic:
         sys.exit("give --wav or --mac-mic, not both")
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     if args.monitor and not config.monitor.password:
         sys.exit("--monitor needs a password: put  password = \"...\"  under [monitor] in config/pom.local.toml (git ignores that file)")
     listening, scoring, oracle = config.listening, config.scorer, config.oracle

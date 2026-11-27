@@ -36,9 +36,10 @@ def main():
     parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"), help="the circulation file to check")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
-    builder = PrinterBuilder(Config.load(Options().config_path), root=ROOT, bookkeeper=bookkeeper)     # the Printer's own Bibliomancer, built the same way
+    config = Config.load(Options().config_path)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
+    builder = PrinterBuilder(config, root=ROOT, bookkeeper=bookkeeper)     # the Printer's own Bibliomancer, built the same way
     builder.circulation = Circulation.from_file(args.circulation, bookkeeper=bookkeeper)    # the circulation file to check (the library's own by default)
     store, selector = builder.catalog, builder.selector
     if not selector.ready:

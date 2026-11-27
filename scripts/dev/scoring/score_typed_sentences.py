@@ -55,9 +55,9 @@ def main():
                         help="scores needed before a score may qualify (default: the config's, 20)")
     args = parser.parse_args()
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     scorer, bar_keeper, client, take_cutter = build(config, args.min_scores, bookkeeper)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     if not scorer.warm_up():

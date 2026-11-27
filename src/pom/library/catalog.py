@@ -69,7 +69,7 @@ class Catalog:
     Build one with `Catalog.load` (from disk) or `Catalog.from_passages` (in memory).
     """
 
-    def __init__(self, passages: Iterable[Passage], strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, passages: Iterable[Passage], strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Indexes the passages. Use the `load` / `from_passages` constructors.
 
         A passage whose id was already seen is skipped and reported. A store with no passages at all
@@ -90,12 +90,12 @@ class Catalog:
     # --- Construction ---------------------------------------------------------------
 
     @classmethod
-    def from_passages(cls, passages: Iterable[Passage], strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Catalog":
+    def from_passages(cls, passages: Iterable[Passage], strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None) -> "Catalog":
         """Builds a store from passage objects already in memory (used by tests)."""
         return cls(passages, strict=strict, bookkeeper=bookkeeper)
 
     @classmethod
-    def load(cls, directory, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "Catalog":
+    def load(cls, directory, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None) -> "Catalog":
         """Reads every `<shelf>/<holding>.jsonl` under `directory`.
 
         A missing directory, an unreadable file or a bad record is logged

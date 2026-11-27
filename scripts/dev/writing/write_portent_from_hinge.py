@@ -102,9 +102,9 @@ def main() -> None:
     if bool(args.model) == bool(args.server):
         sys.exit("give --model to start a llama-server for that model, or --server to use one that is running")
 
-    bookkeeper = Bookkeeper()
-    bookkeeper.set_up("WARNING")
     config = Config.load(CONFIG_PATH)
+    bookkeeper = Bookkeeper(strict=config.strict)
+    bookkeeper.set_up("WARNING", debug=config.debug)
     library = PrinterBuilder(config, root=ROOT, bookkeeper=bookkeeper)        # the Printer's own Bibliomancer and generator, built once
     selector = library.selector
     if not selector.ready:

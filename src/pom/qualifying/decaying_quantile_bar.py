@@ -70,13 +70,13 @@ class DecayingQuantileBar(Bar):
             (minutes after which a score, or a tick, is dropped from the bar's memory).
     """
 
-    def __init__(self, qualifying: QualifyingSettings, started_at: float = DEFAULT_STARTED_AT, strict: bool = False,
+    def __init__(self, qualifying: QualifyingSettings, started_at: float = DEFAULT_STARTED_AT, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None, stream_now: Optional[Callable[[], float]] = None):
         """Args:
             qualifying: The `[qualifying]` settings.
             started_at: The stream time at which the bar begins, in the same seconds as the times it is given: the tick grid and the starting bar's fade both run
                 from it. The Printer passes the time at which listening starts (0, for a stream that begins at 0).
-            strict: Raise DecayingQuantileBarError on any problem instead of logging it.
+            strict: Raise DecayingQuantileBarError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             stream_now: The stream time now (the Printer's Timekeeper's `now`): the fallback value for a time that is not a number. None (a
                 test or a tool) gives the bar's ValueChecker a clock of its own.
@@ -90,7 +90,7 @@ class DecayingQuantileBar(Bar):
         self._started_at = self.check.stream_time(started_at, method="__init__", argument="started_at")
 
     @classmethod
-    def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+    def from_settings(cls, settings, started_at: float, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None,
                       stream_now: Optional[Callable[[], float]] = None) -> "DecayingQuantileBar":
         """Builds the bar from the `[qualifying]` settings, to begin at stream time `started_at`."""
         return cls(settings, started_at, strict=strict, bookkeeper=bookkeeper, stream_now=stream_now)

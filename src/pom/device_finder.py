@@ -58,9 +58,9 @@ class DeviceFinder:
     """
     KIND = "device"                     # what a subclass's devices are called in the log ("sound card", "serial port")
 
-    def __init__(self, strict: bool = False, error: type = DeviceFinderError, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, strict: Optional[bool] = None, error: type = DeviceFinderError, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
-            strict: Raise `error` on any problem instead of logging it.
+            strict: Raise `error` on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
             error: The exception type strict mode raises (a subclass gives its own).
         """

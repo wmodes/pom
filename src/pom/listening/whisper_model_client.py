@@ -113,13 +113,13 @@ class WhisperModelClient:
         error: The kind of failure of the most recent request, or None if it worked.
     """
 
-    def __init__(self, listening: ListeningSettings, post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: bool = False,
+    def __init__(self, listening: ListeningSettings, post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             listening: The `[listening]` section: `whisper_url` (the server's address, e.g. http://127.0.0.1:8110) and `whisper_timeout`
                 (seconds to wait for one transcription).
             post: A function (url, fields, wav bytes, timeout) -> the reply text. Default: real HTTP.
-            strict: Raise WhisperModelClientError on any problem instead of logging it.
+            strict: Raise WhisperModelClientError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WhisperModelClientError, DEBUG, strict)

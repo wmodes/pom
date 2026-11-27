@@ -93,11 +93,11 @@ class TakeCutter:
         listening: The `[listening]` settings it was handed (it reads `max_clip_words`).
     """
 
-    def __init__(self, listening: ListeningSettings, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+    def __init__(self, listening: ListeningSettings, strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             listening: The `[listening]` section: `max_clip_words`, the most words a clip may have (longer ones are cut into windows of
                 this size).
-            strict: Raise TakeCutterError on any problem instead of logging it.
+            strict: Raise TakeCutterError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TakeCutterError, DEBUG, strict)

@@ -113,7 +113,7 @@ class TerminalPort:
 
     def __init__(self, terminal: TerminalSettings, opener: Optional[Callable[[str, int, str, int, str, int], object]] = None,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep, finder: Optional[object] = None,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             terminal: The `[terminal]` section: the `port` (a device name such as /dev/ttyACM0, or `auto` or part of a name for the finder
                 to look up each time it is opened), the line's `baud`, `data_bits`, `parity`, `stop_bits`, `flow_control` and `end_of_line`
@@ -125,7 +125,7 @@ class TerminalPort:
                 and reset_input_buffer(), and optionally `out_waiting` (the bytes accepted but not yet taken). Default: the real serial port.
             clock: Returns seconds, steadily increasing.
             sleep: Waits for that many seconds.
-            strict: Raise TerminalPortError on any problem instead of logging it.
+            strict: Raise TerminalPortError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TerminalPortError, DEBUG, strict)
@@ -483,7 +483,7 @@ class ConsoleTerminal(TerminalPort):
 
     def __init__(self, terminal: TerminalSettings, stream=None, input_stream=None, echoplex: bool = False,
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 strict: Optional[bool] = None, bookkeeper: Optional[Bookkeeper] = None):
         sink = _StreamSink(stream if stream is not None else sys.stdout,
                            input_stream if input_stream is not None else sys.stdin)
         super().__init__(dataclasses.replace(terminal, port="console", end_of_line="lf", echoplex=echoplex), opener=lambda *line: sink,

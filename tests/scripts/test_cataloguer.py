@@ -235,3 +235,12 @@ class TestBuildingPassages:
         records, stats = cataloguer.build(150, 0)
         assert len(records["tiny"]) == 2 and all(ends_sentence(r["text"]) for r in records["tiny"])
         assert stats["split"] == 1 and stats["pieces"] == 2 and stats["oversize"] == 0 and stats["over_limit"] == 0
+
+
+def test_the_circulation_it_checks_uses_the_scripts_bookkeeper_so_strict_reaches_it(tmp_path):
+    """POM_STRICT reaches the Circulation the cataloguer builds: a strict Bookkeeper makes a missing circulation file raise (Design Audit 04 item 4)."""
+    from pom.bookkeeper import Bookkeeper
+    from pom.library.circulation import CirculationError
+    with pytest.raises(CirculationError):
+        cataloguer.target_shares({}, tmp_path / "missing.json", Bookkeeper(strict=True))
+    assert cataloguer.target_shares({}, tmp_path / "missing.json", Bookkeeper()) == {}      # not strict: a warning, all defaults

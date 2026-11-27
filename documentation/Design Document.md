@@ -511,7 +511,8 @@ What the burn test could not show: the real CadetWriter's flow-control behavior 
 src/pom/
   bookkeeper/                                    bookkeeper.py (the one Bookkeeper), log_recorder.py (a class's logger), log_setup.py (where the logs go), log_muter.py (mutes a message that keeps repeating)
   defaults.py                                    every setting once: its default and its rule (the shadow of config/pom.toml)
-  setting_rules.py                               the rules a setting's value must follow
+  value_rules.py                                 the rules a value must follow, for the settings and for the values parts hand each other (setting_rules.py re-exports it under the old name)
+  value_checker.py                               the ValueChecker: how a public method checks what it was handed, and warns in its own name
   config.py                                      reads config/pom.toml over the defaults
   startup.py                                     the runner; the ten duties are placeholders
   printer.py                                     the entry point (python -m pom): builds the Printer from one Config and runs it

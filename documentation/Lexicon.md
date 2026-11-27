@@ -386,8 +386,13 @@ The machine, its settings, how it keeps going, and how it is watched.
   `[section]` (`ConductorSettings`, ...). Example: `defaults.py`, `ConductorSettings().freshness_seconds` (the default)
 - **settings object**: One section of the config, read, as a frozen object: `config.conductor` is a `ConductorSettings`. The entry point hands
   each class the settings objects it reads (two, if it reads two sections). Example: `ConductorSettings`, `config.conductor`
-- **setting rule**: What one setting's value must be ("a number above 0"), declared with the setting (`setting(360.0, above_zero())`) and
-  checked when the config is read. Example: `SettingRule`, `setting_rules.py`
+- **value rule**: What one value must be ("a number above 0"), for a setting and for a value one part hands another. A setting is declared
+  with its rule (`setting(360.0, above_zero())`) and checked when the config is read; a handed value is checked by the receiver's value
+  checker. A number rule with an end it includes also gives the **nearest** good value for a number past that end. Example: `ValueRule`,
+  `value_rules.py` (was/still: setting rule, `SettingRule`, `setting_rules.py`)
+- **value checker**: How a public method checks what it was handed: against a value rule, keeping a good value and turning a bad one into
+  the kept part, the nearest good value, or the receiver's fallback, with a warning in the receiver's own name. Each receiving class has
+  one. Example: `ValueChecker`, `self.check(heard_at, ..., method="add", argument="heard_at")`
 
 **Keeping going**
 

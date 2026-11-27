@@ -224,6 +224,17 @@ def flag(when_unreadable: Optional[bool] = None) -> ValueRule:
     return ValueRule(wanted, read, when_unreadable)
 
 
+def function() -> ValueRule:
+    """Something that can be called: a clock, a sleep, a step handed in. (Not for a setting: a setting is never a function.)"""
+    wanted = "a function"
+
+    def read(value):
+        if callable(value):
+            return value
+        raise ValueRejected(wanted)
+    return ValueRule(wanted, read)
+
+
 def text() -> ValueRule:
     """Any text, empty included."""
     def read(value):

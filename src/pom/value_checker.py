@@ -29,7 +29,8 @@ from pom.value_rules import ValueCorrected, ValueRejected, ValueRule
 
 
 def described(value: Any) -> str:
-    """The value as a warning may show it: a number as itself (NaN and infinity by name), anything else by its type only."""
+    """The value as a warning may show it: a number as itself (NaN and infinity by name), a function by its name, anything else by its
+    type only."""
     if isinstance(value, bool) or value is None:
         return repr(value)
     if isinstance(value, (int, float)):
@@ -38,7 +39,11 @@ def described(value: Any) -> str:
         if math.isinf(value):
             return "infinity" if value > 0 else "minus infinity"
         return f"{value:g}"
-    return f"a {type(value).__name__}"
+    if callable(value) and hasattr(value, "__name__"):
+        module = getattr(value, "__module__", None)
+        return f"{module}.{value.__name__}" if module else value.__name__
+    kind = type(value).__name__
+    return f"{'an' if kind[:1] in 'aeiou' else 'a'} {kind}"
 
 
 class ValueChecker:

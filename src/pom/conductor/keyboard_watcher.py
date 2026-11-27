@@ -25,7 +25,8 @@ from typing import Callable, Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.attempt import Attempt
-from pom.value_rules import is_number
+from pom.value_checker import ValueChecker
+from pom.value_rules import function, is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -62,9 +63,9 @@ class KeyboardWatcher:
         self._poll = self._valid(poll_seconds, "poll_seconds", DEFAULT_POLL_SECONDS, lambda v: v > 0, "above 0")
         self._error_pause = self._valid(error_pause_seconds, "error_pause_seconds", DEFAULT_ERROR_PAUSE_SECONDS, lambda v: v >= 0,
                                         "at least 0")
-        self._sleep = sleep if callable(sleep) else time.sleep
-        if sleep is not None and not callable(sleep):
-            self.logger.warning("sleep must be a function, got %s; using time.sleep", type(sleep).__name__)
+        self.check = ValueChecker(self.logger, "KeyboardWatcher")
+        self._sleep = time.sleep if sleep is None else self.check(sleep, function(), fallback_value=time.sleep, method="__init__",
+                                                                  argument="sleep")
         self._paused = threading.Event()
         self._closed = threading.Event()
         self.dropped_lines = 0

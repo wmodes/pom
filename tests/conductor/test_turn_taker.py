@@ -454,7 +454,8 @@ class TestBadSettings:
                                        clock=5)).warnings()) == 1
         warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE,
                                        sleep="x")).warnings()
-        assert len(warnings) == 2 and "sleep must be a function" in warnings[1]                # the second taker's one warning, after the first's
+        assert len(warnings) == 2                                                               # the second taker's one warning, after the first's
+        assert warnings[1] == "TurnTaker.__init__ was given a sleep of a str, which is not a function; using time.sleep"
 
     def test_good_settings_are_quiet(self, logged):
         assert logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE)).ok()

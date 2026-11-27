@@ -70,6 +70,8 @@ from typing import Callable, Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ConductorSettings
+from pom.value_checker import ValueChecker
+from pom.value_rules import function
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -146,12 +148,9 @@ class FloorKeeper:
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, FloorKeeperError, DEBUG, strict)
         self.conductor = conductor
-        if clock is None:
-            clock = time.monotonic
-        elif not callable(clock):
-            self.logger.warning("clock must be a function, got %s; using time.monotonic", type(clock).__name__)
-            clock = time.monotonic
-        self._clock = clock
+        self.check = ValueChecker(self.logger, "FloorKeeper")
+        self._clock = time.monotonic if clock is None else self.check(clock, function(), fallback_value=time.monotonic, method="__init__",
+                                                                      argument="clock")
         self._lock = threading.Lock()      # held for the whole of each public call
         self._state = FloorState.LISTENING
         self._since = self._clock()        # when the state was entered

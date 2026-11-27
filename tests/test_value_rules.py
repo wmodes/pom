@@ -52,6 +52,13 @@ def test_no_module_writes_its_own_number_check():
     assert copies == []
 
 
+def test_a_function_is_anything_that_can_be_called():
+    rule = value_rules.function()
+    assert rule.read(len) is len and rule.nearest is None
+    with pytest.raises(value_rules.ValueRejected):
+        rule.read(5)
+
+
 def test_the_old_names_still_work():
     assert setting_rules.SettingRule is value_rules.ValueRule and setting_rules.above_zero is value_rules.above_zero
     assert value_rules.SettingRejected is value_rules.ValueRejected and value_rules.SettingCorrected is value_rules.ValueCorrected

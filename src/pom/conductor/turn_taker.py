@@ -53,7 +53,8 @@ from pom.conductor.floor_keeper import Turn
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ConductorSettings, OracleSettings
 from pom.qualifying.attempt import Attempt
-from pom.value_rules import is_number
+from pom.value_checker import ValueChecker
+from pom.value_rules import function, is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -130,12 +131,11 @@ class TurnTaker:
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnTakerError, DEBUG, strict)
         self._writer, self._formatter, self._terminal, self._history = writer, formatter, terminal, history
         self.conductor, self.oracle = conductor, oracle
-        self._clock = clock if callable(clock) else time.monotonic
-        if clock is not None and not callable(clock):
-            self.logger.warning("clock must be a function, got %s; using time.monotonic", type(clock).__name__)
-        self._sleep = sleep if callable(sleep) else time.sleep
-        if sleep is not None and not callable(sleep):
-            self.logger.warning("sleep must be a function, got %s; using time.sleep", type(sleep).__name__)
+        self.check = ValueChecker(self.logger, "TurnTaker")
+        self._clock = time.monotonic if clock is None else self.check(clock, function(), fallback_value=time.monotonic, method="__init__",
+                                                                      argument="clock")
+        self._sleep = time.sleep if sleep is None else self.check(sleep, function(), fallback_value=time.sleep, method="__init__",
+                                                                  argument="sleep")
         self.outcomes: Counter = Counter()
         self._failed_writes_in_a_row = 0
 

@@ -73,7 +73,8 @@ the bottom with the next number; nothing is renumbered.
     boundary, never dead code.
   - **Progress:** step 1 done 2026-11-27: `value_rules.py` (was `setting_rules.py`) and the `ValueChecker`, with the nearest good value
     for a number past its range; no receiver uses them yet. Step 2 done 2026-11-27: the 11 copies of `_is_number` are one `is_number`
-    in `value_rules.py`, guarded by a test. Next: each kind of value gets its
+    in `value_rules.py`, guarded by a test. Step 3 done 2026-11-27: the handed-in clocks and sleeps are checked by the ValueChecker
+    against `function()` (4 checks in 3 classes, not about 15). Next: each kind of value gets its
     fallback value, chosen with Wes by reading how it is used, and each receiver checks with the ValueChecker.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
   - **The same score and time are checked by these, each with its own fallback value:**

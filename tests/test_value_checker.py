@@ -66,7 +66,8 @@ class TestTheWarningIsTheReceivers:
 
 class TestAValueIsDescribedWithoutItsWords:
     @pytest.mark.parametrize("value, words", [(2.5, "2.5"), (math.nan, "NaN"), (math.inf, "infinity"), (-math.inf, "minus infinity"),
-                                              (None, "None"), (True, "True"), ("secret", "a str"), ([1], "a list")])
+                                              (None, "None"), (True, "True"), ("secret", "a str"), ([1], "a list"), (object(), "an object"),
+                                              (math.floor, "math.floor")])
     def test_each_kind(self, value, words):
         assert described(value) == words
 

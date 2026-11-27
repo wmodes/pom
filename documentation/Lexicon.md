@@ -392,10 +392,12 @@ The machine, its settings, how it keeps going, and how it is watched.
   `value_rules.py` (was/still: setting rule, `SettingRule`, `setting_rules.py`)
 - **value checker**: How a public method checks what it was handed: against a value rule, keeping a good value and turning a bad one into
   the kept part, the nearest good value, or the receiver's fallback value, with a warning in the receiver's own name. Each receiving
-  class has one. Example: `ValueChecker`, `self.check(heard_at, ..., method="add", argument="heard_at")`
+  class has one, and checks each kind of value the parts hand each other with that kind's method. Example: `ValueChecker`,
+  `self.check.stream_time(heard_at, method="add", argument="heard_at")`
 - **fallback value**: The value a receiving method uses in place of a bad value it was handed, when the value rule can keep nothing of it
-  and gives no nearest good value. There is one fallback value for each kind of value (a score, a stream time, a count), the same in every
-  receiver, chosen by how that value is used downstream. Not the same as the fallback scorer. Example: `fallback_value=None`
+  and gives no nearest good value. There is one fallback value for each kind of value, the same in every receiver, chosen by how that
+  value is used downstream: a score is None (unscored), a stream time is the stream time now, a bar is None (no bar yet), a count is 0.
+  Not the same as the fallback scorer. Example: `fallback_value=None`
 
 **Keeping going**
 

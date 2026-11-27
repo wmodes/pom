@@ -34,6 +34,8 @@ Absolute scoring is the enemy of emergence. Thresholds and scales come from what
 
 The Printer never stops because of a typo or a recoverable fault: a gallery cannot crash. A bug may cost a missed turn; it must never hold the floor for good or leave the Printer deaf. Every limit errs long, since a wrong cut-off costs a wrong answer and a too-long wait only costs a quiet spell. Printing has priority over listening: the Printer listens only to find something to print.
 
+Every public method checks what it is handed, since any part can be reused by a caller it does not control (decided 2026-11-27, Design Audit 04 item 3). A bad value is never a stop and never silent: it becomes the nearest good value or the one fallback value for its kind, by these same principles, and the receiver logs a warning in its own name so the caller can be found and corrected. A score that is not a number is None (unscored: a score is never guessed); a stream time that is not a number is the stream time now (so the score still counts and a turn is fresh); a bar is None (no bar yet); a count is 0. The checks are one shared ValueChecker (`src/pom/value_checker.py`) over the same value rules the settings use (`src/pom/value_rules.py`).
+
 #### The prompts are human-written
 
 The scorer prompt and the oracle prompt are written by hand and kept in config. Models are used to measure prompts, not to write them.

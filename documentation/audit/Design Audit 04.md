@@ -64,8 +64,8 @@ the bottom with the next number; nothing is renumbered.
   - **Consequence:** the testbench Wes judges the system by is not the system.
 
 - [ ] **3. The checks on the values passed between stages disagree, and are copied** (checked). *Principle (agreed with Wes,
-  2026-11-27):* "Every public method checks what it receives against its own spec. A bad value gets the one fallback agreed for that kind
-  of value (a score, a stream time, a count) and a warning, so the log shows which caller to correct; `strict` raises instead. The check
+  2026-11-27):* "Every public method checks what it receives against its own spec. A bad value gets the one fallback value agreed for that
+  kind of value (a score, a stream time, a count) and a warning, so the log shows which caller to correct; `strict` raises instead. The check
   is one shared function, not a copy per module."
   - **Why not the global rule as written.** The global CLAUDE.md says "Make bad states unrepresentable. Clamp and validate in the value
     object; guards elsewhere then become dead code." The first half stands. The second does not: Python cannot make every caller go through
@@ -73,9 +73,9 @@ the bottom with the next number; nothing is renumbered.
     boundary, never dead code.
   - **Progress:** step 1 done 2026-11-27: `value_rules.py` (was `setting_rules.py`) and the `ValueChecker`, with the nearest good value
     for a number past its range; no receiver uses them yet. Next: the copies of `_is_number` go, then each kind of value gets its
-    fallback, chosen with Wes by reading how it is used, and each receiver checks with the ValueChecker.
+    fallback value, chosen with Wes by reading how it is used, and each receiver checks with the ValueChecker.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
-  - **The same score and time are checked by these, each with its own fallback:**
+  - **The same score and time are checked by these, each with its own fallback value:**
     - the BarKeeper (`bar_keeper.py:164, 191`);
     - each bar under it (`percentile_bar.py:87`, `decaying_quantile_bar.py:146`);
     - TurnHistory (`turn_history.py:118-124`);

@@ -146,8 +146,8 @@ eye, and it never decides who goes through; that is Qualifying's job. The scorer
 - **unscored**: A clip the judge gave no score; its score is None, and Qualifying leaves it out. Example: `None` (was/still: unscored)
 - **circuit breaker**: If the judge fails `failure_limit` (3) times in a row, it is left alone for `retry_seconds` (30), and clips go
   unscored meanwhile. Example: config (was/still: circuit breaker)
-- **fallback**: Shelved, unused: a rough word-based score once used when the judge did not answer. Example: `FallbackScorer`
-  (was/still: fallback)
+- **fallback scorer**: Shelved, unused: a rough word-based score once used when the judge did not answer. Not the same as a fallback
+  value. Example: `FallbackScorer` (was: fallback)
 
 **Words in reserve.** Ready if the code ever needs a name for them:
 - **judge**: the scorer model, in prose.
@@ -391,8 +391,11 @@ The machine, its settings, how it keeps going, and how it is watched.
   checker. A number rule with an end it includes also gives the **nearest** good value for a number past that end. Example: `ValueRule`,
   `value_rules.py` (was/still: setting rule, `SettingRule`, `setting_rules.py`)
 - **value checker**: How a public method checks what it was handed: against a value rule, keeping a good value and turning a bad one into
-  the kept part, the nearest good value, or the receiver's fallback, with a warning in the receiver's own name. Each receiving class has
-  one. Example: `ValueChecker`, `self.check(heard_at, ..., method="add", argument="heard_at")`
+  the kept part, the nearest good value, or the receiver's fallback value, with a warning in the receiver's own name. Each receiving
+  class has one. Example: `ValueChecker`, `self.check(heard_at, ..., method="add", argument="heard_at")`
+- **fallback value**: The value a receiving method uses in place of a bad value it was handed, when the value rule can keep nothing of it
+  and gives no nearest good value. There is one fallback value for each kind of value (a score, a stream time, a count), the same in every
+  receiver, chosen by how that value is used downstream. Not the same as the fallback scorer. Example: `fallback_value=None`
 
 **Keeping going**
 

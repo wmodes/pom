@@ -7,7 +7,7 @@ of "a number above 0" in the whole Printer.
 A ValueRule says, in words, what a value must be (`wanted`, which finishes the sentence "must be ...") and how a good value is stored (`read`).
 `read` raises ValueRejected when the value breaks the rule (a setting then keeps its default and says so), and ValueCorrected when part of
 the value can be kept (the reader keeps that part and says what it dropped). A number rule with an end it includes also has `nearest`: for
-a number past that end it gives the end itself (a -2 where at least 0 is wanted gives 0), which a ValueChecker uses before any fallback.
+a number past that end it gives the end itself (a -2 where at least 0 is wanted gives 0), which a ValueChecker uses before any fallback value.
 A rule never logs and never reads the config: it is stateless, so the same object can serve any number of settings and receivers.
 
 Design decisions, and why:
@@ -30,7 +30,7 @@ _LEVELS = ("CRITICAL", "DEBUG", "ERROR", "INFO", "WARNING")
 
 
 class ValueRejected(ValueError):
-    """The value breaks its rule; a setting keeps its default, a handed value gets the nearest good value or the receiver's fallback."""
+    """The value breaks its rule; a setting keeps its default, a handed value gets the nearest good value or the receiver's fallback value."""
 
 
 class ValueCorrected(ValueError):

@@ -5,12 +5,12 @@ A public method can be called by code its class does not control, so it checks w
 
     self.check = ValueChecker(self.logger, "TurnHistory")
     ...
-    window_size = self.check(window_size, count(), fallback=0, method="add", argument="window_size")
+    window_size = self.check(window_size, count(), fallback_value=0, method="add", argument="window_size")
 
 A good value comes back as the rule stores it. A bad one comes back as:
   1. the part the rule could keep (ValueCorrected), or else
   2. the good value nearest to it (the rule's `nearest`: an end of the range it is past), or else
-  3. the receiver's `fallback`, the one agreed for that kind of value, chosen by how the value is used downstream.
+  3. the receiver's fallback value, the one agreed for that kind of value, chosen by how the value is used downstream.
 Every bad value is a warning, so the log shows which caller to correct; in strict mode the receiver's logger raises it instead.
 
 Design decisions, and why:
@@ -57,13 +57,13 @@ class ValueChecker:
         self.logger = logger
         self.owner = owner
 
-    def __call__(self, value: Any, rule: ValueRule, *, fallback: Any, method: str, argument: str) -> Any:
-        """The value to use for one argument: the value itself if it keeps the rule, else the kept part, the nearest good value, or `fallback`.
+    def __call__(self, value: Any, rule: ValueRule, *, fallback_value: Any, method: str, argument: str) -> Any:
+        """The value to use for one argument: the value itself if it keeps the rule, else the kept part, the nearest good value, or the fallback value.
 
         Args:
             value: What the method was handed.
             rule: What it must be (a rule from pom.value_rules).
-            fallback: What to use when the rule can keep nothing and has no nearest good value: the one agreed for this kind of value.
+            fallback_value: What to use when the rule can keep nothing and has no nearest good value: the one agreed for this kind of value.
             method: The receiving method's name, for the warning.
             argument: The argument's name, for the warning.
         """
@@ -79,5 +79,5 @@ class ValueChecker:
                                     described(value), rule.wanted, described(nearest))
                 return nearest
             self.logger.warning("%s.%s was given a %s of %s, which is not %s; using %s", self.owner, method, argument, described(value),
-                                rule.wanted, described(fallback))
-            return fallback
+                                rule.wanted, described(fallback_value))
+            return fallback_value

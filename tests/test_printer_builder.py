@@ -92,6 +92,8 @@ class TestEachPartIsBuiltOnceAndOnlyWhenAsked:
         assert builder.scorer_comms.address == builder.config.scorer.url and builder.oracle_comms.address == builder.config.oracle.url
         assert builder.scorer_comms.health_timeout_seconds == 4.5 and builder.oracle_comms.health_timeout_seconds == 4.5
         assert builder.scorer_client.comms is builder.scorer_comms
+        assert builder.whisper_comms.address == builder.config.listening.whisper_url.rstrip("/") and builder.whisper_comms.health_timeout_seconds == 4.5
+        assert builder.whisper.comms is builder.whisper_comms
 
     def test_the_oracle_is_asked_through_the_builders_oracle_comms(self, tmp_path):
         """A testbench can hand in its own ModelComms by setting the part; the oracle client built after it talks through it."""

@@ -42,7 +42,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from pom.bookkeeper import Bookkeeper                                                               # noqa: E402
 from pom.conductor import TurnOutcome                                                               # noqa: E402
 from pom.config import Config                                                                       # noqa: E402
-from pom.printer_builder import Options, PrinterBuilder, answers                                    # noqa: E402
+from pom.printer_builder import Options, PrinterBuilder                                             # noqa: E402
 from pom.qualifying import Ruling                                                                   # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
@@ -123,11 +123,11 @@ def main() -> None:
                 printer.stop()
 
     builder = make_builder(args, config, bookkeeper, show_attempt, turned)
-    if not builder.whisper.ping():
+    if not builder.whisper_comms.is_up():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
-    if not answers(scoring.url):
+    if not builder.scorer_comms.is_up():
         sys.exit(f"the scorer model's llama-server is not answering at {scoring.url}")
-    if not answers(oracle.url):
+    if not builder.oracle_comms.is_up():
         sys.exit(f"the oracle model's llama-server is not answering at {oracle.url}; see the top of this file for how to start it")
     if not builder.selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")

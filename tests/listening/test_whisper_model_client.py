@@ -9,16 +9,28 @@ import pytest
 
 from pom.defaults import ListeningSettings
 from pom.listening.audio_format import SAMPLE_RATE
-from pom.listening.whisper_model_client import (Segment, WhisperModelClient, WhisperModelClientError, multipart, parse_srt,
-                                                 wav_bytes)
+from pom.listening.whisper_model_client import Segment, WhisperModelClient, WhisperModelClientError, parse_srt, wav_bytes
+from pom.modelcomms import ModelComms
 
 PCM = b"\x01\x00" * 1600                       # a tenth of a second
 
 
-def whisper_at(url, timeout=None, **options):
-    """A client of the whisper server at `url`; the rest of `[listening]` at its defaults."""
+class FakeComms:
+    """A ModelComms whose `post_form` hands (address + path, fields, the audio bytes, timeout) to `post`, a test's fake."""
+
+    def __init__(self, address, post):
+        self.address, self._post = address.rstrip("/"), post
+
+    def post_form(self, fields, files, timeout_seconds, path=""):
+        return self._post(self.address + path, fields, files["file"][1], timeout_seconds)
+
+
+def whisper_at(url, timeout=None, post=None, **options):
+    """A client of the whisper server at `url`, talking through a real ModelComms, or through `post` if one is given; the rest of
+    `[listening]` at its defaults."""
     settings = ListeningSettings(whisper_url=url) if timeout is None else ListeningSettings(whisper_url=url, whisper_timeout=timeout)
-    return WhisperModelClient(settings, **options)
+    comms = FakeComms(url, post) if post is not None else ModelComms(url, 3.0)
+    return WhisperModelClient(settings, comms, **options)
 SRT = ("1\n00:00:00,000 --> 00:00:02,500\nHello there.\n\n"
        "2\n00:00:03,000 --> 00:00:05,250\nHow are you?\n\n")
 
@@ -99,22 +111,8 @@ class TestTheRequestPieces:
             assert (wav.getnchannels(), wav.getsampwidth(), wav.getframerate()) == (1, 2, SAMPLE_RATE)
             assert wav.readframes(wav.getnframes()) == PCM
 
-    def test_the_multipart_body_holds_the_fields_and_the_audio(self):
-        body, content_type = multipart({"vad": "true", "response_format": "srt"}, b"AUDIO")
-        boundary = content_type.split("boundary=")[1]
-        assert content_type.startswith("multipart/form-data")
-        assert b'name="vad"\r\n\r\ntrue' in body and b'name="response_format"\r\n\r\nsrt' in body
-        assert b'name="file"; filename="audio.wav"' in body and b"AUDIO" in body
-        assert body.endswith(f"--{boundary}--\r\n".encode())
-
 
 class TestAgainstAStandInServer:
-    def test_ping_is_true_while_the_server_is_up_and_false_after(self, server):
-        client = whisper_at(server.url)
-        assert client.ping() is True
-        server.stop()
-        assert client.ping() is False
-
     def test_text_asks_for_plain_text_with_the_voice_detector_on(self, server, logged):
         server.reply = "Hello there.\n"
         client = whisper_at(server.url)
@@ -123,6 +121,7 @@ class TestAgainstAStandInServer:
         assert path == "/inference" and content_type.startswith("multipart/form-data")
         assert b'name="response_format"\r\n\r\ntext' in body and b'name="no_timestamps"\r\n\r\ntrue' in body
         assert b'name="vad"\r\n\r\ntrue' in body and b"RIFF" in body
+        assert b'name="file"; filename="audio.wav"' in body and b"Content-Type: audio/wav" in body
         assert client.error is None and logged.of(client).ok()
 
     def test_text_can_turn_the_voice_detector_off(self, server):
@@ -180,8 +179,8 @@ class TestAgainstAStandInServer:
         assert server.requests[0][0] == "/inference"
 
 
-class TestWithAFakePost:
-    def test_the_post_is_given_the_address_fields_wav_and_timeout(self):
+class TestWithAFakeComms:
+    def test_the_comms_is_given_the_inference_address_fields_wav_and_timeout(self):
         calls = []
 
         def post(url, fields, audio, timeout):
@@ -191,7 +190,7 @@ class TestWithAFakePost:
         client = whisper_at("http://example.test:8110/", timeout=7, post=post)
         assert client.text(PCM, vad=False) == "hello"
         url, fields, audio, timeout = calls[0]
-        assert url == "http://example.test:8110" and timeout == 7.0
+        assert url == "http://example.test:8110/inference" and timeout == 7.0
         assert fields == {"response_format": "text", "no_timestamps": "true", "vad": "false"}
         assert audio[:4] == b"RIFF"
 
@@ -253,3 +252,9 @@ class TestStrictMode:
 
     def test_strict_mode_with_good_settings_and_a_good_request_does_not_raise(self):
         assert whisper_at("http://x.test", post=lambda *args: "fine", strict=True).text(PCM) == "fine"
+
+
+def test_a_client_must_be_handed_its_comms():
+    """The entry point builds one ModelComms per model and hands it in; a client never builds its own."""
+    with pytest.raises(TypeError):
+        WhisperModelClient(ListeningSettings())

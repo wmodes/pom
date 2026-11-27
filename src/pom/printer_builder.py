@@ -195,8 +195,13 @@ class PrinterBuilder:
     # --- listening and scoring ---------------------------------------------------------------------------------------------------------
 
     @cached_property
+    def whisper_comms(self) -> ModelComms:
+        """How whisper's server is talked to: its client's requests, and whether it is up."""
+        return ModelComms(self.config.listening.whisper_url, self.config.modelcomms.health_timeout_seconds)
+
+    @cached_property
     def whisper(self) -> WhisperModelClient:
-        return WhisperModelClient(self.config.listening, bookkeeper=self.bookkeeper)
+        return WhisperModelClient(self.config.listening, comms=self.whisper_comms, bookkeeper=self.bookkeeper)
 
     @cached_property
     def scorer_comms(self) -> ModelComms:

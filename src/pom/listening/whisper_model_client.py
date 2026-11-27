@@ -23,25 +23,26 @@ Design decisions, and why:
   * Timestamps are asked for as SRT subtitles. KNOWN BUG in the whisper.cpp 1.9.5 server: a request for
     `verbose_json` with voice detection on CRASHES the server when the audio holds no speech (found with a noise-only
     slice). `text` and `srt` are safe.
-  * The transport is injected (`post`), so tests can use a fake; the default uses the standard library, so there is
-    nothing to install. The address is checked by the config (http or https only, so a mistyped setting cannot open a file).
+  * The talking to the server is ModelComms's (`comms`, handed in by the entry point, which builds one per model): it sends the
+    audio as a file upload to the server's `/inference` address, and it answers "is whisper up?". Tests hand in a fake or a ModelComms
+    of a stand-in server. The address is checked by the config (http or https only, so a mistyped setting cannot open a file).
   * The `[listening]` settings object is passed in (the entry point takes it from Config); this module never reads Config.
 """
 import io
 import re
-import urllib.error
-import urllib.request
-import uuid
 import wave
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ListeningSettings
 from pom.listening.audio_format import SAMPLE_BYTES, SAMPLE_RATE
 
+if TYPE_CHECKING:                                    # named for the type checker only: the entry point hands one in
+    from pom.modelcomms import ModelComms
+
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-PING_TIMEOUT = 5.0
+INFERENCE_PATH = "/inference"   # where whisper-server transcribes (its API, not a setting)
 _SRT_ENTRY = re.compile(r"(\d+):(\d\d):(\d\d)[,.](\d\d\d)\s*-->\s*(\d+):(\d\d):(\d\d)[,.](\d\d\d)[^\n]*\n(.*?)(?:\n\s*\n|\Z)",
                         re.DOTALL)
 
@@ -84,57 +85,29 @@ def wav_bytes(pcm: bytes) -> bytes:
     return buffer.getvalue()
 
 
-def multipart(fields: dict, audio: bytes) -> Tuple[bytes, str]:
-    """A multipart/form-data body holding the audio file and some text fields. Returns (body, content type)."""
-    boundary = uuid.uuid4().hex
-    parts = []
-    for name, value in fields.items():
-        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
-    parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.wav"\r\n'
-                  f'Content-Type: audio/wav\r\n\r\n').encode() + audio + b"\r\n")
-    parts.append(f"--{boundary}--\r\n".encode())
-    return b"".join(parts), f"multipart/form-data; boundary={boundary}"
-
-
-def _http_post(url: str, fields: dict, audio: bytes, timeout: float) -> str:
-    """POSTs the audio and fields to the server's /inference and returns the reply text. Raises on any problem."""
-    body, content_type = multipart(fields, audio)
-    request = urllib.request.Request(url + "/inference", body, {"Content-Type": content_type})
-    with urllib.request.urlopen(request, timeout=timeout) as response:      # nosec: scheme checked
-        return response.read().decode("utf-8", "replace")
-
-
 class WhisperModelClient:
     """Asks a running whisper-server to transcribe audio.
 
     Attributes:
         logger: Where this class says what it has to say (a LogRecorder from the Bookkeeper).
-        listening: The `[listening]` settings it was handed (it reads `whisper_url` and `whisper_timeout`).
+        listening: The `[listening]` settings it was handed (it reads `whisper_timeout`; its ModelComms holds `whisper_url`).
+        comms: Whisper's ModelComms: every request goes through it.
         error: The kind of failure of the most recent request, or None if it worked.
     """
 
-    def __init__(self, listening: ListeningSettings, post: Optional[Callable[[str, dict, bytes, float], str]] = None, strict: Optional[bool] = None,
+    def __init__(self, listening: ListeningSettings, comms: "ModelComms", strict: Optional[bool] = None,
                  bookkeeper: Optional[Bookkeeper] = None):
         """Args:
             listening: The `[listening]` section: `whisper_url` (the server's address, e.g. http://127.0.0.1:8110) and `whisper_timeout`
                 (seconds to wait for one transcription).
-            post: A function (url, fields, wav bytes, timeout) -> the reply text. Default: real HTTP.
+            comms: Whisper's ModelComms (the entry point builds one per model, from `whisper_url`; a test hands in a fake).
             strict: Raise WhisperModelClientError on any problem instead of logging it; None (the default) follows the project's `strict` setting.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, WhisperModelClientError, DEBUG, strict)
         self.error: Optional[str] = None
         self.listening = listening
-        self._url = listening.whisper_url.rstrip("/")
-        self._post = post if post is not None else _http_post
-
-    def ping(self) -> bool:
-        """True if the server answers."""
-        try:
-            with urllib.request.urlopen(self._url + "/", timeout=PING_TIMEOUT):      # nosec: scheme checked
-                return True
-        except (urllib.error.URLError, OSError, ValueError):
-            return False
+        self.comms = comms
 
     def text(self, pcm: bytes, vad: bool = True) -> str:
         """Plain text of what whisper heard in this audio (no timestamps).
@@ -162,7 +135,8 @@ class WhisperModelClient:
             self.error = None
             return None
         try:
-            reply = self._post(self._url, fields, wav_bytes(bytes(pcm)), self.listening.whisper_timeout)
+            reply = self.comms.post_form(fields, {"file": ("audio.wav", wav_bytes(bytes(pcm)), "audio/wav")}, self.listening.whisper_timeout,
+                                         path=INFERENCE_PATH)
         except Exception as problem:                 # a dead or slow server must never stop the oracle
             self.error = type(problem).__name__
             self.logger.warning("whisper did not answer (%s)", self.error)

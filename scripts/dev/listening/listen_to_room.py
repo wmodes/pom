@@ -62,7 +62,7 @@ def main():
     bookkeeper.set_up("WARNING", debug=config.debug)
     listening, qualifying, settings = config.listening, config.qualifying, config.scorer
     builder = make_builder(args, config, bookkeeper)
-    if not builder.whisper.ping():
+    if not builder.whisper_comms.is_up():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
     try:
         finder, _ = builder.make_room()                  # the Printer's own room: the deck, the Eavesdropper and the HingeFinder ("auto" finds the card)

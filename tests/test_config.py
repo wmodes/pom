@@ -901,8 +901,10 @@ def test_the_listening_settings_plug_straight_into_the_modules(logged):
         def close(self):
             pass
 
-    settings = Config.load(environ={}).listening
-    client = WhisperModelClient(settings)
+    from pom.modelcomms import ModelComms
+    config = Config.load(environ={})
+    settings = config.listening
+    client = WhisperModelClient(settings, ModelComms(settings.whisper_url, config.modelcomms.health_timeout_seconds))
     cutter = RollingCutter(client, settings)
     eavesdropper = Eavesdropper(NoSound(), client, settings)
     assert logged.ok("pom.listening")                                    # the client, the cutter and the eavesdropper said nothing

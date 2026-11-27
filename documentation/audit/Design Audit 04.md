@@ -72,7 +72,8 @@ the bottom with the next number; nothing is renumbered.
     the value object, and any public method can be reused by a caller that hands it a raw float or a NaN. A method's own check is its
     boundary, never dead code.
   - **Progress:** step 1 done 2026-11-27: `value_rules.py` (was `setting_rules.py`) and the `ValueChecker`, with the nearest good value
-    for a number past its range; no receiver uses them yet. Next: the copies of `_is_number` go, then each kind of value gets its
+    for a number past its range; no receiver uses them yet. Step 2 done 2026-11-27: the 11 copies of `_is_number` are one `is_number`
+    in `value_rules.py`, guarded by a test. Next: each kind of value gets its
     fallback value, chosen with Wes by reading how it is used, and each receiver checks with the ValueChecker.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
   - **The same score and time are checked by these, each with its own fallback value:**

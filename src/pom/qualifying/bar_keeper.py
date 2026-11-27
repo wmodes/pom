@@ -41,7 +41,6 @@ Design decisions, and why:
     rather than freeze the thread that is listening. Nothing inside the lock waits on anything, so this should never happen; it is there
     so that a bug somewhere cannot deafen the Printer.
 """
-import math
 import threading
 from contextlib import contextmanager
 from enum import Enum
@@ -50,6 +49,7 @@ from typing import Iterator, Optional
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -103,11 +103,6 @@ class BarKeeper:
         """
         return float(score) if level is None else level + influence * (score - level)
 
-    @staticmethod
-    def _is_number(value) -> bool:
-        """True for a real int or float (not a bool, and not NaN or infinity)."""
-        return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-
     @contextmanager
     def _held(self, call: str) -> Iterator[bool]:
         """Takes the lock for the length of the `with`, yielding True; or yields False (and logs a CRITICAL) if it waited too long."""
@@ -132,7 +127,7 @@ class BarKeeper:
         with self._held("bar_at") as got:
             if not got:
                 return None
-            return self._bar.level_at(self._steady(now)) if self._is_number(now) else None
+            return self._bar.level_at(self._steady(now)) if is_number(now) else None
 
     def ticks_between(self, start: float, end: float) -> list:
         """The anchor's ticks from `start` to `end`, each as (time, anchor score, the bar as it stood then); empty if the bar has no anchor."""
@@ -144,7 +139,7 @@ class BarKeeper:
         with self._held("window_size_at") as got:
             if not got:
                 return 0
-            return self._bar.window_size_at(self._steady(now) if self._is_number(now) else (self._last_time or 0.0))
+            return self._bar.window_size_at(self._steady(now) if is_number(now) else (self._last_time or 0.0))
 
     def _steady(self, now: float) -> float:
         """`now`, held at the latest time seen so a clock stepping back cannot reorder things."""
@@ -161,7 +156,7 @@ class BarKeeper:
         that qualifier was too recent; DID_NOT_QUALIFY otherwise.
         """
         with self._held("rule") as got:
-            if not got or not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+            if not got or not (is_number(score) and is_number(now)) or self._bar.ignores(score):
                 return Ruling.NO_MARK
             now = self._steady(now)
             level = self._bar.level_at(now)
@@ -188,7 +183,7 @@ class BarKeeper:
         DID_NOT_QUALIFY if not.
         """
         with self._held("rule_typed") as got:
-            if not got or not (self._is_number(score) and self._is_number(now)) or self._bar.ignores(score):
+            if not got or not (is_number(score) and is_number(now)) or self._bar.ignores(score):
                 return Ruling.NO_MARK
             now = self._steady(now)
             level = self._bar.level_at(now)

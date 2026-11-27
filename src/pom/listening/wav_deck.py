@@ -16,7 +16,6 @@ Design decisions, and why:
     any speed is heard exactly as a live stream would be.
   * Nothing in a recording is ever logged.
 """
-import math
 import time
 import wave
 from pathlib import Path
@@ -24,6 +23,7 @@ from typing import Callable, Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.listening.audio_format import FRAME_BYTES, FRAME_SECONDS, SAMPLE_BYTES, SAMPLE_RATE
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -33,10 +33,6 @@ DEFAULT_END_PAUSE_SECONDS = 1.2
 
 class WavDeckError(ValueError):
     """Raised for any deck problem, but only in strict mode (development and tests)."""
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class WavDeck:
@@ -68,7 +64,7 @@ class WavDeck:
 
     def _valid(self, value, name: str, default: float) -> float:
         """The value if it is a number of 0 or more, otherwise the default with a warning."""
-        if _is_number(value) and value >= 0:
+        if is_number(value) and value >= 0:
             return float(value)
         self.logger.warning("%s must be a number of at least 0, got %r; using %g", name, value, default)
         return default

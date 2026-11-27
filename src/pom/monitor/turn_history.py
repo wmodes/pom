@@ -25,7 +25,6 @@ Design decisions, and why:
     being waited for or has failed; `set_outcome` says how the turn ended afterwards.
   * This module never reads Config.
 """
-import math
 import threading
 import time
 from collections import deque
@@ -35,6 +34,7 @@ from typing import Callable, Deque, List, Optional
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import MonitorSettings
 from pom.writing.portent_writer import Portent
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -68,10 +68,6 @@ class TurnRecord:
     window_size: int
     portent: Optional[Portent]
     outcome: Optional[str] = None
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class TurnHistory:
@@ -115,13 +111,13 @@ class TurnHistory:
         if not (isinstance(hinge, str) and hinge.strip()):
             self.logger.warning("a turn was given without a hinge, so it was not recorded")
             return None
-        if not _is_number(score):
+        if not is_number(score):
             self.logger.warning("a turn was given without a numeric score, so it was not recorded")
             return None
         keep_from = self._keep_from()                       # asked for outside the lock: the function belongs to another object
         with self._lock:
-            record = TurnRecord(self._next_id, self._clock(), heard_at if _is_number(heard_at) else 0.0, hinge.strip(),
-                                   float(score), float(bar) if _is_number(bar) else None,
+            record = TurnRecord(self._next_id, self._clock(), heard_at if is_number(heard_at) else 0.0, hinge.strip(),
+                                   float(score), float(bar) if is_number(bar) else None,
                                    window_size if isinstance(window_size, int) and not isinstance(window_size, bool) else 0,
                                    portent)
             self._next_id += 1
@@ -172,7 +168,7 @@ class TurnHistory:
         except Exception:                                                    # nothing here may stop the oracle; say what, never a hinge
             self.logger.warning("the function that says which turns the chart still shows failed, so only the age limit applies")
             return None
-        return float(found) if _is_number(found) else None
+        return float(found) if is_number(found) else None
 
     def _forget_old(self, keep_from: Optional[float] = None) -> None:
         """Drops the records older than the age limit, except those heard at or after `keep_from`. The caller holds the lock."""

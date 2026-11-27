@@ -17,7 +17,8 @@ handed a function.
 from typing import Callable, List, Optional
 
 from pom.bookkeeper.log_recorder import LogRecorder
-from pom.monitor.notebook_entry import TICK, NotebookEntry, is_number
+from pom.monitor.notebook_entry import TICK, NotebookEntry
+from pom.value_rules import is_number
 from pom.monitor.silence_compressor import SilenceShape
 
 

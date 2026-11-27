@@ -37,6 +37,21 @@ def test_a_rule_with_no_included_ends_has_no_nearest_at_all():
     assert above_zero().nearest is None and any_number().nearest is None
 
 
+@pytest.mark.parametrize("value, good", [(3, True), (2.5, True), (-1, True), (True, False), (math.nan, False), (math.inf, False),
+                                         (None, False), ("3", False)])
+def test_is_number_is_a_real_finite_number_never_a_boolean(value, good):
+    assert value_rules.is_number(value) is good
+
+
+def test_no_module_writes_its_own_number_check():
+    """One check for the whole Printer (Design Audit 04 item 3): a module that wants to know "is this a number?" imports is_number."""
+    from pathlib import Path
+    source = Path(value_rules.__file__).parent
+    copies = [str(path.relative_to(source)) for path in source.rglob("*.py") if path.name != "value_rules.py"
+              and ("def _is_number" in path.read_text(encoding="utf-8") or "def is_number" in path.read_text(encoding="utf-8"))]
+    assert copies == []
+
+
 def test_the_old_names_still_work():
     assert setting_rules.SettingRule is value_rules.ValueRule and setting_rules.above_zero is value_rules.above_zero
     assert value_rules.SettingRejected is value_rules.ValueRejected and value_rules.SettingCorrected is value_rules.ValueCorrected

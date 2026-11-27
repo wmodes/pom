@@ -26,16 +26,13 @@ from typing import Deque, List, Optional, Tuple
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
 
 class PercentileBarError(ValueError):
     """Raised for any bar problem, but only in strict mode (development and tests)."""
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class PercentileBar(Bar):
@@ -68,7 +65,7 @@ class PercentileBar(Bar):
 
     def level_at(self, now: float) -> Optional[float]:
         """The percentile of the window at `now`, or the starting line while fewer than `min_scores` scores have been heard."""
-        if not _is_number(now):
+        if not is_number(now):
             return None
         window = self._window(now)
         if window is None:
@@ -79,12 +76,12 @@ class PercentileBar(Bar):
 
     def window_size_at(self, now: float) -> int:
         """How many scores the window holds at `now`; while fewer than `min_scores` are held at all, that is all of them."""
-        window = self._window(now) if _is_number(now) else None
+        window = self._window(now) if is_number(now) else None
         return len(window) if window is not None else len(self._recent)
 
     def add(self, score: float, now: float) -> None:
         """Takes in a judged score."""
-        if not (_is_number(score) and _is_number(now)):
+        if not (is_number(score) and is_number(now)):
             return
         self._recent.append((now, float(score)))
         self._forget_old(now)

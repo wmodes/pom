@@ -43,7 +43,6 @@ Design decisions, and why:
     logged.
   * The parts are passed in, already built; this module never reads Config.
 """
-import math
 import time
 from collections import Counter
 from dataclasses import dataclass
@@ -54,6 +53,7 @@ from pom.conductor.floor_keeper import Turn
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ConductorSettings, OracleSettings
 from pom.qualifying.attempt import Attempt
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -98,10 +98,6 @@ class TurnResult:
     write_attempts: int = 0
     print_tries: int = 0
     record_id: Optional[int] = None
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class TurnTaker:
@@ -155,8 +151,8 @@ class TurnTaker:
         with turn:                                   # whatever happens below, the floor is yielded at the end
             try:
                 self.logger.info("turn: the %s's hinge scored %s against a bar of %s", turn.holder,
-                                 f"{attempt.score:.1f}" if _is_number(getattr(attempt, "score", None)) else "none",
-                                 f"{attempt.bar:.1f}" if _is_number(getattr(attempt, "bar", None)) else "none")
+                                 f"{attempt.score:.1f}" if is_number(getattr(attempt, "score", None)) else "none",
+                                 f"{attempt.bar:.1f}" if is_number(getattr(attempt, "bar", None)) else "none")
                 result = self._take(turn, attempt, began, trail)
             except Exception as problem:             # nothing may stop the oracle
                 self.logger.warning("a turn failed unexpectedly (%s); the floor was yielded", type(problem).__name__)

@@ -71,8 +71,16 @@ def rule_of(settings_field) -> ValueRule:
     return settings_field.metadata["rule"]
 
 
-def _is_number(value) -> bool:
-    """An int or a float, never a boolean."""
+def is_number(value) -> bool:
+    """True for a real, finite int or float: not a boolean, not NaN, not infinity. What a score, a time or a count has to be.
+
+    The one number check for the whole Printer: every receiver that asks "is this a number?" asks here.
+    """
+    return _is_int_or_float(value) and math.isfinite(value)
+
+
+def _is_int_or_float(value) -> bool:
+    """An int or a float, never a boolean; NaN and infinity included (the settings' rules then say which they take)."""
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
@@ -84,7 +92,7 @@ def _is_whole(value) -> bool:
 def _clamped_to(low: Optional[float] = None, high: Optional[float] = None) -> Callable[[Any], Optional[float]]:
     """A `nearest` for a range whose ends `low` and `high` are included (None: no such end): a number past an end gives that end."""
     def nearest(value):
-        if not _is_number(value) or math.isnan(value):
+        if not _is_int_or_float(value) or math.isnan(value):
             return None
         if low is not None and value < low:
             return low
@@ -97,7 +105,7 @@ def _clamped_to(low: Optional[float] = None, high: Optional[float] = None) -> Ca
 def _number_rule(wanted: str, is_good: Callable[[float], bool], nearest: Optional[Callable[[Any], Any]] = None) -> ValueRule:
     """A rule for a number (stored as a float) that `is_good` accepts."""
     def read(value):
-        if _is_number(value) and is_good(value):
+        if _is_int_or_float(value) and is_good(value):
             return float(value)
         raise ValueRejected(wanted)
     return ValueRule(wanted, read, nearest=nearest)
@@ -252,7 +260,7 @@ def list_of_numbers() -> ValueRule:
     wanted = "a list of numbers"
 
     def read(value):
-        if isinstance(value, (list, tuple)) and value and all(_is_number(v) and -math.inf < v < math.inf for v in value):
+        if isinstance(value, (list, tuple)) and value and all(is_number(v) for v in value):
             return tuple(float(v) for v in value)
         raise ValueRejected(wanted)
     return ValueRule(wanted, read)

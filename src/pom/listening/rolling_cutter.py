@@ -29,7 +29,6 @@ Design decisions, and why:
   * `feed` and `cut` may be called from different threads; a lock guards the buffer.
   * The settings are passed in (the entry point takes them from Config); this module never reads Config.
 """
-import math
 import re
 import threading
 import time
@@ -39,6 +38,7 @@ from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ListeningSettings
 from pom.listening.audio_format import BYTES_PER_SECOND, SAMPLE_BYTES
 from pom.listening.whisper_model_client import Segment
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -70,10 +70,6 @@ def join_unfinished(found: List[Segment], longest: float = _LONGEST_JOIN) -> Lis
         else:
             out.append(Segment(begin, finish, text))
     return out
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class RollingCutter:
@@ -135,7 +131,7 @@ class RollingCutter:
         The next whisper run is due `cut_every_seconds` after the new start. A `seconds` that is not a number, or negative,
         counts as 0.
         """
-        gap = float(seconds) if _is_number(seconds) and seconds > 0 else 0.0
+        gap = float(seconds) if is_number(seconds) and seconds > 0 else 0.0
         with self._lock:
             now = self._base + len(self._pcm) / BYTES_PER_SECOND + gap
             self._pcm.clear()
@@ -149,7 +145,7 @@ class RollingCutter:
 
     def recent(self, seconds: float) -> bytes:
         """The last `seconds` of audio received (less if there is less)."""
-        wanted = int(seconds * BYTES_PER_SECOND) if _is_number(seconds) else 0
+        wanted = int(seconds * BYTES_PER_SECOND) if is_number(seconds) else 0
         if wanted <= 0:
             return b""
         with self._lock:

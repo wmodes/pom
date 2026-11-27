@@ -19,13 +19,13 @@ Design decisions, and why:
   * What is typed is room content: it is never logged. Only counts are.
   * The parts are passed in, already built; this module never reads Config.
 """
-import math
 import threading
 import time
 from typing import Callable, Iterator, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.qualifying.attempt import Attempt
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -35,10 +35,6 @@ DEFAULT_ERROR_PAUSE_SECONDS = 1.0    # the pause after an error, so a broken par
 
 class KeyboardWatcherError(ValueError):
     """Raised for any KeyboardWatcher problem, but only in strict mode (development and tests)."""
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class KeyboardWatcher:
@@ -75,7 +71,7 @@ class KeyboardWatcher:
 
     def _valid(self, value, name: str, default: float, is_good, wanted: str) -> float:
         """A number that passes `is_good`, or the default with a warning."""
-        if _is_number(value) and is_good(value):
+        if is_number(value) and is_good(value):
             return float(value)
         self.logger.warning("%s must be a number %s, got %r; using %g", name, wanted, value, default)
         return default

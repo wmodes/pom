@@ -46,7 +46,6 @@ Design decisions, and why:
   * The settings are passed in (the entry point takes them from Config); this module never reads Config.
 """
 import collections
-import math
 import threading
 import time
 from dataclasses import dataclass
@@ -58,6 +57,7 @@ from pom.listening.audio_deck import AudioDeck
 from pom.listening.audio_format import FRAME_SECONDS
 from pom.listening.rolling_cutter import RollingCutter
 from pom.listening.track_splitter import TrackSplitter
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -81,10 +81,6 @@ class Take:
     kind: str
     room_tone: Tuple[str, ...]
     ends_at: float
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class Eavesdropper:
@@ -127,7 +123,7 @@ class Eavesdropper:
         self._unheard_frames = 0                  # frames thrown away while paused (only the thread in hear() touches this)
         self._wall = wall
         self._last_sound_at = wall()              # the real time sound last arrived (or this was made, if none has): it is how long a restart took that is wanted
-        start = self._setting(start_seconds, "start_seconds", 0.0, lambda v: _is_number(v) and v >= 0, "a number of at least 0")
+        start = self._setting(start_seconds, "start_seconds", 0.0, lambda v: is_number(v) and v >= 0, "a number of at least 0")
         if start > 0:
             self._cutter.skip_ahead(start)        # a fresh cutter moved on by `start`: the clock begins there
 

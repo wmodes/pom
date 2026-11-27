@@ -41,7 +41,8 @@ from typing import Callable, Deque, List, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ChartSettings, MonitorSettings
-from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry, is_number
+from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry
+from pom.value_rules import is_number
 from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 from pom.monitor.tick_writer import TickWriter
 

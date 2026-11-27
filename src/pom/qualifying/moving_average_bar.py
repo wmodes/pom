@@ -22,12 +22,12 @@ Design decisions, and why:
   * The score range (0 to 9, the digits the scorer is asked for) is a parameter with that default, not a setting.
   * Only numbers are kept: no words from the room. This module never reads Config; it is handed the `[qualifying]` settings.
 """
-import math
 from typing import Optional, Sequence
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -36,10 +36,6 @@ DEFAULT_SCORE_RANGE = (0.0, 9.0)       # the digits 0 to 9 the scorer model is a
 
 class MovingAverageBarError(ValueError):
     """Raised for any bar problem, but only in strict mode (development and tests)."""
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class MovingAverageBar(Bar):
@@ -79,7 +75,7 @@ class MovingAverageBar(Bar):
         """A (lowest, highest) pair with the lowest below the highest, or the default with a warning."""
         try:
             low, high = value
-            if _is_number(low) and _is_number(high) and low < high:
+            if is_number(low) and is_number(high) and low < high:
                 return float(low), float(high)
         except (TypeError, ValueError):
             pass
@@ -103,7 +99,7 @@ class MovingAverageBar(Bar):
 
     def ignores(self, score: float) -> bool:
         """True for a score below the floor, and for anything that is not a number."""
-        return not (_is_number(score) and score >= self._floor)
+        return not (is_number(score) and score >= self._floor)
 
     def add(self, score: float, now: float) -> None:
         """Moves the average toward a score at or above the floor. Scores below it, and junk, are left out."""

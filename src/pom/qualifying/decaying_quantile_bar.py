@@ -46,6 +46,7 @@ from typing import Deque, Optional, Tuple
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -54,10 +55,6 @@ DEFAULT_STARTED_AT = 0.0      # a stream time, not a setting: a stream that begi
 
 class DecayingQuantileBarError(ValueError):
     """Raised for any bar problem, but only in strict mode (development and tests)."""
-
-
-def _is_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 class DecayingQuantileBar(Bar):
@@ -87,7 +84,7 @@ class DecayingQuantileBar(Bar):
         self._anchor_interval = 60.0 * qualifying.anchor_interval_minutes                       # in seconds, as every time here is
         self._discard_seconds = 60.0 * qualifying.discard_scores_older_than_minutes
         self._memory: Deque[Tuple[float, float]] = deque()          # (time heard, score), oldest first; the real scores only, never the ticks
-        self._started_at = self._valid(started_at, "started_at", DEFAULT_STARTED_AT, _is_number, "a number")
+        self._started_at = self._valid(started_at, "started_at", DEFAULT_STARTED_AT, is_number, "a number")
 
     @classmethod
     def from_settings(cls, settings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> "DecayingQuantileBar":
@@ -114,7 +111,7 @@ class DecayingQuantileBar(Bar):
     def ticks_between(self, start: float, end: float) -> list:
         """Each tick from `start` to `end`, as (time, anchor score, the bar as it stood at that tick), oldest first. It is how a chart shows the
         bar sliding down through a silence: the ticks fall on the grid whether or not anyone spoke."""
-        if not (_is_number(start) and _is_number(end)):
+        if not (is_number(start) and is_number(end)):
             return []
         first = max(1, math.ceil((start - self._started_at) / self._anchor_interval))
         last = math.floor((end - self._started_at) / self._anchor_interval)
@@ -123,7 +120,7 @@ class DecayingQuantileBar(Bar):
 
     def _level(self, now: float, future: bool) -> Optional[float]:
         """The bar at `now`; `future` says whether a score heard after `now` still counts (as a stepped-back clock would have it) or not."""
-        if not _is_number(now):
+        if not is_number(now):
             return None
         entries = self._weighted_scores(now, future)
         if not entries:
@@ -136,14 +133,14 @@ class DecayingQuantileBar(Bar):
         """How many scores' worth of weight the real scores carry at `now`, to the nearest whole score (the starting line is not
         counted, and neither are the ticks). A score counts for 1 when it is heard and for half that a half-life later, so this is the size of the window the
         bar is really built from (about 100 in a busy room at a 5 minute half-life), not all the scores kept in memory (`discard_scores_older_than_minutes`)."""
-        if not _is_number(now):
+        if not is_number(now):
             return 0
         self._forget_old(now)
         return int(sum(self._weight(now - heard) for heard, _ in self._memory) + 0.5)
 
     def add(self, score: float, now: float) -> None:
         """Takes in a judged score."""
-        if not (_is_number(score) and _is_number(now)):
+        if not (is_number(score) and is_number(now)):
             return
         self._memory.append((now, float(score)))
         self._forget_old(now)

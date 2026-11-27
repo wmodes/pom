@@ -17,281 +17,32 @@ Design decisions, and why:
     that stop it are the ones it cannot work around: no password for a monitoring site you asked for is a warning and no site, not a stop.
   * ONE CONFIG. `Config.load` is called once and every setting comes from it; the parts never read it. The command-line options only choose
     where sound comes from and what is printed on, and only for this run.
-  * EVERYTHING IS BUILT IN `build_printer`, a plain function that contacts no server, so the whole wiring can be built and inspected in a
-    test. `main` only parses the options, builds, installs the signal handlers (SIGTERM from systemd and ctrl-C both stop it cleanly) and
-    runs.
+  * EVERYTHING IS BUILT BY THE PrinterBuilder (pom.printer_builder), which contacts no server, so the whole wiring can be built and inspected
+    in a test, and the testbenches build their parts the same way. `build_printer` is the builder's whole Printer. `main` only parses the
+    options, builds, installs the signal handlers (SIGTERM from systemd and ctrl-C both stop it cleanly) and runs.
   * NOTHING SAID IS KEPT. The monitoring site shows what the config lets it (`show_hinges`) from memory; nothing is logged or written.
     The log holds counts, labels and seconds.
   * The microphone can be unplugged: the room is built again by the Conductor each time it ends. A recording ends the run instead.
 """
 import argparse
-import random
 import signal
 import sys
-import time
-import urllib.error
-import urllib.parse
-import urllib.request
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from pom.conductor import AddressFinder, BootSlipper, Conductor, FloorKeeper, HingeFinder, KeyboardWatcher, NoSoundSource, TurnTaker
-from pom.config import Config
-from pom.keyboard import TypedLineScorer
-from pom.library import Bibliomancer, Catalog, Circulation
-from pom.listening import (CaptureCardFinder, Eavesdropper, MacMicDeck, MicDeck, TakeCutter, WavDeck, WhisperModelClient)
-from pom.bookkeeper.log_muter import LogMuter
 from pom.bookkeeper.bookkeeper import Bookkeeper
-from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, ServicePoller, StatusBoard, TurnHistory, silence_shape
-from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
-from pom.qualifying import bar_keeper_from_settings
-from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
-from pom.timekeeper import Timekeeper
-from pom.writing import OracleModelClient, PortentWriter, PromptBuilder
+from pom.bookkeeper.log_muter import LogMuter
+from pom.config import Config
+# the builder's names, kept here under their old names so callers of pom.printer do not break
+from pom.printer_builder import DEFAULT_CONFIG, ROOT, Options, Printer, PrinterBuilder, answers, health, reachable  # noqa: F401
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CONFIG = ROOT / "config" / "pom.toml"
-PASSAGES = ROOT / "library" / "passages"
-NLTK_DATA = ROOT / "data" / "nltk"
-
-
-@dataclass(frozen=True)
-class Options:
-    """What a run chooses for itself, apart from the config.
-
-    Attributes:
-        config_path: The config file to read.
-        wav: A 16 kHz mono recording to play instead of a microphone, or None.
-        speed: The recording's speed: 1 is real time, 0 is as fast as possible.
-        mac_mic: This Mac's microphone through ffmpeg: "default" or a device name; None to use the Pi's (or the recording).
-        terminal: "serial", "console" or "none", overriding `[terminal] mode`; None keeps the config's.
-        keyboard: False leaves the typewriter's keyboard unwatched even with a real terminal.
-    """
-    config_path: str = str(DEFAULT_CONFIG)
-    wav: Optional[str] = None
-    speed: float = 1.0
-    mac_mic: Optional[str] = None
-    terminal: Optional[str] = None
-    keyboard: bool = True
-
-
-def health(url: str) -> Light:
-    """How the llama-server behind this chat address is: UP if its health address says ok, WAITING if it says 503 (it answers but is still loading its
-    model), DOWN if it does not answer or says anything else."""
-    parts = urllib.parse.urlparse(url)
-    try:
-        with urllib.request.urlopen(f"{parts.scheme}://{parts.netloc}/health", timeout=3):
-            return Light.UP
-    except urllib.error.HTTPError as error:              # (an HTTPError is a URLError, so it is caught first)
-        return Light.WAITING if error.code == 503 else Light.DOWN
-    except (urllib.error.URLError, OSError, ValueError):
-        return Light.DOWN
-
-
-def answers(url: str) -> bool:
-    """True if the llama-server behind this chat address says it is healthy and ready."""
-    return health(url) is Light.UP
-
-
-def reachable(url: str) -> bool:
-    """True if something answers an HTTP request at this address (the whisper-server's front page, for instance)."""
-    try:
-        with urllib.request.urlopen(url, timeout=3):
-            return True
-    except (urllib.error.URLError, OSError, ValueError):
-        return False
-
-
-class Printer:
-    """The whole Printer, built: run it, stop it, ask it how it is.
-
-    Attributes:
-        conductor: The Conductor that runs everything.
-        history: The TurnHistory the monitoring site reads (always made; shown only if the site runs).
-        site: The MonitorSite, or None if it is not enabled or has no password.
-        terminal: The TerminalPort or ConsoleTerminal, or None when there is no printer.
-        floor: The FloorKeeper.
-        parts: The other parts by name (for a test or a testbench to look at).
-    """
-
-    def __init__(self, conductor: Conductor, history: TurnHistory, site: Optional[MonitorSite], terminal, floor: FloorKeeper, parts: dict,
-                 services, warmer: Optional[ScorerWarmer] = None, slipper: Optional[BootSlipper] = None, poller: Optional[ServicePoller] = None,
-                 bookkeeper: Optional[Bookkeeper] = None):
-        self.conductor, self.history, self.site, self.terminal, self.floor, self.parts = conductor, history, site, terminal, floor, parts
-        self._services, self._warmer, self._slipper, self._poller = services, warmer, slipper, poller
-        self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
-
-    def run(self) -> None:
-        """Starts the monitoring site (if any), the status poller, the scorer's warm-up and the boot slip, runs the Conductor until it stops, then stops them and closes the terminal. Blocks."""
-        if self.site is not None and not self.site.start(self.parts["monitor"].host, self.parts["monitor"].port):
-            self.logger.warning("the monitoring site did not start (it logged why, just above); going on without it")
-            self.site = None
-        elif self.site is not None:
-            self.logger.info("monitoring site listening on port %s", self.site.port)
-        if self._poller is not None:
-            self._poller.poll_once()                     # one round now, so the line below says how things are; then it goes on in its own thread
-            self._poller.start()
-        self.logger.info("services: %s", ", ".join(f"{name} {light}" for name, light in self._services().items()))
-        if self._warmer is not None:
-            self._warmer.start()                         # in the background: the Printer listens at once, whatever state the servers are in
-        if self._slipper is not None:
-            self._slipper.start()                        # in the background: waits for the typewriter, then types the boot slip
-        try:
-            self.conductor.run()
-        finally:
-            if self._poller is not None:
-                self._poller.stop()
-            if self._slipper is not None:
-                self._slipper.stop()
-            if self._warmer is not None:
-                self._warmer.stop()
-            if self.site is not None:
-                self.site.stop()
-            close = getattr(self.terminal, "close", None)
-            if close is not None:
-                close()
-
-    def stop(self) -> None:
-        """Stops the Printer. Safe from a signal handler or another thread, and safe to repeat."""
-        self.conductor.stop()
-
 
 def build_printer(config: Config, options: Optional[Options] = None, root: Path = ROOT, bookkeeper: Optional[Bookkeeper] = None) -> Printer:
-    """Builds every part from `config` and `options` and joins them in a Conductor. Contacts no server and opens no port or microphone."""
-    options = options or Options()
-    bookkeeper = bookkeeper or Bookkeeper()           # the one the entry point built; a plain one when a test or tool builds the Printer
-    logger = bookkeeper.logger_for(__name__, debug=DEBUG)
-    listening, qualifying, scoring, oracle = config.listening, config.qualifying, config.scorer, config.oracle
-    terminal_settings, conductor_settings, monitor = config.terminal, config.conductor, config.monitor
-    mode = options.terminal or terminal_settings.mode
-
-    # listening: a fresh deck, Eavesdropper and finder each time the room is built (a microphone that comes back is heard)
-    whisper = WhisperModelClient(listening, bookkeeper=bookkeeper)
-    nltk_dir = root / "data" / "nltk"
-    scorer_client = ScorerModelClient(scoring, explain_prompt=scoring.prompt_debug, bookkeeper=bookkeeper)
-    scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=bookkeeper), scoring,
-                        bookkeeper=bookkeeper)
-    warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), scoring, bookkeeper=bookkeeper)     # sends the scorer one throwaway request once its server is up
-    stream_started_at = 0.0           # the stream time at which the Printer starts: the stream clock begins here, and the bar begins here too
-    # the stream's one clock: every part that needs "now" (the rooms, typed lines, the page) is handed `timekeeper.now`, so they share one timeline
-    timekeeper = Timekeeper(started_at=stream_started_at, wall=time.monotonic)
-    bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at, bookkeeper=bookkeeper)
-    take_cutter = TakeCutter(listening, bookkeeper=bookkeeper)
-
-    # the status board: every light on the monitoring page, kept in one place. The microphone posts to it for itself as sound arrives; a poller asks the
-    # servers and the printer. NO NEWS IS DOWN: a light whose last post is too old shows down (see pom/monitor/status_board.py). A recording has no microphone.
-    board = StatusBoard(bookkeeper=bookkeeper)
-    if not options.wav:
-        board.expect("mic", monitor.mic_down_after_seconds)
-    for name in ("whisper", "scorer", "oracle", "printer"):
-        board.expect(name, monitor.service_down_after_seconds)
-
-    def sound_arrived() -> None:
-        board.post("mic", Light.UP)
-
-    card_finder = CaptureCardFinder(listening, bookkeeper=bookkeeper)     # turns `auto` into the microphone's card, looked up again at each start of listening
-
-    def make_deck():
-        if options.wav:
-            return WavDeck(options.wav, speed=options.speed, bookkeeper=bookkeeper)
-        if options.mac_mic is not None:
-            return MacMicDeck(options.mac_mic, listening=listening, heard=sound_arrived, bookkeeper=bookkeeper)
-        device = card_finder.resolve(listening.device)
-        if not card_finder.found:
-            raise NoSoundSource("no sound card was found")       # the finder has logged it; arecord is not started for a card that is not there
-        return MicDeck(device, listening=listening, heard=sound_arrived, bookkeeper=bookkeeper)
-
-    def make_room():
-        # Each room (the first, or one built again after the last failed) begins where the stream clock stands and the clock then follows it, so stream time
-        # keeps matching real time. Starting again at 0 would leave the BarKeeper, which never lets time run backwards, holding still until the new clock caught up.
-        ears = Eavesdropper(make_deck(), whisper, listening, start_seconds=timekeeper.now(), wall=time.monotonic, bookkeeper=bookkeeper)
-        timekeeper.follow(ears)
-        return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening, bookkeeper=bookkeeper), ears
-
-    # writing and printing
-    passages = root / "library" / "passages"
-    rng = random.Random()                                  # one generator for the Bibliomancer and the writer, so a draw can be seeded
-    selector = Bibliomancer(Catalog.load(passages, bookkeeper=bookkeeper), Circulation.from_file(passages / "circulation.json", bookkeeper=bookkeeper), rng,
-                            oracle=oracle, bookkeeper=bookkeeper)
-    writer = PortentWriter(PromptBuilder(oracle, selector, bookkeeper=bookkeeper),
-                           OracleModelClient(oracle, bookkeeper=bookkeeper), rng,
-                           bookkeeper=bookkeeper)
-    printing = config.printing
-    formatter = PortentFormatter(printing)
-    terminal = _make_terminal(mode, terminal_settings, bookkeeper)
-
-    # the turn
-    # the chart's notebook writes down the ticks too (the bar's own `ticks_between`), except across a silence, which the chart draws as a break
-    # (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)
-    notebook = ChartNotebook(config.chart, monitor, ticks_source=bar_keeper.ticks_between,
-                             silence_shape=silence_shape(config.chart), began_at=stream_started_at, bookkeeper=bookkeeper)
-    # a turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours
-    history = TurnHistory(monitor, keep_heard_since=lambda: notebook.earliest_at, bookkeeper=bookkeeper)
-    floor = FloorKeeper(conductor_settings, bookkeeper=bookkeeper)
-    turn_taker = TurnTaker(writer, formatter, terminal, history, conductor=conductor_settings, oracle=oracle, bookkeeper=bookkeeper)
-
-    # the boot slip: types the Pi's address when the typewriter is online (only if there is a terminal to type on)
-    slip = config.boot_slip
-    slipper = None
-    if terminal is not None and slip.enabled:
-        slipper = BootSlipper(floor, terminal, formatter, AddressFinder(bookkeeper=bookkeeper).find, boot_slip=slip,
-                              ears_shut_seconds=conductor_settings.check_seconds + 1.0, bookkeeper=bookkeeper)
-
-    # the keyboard: only a real typewriter has one
-    keyboard = None
-    if terminal is not None and mode == "serial" and options.keyboard:
-        typed = TypedLineScorer(scorer, bar_keeper, timekeeper.now, qualifying, bookkeeper=bookkeeper)
-        keyboard = KeyboardWatcher(terminal, typed, bookkeeper=bookkeeper)
-
-    # what the monitoring site is told: numbers only, from every attempt
-    snapshot = {"heard": 0, "scored": 0}
-
-    def note(attempt) -> None:
-        snapshot["heard"] += 1
-        snapshot["scored"] += attempt.score is not None
-        if attempt.score is not None:
-            notebook.add(attempt.score, attempt.bar, attempt.heard_at, attempt.is_hinge)
-
-    def status_now() -> MonitorStatus:
-        """The numbers on the page's tiles as of this moment: the bar is read at the stream's clock, so it keeps moving through silence."""
-        now = timekeeper.now()
-        return MonitorStatus(bar=bar_keeper.bar_at(now), window_size=bar_keeper.window_size_at(now),
-                             attempts_heard=snapshot["heard"], attempts_scored=snapshot["scored"],
-                             services=board.lights(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe())
-
-    poller = ServicePoller(board, {"whisper": lambda: reachable(listening.whisper_url), "scorer": lambda: health(scoring.url),
-                                   "oracle": lambda: health(oracle.url),
-                                   "printer": lambda: None if terminal is None else terminal.online(wait=False)}, monitor)
-    site = None
-    if monitor.enabled:
-        if not monitor.password:
-            logger.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
-        else:
-            site = MonitorSite(history, monitor, config.chart, clock=time.time, notebook=notebook, stream_now=timekeeper.now,
-                               stream_began_at=stream_started_at, status_source=status_now, bookkeeper=bookkeeper)
-
-    def turned(attempt, result) -> None:
-        logger.info("turn over: %s", result.outcome.value)
-
-    conductor = Conductor(floor, turn_taker, make_room, keyboard, on_attempt=note, on_turn=turned, restart_room=not options.wav,
-                          conductor_settings=conductor_settings, bookkeeper=bookkeeper)
-    parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
-             "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
-             "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller, "timekeeper": timekeeper}
-    return Printer(conductor, history, site, terminal, floor, parts, board.lights, warmer, slipper, poller, bookkeeper)
-
-
-def _make_terminal(mode: str, settings, bookkeeper: Optional[Bookkeeper] = None):
-    """The terminal for this mode: the real serial port (found by name, looked up again each time it opens), the console stand-in, or None for no printer."""
-    if mode == "none":
-        return None
-    if mode == "console":
-        return ConsoleTerminal(settings, bookkeeper=bookkeeper)
-    finder = TerminalPortFinder(settings, bookkeeper=bookkeeper)
-    return TerminalPort(settings, finder=finder, bookkeeper=bookkeeper)
+    """Builds every part from `config` and `options` and joins them in a Conductor (the PrinterBuilder's whole Printer). Contacts no server and opens no
+    port or microphone."""
+    return PrinterBuilder(config, options, root=root, bookkeeper=bookkeeper).printer
 
 
 def parse_options(argv=None) -> Options:

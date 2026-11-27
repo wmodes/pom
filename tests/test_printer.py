@@ -12,6 +12,7 @@ import pytest
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.bookkeeper.log_muter import LogMuter
 from pom import printer as printer_module
+from pom import printer_builder as builder_module
 from pom.config import Config
 from pom.conductor import BootSlipper, Conductor, FloorKeeper, KeyboardWatcher, TurnTaker
 from pom.listening import MicDeck
@@ -54,7 +55,7 @@ def a_sound_card_is_there(monkeypatch):
 
         def resolve(self, device):
             return "plughw:CARD=Test,DEV=0"
-    monkeypatch.setattr(printer_module, "CaptureCardFinder", FoundCard)
+    monkeypatch.setattr(builder_module, "CaptureCardFinder", FoundCard)
 
 
 class TestTheWiring:
@@ -67,7 +68,7 @@ class TestTheWiring:
 
     def test_the_scorers_warm_up_is_built_on_the_printers_own_scorer_and_asks_the_scorers_address(self, tmp_path, monkeypatch):
         asked = []
-        monkeypatch.setattr(printer_module, "answers", lambda url: asked.append(url) or True)
+        monkeypatch.setattr(builder_module, "answers", lambda url: asked.append(url) or True)
         p = build(tmp_path, '[scorer]\nurl = "http://127.0.0.1:9123/v1/chat/completions"\n')
         warmer = p.parts["warmer"]
         assert isinstance(warmer, ScorerWarmer) and warmer._scorer is p.parts["scorer"] and p._warmer is warmer
@@ -113,8 +114,8 @@ class TestTheWiring:
             def __init__(self, device, listening, heard=None, bookkeeper=None):
                 opened.append((device, listening.buffer_seconds))
 
-        monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
-        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        monkeypatch.setattr(builder_module, "CaptureCardFinder", StandInFinder)
+        monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
         p = build(tmp_path, '[listening]\ndevice = "auto"\ndevice_lookup_seconds = 7\nbuffer_seconds = 3\n[terminal]\nmode = "none"\n')
         p.conductor._room_factory()
         p.conductor._room_factory()
@@ -130,7 +131,7 @@ class TestTheWiring:
                 self.heard = heard
                 decks.append(self)
 
-        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
         p = build(tmp_path, '[monitor]\nmic_down_after_seconds = 5\n[terminal]\nmode = "none"\n')
         assert p.parts["board"].lights()["mic"] is Light.DOWN                      # nothing has been heard yet
         p.conductor._room_factory()
@@ -145,7 +146,7 @@ class TestTheWiring:
                 self.heard = heard
                 decks.append(self)
 
-        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
         monkeypatch.setattr("pom.monitor.status_board.time.monotonic", lambda: now[0])
         p = build(tmp_path, '[monitor]\nmic_down_after_seconds = 7\n[terminal]\nmode = "none"\n')
         p.parts["board"]._clock = lambda: now[0]
@@ -162,8 +163,8 @@ class TestTheWiring:
 
     def test_a_model_that_is_still_loading_shows_waiting_for_the_scorer_and_the_oracle_and_whisper_is_asked_by_its_own_address(self, tmp_path, monkeypatch):
         asked = []
-        monkeypatch.setattr(printer_module, "health", lambda url: asked.append(url) or Light.WAITING)
-        monkeypatch.setattr(printer_module, "reachable", lambda url: asked.append(url) or True)
+        monkeypatch.setattr(builder_module, "health", lambda url: asked.append(url) or Light.WAITING)
+        monkeypatch.setattr(builder_module, "reachable", lambda url: asked.append(url) or True)
         p = build(tmp_path, '[scorer]\nurl = "http://127.0.0.1:1/score"\n[oracle]\nurl = "http://127.0.0.1:2/write"\n[listening]\nwhisper_url = "http://127.0.0.1:3"\n'
                             '[terminal]\nmode = "none"\n')
         p.parts["poller"].poll_once()
@@ -192,8 +193,8 @@ class TestTheWiring:
             def __init__(self, device, listening, heard=None, bookkeeper=None):
                 opened.append(device)
 
-        monkeypatch.setattr(printer_module, "CaptureCardFinder", StandInFinder)
-        monkeypatch.setattr(printer_module, "MicDeck", StandInDeck)
+        monkeypatch.setattr(builder_module, "CaptureCardFinder", StandInFinder)
+        monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
         p = build(tmp_path, '[listening]\ndevice = "auto"\n[terminal]\nmode = "none"\n')
         with pytest.raises(NoSoundSource):
             p.conductor._room_factory()
@@ -210,7 +211,7 @@ class TestTheWiring:
                 asked.append(setting)
                 return "/dev/not-a-real-port"
 
-        monkeypatch.setattr(printer_module, "TerminalPortFinder", StandInFinder)
+        monkeypatch.setattr(builder_module, "TerminalPortFinder", StandInFinder)
         p = build(tmp_path, '[terminal]\nmode = "serial"\nport = "Prolific"\nport_search = "/x/*"\n')
         assert made == ["/x/*"]
         assert p.terminal.online() is False and asked == ["Prolific"]            # opening the terminal asks the finder about the setting
@@ -252,30 +253,30 @@ class TestWhereSoundComesFrom:
 
     def test_the_scorer_model_client_is_handed_the_scorer_settings(self, tmp_path, monkeypatch):
         handed = []
-        real = printer_module.ScorerModelClient
+        real = builder_module.ScorerModelClient
 
         def recording(scorer_settings, **options):
             handed.append(scorer_settings)
             return real(scorer_settings, **options)
-        monkeypatch.setattr(printer_module, "ScorerModelClient", recording)
+        monkeypatch.setattr(builder_module, "ScorerModelClient", recording)
         config = config_from(tmp_path, '[scorer]\nurl = "http://pi.test:9000/v1/chat/completions"\n[terminal]\nmode = "none"\n')
         printer = build_printer(config, Options())
         assert handed == [config.scorer] and printer.parts["scorer"].scorer_settings is config.scorer
 
     def test_the_prompt_builder_and_the_oracle_model_client_are_handed_the_oracle_settings(self, tmp_path, monkeypatch):
         handed = []
-        real = printer_module.OracleModelClient
+        real = builder_module.OracleModelClient
 
         def recording(oracle, **options):
             handed.append(oracle)
             return real(oracle, **options)
-        monkeypatch.setattr(printer_module, "OracleModelClient", recording)
-        real_builder = printer_module.PromptBuilder
+        monkeypatch.setattr(builder_module, "OracleModelClient", recording)
+        real_builder = builder_module.PromptBuilder
 
         def recording_builder(oracle, selector, **options):
             handed.append(oracle)
             return real_builder(oracle, selector, **options)
-        monkeypatch.setattr(printer_module, "PromptBuilder", recording_builder)
+        monkeypatch.setattr(builder_module, "PromptBuilder", recording_builder)
         config = config_from(tmp_path, '[oracle]\nmax_tokens = 123\n[terminal]\nmode = "none"\n')
         build_printer(config, Options())
         assert handed == [config.oracle, config.oracle]                     # the prompt builder's, then the client's
@@ -298,7 +299,7 @@ class TestWhereSoundComesFrom:
             def close(self):
                 pass
 
-        monkeypatch.setattr(printer_module, "MacMicDeck", StandInMacDeck)
+        monkeypatch.setattr(builder_module, "MacMicDeck", StandInMacDeck)
         config = config_from(tmp_path, "[listening]\nbuffer_seconds = 3\n")
         build_printer(config, Options(mac_mic="default")).conductor._room_factory()
         assert handed == [config.listening]
@@ -393,7 +394,7 @@ class TestTheMonitorMovesWithTheStream:
     @staticmethod
     def clock(monkeypatch, start=100.0):
         now = [start]
-        monkeypatch.setattr(printer_module.time, "monotonic", lambda: now[0])
+        monkeypatch.setattr(builder_module.time, "monotonic", lambda: now[0])
         return now
 
     def test_the_site_is_handed_the_monitor_settings(self, tmp_path):
@@ -589,7 +590,7 @@ class TestTheBarStartsWithTheStream:
         assert keeper.bar_at(7200.0) == pytest.approx(5.85, abs=0.01)        # two hours of quiet: the anchor, not the starting bar
 
     def test_the_bar_and_the_first_room_begin_at_the_same_stream_time(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(printer_module.time, "monotonic", lambda: 100.0)
+        monkeypatch.setattr(builder_module.time, "monotonic", lambda: 100.0)
         p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\n')
         _, first = p.conductor._room_factory()
         assert first.stream_time_at(100.0) == 0.0 and p.parts["bar_keeper"]._bar._started_at == 0.0
@@ -600,7 +601,7 @@ class TestARoomBuiltAgain:
 
     def test_the_new_rooms_clock_carries_on_from_the_old_one_plus_the_real_seconds_between(self, tmp_path, monkeypatch):
         now = [1000.0]
-        monkeypatch.setattr(printer_module.time, "monotonic", lambda: now[0])
+        monkeypatch.setattr(builder_module.time, "monotonic", lambda: now[0])
         make_room = build(tmp_path).conductor._room_factory
         _, first = make_room()
         now[0] = 1100.0                                              # the first room fails and, a hundred real seconds later, another is built
@@ -611,7 +612,7 @@ class TestARoomBuiltAgain:
         assert third.stream_time_at(1160.0) == pytest.approx(160.0)  # and through a second restart
 
     def test_a_first_room_begins_at_zero(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(printer_module.time, "monotonic", lambda: 5000.0)
+        monkeypatch.setattr(builder_module.time, "monotonic", lambda: 5000.0)
         _, first = build(tmp_path).conductor._room_factory()
         assert first.stream_time_at(5000.0) == 0.0
 

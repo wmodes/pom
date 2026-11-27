@@ -20,7 +20,7 @@ WHERE_DEFAULTS_MAY_LIVE = {"defaults.py", "config.py"}
 # Module-level DEFAULT_ names that are not copies of a pom.toml setting, each with why it is still here. The list may only shrink: a name
 # that is gone from the code must be taken off it (the last test below), and a new one fails until it is added here with a reason.
 NOT_SETTINGS = {
-    "printer.py": {"DEFAULT_CONFIG": "the path of pom.toml itself"},
+    "printer_builder.py": {"DEFAULT_CONFIG": "the path of pom.toml itself"},
     "qualifying/decaying_quantile_bar.py": {"DEFAULT_STARTED_AT": "a stream time, not a setting"},
     "qualifying/moving_average_bar.py": {"DEFAULT_SCORE_RANGE": "the scorer's digits 0 to 9, an argument; Design Audit 03 D6.4"},
     "monitor/chart_notebook.py": {"DEFAULT_SILENCE_SHAPE": "for a notebook built without one; the Printer hands it silence_shape(config.chart)"},
@@ -37,7 +37,7 @@ NOT_SETTINGS = {
 # The attribute a class keeps a section's settings under, where it is not the section's own name (so it does not read `conductor.conductor`).
 SETTINGS_ATTRIBUTES = {**{name: name for name in SECTIONS}, "scorer_settings": "scorer", "conductor_settings": "conductor"}
 # Where a class keeps something else under a section's name: the Printer's `self.conductor` is the Conductor, not its settings.
-NOT_SETTINGS_ATTRIBUTES = {"printer.py": {"conductor"}}
+NOT_SETTINGS_ATTRIBUTES = {"printer_builder.py": {"conductor"}}
 
 
 def python_files(*folders):

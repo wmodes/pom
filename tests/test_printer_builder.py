@@ -109,6 +109,16 @@ class TestTheStreamClockStartsWithTheBuilder:
         assert builder.timekeeper.now() == pytest.approx(9.0)
 
 
+class TestTheReceiversFallBackToTheStreamClock:
+    def test_a_bad_time_handed_to_the_bar_keeper_becomes_the_printers_stream_time_now(self, tmp_path, monkeypatch):
+        now = [100.0]
+        monkeypatch.setattr("time.monotonic", lambda: now[0])
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
+        now[0] += 25.0
+        builder.bar_keeper.rule(5.0, float("nan"))
+        assert builder.bar_keeper.counted == 1 and builder.bar_keeper._last_time == pytest.approx(25.0)
+
+
 class TestATestbenchCanWatch:
     def test_a_watcher_sees_each_attempt_after_the_printer_has_counted_it(self, tmp_path):
         seen = []

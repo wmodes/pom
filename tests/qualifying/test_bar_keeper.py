@@ -47,10 +47,10 @@ def tickless_settings(**settings):
     return QualifyingSettings(**settings)
 
 
-def bar_keeper(level=5.0, cooldown=0, ignored=(), strict=False, **settings):
+def bar_keeper(level=5.0, cooldown=0, ignored=(), strict=False, stream_now=None, **settings):
     """A BarKeeper over a FakeBar at `level`, with no cooldown unless one is given; other `[qualifying]` settings by keyword."""
     bar = FakeBar(level, ignored)
-    return BarKeeper(bar, QualifyingSettings(cooldown_seconds=cooldown, **settings), strict=strict), bar
+    return BarKeeper(bar, QualifyingSettings(cooldown_seconds=cooldown, **settings), strict=strict, stream_now=stream_now), bar
 
 
 class TestTheDefaults:
@@ -113,18 +113,41 @@ class TestQualifying:
 
 
 class TestWhatIsIgnored:
-    @pytest.mark.parametrize("junk", [None, "7", "", True, False, [5], {}, float("nan"), float("inf"), float("-inf")])
+    @pytest.mark.parametrize("junk", [None, "7", "", True, False, [5], {}, float("nan"), float("inf")])
     def test_what_is_not_a_score_changes_nothing(self, junk):
         t, bar = bar_keeper()
         assert t.rule(junk, 1.0) is Ruling.NO_MARK
         assert t.counted == 0 and bar.added == []
 
+    @pytest.mark.parametrize("junk", ["7", "", True, [5], float("nan"), float("inf")])
+    def test_a_score_that_is_not_a_number_is_said(self, junk, logged):
+        t, _ = bar_keeper()
+        t.rule(junk, 1.0)
+        assert logged.of(t).warnings()[0].startswith("BarKeeper.rule was given a score of")
+
+    def test_no_score_at_all_is_in_spec_and_quiet(self, logged):
+        t, _ = bar_keeper()
+        t.rule(None, 1.0)
+        assert logged.of(t).ok()
+
+    @pytest.mark.parametrize("below", [-3.0, float("-inf")])
+    def test_a_score_below_zero_is_zero_and_counts(self, below, logged):
+        t, bar = bar_keeper(level=5.0)
+        assert t.rule(below, 1.0) is Ruling.DID_NOT_QUALIFY and bar.added == [(0.0, 1.0)]
+        assert "using the nearest, 0" in logged.of(t).warnings()[0]
+
     @pytest.mark.parametrize("junk", [None, "7", True, [5], float("nan"), float("inf")])
-    def test_a_time_that_is_not_a_number_changes_nothing(self, junk):
-        t, bar = bar_keeper()
-        assert t.rule(9.0, junk) is Ruling.NO_MARK
-        assert t.counted == 0 and bar.added == []
-        assert t.bar_at(junk) is None
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now_so_the_score_still_counts(self, junk, logged):
+        """Printing has priority: a score with a bad time is not thrown away; it is taken as heard now."""
+        t, bar = bar_keeper(level=5.0, stream_now=lambda: 42.0)
+        assert t.rule(9.0, junk) is Ruling.QUALIFIED and t.counted == 1 and bar.added[-1][1] == 42.0
+        assert t.bar_at(junk) == 5.0 and bar.asked[-1] == 42.0
+        assert logged.of(t).warnings()[0].startswith("BarKeeper.rule was given a now of") and "using 42" in logged.of(t).warnings()[0]
+
+    def test_a_time_below_zero_is_zero(self):
+        t, bar = bar_keeper(level=5.0)
+        t.rule(1.0, -5.0)
+        assert bar.added == [(1.0, 0.0)]
 
     def test_a_score_the_bar_ignores_is_ignored(self):
         t, bar = bar_keeper(ignored={0.1})
@@ -222,10 +245,10 @@ class TestTheTime:
         t.rule(1.0, 100.0)
         assert t.window_size_at(None) == 7 and bar.sizes[-1] == 100.0
 
-    def test_a_window_size_asked_with_no_usable_time_before_any_score_uses_zero(self):
-        t, bar = bar_keeper()
+    def test_a_window_size_asked_with_no_usable_time_before_any_score_uses_the_stream_time_now(self):
+        t, bar = bar_keeper(stream_now=lambda: 12.0)
         t.window_size_at(float("nan"))
-        assert bar.sizes[-1] == 0.0
+        assert bar.sizes[-1] == 12.0
 
 
 class TestTheQuestions:
@@ -481,11 +504,20 @@ class TestRuleTyped:
         t.rule(9.0, 1.0)
         assert t.rule_typed(9.0, 2.0, bar_influence=0.0) is Ruling.QUALIFIED
 
-    @pytest.mark.parametrize("score,now", [(None, 1.0), ("9", 1.0), (True, 1.0), (float("nan"), 1.0), (float("inf"), 1.0),
-                                          (9.0, None), (9.0, "1"), (9.0, float("nan"))])
-    def test_a_score_or_time_that_is_not_a_number_is_ignored(self, score, now):
+    @pytest.mark.parametrize("score", [None, "9", True, float("nan"), float("inf")])
+    def test_a_score_that_is_not_a_number_is_ignored(self, score):
         t, bar = bar_keeper(level=5.0)
-        assert t.rule_typed(score, now, bar_influence=1.0) is Ruling.NO_MARK and bar.added == [] and t.counted == 0
+        assert t.rule_typed(score, 1.0, bar_influence=1.0) is Ruling.NO_MARK and bar.added == [] and t.counted == 0
+
+    @pytest.mark.parametrize("now", [None, "1", float("nan")])
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now(self, now):
+        t, bar = bar_keeper(level=5.0, stream_now=lambda: 30.0)
+        assert t.rule_typed(9.0, now, bar_influence=1.0) is Ruling.QUALIFIED and bar.added == [(9.0, 30.0)]
+
+    def test_a_bar_influence_that_is_not_a_number_is_the_configs(self, logged):
+        t, bar = bar_keeper(level=5.0, typed_lines_bar_influence=0.5)
+        t.rule_typed(9.0, 1.0, bar_influence="lots")
+        assert bar.added == [(7.0, 1.0)] and "using 0.5" in logged.of(t).warnings()[0]
 
     def test_a_score_the_bar_ignores_is_ignored(self):
         t, bar = bar_keeper(level=5.0, ignored=(9.0,))

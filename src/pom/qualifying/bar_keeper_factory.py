@@ -12,7 +12,7 @@ in ALGORITHMS here; a test checks the two name the same bars.
 
 This module never reads Config; it is handed the `[qualifying]` settings, whose algorithm the config has already checked.
 """
-from typing import Dict, Optional, Type
+from typing import Callable, Dict, Optional, Type
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
@@ -35,6 +35,9 @@ def bar_from_settings(settings: QualifyingSettings, started_at: float, strict: b
     return ALGORITHMS[settings.algorithm].from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper)
 
 
-def bar_keeper_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None) -> BarKeeper:
-    """A BarKeeper over the bar the `[qualifying]` settings name (beginning at stream time `started_at`), handed the same settings."""
-    return BarKeeper(bar_from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper), settings, strict=strict, bookkeeper=bookkeeper)
+def bar_keeper_from_settings(settings: QualifyingSettings, started_at: float, strict: bool = False, bookkeeper: Optional[Bookkeeper] = None,
+                             stream_now: Optional[Callable[[], float]] = None) -> BarKeeper:
+    """A BarKeeper over the bar the `[qualifying]` settings name (beginning at stream time `started_at`), handed the same settings and the
+    stream clock (`stream_now`, the Printer's Timekeeper's `now`; None gives the BarKeeper one of its own)."""
+    return BarKeeper(bar_from_settings(settings, started_at, strict=strict, bookkeeper=bookkeeper), settings, strict=strict, bookkeeper=bookkeeper,
+                     stream_now=stream_now)

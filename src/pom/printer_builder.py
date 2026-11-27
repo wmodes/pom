@@ -221,7 +221,7 @@ class PrinterBuilder:
 
     @cached_property
     def bar_keeper(self):
-        return bar_keeper_from_settings(self.config.qualifying, STREAM_STARTED_AT, bookkeeper=self.bookkeeper)
+        return bar_keeper_from_settings(self.config.qualifying, STREAM_STARTED_AT, bookkeeper=self.bookkeeper, stream_now=self.timekeeper.now)
 
     @cached_property
     def take_cutter(self) -> TakeCutter:

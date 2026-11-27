@@ -74,8 +74,8 @@ the bottom with the next number; nothing is renumbered.
   - **Progress:** step 1 done 2026-11-27: `value_rules.py` (was `setting_rules.py`) and the `ValueChecker`, with the nearest good value
     for a number past its range; no receiver uses them yet. Step 2 done 2026-11-27: the 11 copies of `_is_number` are one `is_number`
     in `value_rules.py`, guarded by a test. Step 3 done 2026-11-27: the handed-in clocks and sleeps are checked by the ValueChecker
-    against `function()` (4 checks in 3 classes, not about 15). Next: each kind of value gets its
-    fallback value, chosen with Wes by reading how it is used, and each receiver checks with the ValueChecker.
+    against `function()` (4 checks in 3 classes, not about 15). Step 4: the fallback values below are agreed, and the BarKeeper
+    checks with them (2026-11-27). Next: the other receivers in step 5.
   - **Unchecked values:** `Attempt` and the other values handed from stage to stage are frozen but check nothing when they are made.
   - **The same score and time are checked by these, each with its own fallback value:**
     - the BarKeeper (`bar_keeper.py:164, 191`);
@@ -88,25 +88,21 @@ the bottom with the next number; nothing is renumbered.
     same name that means something else (it does not check for infinity or NaN).
   - **Handed-in parts:** about 15 constructors each write their own check that a clock or a sleep can be called; it should be one shared
     check.
-  - **Proposed fallback values, waiting for Wes's sign-off** (step 4; nothing is built until then). Each kind of value has one value rule
-    and one fallback value, the same in every receiver. Wes's rule for choosing: the fallback value is one the downstream code already
-    handles (one a mechanism with its own default can recognize), or else the most useful value in spec. A number past an end its rule
-    includes gets that end (the nearest good value) before any fallback value.
+  - **The fallback values, agreed with Wes 2026-11-27** (step 4). Each kind of value has one value rule and one fallback value, the same in
+    every receiver. They follow from the Design Document's principles (line 35): nothing blocks, every limit errs long, and printing has
+    priority, so a failure leans toward printing a portent. A number past an end its rule includes gets that end (the nearest good value)
+    before any fallback value.
 
-    | Kind of value | Where it goes downstream | In spec | Proposed: past an end | Proposed fallback value (NaN, wrong type, no nearest) |
+    | Kind of value | Where it goes downstream | Rule | Past an end | Fallback value (NaN, wrong type, no nearest) |
     |---|---|---|---|---|
-    | **score** | the BarKeeper rules it and the bar takes it in; the chart draws its dot; a qualifier's score goes in the TurnHistory | a number of at least 0, or None (unscored). No upper end: a typed line's score is multiplied and not capped | below 0 becomes 0, a real score of 0 that goes into the bar and lowers it a little | **None**, unscored: every receiver already handles it (the BarKeeper rules it NO_MARK and changes nothing, the chart draws no dot). Infinity also becomes None, since there is no upper end to give |
-    | **stream time** (`heard_at`, `now`) | the BarKeeper orders the bar's window and the cooldown by it; the chart places the dot by it; the TurnHistory places the turn and counts its freshness from it | a number of at least 0 | below 0 becomes 0, the start of listening (the dot is drawn at the left edge) | **the stream time now** (the Timekeeper's `now`), the best guess of when, so the score still counts and the dot lands where the room is. This needs the Timekeeper's `now` handed to the BarKeeper, the ChartNotebook and the TurnHistory |
-    | **bar** | the chart draws the bar line; the TurnHistory and the TurnTaker show it | a number of at least 0, or None (no bar yet) | below 0 becomes 0 | **None**, no bar yet: the chart and the logs already handle it |
-    | **count** (`window_size`, `counted`) | shown on the monitoring page only | a whole number of at least 0 | below 0 becomes 0 | **0** |
+    | **score** | the BarKeeper rules it and the bar takes it in; the chart draws its dot; a qualifier's score goes in the TurnHistory | at least 0, or None (unscored, in spec, no warning) | below 0 is 0 (minus infinity too) | **None**, unscored: the Printer never guesses a score (Wes's earlier decision). Infinity is None too, until item 9 gives the score scale an owner and so a top end |
+    | **stream time** (`now`, `heard_at`, ...) | the BarKeeper orders the bar's window and the cooldown by it; the chart places the dot by it; the TurnHistory places the turn and counts its freshness from it | at least 0 | below 0 is 0 | **the stream time now** (the Printer's Timekeeper's `now`): the score still counts and a turn is fresh, so it can print |
+    | **bar** | shown on the chart and in the logs; it decides nothing downstream | at least 0, or None (no bar yet) | below 0 is 0 | **None**, no bar yet |
+    | **count** (`window_size`, `counted`) | shown on the monitoring page only | a whole number of at least 0 | below 0 is 0 | **0** |
 
-  - **Questions for Wes in that table:**
-    1. A negative score: 0 (the nearest good value, so it counts and lowers the bar) or None (unscored, so it changes nothing)? Wes's
-       example rule says 0; a negative score cannot come from the scorer, so it would be a bug upstream either way.
-    2. A negative stream time: 0 (the nearest good value: the left edge of the chart) or the stream time now (the fallback value)? Here
-       the nearest good value is misleading: 0 is the moment listening began, not a time near the bad one.
-    3. The stream time now as the fallback value means handing the Timekeeper's `now` to three more classes. The alternative is None,
-       "time unknown": the score is dropped (NO_MARK, no dot), with a warning; nothing new is wired.
+    **No upper end for a stream time.** "Not after now" looked right, but the Timekeeper's `now` can step back a few milliseconds when a
+    frame of sound arrives late (`Eavesdropper.stream_time_at` adds the real seconds since the last frame), so a good time could look like
+    the future and be pulled back with a false warning. Every limit errs long, so a stream time has a low end only.
   - **Then, step 5:** each receiver checks with its ValueChecker by that table: the BarKeeper (`rule`, `rule_typed`, `bar_at`,
     `window_size_at`), each bar (`add`, `level_at`), the ChartNotebook (`add`), the TickWriter, the TurnHistory (`add`), the TurnTaker's
     log line, and the two places that make an Attempt (the HingeFinder and the TypedLineScorer). Two constructors take a stream time

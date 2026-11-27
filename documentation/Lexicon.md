@@ -185,7 +185,7 @@ clip (or typed line) that qualifies becomes the hinge. It sits beside Scoring's 
 - **anchor interval**: The minutes between ticks; shorter pulls the bar down faster in silence. Example: `anchor_interval_minutes`
 - **discard age**: How many minutes the bar remembers a score, or a tick; older ones are dropped from its memory. Once every real score is dropped the bar is made of the ticks alone. Example:
   `discard_scores_older_than_minutes`, `[qualifying]` (was: a constant, `MEMORY_HALF_LIVES`, 8 half-lives)
-- **started at**: The stream time at which the bar begins, given to the bar and not found by it: the tick grid and the starting bar's fade both run from it. The Printer gives it the time at which listening starts, so the bar is already moving before the first attempt. Example: `started_at`, `DecayingQuantileBar`, `bar_keeper_from_settings()`
+- **started at**: The stream time at which the bar begins, given to the bar and not found by it: the tick grid and the starting bar's fade both run from it. The Printer gives it the stream time at which the Printer starts (the Timekeeper's start), so the bar is already moving before the first attempt. Example: `started_at`, `DecayingQuantileBar`, `bar_keeper_from_settings()`
 - **bar**: The score an attempt must be above to qualify. Example: `Bar`, `bar_at()` (was: bar, `TriggerBar`, `trigger_level_at()`)
 - **bar types**: How the bar is set (`algorithm`): `percentile` of the window; `decaying_quantile`, a percentile in which a score counts
   half as much every `half_life_seconds` (the shipped choice); or `moving_average`, a decaying average plus a margin. Example:
@@ -397,6 +397,12 @@ The machine, its settings, how it keeps going, and how it is watched.
   logger, `self.logger = bookkeeper.logger_for(__name__, ItsError, DEBUG, strict)`, like Python's `logging.getLogger(__name__)`. Every class takes it
   as an optional `bookkeeper` argument (a plain one when a test or tool gives none). It holds nothing that changes, so any number of threads can use
   it. Example: `Bookkeeper` (was: none; each class built its own recorder)
+- **stream time**: The Printer's one timeline: seconds of sound heard, going on through silence and through turns. The bar, the cooldown, the chart
+  and the typed lines all stamp their moments on it. Example: `timekeeper.now()`, `heard_at`, `Eavesdropper.stream_time_at()`
+- **timekeeper**: The module (`src/pom/timekeeper/`) that holds the stream's one clock, the `Timekeeper`.
+- **Timekeeper**: The one instance the entry point builds: it keeps stream time, follows the room that is listening now (`follow`), and every
+  part that needs "now" is handed its `now`. Before the first room it runs on real seconds from the Printer's start; each new room begins where
+  it stands. Example: `Timekeeper` (was: `stream_now()` and `last_room` in `build_printer`, and a separate clock for typed lines)
 - **log muter**: The one filter, on every log handler, that lets a message that keeps repeating through a few times and then mutes it, for every
   module at once, so no module counts its own repeats. Example: `LogMuter` (settings `logmute_after_repeats`, `logmute_remind_every_repeats`,
   `logmute_quiet_seconds`)

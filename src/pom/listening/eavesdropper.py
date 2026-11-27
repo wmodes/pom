@@ -31,8 +31,9 @@ Design decisions, and why:
     and while whisper works. The Conductor runs it in a thread of its own. A MicDeck reads the microphone in a
     thread of its own, so sound is not lost while the Eavesdropper waits for whisper.
   * THE STREAM CLOCK CARRIES ON ACROSS A RESTART. If the room has to be heard again (this Eavesdropper is replaced after a failure), the new one is given
-    `start_seconds`, where the old one's clock would stand now (`stream_time_at`: the old clock, the sound that went by unheard, and the real seconds since sound
-    last arrived), so stream time keeps matching real time, the same idea as `skip_ahead` after a turn. A clock that began again at 0 would run behind the BarKeeper's,
+    `start_seconds`, where the stream clock stands now: the Timekeeper (pom.timekeeper), which follows the room that is listening and reads its
+    `stream_time_at` (the old clock, the sound that went by unheard, and the real seconds since sound last arrived), so stream time keeps matching real
+    time, the same idea as `skip_ahead` after a turn. A clock that began again at 0 would run behind the BarKeeper's,
     which holds time at the latest it has seen, so its cooldown and the bar's fading would stand still until the new clock caught up (two hours in, about two hours).
   * Time is counted in audio received, not wall-clock time, so a recording replayed at any speed is heard exactly as a
     live stream would be. `ends_at` is the place in the stream where the segment ended, in seconds; it is the time the

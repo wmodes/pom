@@ -439,6 +439,44 @@ class TestTheMonitorMovesWithTheStream:
         now[0] += 30.0
         assert p.site._stream_now() == pytest.approx(330.0, abs=0.5)
 
+    def test_before_any_room_the_stream_time_runs_on_real_seconds_from_the_build(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        now[0] += 7.0                                    # the microphone is not up yet
+        assert p.site._stream_now() == pytest.approx(7.0)
+
+    def test_the_first_room_begins_where_the_stream_clock_stands(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        now[0] += 12.0
+        p.conductor._room_factory()
+        assert p.site._stream_now() == pytest.approx(12.0)
+        now[0] += 5.0
+        assert p.site._stream_now() == pytest.approx(17.0)
+
+    def test_once_a_room_is_built_the_stream_clock_is_that_rooms(self, tmp_path, monkeypatch):
+        """A room that hears sound runs its clock on the audio received, not real seconds; the Timekeeper must read that room."""
+        self.clock(monkeypatch)
+        p = build(tmp_path, self.CONFIG)
+        _, ears = p.conductor._room_factory()
+        monkeypatch.setattr(ears, "stream_time_at", lambda wall_now: 999.0)     # as if a fast recording had run far ahead
+        assert p.parts["timekeeper"].now() == 999.0
+
+    def test_the_page_reads_the_one_timekeeper(self, tmp_path):
+        p = build(tmp_path, self.CONFIG)
+        assert p.site._stream_now == p.parts["timekeeper"].now
+
+    def test_typed_lines_are_stamped_on_the_same_clock_as_the_room(self, tmp_path, monkeypatch):
+        now = self.clock(monkeypatch)
+        p = build(tmp_path, '[terminal]\nmode = "serial"\n')
+        typed_clock = p.parts["keyboard"]._typed_scorer._clock
+        assert typed_clock == p.parts["timekeeper"].now
+        now[0] += 12.0                                   # before the room: the same real seconds
+        assert typed_clock() == pytest.approx(12.0)
+        p.conductor._room_factory()
+        now[0] += 5.0                                    # after: the room's clock, which began where the typed clock stood
+        assert typed_clock() == pytest.approx(17.0)
+
     def test_the_tiles_read_the_live_bar_so_it_falls_in_a_silence_with_no_attempt(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
         p = build(tmp_path, self.CONFIG)

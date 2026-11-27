@@ -20,7 +20,7 @@ the bottom with the next number; nothing is renumbered.
 
 ## The checklist
 
-- [ ] **1. The Printer has two clocks** (checked). *Principle:* "When several parts must agree on a derived fact … build it once …
+- [x] **1. The Printer has two clocks** — **done 2026-11-26**: one `Timekeeper` (`src/pom/timekeeper/`) keeps stream time and every part is handed its `now`; before the first room it runs on real seconds from the Printer's start (see CHANGELOG). Original finding (checked). *Principle:* "When several parts must agree on a derived fact … build it once …
   and hand that same object to every part."
   - **The fact:** stream time is the timeline the bar, the cooldown, the chart and the typed lines must all share.
   - **Who owns it:** no object. It is pieced together by helper functions inside `build_printer`:

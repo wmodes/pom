@@ -18,7 +18,6 @@ Nothing you type is kept: it is scored and forgotten.
 import argparse
 import dataclasses
 import sys
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -29,6 +28,7 @@ from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 from pom.keyboard import TypedLineScorer   # noqa: E402
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
+from pom.timekeeper import Timekeeper
 
 
 def build(config: Config, args):
@@ -47,8 +47,8 @@ def build(config: Config, args):
     if args.bar_influence is not None:
         qualifying = dataclasses.replace(qualifying, typed_lines_bar_influence=args.bar_influence)
     multiplier, bar_influence = qualifying.typed_lines_score_multiplier, qualifying.typed_lines_bar_influence
-    started = time.monotonic()
-    typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, qualifying)
+    timekeeper = Timekeeper(started_at=0.0)                            # the Printer's stream clock, with no room: real seconds from now
+    typed = TypedLineScorer(scorer, bar_keeper, timekeeper.now, qualifying)
     return scorer, bar_keeper, typed, client, multiplier, bar_influence
 
 

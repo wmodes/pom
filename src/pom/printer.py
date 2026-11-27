@@ -47,6 +47,7 @@ from pom.monitor import ChartNotebook, Light, MonitorSite, MonitorStatus, Servic
 from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder
 from pom.qualifying import bar_keeper_from_settings
 from pom.scoring import ClipScorer, ScorerModelClient, ScorerWarmer, WordTagger
+from pom.timekeeper import Timekeeper
 from pom.writing import OracleModelClient, PortentWriter, PromptBuilder
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
@@ -166,7 +167,6 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     listening, qualifying, scoring, oracle = config.listening, config.qualifying, config.scorer, config.oracle
     terminal_settings, conductor_settings, monitor = config.terminal, config.conductor, config.monitor
     mode = options.terminal or terminal_settings.mode
-    started = time.monotonic()
 
     # listening: a fresh deck, Eavesdropper and finder each time the room is built (a microphone that comes back is heard)
     whisper = WhisperModelClient(listening, bookkeeper=bookkeeper)
@@ -175,7 +175,9 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=bookkeeper), scoring,
                         bookkeeper=bookkeeper)
     warmer = ScorerWarmer(scorer, lambda: answers(scoring.url), scoring, bookkeeper=bookkeeper)     # sends the scorer one throwaway request once its server is up
-    stream_started_at = 0.0           # the stream time at which listening starts: the first room's clock begins here, and the bar begins here too
+    stream_started_at = 0.0           # the stream time at which the Printer starts: the stream clock begins here, and the bar begins here too
+    # the stream's one clock: every part that needs "now" (the rooms, typed lines, the page) is handed `timekeeper.now`, so they share one timeline
+    timekeeper = Timekeeper(started_at=stream_started_at, wall=time.monotonic)
     bar_keeper = bar_keeper_from_settings(qualifying, stream_started_at, bookkeeper=bookkeeper)
     take_cutter = TakeCutter(listening, bookkeeper=bookkeeper)
 
@@ -202,15 +204,11 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
             raise NoSoundSource("no sound card was found")       # the finder has logged it; arecord is not started for a card that is not there
         return MicDeck(device, listening=listening, heard=sound_arrived, bookkeeper=bookkeeper)
 
-    last_room = {"ears": None}     # the Eavesdropper of the room that ran last, so the next one's clock can carry on from it
-
     def make_room():
-        # A room built again (after the last one failed) carries the stream clock on from where the old one stopped, plus the real seconds since, so stream time
+        # Each room (the first, or one built again after the last failed) begins where the stream clock stands and the clock then follows it, so stream time
         # keeps matching real time. Starting again at 0 would leave the BarKeeper, which never lets time run backwards, holding still until the new clock caught up.
-        old = last_room["ears"]
-        ears = Eavesdropper(make_deck(), whisper, listening, start_seconds=old.stream_time_at(time.monotonic()) if old is not None else stream_started_at,
-                            wall=time.monotonic, bookkeeper=bookkeeper)
-        last_room["ears"] = ears
+        ears = Eavesdropper(make_deck(), whisper, listening, start_seconds=timekeeper.now(), wall=time.monotonic, bookkeeper=bookkeeper)
+        timekeeper.follow(ears)
         return HingeFinder(ears, take_cutter, scorer, bar_keeper, listening, bookkeeper=bookkeeper), ears
 
     # writing and printing
@@ -245,16 +243,11 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
     # the keyboard: only a real typewriter has one
     keyboard = None
     if terminal is not None and mode == "serial" and options.keyboard:
-        typed = TypedLineScorer(scorer, bar_keeper, lambda: time.monotonic() - started, qualifying, bookkeeper=bookkeeper)
+        typed = TypedLineScorer(scorer, bar_keeper, timekeeper.now, qualifying, bookkeeper=bookkeeper)
         keyboard = KeyboardWatcher(terminal, typed, bookkeeper=bookkeeper)
 
     # what the monitoring site is told: numbers only, from every attempt
     snapshot = {"heard": 0, "scored": 0}
-
-    def stream_now() -> float:
-        """The stream time right now: the listening side's clock, which runs through silence (before the first room is built, the stream's start)."""
-        ears = last_room["ears"]
-        return ears.stream_time_at(time.monotonic()) if ears is not None else stream_started_at
 
     def note(attempt) -> None:
         snapshot["heard"] += 1
@@ -264,7 +257,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
 
     def status_now() -> MonitorStatus:
         """The numbers on the page's tiles as of this moment: the bar is read at the stream's clock, so it keeps moving through silence."""
-        now = stream_now()
+        now = timekeeper.now()
         return MonitorStatus(bar=bar_keeper.bar_at(now), window_size=bar_keeper.window_size_at(now),
                              attempts_heard=snapshot["heard"], attempts_scored=snapshot["scored"],
                              services=board.lights(), algorithm=qualifying.algorithm, bar_description=bar_keeper.describe())
@@ -277,7 +270,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
         if not monitor.password:
             logger.warning("the monitoring site is enabled but has no password ([monitor] password in config/pom.local.toml); it will not run")
         else:
-            site = MonitorSite(history, monitor, config.chart, clock=time.time, notebook=notebook, stream_now=stream_now,
+            site = MonitorSite(history, monitor, config.chart, clock=time.time, notebook=notebook, stream_now=timekeeper.now,
                                stream_began_at=stream_started_at, status_source=status_now, bookkeeper=bookkeeper)
 
     def turned(attempt, result) -> None:
@@ -287,7 +280,7 @@ def build_printer(config: Config, options: Optional[Options] = None, root: Path 
                           conductor_settings=conductor_settings, bookkeeper=bookkeeper)
     parts = {"whisper": whisper, "scorer": scorer, "bar_keeper": bar_keeper, "selector": selector, "writer": writer, "formatter": formatter,
              "turn_taker": turn_taker, "notebook": notebook, "monitor": monitor, "keyboard": keyboard, "mode": mode, "take_cutter": take_cutter,
-             "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller}
+             "warmer": warmer, "boot_slipper": slipper, "board": board, "poller": poller, "timekeeper": timekeeper}
     return Printer(conductor, history, site, terminal, floor, parts, board.lights, warmer, slipper, poller, bookkeeper)
 
 

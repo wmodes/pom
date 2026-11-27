@@ -93,7 +93,7 @@ class ChartNotebook:
             silence_shape = DEFAULT_SILENCE_SHAPE
         self._head: List[NotebookEntry] = []                    # the ticks for the first minutes after the newest attempt, worked out when it was heard
         self._entries: Deque[NotebookEntry] = deque(maxlen=monitor.chart_notebook_max_entries)
-        self._tick_writer = TickWriter(ticks_source, silence_shape, began_at, self.logger)
+        self._tick_writer = TickWriter(ticks_source, silence_shape, began_at, self.logger, stream_now)
         self._lock = threading.Lock()
         self._total_added = 0
 

@@ -18,6 +18,7 @@ from typing import Callable, List, Optional
 
 from pom.bookkeeper.log_recorder import LogRecorder
 from pom.monitor.notebook_entry import TICK, NotebookEntry
+from pom.value_checker import ValueChecker
 from pom.value_rules import is_number
 from pom.monitor.silence_compressor import SilenceShape
 
@@ -32,22 +33,28 @@ class TickWriter:
         began_at: The stream time at which listening began, or None; the stretch before the first attempt runs from here.
     """
 
-    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], logger: LogRecorder):
+    def __init__(self, ticks_source: Optional[Callable[[float, float], list]], shape: SilenceShape, began_at: Optional[float], logger: LogRecorder,
+                 stream_now: Optional[Callable[[], float]] = None):
         """Args:
             ticks_source: See the attribute. Without one, every method answers an empty list.
             shape: How a silence is drawn. An `edge_seconds` of 0 means a silence has no ticks at all.
-            began_at: The stream time at which listening began; anything that is not a number means it is not known.
-            logger: The notebook's logger, so its problems are said under the notebook's name.
+            began_at: The stream time at which listening began, or None if it is not known. A stream time like any other (Design Audit 04
+                item 3): below 0 is 0, and one that is not a number is the stream time now, with a warning.
+            logger: The notebook's logger, so its problems are said under the notebook's module.
+            stream_now: The stream time now (the notebook's): the fallback value for a time that is not a number. None gives a clock of its own.
         """
+        self._logger = logger
+        self.check = ValueChecker(logger, "TickWriter", stream_now)
         self.ticks_source = ticks_source
         self.shape = shape
-        self.began_at = float(began_at) if is_number(began_at) else None
-        self._logger = logger
+        self.began_at = None if began_at is None else self.check.stream_time(began_at, method="__init__", argument="began_at")
 
     def ticks_between(self, start: float, end: float) -> List[NotebookEntry]:
         """The source's ticks after `start` and up to `end`, as entries. The start's own tick belongs to whatever was heard then."""
         if self.ticks_source is None:
             return []
+        start = self.check.stream_time(start, method="ticks_between", argument="start")
+        end = self.check.stream_time(end, method="ticks_between", argument="end")
         try:
             found = list(self.ticks_source(start, end))
         except Exception:                                          # nothing here may stop the oracle; say what, never a value from the room
@@ -79,8 +86,11 @@ class TickWriter:
             Every tick in the stretch if it is no longer than the longest silence; otherwise the first and last minutes of it only. Empty if there
             is no source, no start, or the stretch has no length.
         """
-        if self.ticks_source is None or not is_number(until):
+        if self.ticks_source is None:
             return []
+        until = self.check.stream_time(until, method="stretch", argument="until")
+        if since is not None:
+            since = self.check.stream_time(since, method="stretch", argument="since")
         began = since is None
         if began:
             since = self.began_at

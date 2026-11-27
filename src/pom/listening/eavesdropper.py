@@ -57,7 +57,7 @@ from pom.listening.audio_deck import AudioDeck
 from pom.listening.audio_format import FRAME_SECONDS
 from pom.listening.rolling_cutter import RollingCutter
 from pom.listening.track_splitter import TrackSplitter
-from pom.value_rules import is_number
+from pom.value_checker import ValueChecker
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -93,7 +93,7 @@ class Eavesdropper:
 
     def __init__(self, deck: AudioDeck, client, listening: ListeningSettings, splitter: Optional[TrackSplitter] = None,
                  cutter: Optional[RollingCutter] = None, start_seconds: float = 0.0, wall: Callable[[], float] = time.monotonic,
-                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None):
+                 strict: bool = False, bookkeeper: Optional[Bookkeeper] = None, stream_now: Optional[Callable[[], float]] = None):
         """Args:
             deck: Where the sound comes from (a MicDeck, or a WavDeck for a replay).
             client: Asks whisper (a WhisperModelClient, or anything with its `segments`, `text` and `error`).
@@ -102,13 +102,17 @@ class Eavesdropper:
                 `room_tone_memory` (how many recent bits of room tone to remember), and the RollingCutter's own settings (see there).
             splitter: The TrackSplitter to use. Default: a new one.
             cutter: A RollingCutter to use instead of making one (for tests).
-            start_seconds: Where the stream clock begins, 0 or more: 0 for a first room, and for one that replaces a room that stopped, what the old
-                one's `stream_time_at` gave, so the clock carries on.
+            start_seconds: Where the stream clock begins, a stream time: 0 for a first room, and for one that replaces a room that stopped, what the
+                old one's `stream_time_at` gave, so the clock carries on. Checked like every stream time (Design Audit 04 item 3): below 0 is 0,
+                and one that is not a number is the stream time now (`stream_now`), with a warning.
             wall: Returns seconds that steadily increase, for noting when sound last arrived (real time, not stream time). Injected so tests need not wait.
             strict: Raise EavesdropperError on any problem instead of logging it.
             bookkeeper: The Bookkeeper the entry point built; it hands this class its logger. None (a test or a tool) gives a plain one.
+            stream_now: The stream time now (the Printer's Timekeeper's `now`, which has not begun to follow this room yet): the fallback value
+                for a `start_seconds` that is not a number. None (a test or a tool) gives a clock of its own, which begins at 0.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, EavesdropperError, DEBUG, strict)
+        self.check = ValueChecker(self.logger, "Eavesdropper", stream_now)
         self._deck, self._client = deck, client
         self.listening = listening
         self._splitter = splitter if splitter is not None else TrackSplitter()
@@ -123,16 +127,9 @@ class Eavesdropper:
         self._unheard_frames = 0                  # frames thrown away while paused (only the thread in hear() touches this)
         self._wall = wall
         self._last_sound_at = wall()              # the real time sound last arrived (or this was made, if none has): it is how long a restart took that is wanted
-        start = self._setting(start_seconds, "start_seconds", 0.0, lambda v: is_number(v) and v >= 0, "a number of at least 0")
+        start = self.check.stream_time(start_seconds, method="__init__", argument="start_seconds")
         if start > 0:
             self._cutter.skip_ahead(start)        # a fresh cutter moved on by `start`: the clock begins there
-
-    def _setting(self, value, name: str, default, is_good, wanted: str):
-        """The value if it passes `is_good`, otherwise the default with a warning."""
-        if is_good(value):
-            return value
-        self.logger.warning("%s must be %s, got %r; using %g", name, wanted, value, default)
-        return default
 
     @property
     def recent_room_tone(self) -> Tuple[str, ...]:

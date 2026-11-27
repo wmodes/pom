@@ -19,11 +19,11 @@ def grid(interval=60.0, anchor=5.85, bar=lambda at: 6.0, asked=None):
     return source
 
 
-def writer(source="grid", longest=300.0, head=150.0, began_at=0.0):
+def writer(source="grid", longest=300.0, head=150.0, began_at=0.0, stream_now=None):
     """A TickWriter over the grid (or `source`), and the name of the logger it says things through (read with the `logged` fixture).
     `head` is how much of each end of a silence is drawn at true scale."""
     logger = Bookkeeper().logger_for(LOGGER, ValueError)
-    return TickWriter(grid() if source == "grid" else source, SilenceShape(longest, longest - 2.0 * head), began_at, logger), LOGGER
+    return TickWriter(grid() if source == "grid" else source, SilenceShape(longest, longest - 2.0 * head), began_at, logger, stream_now), LOGGER
 
 
 def times(entries):
@@ -124,9 +124,13 @@ class TestTheQuietBeforeTheFirstAttempt:
         w, _ = writer(began_at=None)
         assert w.stretch(None, [], 4000.0) == []
 
-    def test_a_start_that_is_not_a_number_is_not_known(self):
-        w, _ = writer(began_at="yesterday")
-        assert w.began_at is None and w.stretch(None, [], 4000.0) == []
+    def test_a_start_that_is_not_a_number_is_the_stream_time_now_with_a_warning(self, logged):
+        w, name = writer(began_at="yesterday", stream_now=lambda: 3900.0)
+        assert w.began_at == 3900.0 and logged.warnings(name)[0].startswith("TickWriter.__init__ was given a began_at of a str")
+
+    def test_no_start_at_all_is_not_known_and_quiet(self, logged):
+        w, name = writer(began_at=None)
+        assert w.began_at is None and w.stretch(None, [], 4000.0) == [] and logged.ok(name)
 
 
 class TestWhenThereIsNothingToDraw:

@@ -135,8 +135,9 @@ class TestTheStreamClockCarriesOn:
         assert eavesdropper.stream_time_at(10.0) == pytest.approx(3.0, abs=0.05)
 
     @pytest.mark.parametrize("bad", [-1, "10", None, True, [5], float("nan"), float("inf")])
-    def test_a_bad_start_is_zero_with_a_warning(self, bad, logged):
-        eavesdropper, _, whisper = make(7, [], start_seconds=bad)
+    def test_a_bad_start_is_the_stream_time_now_or_zero_with_a_warning(self, bad, logged):
+        """Below 0 is 0; not a number is the stream time now (here 0, a first room's)."""
+        eavesdropper, _, whisper = make(7, [], start_seconds=bad, stream_now=lambda: 0.0)
         hear(eavesdropper)
         assert whisper.calls[0][0] == 0.0 and len(logged.of(eavesdropper).warnings()) == 1 and "start_seconds" in logged.of(eavesdropper).warnings()[0]
 

@@ -52,9 +52,8 @@ from typing import Callable, Iterator, Optional
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import QualifyingSettings
 from pom.qualifying.bar import Bar
-from pom.timekeeper import Timekeeper
 from pom.value_checker import ValueChecker
-from pom.value_rules import any_number, is_number, not_negative
+from pom.value_rules import any_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -95,8 +94,7 @@ class BarKeeper:
                 None (a test or a tool) gives a Timekeeper of its own, which runs on real seconds from now.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, BarKeeperError, DEBUG, strict)
-        self.check = ValueChecker(self.logger, "BarKeeper")
-        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
+        self.check = ValueChecker(self.logger, "BarKeeper", stream_now)
         self._bar = bar
         self.qualifying = qualifying
         self._lock = threading.Lock()      # held for the whole of each public call that reads or changes the bar or the clock
@@ -134,7 +132,7 @@ class BarKeeper:
 
     def bar_at(self, now: float) -> Optional[float]:
         """The score a new score must be above to qualify at time `now`, or None if the bar has none yet."""
-        now = self._checked_time(now, "bar_at", "now")
+        now = self.check.stream_time(now, method="bar_at", argument="now")
         with self._held("bar_at") as got:
             if not got:
                 return None
@@ -142,26 +140,17 @@ class BarKeeper:
 
     def ticks_between(self, start: float, end: float) -> list:
         """The anchor's ticks from `start` to `end`, each as (time, anchor score, the bar as it stood then); empty if the bar has no anchor."""
-        start, end = self._checked_time(start, "ticks_between", "start"), self._checked_time(end, "ticks_between", "end")
+        start, end = self.check.stream_time(start, method="ticks_between", argument="start"), self.check.stream_time(end, method="ticks_between", argument="end")
         with self._held("ticks_between") as got:
             return self._bar.ticks_between(start, end) if got else []
 
     def window_size_at(self, now: float) -> int:
         """How many scores the bar is built from at time `now` (what that means depends on the bar; it is for display)."""
-        now = self._checked_time(now, "window_size_at", "now")
+        now = self.check.stream_time(now, method="window_size_at", argument="now")
         with self._held("window_size_at") as got:
             if not got:
                 return 0
             return self._bar.window_size_at(self._steady(now))
-
-    def _checked_time(self, value, method: str, argument: str) -> float:
-        """A stream time as handed in, checked: below 0 is 0; not a number is the stream time now (asked only then), with a warning."""
-        fallback_value = None if is_number(value) else self._stream_now()
-        return self.check(value, not_negative(), fallback_value=fallback_value, method=method, argument=argument)
-
-    def _checked_score(self, score, method: str) -> Optional[float]:
-        """A score as handed in, checked: None (unscored) is None, silently; below 0 is 0; not a number is None, with a warning."""
-        return None if score is None else self.check(score, not_negative(), fallback_value=None, method=method, argument="score")
 
     def _steady(self, now: float) -> float:
         """`now`, held at the latest time seen so a clock stepping back cannot reorder things."""
@@ -177,7 +166,7 @@ class BarKeeper:
         was above the bar and at least `cooldown_seconds` have passed since the last qualifier; HELD if it was above the bar but
         that qualifier was too recent; DID_NOT_QUALIFY otherwise.
         """
-        score, now = self._checked_score(score, "rule"), self._checked_time(now, "rule", "now")
+        score, now = self.check.score(score, method="rule"), self.check.stream_time(now, method="rule", argument="now")
         with self._held("rule") as got:
             if not got or score is None or self._bar.ignores(score):
                 return Ruling.NO_MARK
@@ -205,7 +194,7 @@ class BarKeeper:
         A score that is missing or not a number, or one the bar ignores, is NO_MARK. Otherwise it is QUALIFIED if above the bar, and
         DID_NOT_QUALIFY if not. A `bar_influence` that is not a number is the config's `typed_lines_bar_influence`, with a warning.
         """
-        score, now = self._checked_score(score, "rule_typed"), self._checked_time(now, "rule_typed", "now")
+        score, now = self.check.score(score, method="rule_typed"), self.check.stream_time(now, method="rule_typed", argument="now")
         bar_influence = self.check(bar_influence, any_number(), fallback_value=self.qualifying.typed_lines_bar_influence, method="rule_typed",
                                    argument="bar_influence")
         with self._held("rule_typed") as got:

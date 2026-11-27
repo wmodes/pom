@@ -35,10 +35,9 @@ from typing import Callable, Deque, List, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import MonitorSettings
-from pom.timekeeper import Timekeeper
 from pom.writing.portent_writer import Portent
 from pom.value_checker import ValueChecker
-from pom.value_rules import is_number, not_negative, whole_at_least
+from pom.value_rules import is_number
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -99,8 +98,7 @@ class TurnHistory:
                 None (a test or a tool) gives a Timekeeper of its own, which runs on real seconds from now.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnHistoryError, DEBUG, strict)
-        self.check = ValueChecker(self.logger, "TurnHistory")
-        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
+        self.check = ValueChecker(self.logger, "TurnHistory", stream_now)
         self.monitor = monitor
         self._records: Deque[TurnRecord] = deque(maxlen=monitor.history_max_turns)       # oldest first
         self._clock = clock
@@ -120,14 +118,13 @@ class TurnHistory:
         if not (isinstance(hinge, str) and hinge.strip()):
             self.logger.warning("a turn was given without a hinge, so it was not recorded")
             return None
-        score = self.check(score, not_negative(), fallback_value=None, method="add", argument="score")
+        score = self.check.score(score, method="add", may_be_unscored=False)
         if score is None:
             self.logger.info("so that turn was not recorded")              # the warning, just above, said why
             return None
-        heard_at = self.check(heard_at, not_negative(), fallback_value=None if is_number(heard_at) else self._stream_now(), method="add",
-                              argument="heard_at")
-        bar = None if bar is None else self.check(bar, not_negative(), fallback_value=None, method="add", argument="bar")
-        window_size = self.check(window_size, whole_at_least(0), fallback_value=0, method="add", argument="window_size")
+        heard_at = self.check.stream_time(heard_at, method="add", argument="heard_at")
+        bar = self.check.bar(bar, method="add")
+        window_size = self.check.count(window_size, method="add", argument="window_size")
         keep_from = self._keep_from()                       # asked for outside the lock: the function belongs to another object
         with self._lock:
             record = TurnRecord(self._next_id, self._clock(), heard_at, hinge.strip(), score, bar, window_size, portent)

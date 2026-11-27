@@ -77,3 +77,42 @@ class TestAValueIsDescribedWithoutItsWords:
 
     def test_a_rule_with_no_ends_has_no_nearest(self, logged):
         assert checker()(5, text(), fallback_value="", method="set", argument="label") == ""
+
+
+class TestTheKindsOfValueHaveOneRuleAndOneFallbackValueEach:
+    """The table agreed with Wes (Design Audit 04 item 3), written once, in the ValueChecker."""
+
+    @staticmethod
+    def kinds(stream_now=lambda: 42.0):
+        return ValueChecker(Bookkeeper().logger_for("pom.monitor.turn_history"), "TurnHistory", stream_now)
+
+    @pytest.mark.parametrize("value, expected", [(3, 3.0), (-1, 0.0), (-math.inf, 0.0), (math.nan, None), (math.inf, None), ("7", None)])
+    def test_a_score(self, value, expected):
+        assert self.kinds().score(value, method="add") == expected
+
+    def test_an_unscored_score_is_quiet_where_it_is_in_spec_and_a_warning_where_it_is_not(self, logged):
+        assert self.kinds().score(None, method="add") is None and logged.ok()
+        assert self.kinds().score(None, method="add", may_be_unscored=False) is None and len(logged.warnings()) == 1
+
+    @pytest.mark.parametrize("value, expected", [(12.5, 12.5), (-3, 0.0), (math.nan, 42.0), (math.inf, 42.0), (None, 42.0), ("1", 42.0)])
+    def test_a_stream_time(self, value, expected):
+        assert self.kinds().stream_time(value, method="add", argument="heard_at") == expected
+
+    def test_the_stream_clock_is_asked_only_for_a_time_that_is_not_a_number(self):
+        asked = []
+        kinds = self.kinds(stream_now=lambda: asked.append(1) or 42.0)
+        kinds.stream_time(5.0, method="add", argument="at")
+        kinds.stream_time(-5.0, method="add", argument="at")
+        assert asked == []
+
+    @pytest.mark.parametrize("value, expected", [(6.5, 6.5), (None, None), (-1, 0.0), (math.nan, None), ("high", None)])
+    def test_a_bar(self, value, expected):
+        assert self.kinds().bar(value, method="add") == expected
+
+    @pytest.mark.parametrize("value, expected", [(4, 4), (0, 0), (-2, 0), (2.5, 0), (None, 0), (True, 0)])
+    def test_a_count(self, value, expected):
+        assert self.kinds().count(value, method="add", argument="window_size") == expected
+
+    def test_without_a_stream_clock_the_checker_keeps_its_own(self):
+        kinds = ValueChecker(Bookkeeper().logger_for("pom.monitor.turn_history"), "TurnHistory")
+        assert 0.0 <= kinds.stream_time(math.nan, method="add", argument="at") < 5.0

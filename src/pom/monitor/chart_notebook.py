@@ -46,9 +46,7 @@ from pom.defaults import ChartSettings, MonitorSettings
 from pom.monitor.notebook_entry import ATTEMPT, TICK, NotebookEntry
 from pom.monitor.silence_compressor import SilenceCompressor, SilenceShape
 from pom.monitor.tick_writer import TickWriter
-from pom.timekeeper import Timekeeper
 from pom.value_checker import ValueChecker
-from pom.value_rules import is_number, not_negative
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -86,8 +84,7 @@ class ChartNotebook:
                 test or a tool) gives a Timekeeper of its own, which runs on real seconds from now.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, ChartNotebookError, DEBUG, strict)
-        self.check = ValueChecker(self.logger, "ChartNotebook")
-        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
+        self.check = ValueChecker(self.logger, "ChartNotebook", stream_now)
         self.chart, self.monitor = chart, monitor
         if silence_shape is None:
             silence_shape = DEFAULT_SILENCE_SHAPE
@@ -102,12 +99,12 @@ class ChartNotebook:
 
     def add(self, score: float, bar: Optional[float], at: float, qualified: bool = False) -> bool:
         """Adds an attempt, after the ticks since the previous one. True if it was kept; False (the log says why) if the score was not a number."""
-        score = self.check(score, not_negative(), fallback_value=None, method="add", argument="score")
+        score = self.check.score(score, method="add", may_be_unscored=False)
         if score is None:
             self.logger.info("so that attempt was not kept")                  # the warning, just above, said why
             return False
-        at = self._checked_time(at, "add", "at")
-        bar = None if bar is None else self.check(bar, not_negative(), fallback_value=None, method="add", argument="bar")
+        at = self.check.stream_time(at, method="add", argument="at")
+        bar = self.check.bar(bar, method="add")
         attempt = NotebookEntry(at, score, bar, bool(qualified), ATTEMPT)
         ticks = self._stretch_ticks(attempt.at)                   # asked for outside the lock: the bar has its own
         head = self._tick_writer.first_minutes(attempt.at)
@@ -138,12 +135,7 @@ class ChartNotebook:
         """Every tick the chart draws, oldest first, as of `now`: the ones written down, then the first minutes of a silence that has begun since, then
         the last minutes before `now`, worked out fresh each time (they are not written: an attempt heard a moment ago may not be in the bar yet, and the
         next attempt writes them properly). While the quiet since the newest attempt is not yet a silence, it is all of it."""
-        return self.ticks() + self._stretch_ticks(self._checked_time(now, "ticks_up_to", "now"))
-
-    def _checked_time(self, value, method: str, argument: str) -> float:
-        """A stream time as handed in, checked: below 0 is 0; not a number is the stream time now (asked only then), with a warning."""
-        fallback_value = None if is_number(value) else self._stream_now()
-        return self.check(value, not_negative(), fallback_value=fallback_value, method=method, argument=argument)
+        return self.ticks() + self._stretch_ticks(self.check.stream_time(now, method="ticks_up_to", argument="now"))
 
     def head_ticks(self) -> List[NotebookEntry]:
         """The ticks for the first minutes after the newest attempt, as a copy: what the chart draws at the start of a silence that has begun since."""

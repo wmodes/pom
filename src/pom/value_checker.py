@@ -13,6 +13,20 @@ A good value comes back as the rule stores it. A bad one comes back as:
   3. the receiver's fallback value, the one agreed for that kind of value, chosen by how the value is used downstream.
 Every bad value is a warning, so the log shows which caller to correct; in strict mode the receiver's logger raises it instead.
 
+THE KINDS OF VALUE THE PARTS HAND EACH OTHER have their rule and fallback value written once, here, as methods, so every receiver treats
+each kind the same way (agreed with Wes, Design Audit 04 item 3, from the Design Document's principles: nothing blocks, every limit errs
+long, printing has priority):
+
+    | Method          | Rule                                            | Past an end | Fallback value (NaN, wrong type, no nearest)   |
+    |-----------------|-------------------------------------------------|-------------|------------------------------------------------|
+    | `score`         | at least 0, or None (unscored, quietly)          | below 0: 0  | None (unscored: a score is never guessed)       |
+    | `stream_time`   | at least 0 (no upper end: the stream clock can   | below 0: 0  | the stream time now, so the score still counts  |
+    |                 | step back a few milliseconds)                    |             | and a turn is fresh                             |
+    | `bar`           | at least 0, or None (no bar yet, quietly)        | below 0: 0  | None (no bar yet)                               |
+    | `count`         | a whole number of at least 0                     | below 0: 0  | 0                                              |
+
+    now = self.check.stream_time(now, method="rule", argument="now")
+
 Design decisions, and why:
   * THE WARNING IS THE RECEIVER'S. It goes through the receiver's own logger, so the log line carries the receiver's module name, and it
     names the receiver's class, method and argument: "TurnHistory.add was given a heard_at that is not a number ...". The checker is never
@@ -20,12 +34,15 @@ Design decisions, and why:
   * THE RULES ARE THE SETTINGS' RULES (pom.value_rules), so "a number above 0" means the same thing in the config and between parts.
   * A WARNING NEVER QUOTES WHAT WAS SAID. A number is shown (a score or a time is the Printer's own); anything else is named by its type
     only, since a string handed in by mistake could be words heard in the room.
-  * It keeps no state beyond its logger and its owner's name, so one checker serves every call of its class from any thread.
+  * It keeps no state beyond its logger, its owner's name and the stream clock it was handed, so one checker serves every call of its
+    class from any thread. The stream clock is asked only when a stream time is not a number, and never while the receiver holds a lock
+    (the receiver checks before it takes its lock).
 """
 import math
-from typing import Any
+from typing import Any, Callable, Optional
 
-from pom.value_rules import ValueCorrected, ValueRejected, ValueRule
+from pom.timekeeper import Timekeeper
+from pom.value_rules import ValueCorrected, ValueRejected, ValueRule, is_number, not_negative, whole_at_least
 
 
 def described(value: Any) -> str:
@@ -58,13 +75,40 @@ class ValueChecker:
         owner: The receiving class's name, as the warning names it.
     """
 
-    def __init__(self, logger, owner: str):
+    def __init__(self, logger, owner: str, stream_now: Optional[Callable[[], float]] = None):
         """Args:
             logger: The receiving class's logger (`self.logger`); in strict mode it raises a warning instead of logging it.
             owner: The receiving class's name, such as "TurnHistory".
+            stream_now: The stream time now (the Printer's Timekeeper's `now`), the fallback value for a stream time that is not a
+                number. None (a test, a tool, or a class that takes no stream times) gives a Timekeeper of its own, which runs on real
+                seconds from when the checker was made.
         """
         self.logger = logger
         self.owner = owner
+        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
+
+    def score(self, value: Any, *, method: str, argument: str = "score", may_be_unscored: bool = True) -> Optional[float]:
+        """A score: below 0 is 0; one that is not a number is None (unscored), with a warning.
+
+        `may_be_unscored` says whether None (unscored) is in this receiver's spec: then it stays None without a word. Where a score is
+        required (a turn, a dot on the chart), None is a bad value like any other, with a warning.
+        """
+        if value is None and may_be_unscored:
+            return None
+        return self(value, not_negative(), fallback_value=None, method=method, argument=argument)
+
+    def stream_time(self, value: Any, *, method: str, argument: str) -> float:
+        """A stream time: below 0 is 0; one that is not a number is the stream time now (asked only then), with a warning."""
+        fallback_value = None if is_number(value) else self._stream_now()
+        return self(value, not_negative(), fallback_value=fallback_value, method=method, argument=argument)
+
+    def bar(self, value: Any, *, method: str, argument: str = "bar") -> Optional[float]:
+        """A bar: None (no bar yet) stays None without a word; below 0 is 0; anything else that is not a number is None, with a warning."""
+        return None if value is None else self(value, not_negative(), fallback_value=None, method=method, argument=argument)
+
+    def count(self, value: Any, *, method: str, argument: str) -> int:
+        """A count: a whole number of at least 0; below 0 is 0, and anything else is 0, with a warning."""
+        return self(value, whole_at_least(0), fallback_value=0, method=method, argument=argument)
 
     def __call__(self, value: Any, rule: ValueRule, *, fallback_value: Any, method: str, argument: str) -> Any:
         """The value to use for one argument: the value itself if it keeps the rule, else the kept part, the nearest good value, or the fallback value.

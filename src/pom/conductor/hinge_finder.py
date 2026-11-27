@@ -34,9 +34,7 @@ from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import ListeningSettings
 from pom.qualifying.attempt import Attempt
 from pom.scoring.clip_scorer import ScoredBy
-from pom.timekeeper import Timekeeper
 from pom.value_checker import ValueChecker
-from pom.value_rules import is_number, not_negative
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -63,8 +61,7 @@ class HingeFinder:
                 None (a test or a tool) gives a Timekeeper of its own, which runs on real seconds from now.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, debug=DEBUG)
-        self.check = ValueChecker(self.logger, "HingeFinder")
-        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
+        self.check = ValueChecker(self.logger, "HingeFinder", stream_now)
         self._eavesdropper = eavesdropper
         self._take_cutter = take_cutter
         self._scorer = scorer
@@ -91,12 +88,12 @@ class HingeFinder:
 
     def _sentence(self, text: str, kind: str, now: float, clip=None, score_it: bool = True) -> Attempt:
         """Scores the text (unless it is room tone that is not to be considered) and asks the BarKeeper about it."""
-        now = self.check(now, not_negative(), fallback_value=None if is_number(now) else self._stream_now(), method="find", argument="heard_at")
+        now = self.check.stream_time(now, method="find", argument="heard_at")
         bar, held = self._bar_keeper.bar_at(now), self._bar_keeper.window_size_at(now)
         if not score_it:
             return Attempt(text, kind, None, ScoredBy.UNSCORED, None, now, bar, held, self._bar_keeper.counted)
         result = self._scorer.score(clip) if clip is not None else self._scorer.score_text(text, now)
-        score = None if result.score is None else self.check(result.score, not_negative(), fallback_value=None, method="find", argument="score")
+        score = self.check.score(result.score, method="find")
         ruling = self._bar_keeper.rule(score, now)
         self.logger.debug("scored a %s of %d words: %s", kind, len(text.split()), ruling.value)
         return Attempt(text, kind, score, result.scored_by, ruling, now, bar, held, self._bar_keeper.counted)

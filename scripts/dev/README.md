@@ -13,9 +13,11 @@ into one built part of the Printer and see what it does, using the real modules 
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether it would qualify (it needs
   the scorer model's llama-server); `score_typed_lines.py` does the same for the typed-line path: each line's score, its score multiplier (`typed_lines_score_multiplier`) and whether
   the Printer would answer or stay silent.
-- `pipeline/`: `listening_to_portent.py` (`--monitor` also serves the monitoring site, fed by every turn) runs the whole Printer except the typewriter: the microphone (`--mac-mic` for this Mac's, or
-  the Pi's by default) or a recording goes through the Eavesdropper, the scorer and the BarKeeper, and when a sentence qualifies the
-  hinge is sent to the oracle and the portent is printed where the typewriter would. It needs whisper and both llama-servers running.
+- `pipeline/`: `listening_to_portent.py` IS the Printer, built by the PrinterBuilder and run by the real Conductor, except that the portents
+  are typed on the screen and every attempt is printed as it is heard: the microphone (`--mac-mic` for this Mac's, or the Pi's by default)
+  or a recording (`--wav FILE --speed 6`) goes through the Eavesdropper, the scorer and the BarKeeper, and a hinge that gets the floor is
+  written and typed while the Printer is deaf, as on the Pi. `--max-portents N` stops after N; `--monitor` serves the Printer's own
+  monitoring site. It needs whisper and both llama-servers running.
   `run_printer_with_servers.py` is the test bench for the real thing: it starts whisper and both llama-servers (using any already running), runs `python -m pom` with whatever options you give it
   (`--mac-mic --terminal console`, or `--wav FILE --speed 6 --terminal none`), and stops the servers it started when the Printer ends.
 - `monitor/`: `serve_fake_turns.py` serves the monitoring site with invented turns (`--live 15` adds one every 15 seconds,

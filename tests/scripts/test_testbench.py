@@ -82,6 +82,51 @@ def test_the_whole_pipeline_testbench_wants_one_sound_source_only():
     assert result.returncode != 0 and "not both" in (result.stdout + result.stderr)
 
 
+def load_script(relative):
+    """A testbench script as a module, so a test can call what it builds with (its `main` runs only from the command line)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(Path(relative).stem, ROOT / relative)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class TestTheWholePipelineTestbenchIsThePrinter:
+    """It builds the Printer through the PrinterBuilder, so it cannot drift from it: these build it with no server, as the Printer's own tests do."""
+
+    @staticmethod
+    def built(tmp_path, *argv, config_text=""):
+        from pom.bookkeeper import Bookkeeper
+        from pom.config import Config
+        script = load_script("scripts/dev/pipeline/listening_to_portent.py")
+        path = tmp_path / "pom.toml"
+        path.write_text(config_text, encoding="utf-8")
+        args = script.make_parser().parse_args(["--config", str(path), *argv])
+        seen = []
+        builder = script.make_builder(args, Config.load(path, environ={}), Bookkeeper(), seen.append, lambda attempt, result: None)
+        return builder, seen
+
+    def test_it_types_on_the_screen_and_runs_the_real_conductor(self, tmp_path):
+        from pom.conductor import Conductor
+        from pom.printing import ConsoleTerminal
+        builder, _ = self.built(tmp_path, "--wav", "a.wav", "--speed", "6")
+        printer = builder.printer
+        assert isinstance(printer.terminal, ConsoleTerminal) and isinstance(printer.conductor, Conductor)
+        assert builder.options.wav == "a.wav" and builder.options.speed == 6.0 and printer.parts["keyboard"] is None
+
+    def test_the_site_runs_only_with_monitor_whatever_the_config_says(self, tmp_path):
+        on = '[monitor]\nenabled = true\npassword = "pw"\n'
+        assert self.built(tmp_path, "--wav", "a.wav", config_text=on)[0].printer.site is None
+        assert self.built(tmp_path, "--wav", "a.wav", "--monitor", config_text=on)[0].printer.site is not None
+
+    def test_each_attempt_reaches_its_watcher_after_the_printer_counts_it(self, tmp_path):
+        from types import SimpleNamespace
+        builder, seen = self.built(tmp_path, "--wav", "a.wav")
+        attempt = SimpleNamespace(score=6.0, bar=5.0, heard_at=3.0, is_hinge=False)
+        builder.note(attempt)
+        assert seen == [attempt] and builder.status_now().attempts_heard == 1
+
+
 def test_the_fake_turn_site_serves_its_feed_and_exits():
     result = run("scripts/dev/monitor/serve_fake_turns.py", "--check")
     assert result.returncode == 0 and "the site answered: 5 turns" in result.stdout, result.stderr

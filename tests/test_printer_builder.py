@@ -64,6 +64,16 @@ class TestEachPartIsBuiltOnceAndOnlyWhenAsked:
         assert len(builder.selector.shelf_shares()) > 1 and builder.catalog.layout()
         assert builder.selector.oracle is builder.config.oracle
 
+    def test_the_scorer_is_built_on_the_builders_own_client_and_tagger(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
+        assert builder.scorer._scorer_model_client is builder.scorer_client and builder.scorer._word_tagger is builder.word_tagger
+
+    def test_typed_lines_are_scored_on_the_rooms_scorer_bar_and_clock(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "serial"\n'))
+        typed = builder.typed_line_scorer
+        assert typed._scorer is builder.scorer and typed._bar_keeper is builder.bar_keeper and typed._clock == builder.timekeeper.now
+        assert builder.keyboard._typed_scorer is typed
+
     def test_the_whole_printer_is_built_once(self, tmp_path):
         builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
         assert builder.printer is builder.printer

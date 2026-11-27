@@ -197,13 +197,21 @@ class PrinterBuilder:
         return WhisperModelClient(self.config.listening, bookkeeper=self.bookkeeper)
 
     @cached_property
-    def scorer(self) -> ClipScorer:
-        """The ClipScorer, on the scorer model's client and the word tagger (with the project's own word data when it is there)."""
+    def scorer_client(self) -> ScorerModelClient:
+        """The scorer model's client (the one the ClipScorer asks)."""
         scoring = self.config.scorer
+        return ScorerModelClient(scoring, explain_prompt=scoring.prompt_debug, bookkeeper=self.bookkeeper)
+
+    @cached_property
+    def word_tagger(self) -> WordTagger:
+        """The word tagger, with the project's own word data when it is there."""
         nltk_dir = self.root / "data" / "nltk"
-        client = ScorerModelClient(scoring, explain_prompt=scoring.prompt_debug, bookkeeper=self.bookkeeper)
-        tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=self.bookkeeper)
-        return ClipScorer(client, tagger, scoring, bookkeeper=self.bookkeeper)
+        return WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None, bookkeeper=self.bookkeeper)
+
+    @cached_property
+    def scorer(self) -> ClipScorer:
+        """The ClipScorer, on the scorer model's client and the word tagger."""
+        return ClipScorer(self.scorer_client, self.word_tagger, self.config.scorer, bookkeeper=self.bookkeeper)
 
     @cached_property
     def warmer(self) -> ScorerWarmer:
@@ -340,12 +348,16 @@ class PrinterBuilder:
                            ears_shut_seconds=self.config.conductor.check_seconds + 1.0, bookkeeper=self.bookkeeper)
 
     @cached_property
+    def typed_line_scorer(self) -> TypedLineScorer:
+        """Scores a line typed on the keyboard, on the same scorer, BarKeeper and stream clock as the room."""
+        return TypedLineScorer(self.scorer, self.bar_keeper, self.timekeeper.now, self.config.qualifying, bookkeeper=self.bookkeeper)
+
+    @cached_property
     def keyboard(self) -> Optional[KeyboardWatcher]:
         """The typewriter's keyboard, watched: only a real typewriter has one (and `--no-keyboard` leaves it unwatched)."""
         if self.terminal is None or self.mode != "serial" or not self.options.keyboard:
             return None
-        typed = TypedLineScorer(self.scorer, self.bar_keeper, self.timekeeper.now, self.config.qualifying, bookkeeper=self.bookkeeper)
-        return KeyboardWatcher(self.terminal, typed, bookkeeper=self.bookkeeper)
+        return KeyboardWatcher(self.terminal, self.typed_line_scorer, bookkeeper=self.bookkeeper)
 
     # --- the monitoring site -----------------------------------------------------------------------------------------------------------
 

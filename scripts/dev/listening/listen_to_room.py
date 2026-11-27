@@ -23,12 +23,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
+from pom.bookkeeper import Bookkeeper  # noqa: E402
+from pom.conductor import NoSoundSource  # noqa: E402
 from pom.config import Config  # noqa: E402
-from pom.listening import CaptureCardFinder, Eavesdropper, MicDeck, TakeCutter, WavDeck, WhisperModelClient  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
-from pom.conductor import HingeFinder
-from pom.qualifying import bar_keeper_from_settings, Ruling
-from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
+from pom.printer_builder import Options, PrinterBuilder  # noqa: E402
+from pom.qualifying import Ruling  # noqa: E402
 
 
 def stamp(seconds: float) -> str:
@@ -46,6 +45,11 @@ def standing(sentence) -> str:
             ("; held" if sentence.ruling is Ruling.HELD else "") + "]")
 
 
+def make_builder(args, config: Config, bookkeeper: Bookkeeper = None) -> PrinterBuilder:
+    """The Printer's own builder for this run: the recording at its speed, or the microphone."""
+    return PrinterBuilder(config, Options(config_path=args.config, wav=args.wav, speed=args.speed), root=ROOT, bookkeeper=bookkeeper)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--config", default=str(ROOT / "config" / "pom.toml"), help="the config file to read")
@@ -53,27 +57,22 @@ def main():
     parser.add_argument("--speed", type=float, default=1.0, help="recording speed: 1 is real time, 0 is as fast as possible")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
-    listening, qualifying = config.listening, config.qualifying
-    client = WhisperModelClient(listening)
-    if not client.ping():
+    listening, qualifying, settings = config.listening, config.qualifying, config.scorer
+    builder = make_builder(args, config, bookkeeper)
+    if not builder.whisper.ping():
         sys.exit(f"the whisper-server is not answering at {listening.whisper_url}; see the top of this file for how to start it")
-    device = CaptureCardFinder(listening).resolve(listening.device)     # "auto" becomes the microphone's card
-    deck = (WavDeck(args.wav, speed=args.speed) if args.wav
-              else MicDeck(device, listening=listening))
-    eavesdropper = Eavesdropper(deck, client, listening)
-
-    nltk_dir = ROOT / "data" / "nltk"
-    settings = config.scorer
-    scorer_client = ScorerModelClient(settings, explain_prompt=settings.prompt_debug)
-    scorer = ClipScorer(scorer_client, WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None), settings)
-    bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the stream begins at 0
-    finder = HingeFinder(eavesdropper, TakeCutter(listening), scorer, bar_keeper, listening)
+    try:
+        finder, _ = builder.make_room()                  # the Printer's own room: the deck, the Eavesdropper and the HingeFinder ("auto" finds the card)
+    except NoSoundSource:
+        sys.exit("no sound card was found (the log above says what was looked for)")
+    scorer, bar_keeper = builder.scorer, builder.bar_keeper
 
     print("hear: what you say is shown here and kept nowhere. Do not redirect this output to a file.")
     print(f"  whisper at {listening.whisper_url}; scorer at {settings.url}")
-    print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone ' + device}; "
+    print(f"  listening to {'the recording ' + args.wav if args.wav else 'the microphone (' + listening.device + ')'}; "
           f"a whisper run every {listening.cut_every_seconds:g} s")
     print(f"  qualifying ({qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"  room tone {'is' if listening.score_room_tone else 'is not'} scored")

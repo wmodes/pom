@@ -22,23 +22,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
+from pom.bookkeeper import Bookkeeper  # noqa: E402
 from pom.config import Config  # noqa: E402
-from pom.listening import TakeCutter  # noqa: E402
 from pom.listening.take_cutter import ClipLevel  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
-from pom.qualifying import bar_keeper_from_settings, Ruling   # noqa: E402
-from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
+from pom.printer_builder import PrinterBuilder  # noqa: E402
+from pom.qualifying import Ruling   # noqa: E402
 
 
-def build(config: Config, min_scores: int):
-    """The real ClipScorer and BarKeeper, from the config."""
-    nltk_dir = ROOT / "data" / "nltk"
-    tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None)
-    settings = config.scorer
-    client = ScorerModelClient(settings, explain_prompt=settings.prompt_debug)
-    scorer = ClipScorer(client, tagger, settings)
-    qualifying = dataclasses.replace(config.qualifying, min_scores=min_scores) if min_scores else config.qualifying
-    return scorer, bar_keeper_from_settings(qualifying, started_at=0.0), client
+def build(config: Config, min_scores: int, bookkeeper: Bookkeeper = None):
+    """The Printer's own ClipScorer, BarKeeper, scorer client and take cutter (the PrinterBuilder's), from the config and `--min-scores`."""
+    if min_scores:
+        config.qualifying = dataclasses.replace(config.qualifying, min_scores=min_scores)
+    builder = PrinterBuilder(config, root=ROOT, bookkeeper=bookkeeper)
+    return builder.scorer, builder.bar_keeper, builder.scorer_client, builder.take_cutter
 
 
 def standing(ruling: Ruling, bar, held: int) -> str:
@@ -59,10 +55,10 @@ def main():
                         help="scores needed before a score may qualify (default: the config's, 20)")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
-    scorer, bar_keeper, client = build(config, args.min_scores)
-    take_cutter = TakeCutter(config.listening)
+    scorer, bar_keeper, client, take_cutter = build(config, args.min_scores, bookkeeper)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     if not scorer.warm_up():
         print("the scorer model is NOT answering: sentences will come back unscored (start its llama-server)")

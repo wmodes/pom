@@ -23,33 +23,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
+from pom.bookkeeper import Bookkeeper  # noqa: E402
 from pom.config import Config  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
-from pom.keyboard import TypedLineScorer   # noqa: E402
-from pom.qualifying import bar_keeper_from_settings
-from pom.scoring import ClipScorer, ScorerModelClient, WordTagger
-from pom.timekeeper import Timekeeper
+from pom.printer_builder import PrinterBuilder  # noqa: E402
 
 
-def build(config: Config, args):
-    """The real ClipScorer, BarKeeper and TypedLineScorer, from the config and the command line."""
-    nltk_dir = ROOT / "data" / "nltk"
-    tagger = WordTagger(nltk_data=str(nltk_dir) if nltk_dir.exists() else None)
-    settings = config.scorer
-    client = ScorerModelClient(settings, explain_prompt=settings.prompt_debug)
-    scorer = ClipScorer(client, tagger, settings)
+def build(config: Config, args, bookkeeper: Bookkeeper = None):
+    """The Printer's own ClipScorer, BarKeeper and TypedLineScorer (the PrinterBuilder's), from the config and the command line."""
     qualifying = config.qualifying
     if args.bar is not None:
         qualifying = dataclasses.replace(qualifying, starting_bar=args.bar)
-    bar_keeper = bar_keeper_from_settings(qualifying, started_at=0.0)   # the clock below begins at 0
     if args.multiplier is not None:
         qualifying = dataclasses.replace(qualifying, typed_lines_score_multiplier=args.multiplier)
     if args.bar_influence is not None:
         qualifying = dataclasses.replace(qualifying, typed_lines_bar_influence=args.bar_influence)
-    multiplier, bar_influence = qualifying.typed_lines_score_multiplier, qualifying.typed_lines_bar_influence
-    timekeeper = Timekeeper(started_at=0.0)                            # the Printer's stream clock, with no room: real seconds from now
-    typed = TypedLineScorer(scorer, bar_keeper, timekeeper.now, qualifying)
-    return scorer, bar_keeper, typed, client, multiplier, bar_influence
+    config.qualifying = qualifying
+    builder = PrinterBuilder(config, root=ROOT, bookkeeper=bookkeeper)     # its stream clock, with no room, runs on real seconds from now
+    return (builder.scorer, builder.bar_keeper, builder.typed_line_scorer, builder.scorer_client,
+            qualifying.typed_lines_score_multiplier, qualifying.typed_lines_bar_influence)
 
 
 def main():
@@ -62,9 +53,10 @@ def main():
                         help="how far up from the bar to the score a typed line goes into the bar, 1 being the score itself (default: the config's typed_lines_bar_influence)")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
     config = Config.load(args.config)
-    scorer, bar_keeper, typed, client, multiplier, bar_influence = build(config, args)
+    scorer, bar_keeper, typed, client, multiplier, bar_influence = build(config, args, bookkeeper)
     print(f"scorer at {config.scorer.url}; qualifying ({config.qualifying.algorithm}): a score above {bar_keeper.describe()}")
     print(f"typed lines: score x {multiplier:g}, no cooldown, go into the bar {bar_influence:g} of the way up from the bar")
     if not scorer.warm_up():

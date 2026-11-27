@@ -25,7 +25,6 @@ hinge again to see the effect: the config is read again before every hinge.
 import argparse
 import hashlib
 import os
-import random
 import shutil
 import subprocess
 import sys
@@ -39,14 +38,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
+from pom.bookkeeper import Bookkeeper                                # noqa: E402
 from pom.config import Config                                      # noqa: E402
-from pom.library import Catalog, Circulation, Bibliomancer   # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging                        # noqa: E402
-from pom.writing import PromptBuilder                               # noqa: E402
-from pom.writing import OracleModelClient, PortentWriter              # noqa: E402
+from pom.printer_builder import PrinterBuilder                      # noqa: E402
 
 CONFIG_PATH = ROOT / "config" / "pom.toml"
-PASSAGES = ROOT / "library" / "passages"
 CONTEXT_SIZE = 4096
 
 
@@ -106,11 +102,11 @@ def main() -> None:
     if bool(args.model) == bool(args.server):
         sys.exit("give --model to start a llama-server for that model, or --server to use one that is running")
 
-    configure_logging("WARNING")
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
     config = Config.load(CONFIG_PATH)
-    rng = random.Random()
-    selector = Bibliomancer(Catalog.load(PASSAGES), Circulation.from_file(PASSAGES / "circulation.json"), rng,
-                                oracle=config.oracle)
+    library = PrinterBuilder(config, root=ROOT, bookkeeper=bookkeeper)        # the Printer's own Bibliomancer and generator, built once
+    selector = library.selector
     if not selector.ready:
         sys.exit("nothing to draw exemplars from; see the messages above")
 
@@ -123,9 +119,9 @@ def main() -> None:
                 break
             if not hinge:
                 break
-            oracle = Config.load(CONFIG_PATH).oracle                       # read again, so prompt edits show at once
-            writer = PortentWriter(PromptBuilder(oracle, selector),
-                                   OracleModelClient(oracle), rng)
+            fresh = PrinterBuilder(Config.load(CONFIG_PATH), root=ROOT, bookkeeper=bookkeeper)   # the config read again, so prompt edits show at once
+            fresh.selector, fresh.rng = selector, library.rng                                    # the same library and generator
+            writer = fresh.writer
             portent = writer.write(hinge, seed=args.seed if args.seed is not None else seed_for(hinge))
             if portent is not None:
                 print("\n".join(exemplar_columns(list(portent.exemplars), shutil.get_terminal_size().columns)) or "exemplars: none")

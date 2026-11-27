@@ -127,6 +127,47 @@ class TestTheWholePipelineTestbenchIsThePrinter:
         assert seen == [attempt] and builder.status_now().attempts_heard == 1
 
 
+class TestTheScoringTestbenchesBuildThroughThePrinterBuilder:
+    """What they build with their flags, with no server (the scorer is asked only when a line is scored)."""
+
+    @staticmethod
+    def config(tmp_path):
+        from pom.config import Config
+        path = tmp_path / "pom.toml"
+        path.write_text("", encoding="utf-8")
+        return Config.load(path, environ={})
+
+    def test_typed_sentences_take_min_scores_from_the_command_line(self, tmp_path):
+        script = load_script("scripts/dev/scoring/score_typed_sentences.py")
+        scorer, bar_keeper, client, take_cutter = script.build(self.config(tmp_path), 7)
+        assert bar_keeper.qualifying.min_scores == 7 and scorer._scorer_model_client is client
+
+    def test_typed_lines_take_the_bar_multiplier_and_influence_from_the_command_line(self, tmp_path):
+        from types import SimpleNamespace
+        script = load_script("scripts/dev/scoring/score_typed_lines.py")
+        args = SimpleNamespace(bar=3.5, multiplier=2.5, bar_influence=0.4)
+        scorer, bar_keeper, typed, client, multiplier, bar_influence = script.build(self.config(tmp_path), args)
+        assert bar_keeper.qualifying.starting_bar == 3.5 and typed.qualifying.typed_lines_score_multiplier == 2.5
+        assert (multiplier, bar_influence) == (2.5, 0.4) and typed._scorer is scorer
+
+
+def test_the_hear_testbench_builds_the_printers_own_room_on_the_recording(tmp_path):
+    from types import SimpleNamespace
+    from pom.config import Config
+    from pom.listening import WavDeck
+    script = load_script("scripts/dev/listening/listen_to_room.py")
+    path = tmp_path / "pom.toml"
+    path.write_text("", encoding="utf-8")
+    builder = script.make_builder(SimpleNamespace(config=str(path), wav="a.wav", speed=6.0), Config.load(path, environ={}))
+    deck = builder.make_deck()
+    assert isinstance(deck, WavDeck) and builder.options.speed == 6.0
+
+
+def test_the_sampling_testbench_draws_the_same_pulls_for_the_same_seed():
+    first, second = (run("scripts/dev/library/sample.py", "--seed", "11", "--pulls", "2") for _ in range(2))
+    assert first.returncode == 0 and "pull 1" in first.stdout and first.stdout == second.stdout, first.stderr
+
+
 def test_the_fake_turn_site_serves_its_feed_and_exits():
     result = run("scripts/dev/monitor/serve_fake_turns.py", "--check")
     assert result.returncode == 0 and "the site answered: 5 turns" in result.stdout, result.stderr

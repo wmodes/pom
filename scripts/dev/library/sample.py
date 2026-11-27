@@ -19,14 +19,16 @@ import argparse
 import os
 import random
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..", "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "src"))    # scripts may import pom
 
+from pom.bookkeeper import Bookkeeper  # noqa: E402
 from pom.config import Config  # noqa: E402
-from pom.library import Catalog, Circulation, Bibliomancer  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
+from pom.library import Circulation  # noqa: E402
+from pom.printer_builder import PrinterBuilder  # noqa: E402
 
 
 def show_pulls(selector, pulls, count):
@@ -66,10 +68,12 @@ def main():
     args = parser.parse_args()
 
     config = Config.load(os.path.join(ROOT, "config", "pom.toml"))
-    configure_logging(config.log_level if args.verbose else "WARNING")
-    store = Catalog.load(os.path.join(ROOT, "library", "passages"))
-    selector = Bibliomancer(store, Circulation.from_file(args.circulation), random.Random(args.seed),
-                      oracle=config.oracle)
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up(config.log_level if args.verbose else "WARNING")
+    builder = PrinterBuilder(config, root=Path(ROOT).resolve(), bookkeeper=bookkeeper)     # the Printer's own Bibliomancer, built the same way
+    builder.rng = random.Random(args.seed)                                                 # handed in before the Bibliomancer is built
+    builder.circulation = Circulation.from_file(args.circulation, bookkeeper=bookkeeper)
+    selector = builder.selector
     if not selector.ready:
         sys.exit("nothing to draw from; see the messages above")
     if args.stats is not None:

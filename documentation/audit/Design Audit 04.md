@@ -88,6 +88,32 @@ the bottom with the next number; nothing is renumbered.
     same name that means something else (it does not check for infinity or NaN).
   - **Handed-in parts:** about 15 constructors each write their own check that a clock or a sleep can be called; it should be one shared
     check.
+  - **Proposed fallback values, waiting for Wes's sign-off** (step 4; nothing is built until then). Each kind of value has one value rule
+    and one fallback value, the same in every receiver. Wes's rule for choosing: the fallback value is one the downstream code already
+    handles (one a mechanism with its own default can recognize), or else the most useful value in spec. A number past an end its rule
+    includes gets that end (the nearest good value) before any fallback value.
+
+    | Kind of value | Where it goes downstream | In spec | Proposed: past an end | Proposed fallback value (NaN, wrong type, no nearest) |
+    |---|---|---|---|---|
+    | **score** | the BarKeeper rules it and the bar takes it in; the chart draws its dot; a qualifier's score goes in the TurnHistory | a number of at least 0, or None (unscored). No upper end: a typed line's score is multiplied and not capped | below 0 becomes 0, a real score of 0 that goes into the bar and lowers it a little | **None**, unscored: every receiver already handles it (the BarKeeper rules it NO_MARK and changes nothing, the chart draws no dot). Infinity also becomes None, since there is no upper end to give |
+    | **stream time** (`heard_at`, `now`) | the BarKeeper orders the bar's window and the cooldown by it; the chart places the dot by it; the TurnHistory places the turn and counts its freshness from it | a number of at least 0 | below 0 becomes 0, the start of listening (the dot is drawn at the left edge) | **the stream time now** (the Timekeeper's `now`), the best guess of when, so the score still counts and the dot lands where the room is. This needs the Timekeeper's `now` handed to the BarKeeper, the ChartNotebook and the TurnHistory |
+    | **bar** | the chart draws the bar line; the TurnHistory and the TurnTaker show it | a number of at least 0, or None (no bar yet) | below 0 becomes 0 | **None**, no bar yet: the chart and the logs already handle it |
+    | **count** (`window_size`, `counted`) | shown on the monitoring page only | a whole number of at least 0 | below 0 becomes 0 | **0** |
+
+  - **Questions for Wes in that table:**
+    1. A negative score: 0 (the nearest good value, so it counts and lowers the bar) or None (unscored, so it changes nothing)? Wes's
+       example rule says 0; a negative score cannot come from the scorer, so it would be a bug upstream either way.
+    2. A negative stream time: 0 (the nearest good value: the left edge of the chart) or the stream time now (the fallback value)? Here
+       the nearest good value is misleading: 0 is the moment listening began, not a time near the bad one.
+    3. The stream time now as the fallback value means handing the Timekeeper's `now` to three more classes. The alternative is None,
+       "time unknown": the score is dropped (NO_MARK, no dot), with a warning; nothing new is wired.
+  - **Then, step 5:** each receiver checks with its ValueChecker by that table: the BarKeeper (`rule`, `rule_typed`, `bar_at`,
+    `window_size_at`), each bar (`add`, `level_at`), the ChartNotebook (`add`), the TickWriter, the TurnHistory (`add`), the TurnTaker's
+    log line, and the two places that make an Attempt (the HingeFinder and the TypedLineScorer). Two constructors take a stream time
+    and follow the table too: the DecayingQuantileBar's `started_at` and the Eavesdropper's `start_seconds`. The KeyboardWatcher's and
+    the WavDeck's own `_valid` helpers check constructor numbers whose fallback values are module constants (`DEFAULT_POLL_SECONDS`,
+    `DEFAULT_END_PAUSE_SECONDS`, ...); those constants are on Design Audit 03's D6.1 list of hidden values, so they are settled with
+    item 12 first, and then checked here.
 
 - [ ] **4. Failures hide bugs** (checked). *Principle:* "A failure inside [a helper] is recorded as a warning … a `strict` flag raises
   instead, for tests and dev tools."

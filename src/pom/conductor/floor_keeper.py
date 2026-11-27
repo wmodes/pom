@@ -61,7 +61,6 @@ Design decisions, and why:
     calls in (ignored). An overrun is also a WARNING in the log. A lock that could not be had is CRITICAL.
     Only labels and seconds are logged.
 """
-import math
 import threading
 import time
 from contextlib import contextmanager

@@ -19,6 +19,7 @@ from pom.listening import MicDeck
 from pom.monitor import MonitorSite
 from pom.monitor import Light
 from pom.printer import Options, Printer, answers, build_printer, health, parse_options, reachable
+from pom.printer_builder import PrinterBuilder
 from pom.printing import ConsoleTerminal, TerminalPort
 from pom.scoring import ScorerWarmer
 
@@ -33,6 +34,11 @@ def config_from(tmp_path, text=""):
 
 def build(tmp_path, text="", **options):
     return build_printer(config_from(tmp_path, text), Options(**options))
+
+
+def builder(tmp_path, text="", **options):
+    """The PrinterBuilder, for a test that asks for a part or calls one of the Printer's own handlers (`make_room`, `note`, `status_now`)."""
+    return PrinterBuilder(config_from(tmp_path, text), Options(**options))
 
 
 @pytest.fixture(autouse=True)
@@ -66,6 +72,13 @@ class TestTheWiring:
         for name in ("whisper", "scorer", "bar_keeper", "selector", "writer", "formatter", "notebook", "monitor"):
             assert p.parts[name] is not None
 
+    def test_the_conductor_and_the_page_are_handed_the_builders_own_handlers(self, tmp_path):
+        """The tests below call the builder's `make_room`, `note`, `status_now` and clock; this is what makes those the Printer's own."""
+        b = builder(tmp_path, '[terminal]\nmode = "none"\n[monitor]\nenabled = true\npassword = "pw"\n')
+        p = b.printer
+        assert p.conductor._room_factory == b.make_room and p.conductor._on_attempt == b.note
+        assert p.site._status_source == b.status_now and p.site._stream_now == b.timekeeper.now
+
     def test_the_scorers_warm_up_is_built_on_the_printers_own_scorer_and_asks_the_scorers_address(self, tmp_path, monkeypatch):
         asked = []
         monkeypatch.setattr(builder_module, "answers", lambda url: asked.append(url) or True)
@@ -89,9 +102,10 @@ class TestTheWiring:
         assert build(tmp_path, "[oracle]\ntimeout = 123\n[conductor]\nwriting_seconds = 999\n").parts["turn_taker"].oracle.timeout == 123.0
 
     def test_the_bar_keeper_and_scorer_are_shared_by_every_room_that_is_built(self, tmp_path):
-        p = build(tmp_path, '[terminal]\nmode = "none"\n')
-        finder1, ears1 = p.conductor._room_factory()
-        finder2, ears2 = p.conductor._room_factory()
+        b = builder(tmp_path, '[terminal]\nmode = "none"\n')
+        p = b.printer
+        finder1, ears1 = b.make_room()
+        finder2, ears2 = b.make_room()
         assert finder1 is not finder2 and ears1 is not ears2                              # a fresh room each time
         assert finder1._bar_keeper is finder2._bar_keeper is p.parts["bar_keeper"]          # the same memory of the room's scores
         assert finder1._scorer is finder2._scorer is p.parts["scorer"]
@@ -116,9 +130,10 @@ class TestTheWiring:
 
         monkeypatch.setattr(builder_module, "CaptureCardFinder", StandInFinder)
         monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
-        p = build(tmp_path, '[listening]\ndevice = "auto"\ndevice_lookup_seconds = 7\nbuffer_seconds = 3\n[terminal]\nmode = "none"\n')
-        p.conductor._room_factory()
-        p.conductor._room_factory()
+        b = builder(tmp_path, '[listening]\ndevice = "auto"\ndevice_lookup_seconds = 7\nbuffer_seconds = 3\n[terminal]\nmode = "none"\n')
+        p = b.printer
+        b.make_room()
+        b.make_room()
         assert asked[0] == ("timeout", 7.0)                                          # the lookup's patience is the setting
         assert [a for a in asked if a[0] == "resolve"] == [("resolve", "auto")] * 2   # asked about the setting, once for each room
         assert opened == [("found-2", 3.0), ("found-3", 3.0)]                        # the deck gets what the finder answered, not the setting
@@ -132,9 +147,10 @@ class TestTheWiring:
                 decks.append(self)
 
         monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
-        p = build(tmp_path, '[monitor]\nmic_down_after_seconds = 5\n[terminal]\nmode = "none"\n')
+        b = builder(tmp_path, '[monitor]\nmic_down_after_seconds = 5\n[terminal]\nmode = "none"\n')
+        p = b.printer
         assert p.parts["board"].lights()["mic"] is Light.DOWN                      # nothing has been heard yet
-        p.conductor._room_factory()
+        b.make_room()
         decks[0].heard()                                                           # what the real deck does for each frame
         assert p.parts["board"].lights()["mic"] is Light.UP
 
@@ -148,9 +164,10 @@ class TestTheWiring:
 
         monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
         monkeypatch.setattr("pom.monitor.status_board.time.monotonic", lambda: now[0])
-        p = build(tmp_path, '[monitor]\nmic_down_after_seconds = 7\n[terminal]\nmode = "none"\n')
+        b = builder(tmp_path, '[monitor]\nmic_down_after_seconds = 7\n[terminal]\nmode = "none"\n')
+        p = b.printer
         p.parts["board"]._clock = lambda: now[0]
-        p.conductor._room_factory()
+        b.make_room()
         decks[0].heard()
         now[0] += 7.0
         assert p.parts["board"].lights()["mic"] is Light.UP
@@ -195,9 +212,10 @@ class TestTheWiring:
 
         monkeypatch.setattr(builder_module, "CaptureCardFinder", StandInFinder)
         monkeypatch.setattr(builder_module, "MicDeck", StandInDeck)
-        p = build(tmp_path, '[listening]\ndevice = "auto"\n[terminal]\nmode = "none"\n')
+        b = builder(tmp_path, '[listening]\ndevice = "auto"\n[terminal]\nmode = "none"\n')
+        p = b.printer
         with pytest.raises(NoSoundSource):
-            p.conductor._room_factory()
+            b.make_room()
         assert opened == []                                                          # arecord is never started for a card that is not there
 
     def test_the_terminal_is_found_by_a_finder_that_gets_the_search_pattern(self, tmp_path, monkeypatch):
@@ -243,12 +261,13 @@ class TestWhereSoundComesFrom:
         assert build(tmp_path).conductor._restart_room is True
 
     def test_a_recording_is_played_at_the_asked_speed(self, tmp_path):
-        p = build(tmp_path, wav="x.wav", speed=0)
-        _, ears = p.conductor._room_factory()
+        b = builder(tmp_path, wav="x.wav", speed=0)
+        p = b.printer
+        _, ears = b.make_room()
         assert type(ears._deck).__name__ == "WavDeck"
 
     def test_the_mac_microphone_is_used_when_asked(self, tmp_path):
-        _, ears = build(tmp_path, mac_mic="default").conductor._room_factory()
+        _, ears = builder(tmp_path, mac_mic="default").make_room()
         assert type(ears._deck).__name__ == "MacMicDeck"
 
     def test_the_scorer_model_client_is_handed_the_scorer_settings(self, tmp_path, monkeypatch):
@@ -283,7 +302,7 @@ class TestWhereSoundComesFrom:
 
     def test_each_room_s_eavesdropper_is_handed_the_listening_settings(self, tmp_path):
         config = config_from(tmp_path, '[listening]\nroom_tone_memory = 2\n[terminal]\nmode = "none"\n')
-        finder, ears = build_printer(config, Options()).conductor._room_factory()
+        finder, ears = PrinterBuilder(config, Options()).make_room()
         assert ears.listening is config.listening and finder.listening is config.listening
 
     def test_the_mac_microphone_is_handed_the_listening_settings(self, tmp_path, monkeypatch):
@@ -301,7 +320,7 @@ class TestWhereSoundComesFrom:
 
         monkeypatch.setattr(builder_module, "MacMicDeck", StandInMacDeck)
         config = config_from(tmp_path, "[listening]\nbuffer_seconds = 3\n")
-        build_printer(config, Options(mac_mic="default")).conductor._room_factory()
+        PrinterBuilder(config, Options(mac_mic="default")).make_room()
         assert handed == [config.listening]
 
 
@@ -421,45 +440,50 @@ class TestTheMonitorMovesWithTheStream:
 
     def test_before_any_room_the_stream_time_is_the_streams_start(self, tmp_path, monkeypatch):
         self.clock(monkeypatch)
-        assert build(tmp_path, self.CONFIG).site._stream_now() == 0.0
+        assert builder(tmp_path, self.CONFIG).timekeeper.now() == 0.0
 
     def test_once_a_room_is_listening_the_stream_time_runs_with_the_wall_clock_through_silence(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
-        p.conductor._room_factory()
-        assert p.site._stream_now() == pytest.approx(0.0)
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
+        b.make_room()
+        assert b.timekeeper.now() == pytest.approx(0.0)
         now[0] += 120.0
-        assert p.site._stream_now() == pytest.approx(120.0)
+        assert b.timekeeper.now() == pytest.approx(120.0)
 
     def test_the_stream_time_goes_on_through_a_room_built_again(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
-        p.conductor._room_factory()
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
+        b.make_room()
         now[0] += 300.0
-        p.conductor._room_factory()
+        b.make_room()
         now[0] += 30.0
-        assert p.site._stream_now() == pytest.approx(330.0, abs=0.5)
+        assert b.timekeeper.now() == pytest.approx(330.0, abs=0.5)
 
     def test_before_any_room_the_stream_time_runs_on_real_seconds_from_the_build(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
         now[0] += 7.0                                    # the microphone is not up yet
-        assert p.site._stream_now() == pytest.approx(7.0)
+        assert b.timekeeper.now() == pytest.approx(7.0)
 
     def test_the_first_room_begins_where_the_stream_clock_stands(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
         now[0] += 12.0
-        p.conductor._room_factory()
-        assert p.site._stream_now() == pytest.approx(12.0)
+        b.make_room()
+        assert b.timekeeper.now() == pytest.approx(12.0)
         now[0] += 5.0
-        assert p.site._stream_now() == pytest.approx(17.0)
+        assert b.timekeeper.now() == pytest.approx(17.0)
 
     def test_once_a_room_is_built_the_stream_clock_is_that_rooms(self, tmp_path, monkeypatch):
         """A room that hears sound runs its clock on the audio received, not real seconds; the Timekeeper must read that room."""
         self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
-        _, ears = p.conductor._room_factory()
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
+        _, ears = b.make_room()
         monkeypatch.setattr(ears, "stream_time_at", lambda wall_now: 999.0)     # as if a fast recording had run far ahead
         assert p.parts["timekeeper"].now() == 999.0
 
@@ -469,47 +493,51 @@ class TestTheMonitorMovesWithTheStream:
 
     def test_typed_lines_are_stamped_on_the_same_clock_as_the_room(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, '[terminal]\nmode = "serial"\n')
+        b = builder(tmp_path, '[terminal]\nmode = "serial"\n')
+        p = b.printer
         typed_clock = p.parts["keyboard"]._typed_scorer._clock
         assert typed_clock == p.parts["timekeeper"].now
         now[0] += 12.0                                   # before the room: the same real seconds
         assert typed_clock() == pytest.approx(12.0)
-        p.conductor._room_factory()
+        b.make_room()
         now[0] += 5.0                                    # after: the room's clock, which began where the typed clock stood
         assert typed_clock() == pytest.approx(17.0)
 
     def test_the_tiles_read_the_live_bar_so_it_falls_in_a_silence_with_no_attempt(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
-        p.conductor._room_factory()
-        start = p.site._status_source().bar
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
+        b.make_room()
+        start = b.status_now().bar
         now[0] += 300.0
-        later = p.site._status_source().bar
+        later = b.status_now().bar
         assert start == pytest.approx(6.8) and later == pytest.approx(6.535, abs=0.01) and p.parts["bar_keeper"].counted == 0
 
     def test_the_window_size_is_read_live_too(self, tmp_path, monkeypatch):
         now = self.clock(monkeypatch)
-        p = build(tmp_path, self.CONFIG)
-        p.conductor._room_factory()
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
+        b.make_room()
         keeper = p.parts["bar_keeper"]
         keeper.rule(7.0, 0.0)
-        assert p.site._status_source().window_size == 1
+        assert b.status_now().window_size == 1
         now[0] += 300.0 * 8
-        assert p.site._status_source().window_size == 0                                   # eight half-lives on, its weight is under half a score
+        assert b.status_now().window_size == 0                                   # eight half-lives on, its weight is under half a score
 
     def test_the_counts_come_from_the_attempts_noted(self, tmp_path):
         from pom.qualifying import Attempt, Ruling
         from pom.scoring import ScoredBy
-        p = build(tmp_path, self.CONFIG)
-        status = p.site._status_source()
+        b = builder(tmp_path, self.CONFIG)
+        p = b.printer
+        status = b.status_now()
         assert (status.attempts_heard, status.attempts_scored) == (0, 0)
-        p.conductor._on_attempt(Attempt("Hello.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
-        p.conductor._on_attempt(Attempt("Room tone.", "room_tone", None, ScoredBy.MODEL, None, 13.0, None, 3, 1))
-        status = p.site._status_source()
+        b.note(Attempt("Hello.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
+        b.note(Attempt("Room tone.", "room_tone", None, ScoredBy.MODEL, None, 13.0, None, 3, 1))
+        status = b.status_now()
         assert (status.attempts_heard, status.attempts_scored) == (2, 1)
 
     def test_the_status_also_carries_the_services_and_the_bar_description(self, tmp_path):
-        status = build(tmp_path, self.CONFIG).site._status_source()
+        status = builder(tmp_path, self.CONFIG).status_now()
         assert status.algorithm == "decaying_quantile" and "steady tick" in status.bar_description and list(status.services) == ["mic", "whisper", "scorer", "oracle", "printer"]
 
 
@@ -518,9 +546,10 @@ class TestTheTerminalLight:
 
     @staticmethod
     def light(tmp_path, mode_text):
-        p = build(tmp_path, f'[monitor]\nenabled = true\npassword = "pw"\n[terminal]\n{mode_text}\n')
+        b = builder(tmp_path, f'[monitor]\nenabled = true\npassword = "pw"\n[terminal]\n{mode_text}\n')
+        p = b.printer
         p.parts["poller"].poll_once()                    # the poller runs in the background in a real run; here, one round
-        return p, p.site._status_source().services["printer"]
+        return p, b.status_now().services["printer"]
 
     def test_no_terminal_is_none(self, tmp_path):
         assert self.light(tmp_path, 'mode = "none"')[1] is Light.NONE
@@ -532,13 +561,15 @@ class TestTheTerminalLight:
         assert self.light(tmp_path, 'mode = "serial"\nport = "/dev/no-such-terminal-device"')[1] is Light.DOWN
 
     def test_a_light_that_has_never_been_asked_about_is_down_not_up(self, tmp_path):
-        p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n[terminal]\nmode = "console"\n')
-        assert set(p.site._status_source().services.values()) == {Light.DOWN}
+        b = builder(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n[terminal]\nmode = "console"\n')
+        p = b.printer
+        assert set(b.status_now().services.values()) == {Light.DOWN}
 
     def test_a_terminal_being_typed_on_is_up_and_the_page_does_not_wait(self, tmp_path):
         import threading
         import time
-        p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n[terminal]\nmode = "serial"\nport = "/dev/no-such-terminal-device"\n')
+        b = builder(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n[terminal]\nmode = "serial"\nport = "/dev/no-such-terminal-device"\n')
+        p = b.printer
         held, release = threading.Event(), threading.Event()
 
         def hold():
@@ -551,13 +582,13 @@ class TestTheTerminalLight:
         try:
             started = time.monotonic()
             p.parts["poller"].poll_once()
-            assert p.site._status_source().services["printer"] is Light.UP and time.monotonic() - started < 1.0
+            assert b.status_now().services["printer"] is Light.UP and time.monotonic() - started < 1.0
         finally:
             release.set()
             thread.join(2)
 
     def test_the_lights_are_the_mic_the_servers_and_the_printer_in_that_order(self, tmp_path):
-        assert list(self.light(tmp_path, 'mode = "none"')[0].site._status_source().services) == ["mic", "whisper", "scorer", "oracle", "printer"]
+        assert list(self.light(tmp_path, 'mode = "none"')[0].parts["board"].lights()) == ["mic", "whisper", "scorer", "oracle", "printer"]
 
     def test_the_page_says_none(self, tmp_path):
         import base64
@@ -591,8 +622,9 @@ class TestTheBarStartsWithTheStream:
 
     def test_the_bar_and_the_first_room_begin_at_the_same_stream_time(self, tmp_path, monkeypatch):
         monkeypatch.setattr(builder_module.time, "monotonic", lambda: 100.0)
-        p = build(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\n')
-        _, first = p.conductor._room_factory()
+        b = builder(tmp_path, '[terminal]\nmode = "none"\n[qualifying]\nalgorithm = "decaying_quantile"\n')
+        p = b.printer
+        _, first = b.make_room()
         assert first.stream_time_at(100.0) == 0.0 and p.parts["bar_keeper"]._bar._started_at == 0.0
 
 
@@ -602,7 +634,7 @@ class TestARoomBuiltAgain:
     def test_the_new_rooms_clock_carries_on_from_the_old_one_plus_the_real_seconds_between(self, tmp_path, monkeypatch):
         now = [1000.0]
         monkeypatch.setattr(builder_module.time, "monotonic", lambda: now[0])
-        make_room = build(tmp_path).conductor._room_factory
+        make_room = builder(tmp_path).make_room
         _, first = make_room()
         now[0] = 1100.0                                              # the first room fails and, a hundred real seconds later, another is built
         _, second = make_room()
@@ -613,7 +645,7 @@ class TestARoomBuiltAgain:
 
     def test_a_first_room_begins_at_zero(self, tmp_path, monkeypatch):
         monkeypatch.setattr(builder_module.time, "monotonic", lambda: 5000.0)
-        _, first = build(tmp_path).conductor._room_factory()
+        _, first = builder(tmp_path).make_room()
         assert first.stream_time_at(5000.0) == 0.0
 
 
@@ -669,10 +701,11 @@ class TestTheMonitoringSite:
     def test_the_history_keeps_a_turn_while_the_notebook_still_holds_its_attempt(self, tmp_path):
         from pom.qualifying import Attempt, Ruling
         from pom.scoring import ScoredBy
-        p = build(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n')
+        b = builder(tmp_path, '[monitor]\nenabled = true\npassword = "pw"\n')
+        p = b.printer
         keep_from = p.history._keep_heard_since
         assert keep_from() is None                                              # nothing on the chart yet
-        p.conductor._on_attempt(Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
+        b.note(Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
         assert keep_from() == p.parts["notebook"].earliest_at is not None
 
     def test_the_turn_taker_records_into_the_history_the_site_reads(self, tmp_path):
@@ -682,9 +715,10 @@ class TestTheMonitoringSite:
     def test_every_attempt_is_noted_for_the_chart_as_numbers(self, tmp_path, logged):
         from pom.qualifying import Attempt, Ruling
         from pom.scoring import ScoredBy
-        p = build(tmp_path)
-        p.conductor._on_attempt(Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
-        p.conductor._on_attempt(Attempt("Room tone.", "room_tone", None, ScoredBy.NONE if hasattr(ScoredBy, "NONE") else ScoredBy.MODEL,
+        b = builder(tmp_path)
+        p = b.printer
+        b.note(Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, 12.0, 5.0, 3, 1))
+        b.note(Attempt("Room tone.", "room_tone", None, ScoredBy.NONE if hasattr(ScoredBy, "NONE") else ScoredBy.MODEL,
                                         None, 13.0, None, 3, 1))
         assert len(p.parts["notebook"].recent()) == 1                  # only the scored one is a point on the chart
         assert logged.of(p.parts["notebook"]).ok()                     # and the unscored one was never offered to it
@@ -696,22 +730,25 @@ class TestTheMonitoringSite:
         return Attempt("A sentence.", "speech", 6.0, ScoredBy.MODEL, Ruling.DID_NOT_QUALIFY, at, 5.0, 3, 1)
 
     def test_the_notebook_writes_down_the_anchors_ticks_between_close_attempts(self, tmp_path):
-        p = build(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n')
-        p.conductor._on_attempt(self.attempt(30.0))
-        p.conductor._on_attempt(self.attempt(200.0))
+        b = builder(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n')
+        p = b.printer
+        b.note(self.attempt(30.0))
+        b.note(self.attempt(200.0))
         ticks = p.parts["notebook"].ticks()
         assert [tick.at for tick in ticks] == [60.0, 120.0, 180.0] and all(tick.bar is not None for tick in ticks)   # one a minute, from the bar's own start
 
     def test_before_the_first_attempt_the_ticks_run_from_the_streams_start(self, tmp_path):
-        p = build(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n')
-        p.conductor._on_attempt(self.attempt(150.0))
+        b = builder(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n')
+        p = b.printer
+        b.note(self.attempt(150.0))
         assert [tick.at for tick in p.parts["notebook"].ticks()] == [60.0, 120.0]
 
     def test_but_none_across_a_silence_as_long_as_the_chart_draws_as_a_break(self, tmp_path):
         # (the same two attempts as above, with the break set short enough that 170 s is one)
-        p = build(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n[chart]\nlongest_silence_minutes = 2\n')
-        p.conductor._on_attempt(self.attempt(30.0))
-        p.conductor._on_attempt(self.attempt(200.0))                    # 170 s later: more than the 2 minutes
+        b = builder(tmp_path, '[qualifying]\nalgorithm = "decaying_quantile"\n[chart]\nlongest_silence_minutes = 2\n')
+        p = b.printer
+        b.note(self.attempt(30.0))
+        b.note(self.attempt(200.0))                    # 170 s later: more than the 2 minutes
         assert p.parts["notebook"].ticks() == []
 
     def test_the_notebook_keeps_what_the_chart_can_show_not_an_hour(self, tmp_path):
@@ -720,9 +757,10 @@ class TestTheMonitoringSite:
         assert notebook.chart is config.chart and notebook.monitor is config.monitor
 
     def test_the_notebooks_size_limit_is_the_configured_one(self, tmp_path):
-        p = build(tmp_path, "[monitor]\nchart_notebook_max_entries = 2\n")
+        b = builder(tmp_path, "[monitor]\nchart_notebook_max_entries = 2\n")
+        p = b.printer
         for at in (10.0, 20.0, 30.0):
-            p.conductor._on_attempt(self.attempt(at))
+            b.note(self.attempt(at))
         assert len(p.parts["notebook"].recent()) == 2
 
 

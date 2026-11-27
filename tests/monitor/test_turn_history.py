@@ -105,8 +105,22 @@ class TestRecording:
         assert add(history(), window_size=window_size).window_size == 0
 
     @pytest.mark.parametrize("heard_at", [None, "7", float("nan"), True])
-    def test_a_place_in_the_audio_that_is_not_a_number_is_zero(self, heard_at):
-        assert add(history(), heard_at=heard_at).heard_at == 0.0
+    def test_a_place_in_the_audio_that_is_not_a_number_is_the_stream_time_now(self, heard_at, logged):
+        """Printing has priority: a turn with no usable time is taken as heard now, so it is fresh, and its dot lands where the room is."""
+        h = history(stream_now=lambda: 42.0)
+        assert add(h, heard_at=heard_at).heard_at == 42.0
+        assert logged.of(h).warnings()[0].startswith("TurnHistory.add was given a heard_at of")
+
+    def test_a_place_in_the_audio_below_zero_is_zero(self):
+        assert add(history(), heard_at=-4.0).heard_at == 0.0
+
+    def test_a_bar_that_is_not_a_number_is_no_bar_yet(self, logged):
+        h = history()
+        assert add(h, bar="high").bar is None and len(logged.of(h).warnings()) == 1
+
+    def test_no_bar_yet_is_in_spec_and_quiet(self, logged):
+        h = history()
+        assert add(h, bar=None).bar is None and logged.of(h).ok()
 
     def test_a_score_is_stored_as_a_float(self):
         assert isinstance(add(history(), score=7).score, float)

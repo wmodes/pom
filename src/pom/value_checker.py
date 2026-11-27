@@ -42,8 +42,12 @@ def described(value: Any) -> str:
     if callable(value) and hasattr(value, "__name__"):
         module = getattr(value, "__module__", None)
         return f"{module}.{value.__name__}" if module else value.__name__
-    kind = type(value).__name__
-    return f"{'an' if kind[:1] in 'aeiou' else 'a'} {kind}"
+    return _with_article(type(value).__name__)
+
+
+def _with_article(word: str) -> str:
+    """The word with "a" or "an" before it, by its first letter: "a score", "an at", "an object"."""
+    return f"{'an' if word[:1].lower() in 'aeiou' else 'a'} {word}"
 
 
 class ValueChecker:
@@ -75,14 +79,14 @@ class ValueChecker:
         try:
             return rule.read(value)
         except ValueCorrected as corrected:
-            self.logger.warning("%s.%s was given a %s that %s", self.owner, method, argument, corrected.how)
+            self.logger.warning("%s.%s was given %s that %s", self.owner, method, _with_article(argument), corrected.how)
             return corrected.kept
         except ValueRejected:
             nearest = rule.nearest(value) if rule.nearest is not None else None
             if nearest is not None:
-                self.logger.warning("%s.%s was given a %s of %s, which is not %s; using the nearest, %s", self.owner, method, argument,
-                                    described(value), rule.wanted, described(nearest))
+                self.logger.warning("%s.%s was given %s of %s, which is not %s; using the nearest, %s", self.owner, method,
+                                    _with_article(argument), described(value), rule.wanted, described(nearest))
                 return nearest
-            self.logger.warning("%s.%s was given a %s of %s, which is not %s; using %s", self.owner, method, argument, described(value),
-                                rule.wanted, described(fallback_value))
+            self.logger.warning("%s.%s was given %s of %s, which is not %s; using %s", self.owner, method, _with_article(argument),
+                                described(value), rule.wanted, described(fallback_value))
             return fallback_value

@@ -14,9 +14,11 @@ Design decisions, and why:
   * Bounded twice: by age (with that exception), and by `max_records`, so a flood of turns cannot grow the memory.
   * Thread-safe. The Conductor adds from its thread and the web server reads from its own, so every change and read
     takes one lock, and `recent()` returns a copy.
-  * Nothing here may stop the oracle (see pom/__init__.py). A record that cannot be made (a blank hinge, a score that is
-    not a number) is recorded as a warning without its text and `add` returns None; a bad setting is replaced by its
-    default. `strict=True` raises TurnHistoryError instead, for tests and dev tools.
+  * Nothing here may stop the oracle (see pom/__init__.py). Every value handed to `add` is checked by the history's ValueChecker (Design
+    Audit 04 item 3), with a warning for a bad one: a `heard_at` below 0 is 0 and one that is not a number is the stream time now
+    (`stream_now`); a bar that is not a number is None (no bar yet); a window size that is not a whole number of at least 0 is 0; a
+    score below 0 is 0. A record that cannot be made (a blank hinge, a score that is not a number) is a warning without its text and
+    `add` returns None. `strict=True` raises TurnHistoryError instead, for tests and dev tools.
   * The clock is injected (`clock`, seconds since the epoch), so tests need not wait. A record is stamped with the
     clock when it is added, not with the audio's own time; `heard_at` keeps the place in the audio for reference.
   * Records get a number that only goes up, starting at 1 and never reused, so a page can link to one and a link to a
@@ -33,8 +35,10 @@ from typing import Callable, Deque, List, Optional
 
 from pom.bookkeeper.bookkeeper import Bookkeeper
 from pom.defaults import MonitorSettings
+from pom.timekeeper import Timekeeper
 from pom.writing.portent_writer import Portent
-from pom.value_rules import is_number
+from pom.value_checker import ValueChecker
+from pom.value_rules import is_number, not_negative, whole_at_least
 
 DEBUG = None   # None follows the project debug flag; True/False overrides it for this module
 
@@ -80,7 +84,8 @@ class TurnHistory:
     """
 
     def __init__(self, monitor: MonitorSettings, clock: Callable[[], float] = time.time, strict: bool = False,
-                 keep_heard_since: Optional[Callable[[], Optional[float]]] = None, bookkeeper: Optional[Bookkeeper] = None):
+                 keep_heard_since: Optional[Callable[[], Optional[float]]] = None, bookkeeper: Optional[Bookkeeper] = None,
+                 stream_now: Optional[Callable[[], float]] = None):
         """Args:
             monitor: The `[monitor]` section: `history_seconds` (how long a record is kept, unless `keep_heard_since` keeps it longer) and
                 `history_max_turns` (the most records kept; the oldest go first).
@@ -90,8 +95,12 @@ class TurnHistory:
             keep_heard_since: A function returning the audio time (as `heard_at`) from which turns are kept whatever their age, or None for no such
                 time: the chart notebook's oldest attempt, so a turn stays while its dot is on the chart. Without one, or if it fails or gives
                 something that is not a number, the age limit alone decides.
+            stream_now: The stream time now (the Printer's Timekeeper's `now`): the fallback value for a `heard_at` that is not a number.
+                None (a test or a tool) gives a Timekeeper of its own, which runs on real seconds from now.
         """
         self.logger = (bookkeeper or Bookkeeper()).logger_for(__name__, TurnHistoryError, DEBUG, strict)
+        self.check = ValueChecker(self.logger, "TurnHistory")
+        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
         self.monitor = monitor
         self._records: Deque[TurnRecord] = deque(maxlen=monitor.history_max_turns)       # oldest first
         self._clock = clock
@@ -111,15 +120,17 @@ class TurnHistory:
         if not (isinstance(hinge, str) and hinge.strip()):
             self.logger.warning("a turn was given without a hinge, so it was not recorded")
             return None
-        if not is_number(score):
-            self.logger.warning("a turn was given without a numeric score, so it was not recorded")
+        score = self.check(score, not_negative(), fallback_value=None, method="add", argument="score")
+        if score is None:
+            self.logger.info("so that turn was not recorded")              # the warning, just above, said why
             return None
+        heard_at = self.check(heard_at, not_negative(), fallback_value=None if is_number(heard_at) else self._stream_now(), method="add",
+                              argument="heard_at")
+        bar = None if bar is None else self.check(bar, not_negative(), fallback_value=None, method="add", argument="bar")
+        window_size = self.check(window_size, whole_at_least(0), fallback_value=0, method="add", argument="window_size")
         keep_from = self._keep_from()                       # asked for outside the lock: the function belongs to another object
         with self._lock:
-            record = TurnRecord(self._next_id, self._clock(), heard_at if is_number(heard_at) else 0.0, hinge.strip(),
-                                   float(score), float(bar) if is_number(bar) else None,
-                                   window_size if isinstance(window_size, int) and not isinstance(window_size, bool) else 0,
-                                   portent)
+            record = TurnRecord(self._next_id, self._clock(), heard_at, hinge.strip(), score, bar, window_size, portent)
             self._next_id += 1
             self.total_added += 1
             self._records.append(record)

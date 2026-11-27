@@ -103,10 +103,17 @@ class TestWhatCannotBeKept:
         assert t.recent() == [] and len(logged.of(t).warnings()) == 1
 
     @pytest.mark.parametrize("at", [None, "7", float("nan"), float("inf"), True, [7]])
-    def test_a_time_that_is_not_a_number_is_not_kept(self, at, logged):
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now(self, at, logged):
+        """The dot is drawn where the room is, not thrown away."""
+        t = notebook(stream_now=lambda: 42.0)
+        assert t.add(5.0, 5.0, at) is True
+        assert [entry.at for entry in t.recent()] == [42.0] and len(logged.of(t).warnings()) == 1
+        assert logged.of(t).warnings()[0].startswith("ChartNotebook.add was given an at of")
+
+    def test_a_score_below_zero_is_zero(self):
         t = notebook()
-        assert t.add(5.0, 5.0, at) is False
-        assert t.recent() == [] and len(logged.of(t).warnings()) == 1
+        t.add(-2.0, 5.0, 1.0)
+        assert [entry.score for entry in t.recent()] == [0.0]
 
     def test_strict_mode_raises_for_it(self):
         with pytest.raises(ChartNotebookError):

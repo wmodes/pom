@@ -55,6 +55,10 @@ class TestTheWarningIsTheReceivers:
         checker()(None, not_negative(), fallback_value=0.0, method="add", argument="heard_at")
         assert logged.warnings()[0].startswith("TurnHistory.add was given a heard_at of None") and "ValueChecker" not in logged.text()
 
+    def test_an_argument_starting_with_a_vowel_reads_as_an(self, logged):
+        checker()(None, not_negative(), fallback_value=0.0, method="add", argument="at")
+        assert logged.warnings()[0].startswith("TurnHistory.add was given an at of None")
+
     def test_it_never_quotes_words_handed_in_by_mistake(self, logged):
         checker()("my mother's dog barked in her voice", not_negative(), fallback_value=0.0, method="add", argument="heard_at")
         assert "a str" in logged.warnings()[0] and "dog" not in logged.text()

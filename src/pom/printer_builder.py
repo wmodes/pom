@@ -322,12 +322,13 @@ class PrinterBuilder:
         (it keeps what the chart can show, `[chart] window_minutes` of drawn time, and no more)."""
         chart = self.config.chart
         return ChartNotebook(chart, self.config.monitor, ticks_source=self.bar_keeper.ticks_between, silence_shape=silence_shape(chart),
-                             began_at=STREAM_STARTED_AT, bookkeeper=self.bookkeeper)
+                             began_at=STREAM_STARTED_AT, bookkeeper=self.bookkeeper, stream_now=self.timekeeper.now)
 
     @cached_property
     def history(self) -> TurnHistory:
         """A turn is kept past `history_seconds` while its qualifier dot is still on the chart, which after a long silence reaches back hours."""
-        return TurnHistory(self.config.monitor, keep_heard_since=lambda: self.notebook.earliest_at, bookkeeper=self.bookkeeper)
+        return TurnHistory(self.config.monitor, keep_heard_since=lambda: self.notebook.earliest_at, bookkeeper=self.bookkeeper,
+                           stream_now=self.timekeeper.now)
 
     @cached_property
     def floor(self) -> FloorKeeper:

@@ -18,7 +18,6 @@ Design decisions, and why:
   * Nothing that was heard is ever kept or logged: the audio lives in the buffer until it is taken.
   * The capture gain is not set here. It resets on every reboot, so setting it is a startup duty.
 """
-import math
 import queue
 import shutil
 import subprocess

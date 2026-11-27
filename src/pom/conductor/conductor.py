@@ -35,7 +35,6 @@ Design decisions, and why:
     entry point uses it to feed the monitoring site's chart and to print a testbench line) and `on_turn(attempt, result)` for every turn;
     a callback that raises is recorded and ignored.
 """
-import math
 import queue
 import threading
 from typing import Callable, Optional

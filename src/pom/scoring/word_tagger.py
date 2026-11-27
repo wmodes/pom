@@ -30,7 +30,6 @@ Design decisions, and why:
   * The filler list is a setting: it is the kind of thing a person tunes, so it will move into
     config when the Scorer's settings do.
 """
-import logging
 import re
 from dataclasses import dataclass
 from typing import Callable, Iterable, Optional

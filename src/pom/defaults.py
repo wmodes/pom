@@ -65,6 +65,16 @@ class ProjectSettings:
 
 
 @dataclass(frozen=True)
+class ModelCommsSettings:
+    """The `[modelcomms]` section: how the Printer talks to the servers of its three models (whisper, the scorer, the oracle).
+
+    Attributes:
+        health_timeout_seconds: How long to wait for a model's server to say whether it is up, before calling it down. Above 0.
+    """
+    health_timeout_seconds: float = setting(3.0, above_zero())
+
+
+@dataclass(frozen=True)
 class ScorerSettings:
     """The `[scorer]` section: how the Scorer reaches its language model and behaves around it.
 
@@ -485,6 +495,6 @@ class ChartSettings:
 
 
 # Each [section] of pom.toml and the class that holds it, by its name in the file (which is also its name on Config: config.conductor).
-SECTIONS = {"scorer": ScorerSettings, "oracle": OracleSettings, "qualifying": QualifyingSettings, "listening": ListeningSettings,
+SECTIONS = {"modelcomms": ModelCommsSettings, "scorer": ScorerSettings,"oracle": OracleSettings, "qualifying": QualifyingSettings, "listening": ListeningSettings,
             "monitor": MonitorSettings, "display": DisplaySettings, "printing": PrintingSettings, "terminal": TerminalSettings,
             "conductor": ConductorSettings, "boot_slip": BootSlipSettings, "chart": ChartSettings}

@@ -32,8 +32,8 @@ import tomllib
 from pathlib import Path
 from typing import Mapping, Optional
 
-from pom.defaults import (SECTIONS, BootSlipSettings, ChartSettings, ConductorSettings, DisplaySettings, ListeningSettings, MonitorSettings,
-                          OracleSettings, PrintingSettings, ProjectSettings, QualifyingSettings, ScorerSettings, TerminalSettings)
+from pom.defaults import (SECTIONS, BootSlipSettings, ChartSettings, ConductorSettings, DisplaySettings, ListeningSettings, ModelCommsSettings,
+                          MonitorSettings, OracleSettings, PrintingSettings, ProjectSettings, QualifyingSettings, ScorerSettings, TerminalSettings)
 from pom.setting_rules import SettingCorrected, SettingRejected, rule_of
 
 DEFAULT_PATH = Path("config") / "pom.toml"
@@ -85,8 +85,8 @@ class Config:
     Attributes:
         project: The top-level keys, as a ProjectSettings. `strict`, `debug`, `log_level`, `local_logs` and the three `logmute_` settings
             are also read straight from the Config.
-        scorer, oracle, qualifying, listening, monitor, display, printing, terminal, conductor, boot_slip, chart: Each `[section]`, as its
-            settings class from defaults.py.
+        modelcomms, scorer, oracle, qualifying, listening, monitor, display, printing, terminal, conductor, boot_slip, chart: Each
+            `[section]`, as its settings class from defaults.py.
         problems: What reading had to correct (a bad file, an unknown key, a value that broke its rule).
     """
 
@@ -96,10 +96,11 @@ class Config:
                  monitor: Optional[MonitorSettings] = None, display: Optional[DisplaySettings] = None,
                  printing: Optional[PrintingSettings] = None, terminal: Optional[TerminalSettings] = None,
                  conductor: Optional[ConductorSettings] = None, boot_slip: Optional[BootSlipSettings] = None,
-                 chart: Optional[ChartSettings] = None):
+                 chart: Optional[ChartSettings] = None, modelcomms: Optional[ModelCommsSettings] = None):
         """Use `Config.load`; this holds already-read settings (anything not given is all defaults)."""
         self.project = project if project is not None else ProjectSettings()
         self.problems = problems if problems is not None else ConfigProblems()
+        self.modelcomms = modelcomms if modelcomms is not None else ModelCommsSettings()
         self.scorer = scorer if scorer is not None else ScorerSettings()
         self.oracle = oracle if oracle is not None else OracleSettings()
         self.qualifying = qualifying if qualifying is not None else QualifyingSettings()

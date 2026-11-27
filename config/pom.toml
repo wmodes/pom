@@ -51,6 +51,18 @@ logmute_quiet_seconds = 300
 
 
 # ================================================
+# MODELCOMMS: how the Printer talks to its three models
+# ================================================
+
+# Whisper, the scorer and the oracle each run in their own server; each section below says where its server answers.
+[modelcomms]
+# Seconds to wait for a model's server to say whether it is up (its /health address) before calling it down: the monitor's lights,
+# the scorer's warm-up and the testbenches that wait for a server all ask this way. Higher waits longer on a busy server before
+# calling it down; lower calls a slow server down sooner.
+health_timeout_seconds = 3
+
+
+# ================================================
 # SCORER: how interesting each sentence is
 # ================================================
 

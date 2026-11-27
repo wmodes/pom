@@ -417,6 +417,12 @@ The machine, its settings, how it keeps going, and how it is watched.
 - **stream time**: The Printer's one timeline: seconds of sound heard, going on through silence and through turns. The bar, the cooldown, the chart
   and the typed lines all stamp their moments on it. Example: `timekeeper.now()`, `heard_at`, `Eavesdropper.stream_time_at()`
 - **timekeeper**: The module (`src/pom/timekeeper/`) that holds the stream's one clock, the `Timekeeper`.
+- **modelcomms**: The module (`src/pom/modelcomms/`) that holds how the Printer talks to the servers of its three models, `ModelComms`.
+- **model comms**: How one model's server is talked to: every request to it, and every "is it up?" (its `/health` address: up, waiting while
+  it loads its model, or down), goes through that model's one ModelComms, which owns the server's address. The model clients say what to ask
+  and what the answer means. Only the models' talk goes through it, not the typewriter's serial line or the monitoring site. Example:
+  `ModelComms`, `[modelcomms] health_timeout_seconds` (was: an `_http_post` in each model client, and `health`, `answers`, `reachable` and
+  `WhisperModelClient.ping`)
 - **Timekeeper**: The one instance the entry point builds: it keeps stream time, follows the room that is listening now (`follow`), and every
   part that needs "now" is handed its `now`. Before the first room it runs on real seconds from the Printer's start; each new room begins where
   it stands. Example: `Timekeeper` (was: `stream_now()` and `last_room` in `build_printer`, and a separate clock for typed lines)

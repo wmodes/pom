@@ -17,3 +17,6 @@ pyserial>=3.5,<4
 
 # The machine's network addresses, for the boot slip (pom.conductor.AddressFinder). Prebuilt wheels for the Pi (aarch64) and the Mac.
 psutil>=5.9,<8
+
+# Talking to the models' servers (pom.modelcomms.ModelComms): the common Python library for HTTP. Pure Python.
+requests>=2.32,<3

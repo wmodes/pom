@@ -119,6 +119,21 @@ class TestTheReceiversFallBackToTheStreamClock:
         assert builder.bar_keeper.counted == 1 and builder.bar_keeper._last_time == pytest.approx(25.0)
 
 
+class TestEveryPartThatChecksStreamTimesIsHandedThePrintersClock:
+    """A stream time that is not a number becomes the stream time now: the Printer's, from its one Timekeeper (Design Audit 04 item 3)."""
+
+    def test_the_bar_keeper_the_chart_notebook_and_the_turn_history(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
+        assert builder.bar_keeper.check.stream_now == builder.timekeeper.now
+        assert builder.notebook.check.stream_now == builder.timekeeper.now
+        assert builder.history.check.stream_now == builder.timekeeper.now
+
+    def test_the_room_its_ears_and_its_hinge_finder(self, tmp_path):
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'), Options(wav="a.wav"))
+        finder, ears = builder.make_room()
+        assert finder.check.stream_now == builder.timekeeper.now and ears.check.stream_now == builder.timekeeper.now
+
+
 class TestATestbenchCanWatch:
     def test_a_watcher_sees_each_attempt_after_the_printer_has_counted_it(self, tmp_path):
         seen = []

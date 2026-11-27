@@ -73,6 +73,8 @@ class ValueChecker:
     Attributes:
         logger: The receiving class's own logger (a LogRecorder from its Bookkeeper), so the warning is the receiver's.
         owner: The receiving class's name, as the warning names it.
+        stream_now: The stream clock whose time now is the fallback value for a stream time that is not a number (read-only; public so a
+            builder's tests can see which clock a part was handed).
     """
 
     def __init__(self, logger, owner: str, stream_now: Optional[Callable[[], float]] = None):
@@ -85,7 +87,7 @@ class ValueChecker:
         """
         self.logger = logger
         self.owner = owner
-        self._stream_now = stream_now if stream_now is not None else Timekeeper().now
+        self.stream_now = stream_now if stream_now is not None else Timekeeper().now
 
     def score(self, value: Any, *, method: str, argument: str = "score", may_be_unscored: bool = True) -> Optional[float]:
         """A score: below 0 is 0; one that is not a number is None (unscored), with a warning.
@@ -99,7 +101,7 @@ class ValueChecker:
 
     def stream_time(self, value: Any, *, method: str, argument: str) -> float:
         """A stream time: below 0 is 0; one that is not a number is the stream time now (asked only then), with a warning."""
-        fallback_value = None if is_number(value) else self._stream_now()
+        fallback_value = None if is_number(value) else self.stream_now()
         return self(value, not_negative(), fallback_value=fallback_value, method=method, argument=argument)
 
     def bar(self, value: Any, *, method: str, argument: str = "bar") -> Optional[float]:

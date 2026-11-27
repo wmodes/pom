@@ -723,3 +723,11 @@ class TestTheTicksForAChart:
         finally:
             t._lock.release()
         assert len(logged.of(t).criticals()) == 1 and "ticks_between" in logged.of(t).criticals()[0]
+
+
+class TestTheTicksAreAskedAtCheckedTimes:
+    @pytest.mark.parametrize("start, end, words", [(float("nan"), 60.0, "a start of NaN"), (0.0, "later", "an end of a str")])
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now_with_a_warning(self, start, end, words, logged):
+        t, _ = bar_keeper(stream_now=lambda: 30.0)
+        assert t.ticks_between(start, end) == []
+        assert logged.of(t).warnings() == [f"BarKeeper.ticks_between was given {words}, which is not a number of at least 0; using 30"]

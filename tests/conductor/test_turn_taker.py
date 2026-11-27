@@ -450,8 +450,9 @@ class TestWithoutAHistory:
 
 class TestBadSettings:
     def test_a_clock_or_sleep_that_is_not_a_function_is_replaced_with_a_warning(self, logged):
-        assert len(logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE,
-                                       clock=5)).warnings()) == 1
+        clock_warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE,
+                                             clock=5)).warnings()
+        assert clock_warnings == ["TurnTaker.__init__ was given a clock of 5, which is not a function; using time.monotonic"]
         warnings = logged.of(TurnTaker(FakeWriter(), PortentFormatter(PrintingSettings()), None, conductor=CONDUCTOR, oracle=ORACLE,
                                        sleep="x")).warnings()
         assert len(warnings) == 2                                                               # the second taker's one warning, after the first's

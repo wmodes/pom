@@ -62,3 +62,9 @@ def test_a_function_is_anything_that_can_be_called():
 def test_the_old_names_still_work():
     assert setting_rules.SettingRule is value_rules.ValueRule and setting_rules.above_zero is value_rules.above_zero
     assert value_rules.SettingRejected is value_rules.ValueRejected and value_rules.SettingCorrected is value_rules.ValueCorrected
+
+
+@pytest.mark.parametrize("bad", [[1.0, math.nan], [math.inf], [2, True]])
+def test_a_list_of_numbers_holds_only_real_finite_numbers(bad):
+    with pytest.raises(value_rules.ValueRejected):
+        value_rules.list_of_numbers().read(bad)

@@ -107,3 +107,9 @@ class TestTheStart:
             bar_keeper_from_settings(settings())
         with pytest.raises(TypeError):
             bar_from_settings(settings())
+
+
+@pytest.mark.parametrize("algorithm", ["percentile", "decaying_quantile"])
+def test_a_bar_that_uses_time_is_handed_the_stream_clock(algorithm):
+    clock = lambda: 12.0                                                    # noqa: E731
+    assert bar_from_settings(settings(algorithm=algorithm), 0.0, stream_now=clock).check.stream_now is clock

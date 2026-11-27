@@ -273,3 +273,10 @@ class TestTheValuesItIsHandedAreChecked:
         b = PercentileBar(QualifyingSettings(min_scores=1, window_seconds=60, bar_percentile=100.0))
         b.add(-4.0, 1.0)
         assert b.level_at(1.0) == 0.0
+
+
+def test_a_window_size_asked_with_a_time_that_is_not_a_number_is_asked_at_the_stream_time_now(logged):
+    b = PercentileBar(QualifyingSettings(min_scores=1, window_seconds=60, bar_percentile=100.0), stream_now=lambda: 30.0)
+    b.add(7.0, 0.0)
+    assert b.window_size_at(float("nan")) == b.window_size_at(30.0) == 1
+    assert logged.of(b).warnings() == ["PercentileBar.window_size_at was given a now of NaN, which is not a number of at least 0; using 30"]

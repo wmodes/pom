@@ -151,3 +151,17 @@ class TestWhenThereIsNothingToDraw:
     def test_an_end_that_is_not_a_number(self, bad):
         w, _ = writer()
         assert w.stretch(10.0, [], bad) == []
+
+
+class TestTheTimesItIsAskedAboutAreChecked:
+    @pytest.mark.parametrize("start, end, argument", [(float("nan"), 4000.0, "start"), (0.0, None, "end")])
+    def test_ticks_between_a_time_that_is_not_a_number_and_now(self, start, end, argument, logged):
+        w, name = writer(stream_now=lambda: 3600.0)
+        w.ticks_between(start, end)
+        assert logged.warnings(name)[0].startswith(f"TickWriter.ticks_between was given a{'n' if argument == 'end' else ''} {argument} of")
+        assert logged.warnings(name)[0].endswith("using 3600")
+
+    def test_a_stretch_since_a_time_that_is_not_a_number_is_since_now(self, logged):
+        w, name = writer(stream_now=lambda: 3600.0)
+        w.stretch("then", [], 4000.0)
+        assert logged.warnings(name)[0].startswith("TickWriter.stretch was given a since of a str")

@@ -710,3 +710,14 @@ class TestWhatTheNotebookKeeps:
             t.add(3.0, 5.0, at)
         t.add(3.0, 5.0, 15 * 3600.0)                               # fifteen hours of quiet, and the attempts before it are still there
         assert [entry.at for entry in t.recent()][:3] == [0.0, 100.0, 200.0]
+
+
+class TestTheTicksAreAskedAtACheckedTime:
+    def test_a_time_that_is_not_a_number_is_the_stream_time_now_with_a_warning(self, logged):
+        t = notebook(stream_now=lambda: 42.0)
+        t.ticks_up_to(float("nan"))
+        assert logged.of(t).warnings() == ["ChartNotebook.ticks_up_to was given a now of NaN, which is not a number of at least 0; using 42"]
+
+    def test_the_tick_writer_is_handed_the_notebooks_stream_clock(self, logged):
+        t = notebook(began_at="soon", stream_now=lambda: 42.0)
+        assert logged.of(t).warnings() == ["TickWriter.__init__ was given a began_at of a str, which is not a number of at least 0; using 42"]

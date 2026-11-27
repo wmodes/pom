@@ -13,7 +13,8 @@ TESTBENCHES = ["scripts/dev/listening/cut_speech_into_hinges.py", "scripts/dev/l
                "scripts/dev/pipeline/listening_to_portent.py", "scripts/dev/monitor/serve_fake_turns.py",
                "scripts/dev/printing/format_text_for_typewriter.py",
                "scripts/dev/printing/type_text_on_typewriter.py", "scripts/dev/qualifying/replay_scores_through_bar.py",
-               "scripts/dev/qualifying/report_score_percentiles.py", "scripts/dev/library/circulation.py"]
+               "scripts/dev/qualifying/report_score_percentiles.py", "scripts/dev/library/circulation.py",
+               "scripts/dev/library/sample.py", "scripts/dev/printing/print_boot_slip.py"]
 
 
 def run(script, *args, env=None):
@@ -161,6 +162,11 @@ def test_the_hear_testbench_builds_the_printers_own_room_on_the_recording(tmp_pa
     builder = script.make_builder(SimpleNamespace(config=str(path), wav="a.wav", speed=6.0), Config.load(path, environ={}))
     deck = builder.make_deck()
     assert isinstance(deck, WavDeck) and builder.options.speed == 6.0
+
+
+def test_the_boot_slip_testbench_types_the_slip_on_the_screen():
+    result = run("scripts/dev/printing/print_boot_slip.py", "--fast", "--no-network")
+    assert result.returncode == 0 and "--- all typed" in result.stdout and "127.0.0.1" in result.stdout, result.stderr
 
 
 def test_the_sampling_testbench_draws_the_same_pulls_for_the_same_seed():

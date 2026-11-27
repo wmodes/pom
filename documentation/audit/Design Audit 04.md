@@ -37,7 +37,7 @@ the bottom with the next number; nothing is renumbered.
       fading still. That is the very failure the Eavesdropper docstring was written to prevent.
   - **Other timelines:** TurnHistory and MonitorSite add wall-clock time too, and every one travels as a bare float.
 
-- [ ] **2. The Printer's wiring is one big function, so nothing can reuse it, and the testbenches copy it and have broken** (checked).
+- [x] **2. The Printer's wiring is one big function, so nothing can reuse it, and the testbenches copy it and have broken** — **done 2026-11-26/27**: the `PrinterBuilder` (`src/pom/printer_builder.py`) builds each part once, when first asked; the Printer, the testbenches and the tests all build through it; the two broken testbenches run again; `tests/test_printer.py` reaches 47 private attributes, down from 109 (see CHANGELOG). Left for item 7: the tally and the page's status still live in the builder, as named methods. Original finding (checked).
   *Principles:* "One class, one job"; "the entry point reads the config and builds the parts"; hand-poking tools "use the real
   modules, never copies".
   - **The function:** `build_printer` (`printer.py:161-291`, about 130 lines) holds state and makes decisions in helpers nested

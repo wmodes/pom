@@ -1,7 +1,10 @@
 # scripts/dev/
 
 Helpers that run on the Mac while developing, grouped by task. Several are **testbenches**: small tools that let you type
-into one built part of the Printer and see what it does, using the real modules (not their own versions of them).
+into one built part of the Printer and see what it does, using the real modules (not their own versions of them). A testbench
+that needs a part of the Printer asks the PrinterBuilder for it (`PrinterBuilder(config, Options(...)).scorer`, `.make_room()`,
+`.printer`), so it is built exactly as the Printer builds it; to change one part, set it before it is first asked for
+(`builder.circulation = ...`). Its smoke tests are in `tests/scripts/test_testbench.py`.
 
 - `library/`: fetches and cleans the public-domain library from `library/holdings.csv`. Rules and workflow are in the repo-root `library/README.md`.
   - `library/validate_output.py` is a stub for checks on the oracle's replies. It reports nothing yet; the reasons are in its header.

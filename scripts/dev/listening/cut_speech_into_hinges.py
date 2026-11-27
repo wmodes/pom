@@ -11,25 +11,33 @@ Usage:
     cut_speech_into_hinges.py --max-words 6 "a long run of words with no punctuation at all in it"
 """
 import argparse
-import os
+import dataclasses
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "src"))
 
-from pom.defaults import ListeningSettings  # noqa: E402
-from pom.listening import TakeCutter  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper import Bookkeeper  # noqa: E402
+from pom.config import Config  # noqa: E402
+from pom.printer_builder import Options, PrinterBuilder  # noqa: E402
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("text", nargs="*", help="the text to cut (read from stdin if omitted)")
-    parser.add_argument("--max-words", type=int, default=40, help="longest clip, in words (default 40)")
+    parser.add_argument("--config", default=str(ROOT / "config" / "pom.toml"), help="the config file to read")
+    parser.add_argument("--max-words", type=int, default=None, help="longest clip, in words (default: the config's [listening] max_clip_words)")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
+    config = Config.load(args.config)
+    if args.max_words is not None:
+        config.listening = dataclasses.replace(config.listening, max_clip_words=args.max_words)
+    builder = PrinterBuilder(config, Options(config_path=args.config, terminal="none"), root=ROOT, bookkeeper=bookkeeper)
     text = " ".join(args.text) if args.text else sys.stdin.read()
-    clips = TakeCutter(ListeningSettings(max_clip_words=args.max_words)).split(text)
+    clips = builder.take_cutter.split(text)
     if not clips:
         print("(nothing to cut: no words found)")
     for clip in clips:

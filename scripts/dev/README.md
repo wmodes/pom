@@ -4,13 +4,15 @@ Helpers that run on the Mac while developing, grouped by task. Several are **tes
 into one built part of the Printer and see what it does, using the real modules (not their own versions of them). A testbench
 that needs a part of the Printer asks the PrinterBuilder for it (`PrinterBuilder(config, Options(...)).scorer`, `.make_room()`,
 `.printer`), so it is built exactly as the Printer builds it; to change one part, set it before it is first asked for
-(`builder.circulation = ...`). Its smoke tests are in `tests/scripts/test_testbench.py`.
+(`builder.circulation = ...`). Every script sets up the log the way the Printer does, `Bookkeeper().set_up(...)`. Its smoke tests are in
+`tests/scripts/test_testbench.py`.
 
 - `library/`: fetches and cleans the public-domain library from `library/holdings.csv`. Rules and workflow are in the repo-root `library/README.md`.
   - `library/validate_output.py` is a stub for checks on the oracle's replies. It reports nothing yet; the reasons are in its header.
   - `library/sample.py` plays with the Bibliomancer: prints pulls of random passages, or measures
     the long-run shelf shares.
-- `listening/`: `cut_speech_into_hinges.py` shows where the TakeCutter cuts a piece of speech into hinge candidates; `split_whisper_tracks.py` shows how
+- `listening/`: `cut_speech_into_hinges.py` shows where the TakeCutter cuts a piece of speech into hinge candidates (`--max-words` in place of the
+  config's `[listening] max_clip_words`); `split_whisper_tracks.py` shows how
   the TrackSplitter splits whisper's text into words, room tone and blanks; `listen_to_room.py` runs the whole listening side on the
   microphone or a recording, scoring what it hears and marking what would qualify (it needs whisper-server running).
 - `scoring/`: `score_typed_sentences.py` scores the sentences you type with the real Scorer and shows whether it would qualify (it needs
@@ -39,5 +41,8 @@ that needs a part of the Printer asks the PrinterBuilder for it (`PrinterBuilder
   `--indent`, `--feeds`, `--keep` and `--ascii-wheel` change what `[printing]` in the config sets.
 - `printing/` also has `type_text_on_typewriter.py`: it formats the text and types it, paced, on the screen (the ConsoleTerminal, the real port code
   writing to the terminal) or on a real serial port with `--port`; `--fast` skips the waiting and `--reply SECONDS` waits for a line typed back.
+- `printing/` also has `print_boot_slip.py`: it types the boot slip (what the typewriter types when the Printer comes online) once, with the
+  Printer's own BootSlipper, on the screen or a real port with `--port`. `--no-network` and `--address 10.41.0.1` show the slip as if the machine
+  had no address, or that one; `--fast` skips the waiting.
 - `writing/`: `write_portent_from_hinge.py` takes the hinges you type and prints the portent the oracle model writes, with the exemplars it was
   given (it needs the oracle model's llama-server, or starts one).

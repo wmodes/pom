@@ -74,6 +74,19 @@ class TestEachPartIsBuiltOnceAndOnlyWhenAsked:
         assert typed._scorer is builder.scorer and typed._bar_keeper is builder.bar_keeper and typed._clock == builder.timekeeper.now
         assert builder.keyboard._typed_scorer is typed
 
+    def test_the_boot_slip_finds_addresses_with_the_builders_address_finder(self, tmp_path):
+        from pom.conductor import AddressFinder
+        builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "console"\n'))
+        assert isinstance(builder.address_finder, AddressFinder) and builder.boot_slipper._find_addresses == builder.address_finder.find
+
+    def test_an_address_finder_set_before_it_is_asked_for_fills_in_the_slip(self, tmp_path):
+        """A testbench shows the slip with no network, or a given address, by setting the part."""
+        config = config_from(tmp_path, '[terminal]\nmode = "console"\ncharacters_per_second = 1e9\nfinish_wait_seconds = 0\n'
+                                       '[conductor]\ncheck_seconds = 0.001\n')
+        builder = PrinterBuilder(config)
+        builder.address_finder = SimpleNamespace(find=lambda: ["10.41.0.1"])
+        assert builder.boot_slipper.run() and "10.41.0.1" in builder.boot_slipper.text
+
     def test_the_whole_printer_is_built_once(self, tmp_path):
         builder = PrinterBuilder(config_from(tmp_path, '[terminal]\nmode = "none"\n'))
         assert builder.printer is builder.printer

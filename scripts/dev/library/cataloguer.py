@@ -57,7 +57,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 from pom.library import Circulation, ends_unfinished  # noqa: E402
 from pom.library.endings import ends_sentence  # noqa: E402  (scripts may import the package, never the reverse)
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
+from pom.bookkeeper import Bookkeeper  # noqa: E402
 
 DEFAULT_OVERSIZE = 1.0       # a piece with no sentence end to cut at may run to this times the limit before it is dropped (1.0: the ceiling holds)
 LIBRARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "library")
@@ -295,7 +295,7 @@ def main():
     parser.add_argument("--circulation", default=os.path.join(LIBRARY, "passages", "circulation.json"))
     parser.add_argument("--check", action="store_true", help="report only; write nothing")
     args = parser.parse_args()
-    configure_logging("WARNING")
+    Bookkeeper().set_up("WARNING")
     records, stats = build(args.max_words, args.min_words, args.oversize)
     shares = target_shares(records, args.circulation)
     if not args.check:

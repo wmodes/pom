@@ -4,7 +4,8 @@
 By default it types on the terminal at the typewriter's pace (the ConsoleTerminal, which is the real port code writing
 to the screen), so you can watch what the machine would do. With --port it types on a real serial port instead. The text
 goes through the PortentFormatter first, with [printing] from config/pom.toml, and the pacing and serial settings are
-[terminal] there. The code is src/pom/printing/terminal_port.py; this is only a window onto it.
+[terminal] there. The formatter and the terminal are the Printer's own, asked of the PrinterBuilder. The code is
+src/pom/printing/terminal_port.py; this is only a window onto it.
 
 Usage:
     type_text_on_typewriter.py "The lighthouse keeper counts the ships that never arrive."
@@ -15,16 +16,17 @@ Usage:
 """
 import argparse
 import dataclasses
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "src"))
 
+from pom.bookkeeper import Bookkeeper  # noqa: E402
 from pom.config import Config  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
-from pom.printing import ConsoleTerminal, PortentFormatter, TerminalPort, TerminalPortFinder  # noqa: E402
+from pom.printer_builder import Options, PrinterBuilder  # noqa: E402
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")
+CONFIG_PATH = str(ROOT / "config" / "pom.toml")
 
 
 def main():
@@ -36,21 +38,20 @@ def main():
     parser.add_argument("--reply", type=float, metavar="SECONDS", help="after typing, wait this long for a line typed back and show it")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
     config = Config.load(CONFIG_PATH)
-    printing, terminal = config.printing, config.terminal
     if args.fast:
-        terminal = dataclasses.replace(terminal, characters_per_second=1e9, finish_wait_seconds=0.0)
+        config.terminal = dataclasses.replace(config.terminal, characters_per_second=1e9, finish_wait_seconds=0.0)
     elif args.cps:
-        terminal = dataclasses.replace(terminal, characters_per_second=args.cps)
+        config.terminal = dataclasses.replace(config.terminal, characters_per_second=args.cps)
+    if args.port:
+        config.terminal = dataclasses.replace(config.terminal, port=args.port)
+    builder = PrinterBuilder(config, Options(config_path=CONFIG_PATH, terminal="serial" if args.port else "console"), root=ROOT, bookkeeper=bookkeeper)
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    text = PortentFormatter(printing).format(raw)
-    if args.port:
-        terminal = dataclasses.replace(terminal, port=args.port)
-        typewriter = TerminalPort(terminal, finder=TerminalPortFinder(terminal))
-    else:
-        typewriter = ConsoleTerminal(terminal)
+    text = builder.formatter.format(raw)
+    typewriter = builder.terminal
 
     done = typewriter.transmit(text)
     print(f"--- {done.characters} characters in {done.seconds:.1f} s, {'all typed' if done.completed else 'NOT all typed'}")

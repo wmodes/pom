@@ -169,6 +169,44 @@ def test_the_boot_slip_testbench_types_the_slip_on_the_screen():
     assert result.returncode == 0 and "--- all typed" in result.stdout and "127.0.0.1" in result.stdout, result.stderr
 
 
+def test_the_boot_slip_testbench_fills_in_the_address_it_is_given():
+    result = run("scripts/dev/printing/print_boot_slip.py", "--fast", "--address", "10.41.0.1")
+    assert result.returncode == 0 and "LINE 1 ....... 10.41.0.1" in result.stdout, result.stderr
+
+
+class TestTheBootSlipTestbenchIsThePrintersBootSlip:
+    """It asks the PrinterBuilder for the Printer's own BootSlipper, so it cannot drift from it."""
+
+    @staticmethod
+    def built(tmp_path, *argv):
+        from pom.config import Config
+        script = load_script("scripts/dev/printing/print_boot_slip.py")
+        path = tmp_path / "pom.toml"
+        path.write_text("", encoding="utf-8")
+        args = script.make_parser().parse_args(["--config", str(path), *argv])
+        return script.make_builder(args, Config.load(path, environ={}))
+
+    def test_it_types_on_the_screen_and_on_a_port_when_given_one(self, tmp_path):
+        from pom.printing import ConsoleTerminal, TerminalPort
+        assert isinstance(self.built(tmp_path).boot_slipper._terminal, ConsoleTerminal)
+        on_port = self.built(tmp_path, "--port", "/dev/does-not-exist")
+        assert type(on_port.boot_slipper._terminal) is TerminalPort and on_port.config.terminal.port == "/dev/does-not-exist"   # not the console (a subclass)
+
+    def test_its_parts_are_the_builders(self, tmp_path):
+        builder = self.built(tmp_path, "--no-network")
+        slipper = builder.boot_slipper
+        assert slipper._floor is builder.floor and slipper._formatter is builder.formatter and builder.address_finder.find() == []
+
+
+def test_the_cut_testbench_cuts_at_the_configs_longest_clip(tmp_path):
+    config = tmp_path / "pom.toml"
+    config.write_text("[listening]\nmax_clip_words = 3\n", encoding="utf-8")
+    from_config = run("scripts/dev/listening/cut_speech_into_hinges.py", "--config", str(config), "a long run of words with no punctuation")
+    given = run("scripts/dev/listening/cut_speech_into_hinges.py", "--config", str(config), "--max-words", "4", "a long run of words with no punctuation")
+    assert [line.split(None, 2)[2] for line in from_config.stdout.splitlines()] == ["a long run", "of words with", "no punctuation"], from_config.stderr
+    assert given.stdout.splitlines()[0].endswith("a long run of"), given.stderr
+
+
 def test_the_sampling_testbench_draws_the_same_pulls_for_the_same_seed():
     first, second = (run("scripts/dev/library/sample.py", "--seed", "11", "--pulls", "2") for _ in range(2))
     assert first.returncode == 0 and "pull 1" in first.stdout and first.stdout == second.stdout, first.stderr

@@ -27,6 +27,14 @@ released yet, so everything is under Unreleased. Update this file in the same co
     - `write_portent_from_hinge.py`: still reads the config again before each hinge, so prompt edits show at once, with a fresh builder holding the same Bibliomancer and generator.
 
     The builder has three new parts for this, `scorer_client`, `word_tagger` and `typed_line_scorer`, each also the one the Printer uses. The scripts touched log through the Bookkeeper, not the old `configure_logging`.
+  - **The last testbenches that built Printer parts by hand build through it too, and every testbench logs through the Bookkeeper.**
+    - `print_boot_slip.py` asks for the Printer's own BootSlipper. For its `--no-network` and `--address` the builder has a new part, `address_finder`, which the script sets before the BootSlipper is built; the Printer's slip is unchanged.
+    - `type_text_on_typewriter.py` asks for the Printer's formatter and terminal; `format_text_for_typewriter.py` for its formatter.
+    - `cut_speech_into_hinges.py` asks for the Printer's TakeCutter, so it cuts by the config's `[listening]` settings. Its `--max-words` used to default to 40 written in the script; it now defaults to the config's `max_clip_words`. It takes `--config`.
+    - `split_whisper_tracks.py` and `scripts/dev/library/cataloguer.py` build nothing of the Printer's; they now set up the log with `Bookkeeper().set_up`, like the rest. No script calls `configure_logging` any more.
+    - `scripts/dev/README.md` lists `print_boot_slip.py`, which it was missing.
+
+    Mutation checks: 8 mutants, 0 survivors (one survived at first: `ConsoleTerminal` is a `TerminalPort`, so the test now checks the exact class).
 
     Tests cover what each script builds with its flags, with no server. Each was run on the Mac against the three servers:
     - `listen_to_room.py` on `class5.wav` hears the same 25 attempts and the same 1 that would qualify as before.

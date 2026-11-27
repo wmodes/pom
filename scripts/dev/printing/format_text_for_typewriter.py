@@ -3,8 +3,8 @@
 
 Give it text as arguments, or pipe text in, and it prints the text as the typewriter would type it, between a ruler and
 the line's right edge, with the line count. The line width and quote indent come from [printing] in config/pom.toml
-(paper, margins and print wheel pitch) unless you give them. The formatting is src/pom/printing/portent_formatter.py;
-this is only a window onto it.
+(paper, margins and print wheel pitch) unless you give them. The formatter is the Printer's own, asked of the PrinterBuilder.
+The formatting is src/pom/printing/portent_formatter.py; this is only a window onto it.
 
 Usage:
     format_text_for_typewriter.py "The lighthouse keeper counts the ships that never arrive, and writes them down."
@@ -14,16 +14,17 @@ Usage:
 """
 import argparse
 import dataclasses
-import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "src"))
 
-from pom.config import Config
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
-from pom.printing import PortentFormatter  # noqa: E402
+from pom.bookkeeper import Bookkeeper  # noqa: E402
+from pom.config import Config  # noqa: E402
+from pom.printer_builder import Options, PrinterBuilder  # noqa: E402
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "config", "pom.toml")
+CONFIG_PATH = str(ROOT / "config" / "pom.toml")
 
 
 def ruler(width: int) -> str:
@@ -42,8 +43,10 @@ def main():
     parser.add_argument("--ascii-wheel", action="store_true", help="the wheel has all of ASCII: nothing is swapped")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
-    printing = Config.load(CONFIG_PATH).printing
+    bookkeeper = Bookkeeper()
+    bookkeeper.set_up("WARNING")
+    config = Config.load(CONFIG_PATH)
+    printing = config.printing
     if args.cpi:
         printing = dataclasses.replace(printing, characters_per_inch=args.cpi)
     if args.width:                                   # the paper that gives this line at this pitch
@@ -57,9 +60,11 @@ def main():
     if args.ascii_wheel:
         printing = dataclasses.replace(printing, ascii_printwheel=True)
     width = printing.line_width
+    config.printing = printing
+    builder = PrinterBuilder(config, Options(config_path=CONFIG_PATH, terminal="none"), root=ROOT, bookkeeper=bookkeeper)
 
     raw = " ".join(args.text) if args.text else sys.stdin.read()
-    typed = PortentFormatter(printing).format(raw)
+    typed = builder.formatter.format(raw)
     body = typed.rstrip("\n")
     lines = body.split("\n") if body else []
     print(ruler(width))

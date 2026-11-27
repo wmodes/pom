@@ -339,12 +339,17 @@ class PrinterBuilder:
                          bookkeeper=self.bookkeeper)
 
     @cached_property
+    def address_finder(self) -> AddressFinder:
+        """Finds the machine's addresses for the boot slip. A testbench sets its own (anything with `find()`) to show the slip with no network."""
+        return AddressFinder(bookkeeper=self.bookkeeper)
+
+    @cached_property
     def boot_slipper(self) -> Optional[BootSlipper]:
         """Types the Pi's address when the typewriter is online; None when there is no terminal to type on or the slip is off."""
         slip = self.config.boot_slip
         if self.terminal is None or not slip.enabled:
             return None
-        return BootSlipper(self.floor, self.terminal, self.formatter, AddressFinder(bookkeeper=self.bookkeeper).find, boot_slip=slip,
+        return BootSlipper(self.floor, self.terminal, self.formatter, self.address_finder.find, boot_slip=slip,
                            ears_shut_seconds=self.config.conductor.check_seconds + 1.0, bookkeeper=self.bookkeeper)
 
     @cached_property

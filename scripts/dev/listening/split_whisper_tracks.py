@@ -17,8 +17,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "src"))
 
+from pom.bookkeeper import Bookkeeper  # noqa: E402
 from pom.listening import TrackSplitter  # noqa: E402
-from pom.bookkeeper.log_setup import configure_logging  # noqa: E402
 
 
 def main():
@@ -28,7 +28,7 @@ def main():
                         help="treat the text as coming from a pass without the voice detector, where only lyrics count")
     args = parser.parse_args()
 
-    configure_logging("WARNING")
+    Bookkeeper().set_up("WARNING")
     raw = " ".join(args.text) if args.text else sys.stdin.read()
     heard = TrackSplitter().split(raw, plain_text=not args.lyrics_only)
     print(f"words:     {heard.words or '(none)'}")

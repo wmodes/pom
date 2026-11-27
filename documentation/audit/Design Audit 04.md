@@ -63,7 +63,7 @@ the bottom with the next number; nothing is renumbered.
     of the breakage is caught.
   - **Consequence:** the testbench Wes judges the system by is not the system.
 
-- [ ] **3. The checks on the values passed between stages disagree, and are copied** (checked). *Principle (agreed with Wes,
+- [x] **3. The checks on the values passed between stages disagree, and are copied** — **done 2026-11-27**: one ValueChecker over the settings' value rules, the fallback value for each kind of value written once in it (`score`, `stream_time`, `bar`, `count`), every receiver in the table checking with it; 62 mutants, one equivalent survivor (see CHANGELOG). Left: the RollingCutter's and the circulation file's durations and weights (not one of the four kinds), and the KeyboardWatcher's and WavDeck's fallback values, which are D6.1 constants and go with item 12. Original finding (checked). *Principle (agreed with Wes,
   2026-11-27):* "Every public method checks what it receives against its own spec. A bad value gets the one fallback value agreed for that
   kind of value (a score, a stream time, a count) and a warning, so the log shows which caller to correct; `strict` raises instead. The check
   is one shared function, not a copy per module."
